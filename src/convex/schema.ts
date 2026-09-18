@@ -57,6 +57,54 @@ const schema = defineSchema(
     })
       .index("by_user", ["userId"])
       .index("by_user_talk", ["userId", "talkId"]),
+
+    // Cài đặt ứng dụng của từng người dùng (sáng/tối, cỡ chữ, ngôn ngữ, thông báo)
+    userSettings: defineTable({
+      userId: v.id("users"),
+      theme: v.string(), // "light" | "dark" | "system"
+      fontScale: v.number(), // 0.9 | 1.0 | 1.15 | 1.3
+      language: v.string(), // "vi" | "en"
+      notifications: v.boolean(),
+    })
+      .index("by_user", ["userId"]),
+
+    // Tiến trình đọc Kinh/Luật: khôi phục vị trí cuộn khi quay lại
+    readingProgress: defineTable({
+      userId: v.id("users"),
+      docId: v.string(), // ID văn bản (vd: "sn56.11", "vin-patimokkha")
+      percent: v.number(), // 0..100
+      updatedAt: v.number(),
+    })
+      .index("by_user", ["userId"])
+      .index("by_user_doc", ["userId", "docId"]),
+
+    // Phiên thiền định đã thực hành
+    meditationSessions: defineTable({
+      userId: v.id("users"),
+      technique: v.string(), // "anapanasati" | "metta" | "maranasati" | "walking" | "custom"
+      durationSec: v.number(),
+      completedAt: v.number(), // thời điểm kết thúc phiên
+    })
+      .index("by_user", ["userId"]),
+
+    // Góp ý và báo cáo lỗi từ người dùng
+    feedback: defineTable({
+      userId: v.optional(v.id("users")),
+      type: v.string(), // "idea" | "bug"
+      message: v.string(),
+      email: v.optional(v.string()),
+      appVersion: v.string(),
+      status: v.string(), // "new" | "reading" | "resolved"
+      createdAt: v.number(),
+    }).index("by_createdAt", ["createdAt"]),
+
+    // Siêu dữ liệu ứng dụng: phiên bản mới nhất, ghi chú phát hành
+    appMeta: defineTable({
+      key: v.string(),
+      latestVersion: v.string(),
+      releaseNotes: v.optional(v.string()),
+      releasedAt: v.optional(v.number()),
+    }).index("by_key", ["key"]),
   },
   {
     schemaValidation: false,

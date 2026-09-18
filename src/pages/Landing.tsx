@@ -1,7 +1,11 @@
 import { DhammaWheel } from "@/components/DhammaWheel";
+import { APP_VERSION } from "@/lib/version";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import {
+  BookOpen,
+  Calendar,
+  Heart,
   History,
   ListVideo,
   Play,
@@ -9,8 +13,6 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Link } from "react-router";
-
-const APP_VERSION = "1.0.0";
 
 const FEATURES = [
   {
@@ -32,6 +34,21 @@ const FEATURES = [
     icon: Radio,
     title: "Nghe nền",
     desc: "Tắt màn hình hoặc chuyển tab, âm thanh pháp thoại vẫn tiếp tục.",
+  },
+  {
+    icon: BookOpen,
+    title: "Kinh tạng & Luật tạng",
+    desc: "Học Kinh, Luận giải, Chú giải, tra cứu Luật Pātimokkha và Từ điển Phật học chuyên ngành.",
+  },
+  {
+    icon: Calendar,
+    title: "Lịch Phật giáo",
+    desc: "Âm lịch, Can Chi, Phật lịch, lễ hội và ngày Uposatha — tra cứu nhanh mọi lúc.",
+  },
+  {
+    icon: Heart,
+    title: "Thiền định",
+    desc: "Hướng dẫn từng bước Anapānasati, Mettā, Maranāsati, Thiền hành — thực hành ngay với bộ đếm thời gian.",
   },
 ] as const;
 

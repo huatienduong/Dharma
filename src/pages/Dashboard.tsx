@@ -1,24 +1,21 @@
-import { DhammaWheel } from "@/components/DhammaWheel";
+import { AppShell } from "@/components/AppShell";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
-import { useAuth } from "@/hooks/use-auth";
 import { formatTime, usePlayer } from "@/lib/player";
+import { APP_VERSION } from "@/lib/version";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import {
   Compass,
   History,
-  LogOut,
   Play,
   RefreshCw,
   Sparkles,
-  UserRound,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
 type Talk = Doc<"dhammaTalks">;
@@ -36,8 +33,6 @@ type ProgressRow = {
   updatedAt: number;
 };
 
-const APP_VERSION = "1.0.0";
-
 function fmtDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
@@ -49,8 +44,6 @@ function fmtDate(iso: string): string {
 }
 
 export default function Dashboard() {
-  const { user, signOut } = useAuth();
-  const navigate = useNavigate();
   const { play } = usePlayer();
 
   const talks = useQuery(api.dhamma.list, { limit: 60 });
@@ -79,49 +72,12 @@ export default function Dashboard() {
     [progress],
   );
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
-  };
-
   return (
-    <div className="lotus-bg min-h-screen">
-      {/* ---------- Header ---------- */}
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <DhammaWheel size={40} />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold leading-tight">
-                Dhamma Stream
-              </p>
-              <p className="truncate text-[11px] text-muted-foreground">
-                Pháp thoại Theravāda
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="hidden items-center gap-1.5 rounded-full border border-border/70 px-3 py-1.5 text-xs text-muted-foreground sm:flex">
-              <UserRound className="h-3.5 w-3.5" />
-              <span className="max-w-40 truncate">
-                {user?.name || user?.email || "Phật tử"}
-              </span>
-            </span>
-            <SyncButton />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleSignOut}
-              aria-label="Đăng xuất"
-              title="Đăng xuất"
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-6xl px-4 pb-32 pt-6 sm:pt-8">
+    <AppShell
+      title="Pháp thoại Theravāda"
+      subtitle="Xem và nghe pháp thoại mới nhất từ các kênh Theravāda chính thống"
+      actions={<SyncButton />}
+    >
         {/* ---------- Hero + Tiếp tục xem ---------- */}
         <section className="grid gap-6 lg:grid-cols-[1fr_20rem]">
           {/* Pháp thoại mới nhất */}
@@ -337,8 +293,7 @@ export default function Dashboard() {
             Theravāda — Phật giáo Nguyên thủy
           </p>
         </footer>
-      </main>
-    </div>
+    </AppShell>
   );
 }
 

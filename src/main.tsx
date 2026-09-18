@@ -2,6 +2,7 @@ import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
 import { RequireAuth } from "@/components/RequireAuth";
 import { PlayerProvider } from "@/lib/player";
+import { SettingsProvider } from "@/lib/settings";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
@@ -15,6 +16,12 @@ const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const Suttas = lazy(() => import("./pages/Suttas.tsx"));
+const Vinaya = lazy(() => import("./pages/Vinaya.tsx"));
+const Dictionary = lazy(() => import("./pages/Dictionary.tsx"));
+const CalendarPage = lazy(() => import("./pages/Calendar.tsx"));
+const Meditation = lazy(() => import("./pages/Meditation.tsx"));
+const SettingsPage = lazy(() => import("./pages/Settings.tsx"));
 
 // Simple loading fallback for route transitions
 function RouteLoading() {
@@ -83,6 +90,19 @@ class RootErrorBoundary extends React.Component<
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
+// Lazy load các named export (trang đọc chi tiết)
+const SuttaReader = lazy(() =>
+  import("./pages/Suttas.tsx").then((m) => ({ default: m.SuttaReader })),
+);
+const VinayaReader = lazy(() =>
+  import("./pages/Vinaya.tsx").then((m) => ({ default: m.VinayaReader })),
+);
+const MeditationDetail = lazy(() =>
+  import("./pages/Meditation.tsx").then((m) => ({
+    default: m.MeditationDetail,
+  })),
+);
+
 
 
 function RouteSyncer() {
@@ -116,8 +136,9 @@ createRoot(document.getElementById("root")!).render(
         <VlyToolbar />
       </ToolbarErrorBoundary>
       <ConvexAuthProvider client={convex}>
-        <PlayerProvider>
-          <BrowserRouter>
+        <SettingsProvider>
+          <PlayerProvider>
+            <BrowserRouter>
             <RouteSyncer />
             <Suspense fallback={<RouteLoading />}>
               <Routes>
@@ -134,11 +155,84 @@ createRoot(document.getElementById("root")!).render(
                     </RequireAuth>
                   }
                 />
+                <Route
+                  path="/suttas"
+                  element={
+                    <RequireAuth>
+                      <Suttas />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/suttas/:id"
+                  element={
+                    <RequireAuth>
+                      <SuttaReader />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/vinaya"
+                  element={
+                    <RequireAuth>
+                      <Vinaya />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/vinaya/:id"
+                  element={
+                    <RequireAuth>
+                      <VinayaReader />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/dictionary"
+                  element={
+                    <RequireAuth>
+                      <Dictionary />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/calendar"
+                  element={
+                    <RequireAuth>
+                      <CalendarPage />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/meditation"
+                  element={
+                    <RequireAuth>
+                      <Meditation />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/meditation/:id"
+                  element={
+                    <RequireAuth>
+                      <MeditationDetail />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/settings"
+                  element={
+                    <RequireAuth>
+                      <SettingsPage />
+                    </RequireAuth>
+                  }
+                />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
           </BrowserRouter>
-        </PlayerProvider>
+          </PlayerProvider>
+        </SettingsProvider>
         <Toaster />
       </ConvexAuthProvider>
     </RootErrorBoundary>
