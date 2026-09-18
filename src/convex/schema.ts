@@ -32,12 +32,31 @@ const schema = defineSchema(
       role: v.optional(roleValidator), // role of the user. do not remove
     }).index("email", ["email"]), // index for the email. do not remove or modify
 
-    // add other tables here
+    // Pháp thoại Theravada: một bản ghi cho mỗi video YouTube
+    dhammaTalks: defineTable({
+      youtubeId: v.string(), // video ID trên YouTube
+      title: v.string(),
+      teacher: v.string(), // tên vị giảng sư
+      channelName: v.string(), // tên kênh YouTube
+      publishedAt: v.string(), // ngày phát hành (ISO)
+      durationSec: v.number(), // thời lượng (giây), 0 nếu chưa rõ
+      description: v.optional(v.string()),
+      syncedAt: v.number(), // thời điểm đồng bộ
+    })
+      .index("by_youtubeId", ["youtubeId"])
+      .index("by_publishedAt", ["publishedAt"]),
 
-    // tableName: defineTable({
-    //   ...
-    //   // table fields
-    // }).index("by_field", ["field"])
+    // Tiến trình xem của người dùng, khôi phục khi quay lại ứng dụng
+    watchProgress: defineTable({
+      userId: v.id("users"),
+      talkId: v.id("dhammaTalks"),
+      positionSec: v.number(), // vị trí dừng (giây)
+      durationSec: v.number(), // thời lượng video (giây)
+      completed: v.boolean(), // đã xem gần hết
+      updatedAt: v.number(),
+    })
+      .index("by_user", ["userId"])
+      .index("by_user_talk", ["userId", "talkId"]),
   },
   {
     schemaValidation: false,

@@ -1,0 +1,759 @@
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { useAuth } from "@/hooks/use-auth";
+import { useMutation, useQuery } from "convex/react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+
+/* ------------------------------------------------------------------ */
+/* YouTube IFrame API                                                  */
+/* ------------------------------------------------------------------ */
+
+declare global {
+  interface Window {
+    YT?: {
+      Player: new (
+        el: HTMLElement | string,
+        opts: {
+          videoId?: string;
+          width?: string | number;
+          height?: string | number;
+          playerVars?: Record<string, string | number>;
+          events?: {
+            onReady?: (e: { target: YTPlayer }) => void;
+            onStateChange?: (e: { data: number; target: YTPlayer }) => void;
+            onError?: (e: { data: 2 | 5 | 100 | 101 | 150 }) => void;
+          };
+        },
+      ) => YTPlayer;
+      PlayerState: {
+        UNSTARTED: number;
+        ENDED: number;
+        PLAYING: number;
+        PAUSED: number;
+        BUFFERING: number;
+        CUED: number;
+      };
+    };
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
+
+interface YTPlayer {
+  loadVideoById(id: string): void;
+  playVideo(): void;
+  pauseVideo(): void;
+  seekTo(sec: number, allowSeekAhead: boolean): void;
+  getCurrentTime(): number;
+  getDuration(): number;
+  getPlayerState(): number;
+  destroy(): void;
+}
+
+let ytApiPromise: Promise<YTNamespace> | null = null;
+type YTNamespace = NonNullable<Window["YT"]>;
+
+function loadYouTubeIframeApi(): Promise<YTNamespace> {
+  if (window.YT?.Player) return Promise.resolve(window.YT);
+  if (ytApiPromise) return ytApiPromise;
+  ytApiPromise = new Promise((resolve) => {
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => {
+      prev?.();
+      resolve(window.YT!);
+    };
+    const script = document.createElement("script");
+    script.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(script);
+  });
+  return ytApiPromise;
+}
+
+/* ------------------------------------------------------------------ */
+/* Tiện ích                                                            */
+/* ------------------------------------------------------------------ */
+
+export function formatTime(sec: number): string {
+  if (!Number.isFinite(sec) || sec <= 0) return "0:00";
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  const mm = h > 0 ? String(m).padStart(2, "0") : String(m);
+  const ss = String(s).padStart(2, "0");
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Types + Context                                                     */
+/* ------------------------------------------------------------------ */
+
+export interface PlayerTalk {
+  _id: Id<"dhammaTalks">;
+  youtubeId: string;
+  title: string;
+  teacher: string;
+  channelName: string;
+  publishedAt: string;
+  durationSec: number;
+}
+
+interface PlayerContextValue {
+  current: PlayerTalk | null;
+  isPlaying: boolean;
+  isBuffering: boolean;
+  position: number;
+  duration: number;
+  play(talk: PlayerTalk): void;
+  toggle(): void;
+  seek(sec: number): void;
+  close(): void;
+  replay(): void;
+  /** true khi đang ở chế độ overlay toàn màn hình */
+  isExpanded: boolean;
+  setExpanded(v: boolean): void;
+}
+
+const PlayerContext = createContext<PlayerContextValue | null>(null);
+
+export function usePlayer(): PlayerContextValue {
+  const ctx = useContext(PlayerContext);
+  if (!ctx) throw new Error("usePlayer phải dùng bên trong <PlayerProvider>");
+  return ctx;
+}
+
+/* ------------------------------------------------------------------ */
+/* Provider                                                            */
+/* ------------------------------------------------------------------ */
+
+const SAVE_INTERVAL_MS = 10_000;
+
+export function PlayerProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated } = useAuth();
+  const savedProgress = useQuery(
+    api.dhamma.myProgress,
+    isAuthenticated ? {} : "skip",
+  );
+  const saveProgress = useMutation(api.dhamma.saveProgress);
+  const resetProgress = useMutation(api.dhamma.resetProgress);
+
+  const ytTargetRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<YTPlayer | null>(null);
+  const [playerReady, setPlayerReady] = useState(false);
+
+  const [current, setCurrent] = useState<PlayerTalk | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [expanded, setExpanded] = useState(false);
+  const [showFallback, setShowFallback] = useState(false);
+
+  const pendingSeekRef = useRef<number | null>(null);
+  const talkRef = useRef<PlayerTalk | null>(null);
+  const savedForTalkRef = useRef<Map<string, number>>(new Map());
+  const [queued, setQueued] = useState<PlayerTalk | null>(null);
+
+  /* ----- Tạo player một lần, gắn vào khung luôn tồn tại ----- */
+  useEffect(() => {
+    let cancelled = false;
+    loadYouTubeIframeApi().then((YT) => {
+      if (cancelled || !ytTargetRef.current || playerRef.current) return;
+      playerRef.current = new YT.Player(ytTargetRef.current, {
+        width: "100%",
+        height: "100%",
+        playerVars: {
+          playsinline: 1,
+          rel: 0,
+          modestbranding: 1,
+        },
+        events: {
+          onReady: () => setPlayerReady(true),
+          onStateChange: (e) => {
+            const S = window.YT!.PlayerState;
+            if (e.data === S.PLAYING) {
+              setIsPlaying(true);
+              setIsBuffering(false);
+            } else if (e.data === S.PAUSED) {
+              setIsPlaying(false);
+              setIsBuffering(false);
+            } else if (e.data === S.BUFFERING) {
+              setIsBuffering(true);
+            } else if (e.data === S.ENDED) {
+              const t = talkRef.current;
+              const dur = playerRef.current?.getDuration() ?? 0;
+              if (t && dur > 0) {
+                void saveProgress({
+                  youtubeId: t.youtubeId,
+                  positionSec: dur,
+                  durationSec: dur,
+                });
+              }
+              talkRef.current = null;
+              setCurrent(null);
+              setIsPlaying(false);
+              setIsBuffering(false);
+              setPosition(0);
+              setDuration(0);
+              setExpanded(false);
+            }
+          },
+          onError: () => {
+            setShowFallback(true);
+            setIsPlaying(false);
+            setIsBuffering(false);
+          },
+        },
+      });
+    });
+    return () => {
+      cancelled = true;
+      playerRef.current?.destroy();
+      playerRef.current = null;
+    };
+    // saveProgress là hàm ổn định từ useMutation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    talkRef.current = current;
+  }, [current]);
+
+  /* ----- Phát một pháp thoại (tiếp tục từ vị trí đã lưu) ----- */
+  const play = useCallback(
+    (talk: PlayerTalk) => {
+      setShowFallback(false);
+      // Bắt đầu phát mới (chưa có gì đang phát) -> mở trình phát lớn
+      if (talkRef.current === null) setExpanded(true);
+      setCurrent(talk);
+      setPosition(0);
+      setDuration(talk.durationSec > 0 ? talk.durationSec : 0);
+
+      const resumeSec = savedForTalkRef.current.get(talk.youtubeId) ?? 0;
+      pendingSeekRef.current = resumeSec > 5 ? resumeSec : null;
+
+      if (!playerReady || !playerRef.current) {
+        setQueued(talk);
+        return;
+      }
+      playerRef.current.loadVideoById(talk.youtubeId);
+      const st = pendingSeekRef.current;
+      if (st != null) {
+        playerRef.current.seekTo(st, true);
+        pendingSeekRef.current = null;
+      }
+      playerRef.current.playVideo();
+    },
+    [playerReady],
+  );
+
+  useEffect(() => {
+    if (playerReady && queued) {
+      const t = queued;
+      setQueued(null);
+      play(t);
+    }
+  }, [playerReady, queued, play]);
+
+  /* ----- Vòng lặp 500ms: cập nhật vị trí ----- */
+  useEffect(() => {
+    if (!current) return;
+    const iv = window.setInterval(() => {
+      const p = playerRef.current;
+      if (!p) return;
+      try {
+        const pos = p.getCurrentTime();
+        const dur = p.getDuration();
+        if (Number.isFinite(pos)) setPosition(pos);
+        if (Number.isFinite(dur) && dur > 0) setDuration(dur);
+        if (talkRef.current && Number.isFinite(pos)) {
+          savedForTalkRef.current.set(talkRef.current.youtubeId, pos);
+        }
+      } catch {
+        /* player đang khởi tạo */
+      }
+    }, 500);
+    return () => window.clearInterval(iv);
+  }, [current]);
+
+  /* ----- Vòng lặp 10s: lưu tiến trình lên Convex ----- */
+  useEffect(() => {
+    if (!current) return;
+    const iv = window.setInterval(() => {
+      const p = playerRef.current;
+      const t = talkRef.current;
+      if (!p || !t || !isPlaying) return;
+      try {
+        void saveProgress({
+          youtubeId: t.youtubeId,
+          positionSec: p.getCurrentTime(),
+          durationSec: p.getDuration(),
+        });
+      } catch {
+        /* bỏ qua lỗi mạng tạm thời */
+      }
+    }, SAVE_INTERVAL_MS);
+    return () => window.clearInterval(iv);
+  }, [current, isPlaying, saveProgress]);
+
+  /* ----- Lưu lần cuối khi ẩn trang / unmount ----- */
+  useEffect(() => {
+    const handler = () => {
+      const p = playerRef.current;
+      const t = talkRef.current;
+      if (!p || !t) return;
+      try {
+        void saveProgress({
+          youtubeId: t.youtubeId,
+          positionSec: p.getCurrentTime(),
+          durationSec: p.getDuration(),
+        });
+      } catch {
+        /* noop */
+      }
+    };
+    window.addEventListener("pagehide", handler);
+    return () => {
+      window.removeEventListener("pagehide", handler);
+      handler();
+    };
+  }, [saveProgress]);
+
+  /* ----- Nạp tiến trình đã lưu từ Convex ----- */
+  useEffect(() => {
+    if (!savedProgress) return;
+    const map = new Map<string, number>();
+    for (const row of savedProgress) {
+      map.set(row.youtubeId, row.positionSec);
+    }
+    savedForTalkRef.current = map;
+  }, [savedProgress]);
+
+  /* ----- Điều khiển ----- */
+  const toggle = useCallback(() => {
+    const p = playerRef.current;
+    if (!p) return;
+    if (p.getPlayerState() === window.YT!.PlayerState.PLAYING) {
+      p.pauseVideo();
+    } else {
+      p.playVideo();
+    }
+  }, []);
+
+  const seek = useCallback((sec: number) => {
+    playerRef.current?.seekTo(Math.max(0, sec), true);
+    setPosition(Math.max(0, sec));
+  }, []);
+
+  const close = useCallback(() => {
+    const p = playerRef.current;
+    const t = talkRef.current;
+    if (p && t) {
+      try {
+        void saveProgress({
+          youtubeId: t.youtubeId,
+          positionSec: p.getCurrentTime(),
+          durationSec: p.getDuration(),
+        });
+      } catch {
+        /* noop */
+      }
+    }
+    p?.pauseVideo();
+    talkRef.current = null;
+    setCurrent(null);
+    setPosition(0);
+    setDuration(0);
+    setExpanded(false);
+    setShowFallback(false);
+  }, [saveProgress]);
+
+  const replay = useCallback(() => {
+    const t = talkRef.current ?? current;
+    if (!t) return;
+    if (isAuthenticated) void resetProgress({ youtubeId: t.youtubeId });
+    savedForTalkRef.current.delete(t.youtubeId);
+    play(t);
+  }, [current, isAuthenticated, play, resetProgress]);
+
+  /* ----- Media Session: điều khiển từ màn hình khóa ----- */
+  useEffect(() => {
+    if (!("mediaSession" in navigator) || !current) return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: current.title,
+      artist: current.teacher,
+      album: "Dhamma Stream",
+    });
+    navigator.mediaSession.setActionHandler("play", () => toggle());
+    navigator.mediaSession.setActionHandler("pause", () => toggle());
+    return () => {
+      navigator.mediaSession.setActionHandler("play", null);
+      navigator.mediaSession.setActionHandler("pause", null);
+    };
+  }, [current, toggle]);
+
+  /* ----- Tiêu đề tab khi nghe nền ----- */
+  useEffect(() => {
+    const base = "Dhamma Stream — Pháp thoại Theravada";
+    document.title = current && isPlaying ? `▶ ${current.title}` : base;
+  }, [current, isPlaying]);
+
+  /* ----- Escape thoát chế độ toàn màn hình ----- */
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpanded(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [expanded]);
+
+  const value = useMemo<PlayerContextValue>(
+    () => ({
+      current,
+      isPlaying,
+      isBuffering,
+      position,
+      duration,
+      play,
+      toggle,
+      seek,
+      close,
+      replay,
+      isExpanded: expanded,
+      setExpanded,
+    }),
+    [
+      current,
+      isPlaying,
+      isBuffering,
+      position,
+      duration,
+      play,
+      toggle,
+      seek,
+      close,
+      replay,
+      expanded,
+    ],
+  );
+
+  /* ----- Vị trí khung video theo chế độ (inline style, DOM không đổi) ----- */
+  const slotStyle: CSSProperties = expanded
+    ? {
+        left: "50%",
+        top: "2rem",
+        transform: "translateX(-50%)",
+        width: "min(92vw, 56rem)",
+        aspectRatio: "16 / 9",
+        borderRadius: "0.75rem",
+      }
+    : {
+        right: "1.25rem",
+        bottom: "8.4rem",
+        width: "9rem",
+        aspectRatio: "16 / 9",
+        borderRadius: "0.75rem",
+      };
+
+  const showPlayer = current != null;
+
+  return (
+    <PlayerContext.Provider value={value}>
+      {children}
+
+      {/* Lớp trình phát cố định: iframe YouTube sống ở đây suốt phiên,
+          nên âm thanh không bao giờ bị ngắt khi chuyển chế độ hay tab */}
+      {showPlayer && (
+        <>
+          {/* Nền mờ khi mở rộng */}
+          {expanded && (
+            <div
+              className="fixed inset-0 z-[94] bg-black/70 backdrop-blur-sm"
+              onClick={() => setExpanded(false)}
+              aria-hidden
+            />
+          )}
+
+          {/* Thẻ thông tin mini (chỉ hiện khi thu nhỏ) */}
+          {!expanded && (
+            <div className="fixed bottom-4 right-4 z-[95] w-[min(20rem,calc(100vw-2rem))] animate-in slide-in-from-bottom-2 fade-in">
+              <div className="overflow-hidden rounded-xl border border-border bg-popover/95 shadow-xl backdrop-blur">
+                <div className="py-2.5 pl-3 pr-3">
+                  <p className="truncate text-sm font-medium leading-snug">
+                    {current.title}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {isBuffering
+                      ? "Đang tải…"
+                      : isPlaying
+                        ? "Đang phát"
+                        : "Tạm dừng"}{" "}
+                    ·{" "}
+                    <span className="tabular-nums">
+                      {formatTime(position)} / {formatTime(duration)}
+                    </span>
+                  </p>
+                </div>
+                <div className="flex items-center justify-between gap-2 border-t border-border/60 px-3 py-1.5">
+                  <span className="text-[11px] text-muted-foreground">
+                    Đang nghe nền
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => seek(Math.max(0, position - 15))}
+                      className="rounded-full px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+                      aria-label="Lùi 15 giây"
+                    >
+                      −15s
+                    </button>
+                    <button
+                      type="button"
+                      onClick={toggle}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
+                      aria-label={isPlaying ? "Tạm dừng" : "Phát"}
+                    >
+                      {isPlaying ? (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                          <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={close}
+                      className="rounded-full px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+                      aria-label="Đóng trình phát"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+                <div className="h-1 w-full bg-muted">
+                  <div
+                    className="h-full bg-gold transition-[width] duration-500"
+                    style={{
+                      width: `${
+                        duration > 0 ? Math.min(100, (position / duration) * 100) : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
+              {showFallback && (
+                <p className="mt-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  Video này không cho phép phát nhúng.{" "}
+                  <a
+                    className="underline"
+                    href={`https://www.youtube.com/watch?v=${current.youtubeId}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Xem trên YouTube
+                  </a>
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Bảng điều khiển khi mở rộng (ngay dưới khung video) */}
+          {expanded && (
+            <div
+              className="fixed left-1/2 z-[96] w-[min(92vw,56rem)] -translate-x-1/2"
+              style={{ top: "calc(2rem + min(92vw, 56rem) * 9 / 16 + 0.9rem)" }}
+            >
+              <div className="rounded-xl border border-border bg-popover/95 p-4 shadow-2xl backdrop-blur">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="truncate text-sm font-semibold sm:text-base">
+                      {current.title}
+                    </h3>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      {current.teacher} · {current.channelName}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={replay}
+                      title="Xem lại từ đầu"
+                      aria-label="Xem lại từ đầu"
+                      className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-sm text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+                    >
+                      ⟲
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExpanded(false)}
+                      title="Thu nhỏ"
+                      aria-label="Thu nhỏ trình phát"
+                      className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+                    >
+                      ▾
+                    </button>
+                    <button
+                      type="button"
+                      onClick={close}
+                      title="Đóng trình phát"
+                      aria-label="Đóng trình phát"
+                      className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center gap-3">
+                  <span className="tabular-nums text-xs text-muted-foreground">
+                    {formatTime(position)}
+                  </span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={Math.max(1, Math.floor(duration))}
+                    value={Math.floor(position)}
+                    onChange={(e) => seek(Number(e.target.value))}
+                    className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-[var(--gold)]"
+                    aria-label="Tua theo thời gian"
+                  />
+                  <span className="tabular-nums text-xs text-muted-foreground">
+                    {formatTime(duration)}
+                  </span>
+                </div>
+
+                <div className="mt-3 flex items-center justify-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => seek(Math.max(0, position - 15))}
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-xs font-medium transition hover:bg-accent"
+                    aria-label="Lùi 15 giây"
+                  >
+                    −15s
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggle}
+                    className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:opacity-90"
+                    aria-label={isPlaying ? "Tạm dừng" : "Phát"}
+                  >
+                    {isPlaying ? (
+                      <svg viewBox="0 0 24 24" className="h-7 w-7 fill-current">
+                        <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+                      </svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" className="h-7 w-7 fill-current">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => seek(position + 15)}
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-xs font-medium transition hover:bg-accent"
+                    aria-label="Tới 15 giây"
+                  >
+                    +15s
+                  </button>
+                </div>
+
+                {showFallback && (
+                  <p className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-center text-xs text-destructive">
+                    Video này không cho phép phát nhúng.{" "}
+                    <a
+                      className="underline"
+                      href={`https://www.youtube.com/watch?v=${current.youtubeId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Xem trên YouTube
+                    </a>
+                  </p>
+                )}
+                <p className="mt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
+                  Âm thanh tiếp tục phát khi tắt màn hình hoặc chuyển tab (chế độ
+                  nghe nền). Tiến trình được lưu tự động.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Lớp chứa iframe — PHẢI luôn mounted ngay từ đầu để player
+              khởi tạo được; khi không có video thì ẩn ngoài màn hình.
+              Cấu trúc con giữ ổn định vì YouTube thay thế node ref bằng
+              iframe — không đặt node nào làm anh em ruột của node ref. */}
+          <div
+            className="fixed z-[97] overflow-hidden bg-black shadow-2xl transition-all duration-300"
+            style={
+              showPlayer
+                ? slotStyle
+                : {
+                    left: "-9999px",
+                    top: "-9999px",
+                    width: "320px",
+                    height: "180px",
+                    opacity: 0,
+                    pointerEvents: "none",
+                  }
+            }
+            aria-hidden={!showPlayer}
+          >
+            <div ref={ytTargetRef} className="h-full w-full" />
+            {/* Click để mở rộng khi ở chế độ mini */}
+            {showPlayer && !expanded && (
+              <button
+                type="button"
+                onClick={() => setExpanded(true)}
+                className="absolute inset-0 h-full w-full cursor-pointer"
+                aria-label="Mở trình phát toàn màn hình"
+              />
+            )}
+          </div>
+        </>
+      )}
+    </PlayerContext.Provider>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Tiện ích hiển thị tiến trình trên thẻ pháp thoại                    */
+/* ------------------------------------------------------------------ */
+
+export function ProgressPill({
+  positionSec,
+  durationSec,
+  completed,
+}: {
+  positionSec: number;
+  durationSec: number;
+  completed: boolean;
+}) {
+  if (completed) {
+    return (
+      <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-medium text-primary">
+        Đã xem
+      </span>
+    );
+  }
+  if (positionSec > 5 && durationSec > 0) {
+    const pct = Math.min(95, Math.round((positionSec / durationSec) * 100));
+    return (
+      <span className="tabular-nums text-[11px] text-muted-foreground">
+        Còn {formatTime(Math.max(0, durationSec - positionSec))} · {pct}%
+      </span>
+    );
+  }
+  return null;
+}

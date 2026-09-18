@@ -40,87 +40,178 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
 }
 
 /* CHANGE VALUES FOR THEME */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --background: oklch(0.937 0.017 76.28);
+  --foreground: oklch(0.26 0.036 60);
+  --card: oklch(0.972 0.01 80);
+  --card-foreground: oklch(0.26 0.036 60);
+  --popover: oklch(0.985 0.008 85);
+  --popover-foreground: oklch(0.26 0.036 60);
+  --primary: oklch(0.455 0.06 68);
+  --primary-foreground: oklch(0.985 0.008 85);
+  --secondary: oklch(0.885 0.032 78);
+  --secondary-foreground: oklch(0.33 0.04 62);
+  --muted: oklch(0.9 0.024 80);
+  --muted-foreground: oklch(0.475 0.026 62);
+  --accent: oklch(0.885 0.032 78);
+  --accent-foreground: oklch(0.33 0.04 62);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: oklch(0.845 0.034 72);
+  --input: oklch(0.845 0.034 72);
+  --ring: oklch(0.55 0.052 70);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: oklch(0.955 0.014 78);
+  --sidebar-foreground: oklch(0.26 0.036 60);
+  --sidebar-primary: oklch(0.455 0.06 68);
+  --sidebar-primary-foreground: oklch(0.985 0.008 85);
+  --sidebar-accent: oklch(0.885 0.032 78);
+  --sidebar-accent-foreground: oklch(0.33 0.04 62);
+  --sidebar-border: oklch(0.845 0.034 72);
+  --sidebar-ring: oklch(0.55 0.052 70);
+
+  /* Bảng màu chủ đạo: nâu đất + vàng kim + sen hồng nhạt */
+  --brown-deep: #4a3520;
+  --brown-mid: #6d5130;
+  --gold: #d9a441;
+  --gold-soft: #e9c46f;
+  --lotus: #e8b4b8;
+
+  --font-size-scale: 1;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.216 0.03 60);
+  --foreground: oklch(0.93 0.017 78);
+  --card: oklch(0.265 0.034 62);
+  --card-foreground: oklch(0.93 0.017 78);
+  --popover: oklch(0.245 0.032 61);
+  --popover-foreground: oklch(0.93 0.017 78);
+  --primary: oklch(0.79 0.11 78);
+  --primary-foreground: oklch(0.24 0.03 58);
+  --secondary: oklch(0.33 0.038 62);
+  --secondary-foreground: oklch(0.93 0.017 78);
+  --muted: oklch(0.3 0.036 61);
+  --muted-foreground: oklch(0.72 0.03 75);
+  --accent: oklch(0.33 0.038 62);
+  --accent-foreground: oklch(0.93 0.017 78);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.79 0.11 78);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar: oklch(0.265 0.034 62);
+  --sidebar-foreground: oklch(0.93 0.017 78);
+  --sidebar-primary: oklch(0.79 0.11 78);
+  --sidebar-primary-foreground: oklch(0.24 0.03 58);
+  --sidebar-accent: oklch(0.33 0.038 62);
+  --sidebar-accent-foreground: oklch(0.93 0.017 78);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.79 0.11 78);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    font-size: calc(16px * var(--font-size-scale, 1));
+  }
   body {
     @apply bg-background text-foreground;
+    font-family:
+      ui-serif, Georgia, "Times New Roman", serif;
   }
   button:not([disabled]),
   [role="button"]:not([disabled]) {
     cursor: pointer;
   }
+  ::selection {
+    background: color-mix(in oklab, var(--gold) 35%, transparent);
+  }
 }
+
+/* ---------- Nền hoa sen chủ đạo ---------- */
+
+.lotus-bg {
+  position: relative;
+  background-color: var(--background);
+}
+
+.lotus-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      42rem 30rem at 50% -6rem,
+      color-mix(in oklab, var(--gold) 22%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      36rem 26rem at 8% 108%,
+      color-mix(in oklab, var(--lotus) 16%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      30rem 22rem at 96% 92%,
+      color-mix(in oklab, var(--gold) 12%, transparent),
+      transparent 72%
+    );
+}
+
+/* Họa tiết hoa sen mờ (SVG data-uri), lặp nhẹ nhàng */
+.lotus-bg::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260' viewBox='0 0 260 260'%3E%3Cg fill='none' stroke='%236d5130' stroke-opacity='0.10'%3E%3Cpath d='M130 58c14 20 21 36 21 52s-7 32-21 52c-14-20-21-36-21-52s7-32 21-52Z'/%3E%3Cpath d='M130 162c-4-14-12-24-26-30 4 16 12 26 26 30Z'/%3E%3Cpath d='M130 162c4-14 12-24 26-30-4 16-12 26-26 30Z'/%3E%3Cpath d='M72 196c10-12 24-18 44-18-6 14-18 21-30 22-6 .4-11-1-14-4Z'/%3E%3Cpath d='M188 196c-10-12-24-18-44-18 6 14 18 21 30 22 6 .4 11-1 14-4Z'/%3E%3Ccircle cx='130' cy='58' r='4'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 420px 420px;
+}
+
+.dark .lotus-bg::after {
+  filter: invert(1);
+  opacity: 0.06;
+}
+
+/* ---------- Logo Bát Chánh Đạo quay ---------- */
+
+@keyframes dw-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dw-spin {
+  transform-origin: 32px 32px;
+  animation: dw-rotate 24s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dw-spin {
+    animation: none;
+  }
+}
+
+
