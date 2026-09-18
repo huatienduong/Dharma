@@ -4,8 +4,6 @@ import {
   FESTIVALS,
   isUposatha,
   nextUposatha,
-  uposathaLabel,
-  canChiYear,
   type LunarDate,
 } from "@/data/pcalendar";
 import { ChevronLeft, ChevronRight, Info, Moon, Sun } from "lucide-react";
@@ -80,7 +78,7 @@ export default function CalendarPage() {
                 Tháng {view.m + 1}/{view.y}
               </p>
               <p className="text-[11px] text-muted-foreground">
-                Phật lịch {canChiYear(view.y - 544 + (view.m >= 4 ? 0 : -1))}
+                Phật lịch B.E. {view.m >= 4 ? view.y - 543 : view.y - 544}
               </p>
             </div>
             <button
