@@ -13,13 +13,14 @@ import {
   Check,
   Eye,
   Flame,
+  LogIn,
   LogOut,
   Mail,
   Pencil,
-  Sparkles,
-  Timer,
+  UserRound,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { toast } from "sonner";
 
 export default function Profile() {
@@ -54,12 +55,31 @@ export default function Profile() {
     );
   }
 
+  // Chưa đăng nhập: mời đăng nhập để lưu tiến trình, không chặn xem app
   if (!isAuthenticated || !user) {
     return (
-      <AppShell title="Hồ sơ" subtitle="Thông tin tài khoản của bạn">
-        <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-10 text-center">
-          <p className="text-sm text-muted-foreground">
-            Bạn cần đăng nhập để xem hồ sơ.
+      <AppShell
+        title="Hồ sơ"
+        subtitle="Đăng nhập để đồng bộ tiến trình của bạn"
+      >
+        <div className="mx-auto max-w-md space-y-4">
+          <div className="rounded-2xl border border-gold/40 bg-gradient-to-b from-gold/10 to-transparent p-6 text-center">
+            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full border-2 border-gold/50 bg-gold/10">
+              <UserRound className="h-8 w-8 text-gold" />
+            </div>
+            <h2 className="text-lg font-bold">Bạn đang xem với tư cách khách</h2>
+            <p className="mx-auto mt-1.5 max-w-xs text-sm leading-relaxed text-muted-foreground">
+              Bạn vẫn xem và nghe được toàn bộ nội dung. Đăng nhập để ứng dụng
+              ghi nhớ tiến trình pháp thoại, thiền và đọc Kinh trên mọi thiết bị.
+            </p>
+            <Button asChild size="lg" className="mt-4 w-full gap-2">
+              <Link to="/auth?returnTo=%2Fprofile">
+                <LogIn className="h-4 w-4" /> Đăng nhập / Đăng ký
+              </Link>
+            </Button>
+          </div>
+          <p className="text-center text-xs text-muted-foreground">
+            Khi là khách, lịch sử xem và phiên thiền sẽ không được lưu.
           </p>
         </div>
       </AppShell>

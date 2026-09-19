@@ -1,6 +1,5 @@
 import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
-import { RequireAuth } from "@/components/RequireAuth";
 import { PlayerProvider } from "@/lib/player";
 import { SettingsProvider } from "@/lib/settings";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
@@ -142,106 +141,24 @@ createRoot(document.getElementById("root")!).render(
             <RouteSyncer />
             <Suspense fallback={<RouteLoading />}>
               <Routes>
-                <Route
-                  path="/"
-                  element={
-                    <RequireAuth>
-                      <Dashboard />
-                    </RequireAuth>
-                  }
-                />
+                {/* Khách chưa đăng nhập vẫn xem được toàn bộ nội dung;
+                    tiến trình chỉ được lưu khi đã đăng nhập. */}
+                <Route path="/" element={<Dashboard />} />
                 <Route
                   path="/auth"
                   element={<AuthPage redirectAfterAuth="/dashboard" />}
                 />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <RequireAuth>
-                      <Dashboard />
-                    </RequireAuth>
-                  }
-                />
-                <Route
-                  path="/suttas"
-                  element={
-                    <RequireAuth>
-                      <Suttas />
-                    </RequireAuth>
-                  }
-                />
-                <Route
-                  path="/suttas/:id"
-                  element={
-                    <RequireAuth>
-                      <SuttaReader />
-                    </RequireAuth>
-                  }
-                />
-                <Route
-                  path="/vinaya"
-                  element={
-                    <RequireAuth>
-                      <Vinaya />
-                    </RequireAuth>
-                  }
-                />
-                <Route
-                  path="/vinaya/:id"
-                  element={
-                    <RequireAuth>
-                      <VinayaReader />
-                    </RequireAuth>
-                  }
-                />
-                <Route
-                  path="/dictionary"
-                  element={
-                    <RequireAuth>
-                      <Dictionary />
-                    </RequireAuth>
-                  }
-                />
-                <Route
-                  path="/calendar"
-                  element={
-                    <RequireAuth>
-                      <CalendarPage />
-                    </RequireAuth>
-                  }
-                />
-                <Route
-                  path="/meditation"
-                  element={
-                    <RequireAuth>
-                      <Meditation />
-                    </RequireAuth>
-                  }
-                />
-                <Route
-                  path="/meditation/:id"
-                  element={
-                    <RequireAuth>
-                      <MeditationDetail />
-                    </RequireAuth>
-                  }
-                />
-                <Route
-                  path="/settings"
-                  element={
-                    <RequireAuth>
-                      <SettingsPage />
-                    </RequireAuth>
-                  }
-                />
-                <Route
-                  path="/profile"
-                  element={
-                    <RequireAuth>
-                      <Profile />
-                    </RequireAuth>
-                  }
-                />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/suttas" element={<Suttas />} />
+                <Route path="/suttas/:id" element={<SuttaReader />} />
+                <Route path="/vinaya" element={<Vinaya />} />
+                <Route path="/vinaya/:id" element={<VinayaReader />} />
+                <Route path="/dictionary" element={<Dictionary />} />
+                <Route path="/calendar" element={<CalendarPage />} />
+                <Route path="/meditation" element={<Meditation />} />
+                <Route path="/meditation/:id" element={<MeditationDetail />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/profile" element={<Profile />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
