@@ -23,11 +23,11 @@ const NAV = [
   { to: "/dictionary", label: "Từ điển", icon: BookMarked },
   { to: "/calendar", label: "Lịch Phật giáo", icon: Calendar },
   { to: "/meditation", label: "Thiền", icon: Heart },
-  { to: "/profile", label: "Hồ sơ", icon: UserRound },
 ];
 
-/** Mục Cài đặt tách riêng — hiển thị dạng icon ở góc phải sidebar. */
+/** Mục phụ: Hồ sơ + Cài đặt — hiển thị dạng icon ở đáy phải sidebar. */
 const SETTINGS_ITEM = { to: "/settings", label: "Cài đặt", icon: Settings };
+const PROFILE_ITEM = { to: "/profile", label: "Hồ sơ", icon: UserRound };
 
 export function AppShell({
   title,
@@ -92,7 +92,7 @@ export function AppShell({
           ))}
         </nav>
 
-        {/* Cài đặt — icon riêng ở dưới bên phải */}
+        {/* Hồ sơ + Cài đặt — icon ở đáy bên phải; Đăng xuất cạnh đó */}
         <div className="flex items-center justify-between border-t border-border/60 p-3">
           <button
             type="button"
@@ -110,15 +110,32 @@ export function AppShell({
             <Settings className="h-4 w-4" />
             Cài đặt
           </button>
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            title="Đăng xuất"
-            aria-label="Đăng xuất"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => navigate(PROFILE_ITEM.to)}
+              aria-current={isActive(PROFILE_ITEM.to) ? "page" : undefined}
+              title="Hồ sơ người dùng"
+              aria-label="Hồ sơ người dùng"
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-lg transition",
+                isActive(PROFILE_ITEM.to)
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+              )}
+            >
+              <UserRound className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              title="Đăng xuất"
+              aria-label="Đăng xuất"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -158,7 +175,7 @@ export function AppShell({
             </button>
           </div>
         </div>
-        {/* Chip điều hướng cuộn ngang trên mobile */}
+        {/* Chip điều hướng cuộn ngang trên mobile (không cần Hồ sơ — đã có ở bottom-nav) */}
         <div className="flex gap-1.5 overflow-x-auto px-4 pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {NAV.map((item) => {
             const active = isActive(item.to);
@@ -195,7 +212,8 @@ export function AppShell({
                 <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
               )}
             </div>
-            {actions && <div className="flex items-center gap-2">{actions}</div>}
+            {actions && <div className="flex items-center gap-2">          {actions}
+          </div>}
           </div>
           {children}
         </main>
