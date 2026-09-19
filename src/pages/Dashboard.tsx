@@ -43,24 +43,19 @@ const PAGE_SIZE = 24;
 export default function Dashboard() {
   const { play, current } = usePlayer();
 
-  const [teacherFilter, setTeacherFilter] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
 
-  const teachers = useQuery(api.dhamma.teachers, {});
   const progress = useQuery(api.dhamma.myProgress, {});
 
   // Trang đầu (luôn nạp) + trang kế tiếp khi bấm "Tải thêm"
   const firstPage = useQuery(api.dhamma.list, {
-    teacher: teacherFilter ?? undefined,
     limit: PAGE_SIZE,
     offset: 0,
   });
   const nextPage = useQuery(
     api.dhamma.list,
-    offset > 0
-      ? { teacher: teacherFilter ?? undefined, limit: PAGE_SIZE, offset }
-      : "skip",
+    offset > 0 ? { limit: PAGE_SIZE, offset } : "skip",
   );
 
   const talks = useMemo(() => {
@@ -113,10 +108,7 @@ export default function Dashboard() {
   const hero = !searchQ ? filtered[0] : undefined;
   const rest = searchQ ? filtered : filtered.slice(1);
 
-  const changeTeacher = (t: string | null) => {
-    setTeacherFilter(t);
-    setOffset(0);
-  };
+
 
   return (
     <AppShell
@@ -150,7 +142,7 @@ export default function Dashboard() {
 
       {/* ---------- Hero + Tiếp tục xem ---------- */}
       {!searchQ && (
-        <section className="mb-8 grid gap-6 lg:grid-cols-[1fr_20rem]">
+        <section className="mb-6 grid gap-6 lg:grid-cols-[1fr_20rem]">
           {hero ? (
             <button
               type="button"
@@ -252,10 +244,11 @@ export default function Dashboard() {
 
       {/* ---------- Liên quan: cùng giảng sư với đang phát ---------- */}
       {related.length > 0 && !searchQ && (
-        <section className="mb-8" aria-label="Pháp thoại liên quan">
+        <section className="mb-6" aria-label="Pháp thoại liên quan">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            <Sparkles className="h-4 w-4 text-gold" />
-            Liên quan · {current?.teacher}
+            <Sparkles className="h-4 w-4 shrink-0 text-gold" />
+            <span className="shrink-0">Liên quan ·</span>
+            <span className="truncate normal-case">{current?.teacher}</span>
           </h2>
           <div className="grid grid-cols-1 gap-x-5 gap-y-1 md:grid-cols-2">
             {related.map((t) => (
@@ -273,42 +266,6 @@ export default function Dashboard() {
           </div>
         </section>
       )}
-
-      {/* ---------- Bộ lọc giảng sư ---------- */}
-      <section className="mb-4" aria-label="Lọc theo giảng sư">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => changeTeacher(null)}
-            className={cn(
-              "rounded-full border px-3.5 py-1.5 text-xs font-medium transition",
-              teacherFilter === null
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border/70 bg-card/60 text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-            )}
-          >
-            Tất cả
-          </button>
-          {(teachers ?? []).map((t) => (
-            <button
-              key={t.name}
-              type="button"
-              onClick={() =>
-                changeTeacher(teacherFilter === t.name ? null : t.name)
-              }
-              className={cn(
-                "rounded-full border px-3.5 py-1.5 text-xs font-medium transition",
-                teacherFilter === t.name
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border/70 bg-card/60 text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-              )}
-            >
-              {t.name}
-              <span className="ml-1.5 opacity-60">{t.count}</span>
-            </button>
-          ))}
-        </div>
-      </section>
 
       {/* ---------- Danh sách chính ---------- */}
       <section aria-label="Pháp thoại đề xuất">
