@@ -17,18 +17,18 @@ import {
   MonitorPlay,
   Scale,
   Settings,
-  UserRound,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
 
-/** Tab chính — bên trái, đúng thứ tự người dùng yêu cầu. */
+/** Tab chính — Lịch Phật giáo NGAY CẠNH Trợ lý Phật học (thay chỗ Hồ sơ). */
 const NAV: { to: string; tKey: TranslateKey; icon: typeof LayoutDashboard }[] = [
   { to: "/dashboard", tKey: "navTalks", icon: LayoutDashboard },
   { to: "/suttas", tKey: "navSuttas", icon: BookOpen },
   { to: "/watch", tKey: "room", icon: MonitorPlay },
   { to: "/assistant", tKey: "navAssistant", icon: Bot },
+  { to: "/calendar", tKey: "navCalendar", icon: Calendar },
   { to: "/meditation", tKey: "navMeditation", icon: Heart },
 ];
 
@@ -39,15 +39,11 @@ const NAV_LIB: { to: string; tKey: TranslateKey; icon: typeof Scale }[] = [
   { to: "/watched", tKey: "watched", icon: History },
 ];
 
-/** Chỉ dùng cho đáy sidebar: Lịch Phật giáo + Đăng xuất. */
-const BOTTOM_ITEM = { to: "/calendar", tKey: "navCalendar" as TranslateKey, icon: Calendar };
-
-/** Cài đặt + Hồ sơ — chỉ ở góc trên sidebar (một nơi duy nhất). */
+/** Cài đặt — một nơi duy nhất (đỉnh sidebar); Hồ sơ đã loại bỏ khỏi nav. */
 const SETTINGS_ITEM = { to: "/settings", tKey: "navSettings" as TranslateKey, icon: Settings };
-const PROFILE_ITEM = { to: "/profile", tKey: "navProfile" as TranslateKey, icon: UserRound };
 
 /** Danh sách đầy đủ để tra cứu an toàn cho bottom-nav. */
-const ALL_ITEMS = [...NAV, ...NAV_LIB, PROFILE_ITEM, SETTINGS_ITEM];
+const ALL_ITEMS = [...NAV, ...NAV_LIB, SETTINGS_ITEM];
 
 /** Bottom-nav mobile: tra theo đường dẫn, bỏ qua mục không tồn tại. */
 const BOTTOM_NAV_PATHS = [
@@ -55,7 +51,7 @@ const BOTTOM_NAV_PATHS = [
   "/suttas",
   "/watch",
   "/assistant",
-  "/profile",
+  "/settings",
 ];
 const BOTTOM_NAV = BOTTOM_NAV_PATHS.map((to) =>
   ALL_ITEMS.find((n) => n.to === to),
@@ -69,7 +65,7 @@ export function AppShell({
 }: {
   title: string;
   subtitle?: string;
-  /** Đã ngừng dùng: khu vực này giờ hiển thị Cài đặt + Hồ sơ (tự động đồng bộ ngầm) */
+  /** Ngừng dùng: khu vực nút cũ — các nút chính đã vào sidebar */
   actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -125,7 +121,7 @@ export function AppShell({
             </p>
           </div>
         </button>
-        {/* Cài đặt + Hồ sơ — góc trên bên phải của sidebar */}
+        {/* Cài đặt — nút duy nhất, góc trên sidebar */}
         <button
           type="button"
           onClick={() => go(SETTINGS_ITEM.to)}
@@ -140,21 +136,6 @@ export function AppShell({
           )}
         >
           <Settings className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => go(PROFILE_ITEM.to)}
-          aria-current={isActive(PROFILE_ITEM.to) ? "page" : undefined}
-          title={t("navProfile")}
-          aria-label={t("navProfile")}
-          className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition",
-            isActive(PROFILE_ITEM.to)
-              ? "bg-primary text-primary-foreground"
-              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-          )}
-        >
-          <UserRound className="h-4 w-4" />
         </button>
       </div>
 
@@ -210,22 +191,11 @@ export function AppShell({
         </div>
       </nav>
 
-      {/* Đáy sidebar: Lịch Phật giáo + Đăng xuất */}
+      {/* Đáy sidebar: Đăng xuất */}
       <div className="flex items-center justify-between border-t border-border/60 p-3">
-        <button
-          type="button"
-          onClick={() => go(BOTTOM_ITEM.to)}
-          aria-current={isActive(BOTTOM_ITEM.to) ? "page" : undefined}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium transition",
-            isActive(BOTTOM_ITEM.to)
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-          )}
-        >
-          <Calendar className="h-4 w-4" />
-          {t(BOTTOM_ITEM.tKey)}
-        </button>
+        <span className="pl-1 text-[11px] text-muted-foreground/70">
+          {t("appTagline")}
+        </span>
         <button
           type="button"
           onClick={() => void signOut()}
@@ -300,35 +270,7 @@ export function AppShell({
               </p>
             </div>
           </button>
-          {/* Cài đặt + Hồ sơ — duy nhất trên mobile header */}
-          <div className="flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              onClick={() => go(PROFILE_ITEM.to)}
-              aria-label={t("navProfile")}
-              className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-lg transition",
-                isActive(PROFILE_ITEM.to)
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-              )}
-            >
-              <UserRound className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => go(SETTINGS_ITEM.to)}
-              aria-label={t("navSettings")}
-              className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-lg transition",
-                isActive(SETTINGS_ITEM.to)
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-              )}
-            >
-              <Settings className="h-4 w-4" />
-            </button>
-          </div>
+          {/* Mobile header: logo + tên + tiêu đề trang (đủ rồi) */}
         </div>
       </header>
 

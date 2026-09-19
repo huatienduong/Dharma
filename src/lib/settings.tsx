@@ -61,7 +61,7 @@ function saveLocal(s: AppSettings) {
 
 const VI = {
   // App / nav
-  appName: "Dhamma Stream",
+  appName: "Dharma",
   appTagline: "Theravāda — Nguyên thủy",
   navTalks: "Pháp thoại",
   navSuttas: "Kinh tạng",
@@ -144,7 +144,7 @@ const VI = {
 
 const EN: Partial<Record<keyof typeof VI, string>> = {
   // App / nav
-  appName: "Dhamma Stream",
+  appName: "Dharma",
   appTagline: "Theravāda — Early Buddhism",
   navTalks: "Dhamma Talks",
   navSuttas: "Suttas",

@@ -468,7 +468,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: current.title,
       artist: current.teacher,
-      album: "Dhamma Stream",
+      album: "Dharma",
     });
     navigator.mediaSession.setActionHandler("play", () => toggle());
     navigator.mediaSession.setActionHandler("pause", () => toggle());
@@ -480,7 +480,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   /* ----- Tiêu đề tab khi nghe nền ----- */
   useEffect(() => {
-    const base = "Dhamma Stream — Pháp thoại Theravada";
+    const base = "Dharma — Pháp thoại Theravada";
     document.title = current && isPlaying ? `▶ ${current.title}` : base;
   }, [current, isPlaying]);
 

@@ -387,8 +387,7 @@ export function MeditationDetail() {
             </div>
 
             <p className="mt-4 border-t border-border/50 pt-3 text-[11px] leading-relaxed text-muted-foreground">
-              Khi hoàn thành đủ thời gian, phiên được lưu tự động vào tiến trình
-              của bạn. Âm chuông sẽ báo hiệu kết thúc.
+              Âm chuông sẽ báo hiệu kết thúc phiên thiền.
             </p>
           </div>
         </aside>

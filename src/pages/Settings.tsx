@@ -3,7 +3,6 @@ import { api } from "@/convex/_generated/api";
 import { APP_VERSION } from "@/lib/version";
 import {
   useSettings,
-  type Language,
   type ThemeMode,
 } from "@/lib/settings";
 import { useAuth } from "@/hooks/use-auth";
@@ -32,7 +31,6 @@ export default function Settings() {
     settings,
     t,
     setTheme,
-    setLanguage,
     setNotifications,
   } = useSettings();
   const { user, isAuthenticated } = useAuth();
@@ -153,34 +151,6 @@ export default function Settings() {
                   <span className="text-[10px] leading-tight text-muted-foreground">
                     {opt.desc}
                   </span>
-                </button>
-              ))}
-            </div>
-          </ChoiceRow>
-
-          {/* Ngôn ngữ */}
-          <ChoiceRow label={t("language")}>
-            <div className="grid grid-cols-2 gap-2">
-              {(
-                [
-                  { key: "vi", label: "Tiếng Việt", flag: "🇻🇳" },
-                  { key: "en", label: "English", flag: "🇬🇧" },
-                ] as { key: Language; label: string; flag: string }[]
-              ).map((l) => (
-                <button
-                  key={l.key}
-                  type="button"
-                  onClick={() => setLanguage(l.key)}
-                  aria-pressed={settings.language === l.key}
-                  className={cn(
-                    "flex items-center justify-center gap-2 rounded-xl border py-2.5 text-sm font-medium transition",
-                    settings.language === l.key
-                      ? "border-gold/70 bg-gold/10 text-gold"
-                      : "border-border/60 bg-card/40 text-muted-foreground hover:bg-accent/40",
-                  )}
-                >
-                  <span aria-hidden>{l.flag}</span>
-                  {l.label}
                 </button>
               ))}
             </div>
