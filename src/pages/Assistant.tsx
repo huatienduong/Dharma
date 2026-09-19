@@ -16,7 +16,6 @@ import {
   Send,
   Sparkles,
   Volume2,
-  VolumeX,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -25,7 +24,7 @@ import { toast } from "sonner";
 type Msg = { role: "user" | "assistant"; content: string };
 
 const GREETING =
-  "Namo Tassa Bhagavato Arahato Sammā Sambuddhassa. Xin chào, tôi là Trợ lý Pháp. Hãy hỏi về giáo lý, kinh điển Pāli, thiền định hay thực hành theo truyền thống Theravāda — tôi sẽ trả lời trong phạm vi Phật học.";
+  "Namo Tassa Bhagavato Arahato Sammā Sambuddhassa. Xin chào, tôi là Trợ lý Phật học. Hãy hỏi về giáo lý, kinh điển Pāli, thiền định hay thực hành theo truyền thống Theravāda — tôi sẽ trả lời trong phạm vi Phật học.";
 
 export default function Assistant() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -37,7 +36,7 @@ export default function Assistant() {
   const [input, setInput] = useState("");
   const [pending, setPending] = useState<Msg[]>([]); // tin nhắn chưa lưu
   const [busy, setBusy] = useState(false);
-  const [speakOn, setSpeakOn] = useState(true);
+  // Đọc đáp án MẶC ĐỊNH BẬT — ẩn khỏi giao diện (theo yêu cầu)
   // Ảnh đính kèm (nén về max 1024px, JPEG ~0.82)
   const [image, setImage] = useState<{ base64: string; mime: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -102,12 +101,11 @@ export default function Assistant() {
           ]});
           setPending([]);
         }
-        if (speakOn || callMode) {
-          setCallStatus("speaking");
-          speakVI(reply, () => {
-            if (callMode) setCallStatus("listening");
-          });
-        }
+        // Luôn đọc đáp án (tự động, không cần bật tắt)
+        if (callMode) setCallStatus("speaking");
+        speakVI(reply, () => {
+          if (callMode) setCallStatus("listening");
+        });
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : "Không gửi được câu hỏi.",
@@ -116,7 +114,7 @@ export default function Assistant() {
         setBusy(false);
       }
     },
-    [ask, append, busy, image, isAuthenticated, pending, saved, speakOn, callMode, speakVI],
+    [ask, append, busy, image, isAuthenticated, pending, saved, callMode, speakVI],
   );
 
   // Hỏi bằng giọng nói → tự gửi (trong call: nghe → gửi → đọc → nghe tiếp)
@@ -183,7 +181,7 @@ export default function Assistant() {
 
   if (isLoading) {
     return (
-      <AppShell title="Trợ lý Pháp">
+      <AppShell title="Trợ lý Phật học">
         <div className="animate-pulse text-sm text-muted-foreground">
           Đang tải…
         </div>
@@ -193,15 +191,15 @@ export default function Assistant() {
 
   return (
     <AppShell
-      title="Trợ lý Pháp — Trò chuyện Phật pháp cùng AI"
-      subtitle="Hỏi đáp trong phạm vi Phật học Theravāda · Hỏi bằng giọng nói · AI trả lời bằng giọng nói"
+      title="Trợ lý Phật học — Trò chuyện Phật pháp cùng AI"
+      subtitle="Hỏi đáp trong phạm vi Phật học Theravāda · Hỏi bằng giọng nói · AI trả lời tự động bằng giọng nói"
     >
       <div className="mx-auto flex h-[calc(100dvh-13rem)] max-w-3xl flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/50">
         {/* ---------- Thanh công cụ trên ---------- */}
         <div className="flex items-center justify-between border-b border-border/60 px-4 py-2.5">
           <div className="flex items-center gap-2 text-sm font-medium">
             <Sparkles className="h-4 w-4 text-gold" />
-            Trợ lý Pháp
+            Trợ lý Phật học
           </div>
           <div className="flex items-center gap-1.5">
             <Button
@@ -229,23 +227,8 @@ export default function Assistant() {
               )}
               {callMode ? "Kết thúc" : "Call"}
             </Button>
-            <Button
-              variant={speakOn ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => {
-                setSpeakOn((s) => !s);
-                if (speakOn) stopSpeaking(); // dừng đọc triệt để cả server + browser
-              }}
-              title={speakOn ? "Tắt đọc đáp án" : "Bật đọc đáp án"}
-              className="h-8 gap-1.5 text-xs"
-            >
-              {speakOn ? (
-                <Volume2 className="h-3.5 w-3.5" />
-              ) : (
-                <VolumeX className="h-3.5 w-3.5" />
-              )}
-              {speakOn ? "Đang đọc đáp án" : "Đã tắt đọc"}
-            </Button>
+            {/* Nút "Đang đọc đáp án" đã bỏ — đọc tự động luôn bật; giữ nút dừng
+                trong khi đang đọc bên dưới */}
             <Button
               variant="ghost"
               size="sm"

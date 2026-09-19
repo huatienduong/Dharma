@@ -39,10 +39,10 @@ const NAV_LIB: { to: string; tKey: TranslateKey; icon: typeof Scale }[] = [
   { to: "/watched", tKey: "watched", icon: History },
 ];
 
-/** Mục cố định ở đáy sidebar (thay chỗ Hồ sơ cũ). */
+/** Chỉ dùng cho đáy sidebar: Lịch Phật giáo + Đăng xuất. */
 const BOTTOM_ITEM = { to: "/calendar", tKey: "navCalendar" as TranslateKey, icon: Calendar };
 
-/** Mục phụ ở đáy sidebar: Hồ sơ + Cài đặt. */
+/** Cài đặt + Hồ sơ — chỉ ở góc trên sidebar (một nơi duy nhất). */
 const SETTINGS_ITEM = { to: "/settings", tKey: "navSettings" as TranslateKey, icon: Settings };
 const PROFILE_ITEM = { to: "/profile", tKey: "navProfile" as TranslateKey, icon: UserRound };
 
@@ -300,21 +300,8 @@ export function AppShell({
               </p>
             </div>
           </button>
-          {/* Cài đặt + Hồ sơ — thay khu vực nút actions trên mobile */}
+          {/* Cài đặt + Hồ sơ — duy nhất trên mobile header */}
           <div className="flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              onClick={() => go(SETTINGS_ITEM.to)}
-              aria-label={t("navSettings")}
-              className={cn(
-                "flex h-9 w-9 items-center justify-center rounded-lg transition",
-                isActive(SETTINGS_ITEM.to)
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-              )}
-            >
-              <Settings className="h-4 w-4" />
-            </button>
             <button
               type="button"
               onClick={() => go(PROFILE_ITEM.to)}
@@ -327,6 +314,19 @@ export function AppShell({
               )}
             >
               <UserRound className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => go(SETTINGS_ITEM.to)}
+              aria-label={t("navSettings")}
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-lg transition",
+                isActive(SETTINGS_ITEM.to)
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+              )}
+            >
+              <Settings className="h-4 w-4" />
             </button>
           </div>
         </div>
