@@ -161,20 +161,28 @@ export default function WatchTogether() {
   if (!isAuthenticated) {
     return (
       <AppShell title="Phòng">
-        <div className="mx-auto max-w-md rounded-2xl border border-gold/30 bg-gradient-to-b from-gold/10 to-transparent p-8 text-center">
-          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gold/15">
-            <MonitorPlay className="h-7 w-7 text-gold" />
-          </span>
-          <h2 className="mt-4 text-lg font-semibold">
-            Xem video cùng nhau, trực tiếp
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Tạo phòng riêng, mời bạn bè cùng xem pháp thoại đúng một nhịp và
-            nói chuyện qua mic/cam. Đăng nhập để nhận diện thành viên trong phòng.
-          </p>
-          <Button className="mt-5" onClick={() => (window.location.href = "/auth?returnTo=%2Fwatch")}>
-            Đăng nhập để bắt đầu
-          </Button>
+        <div className="mx-auto max-w-md">
+          <div className="rounded-2xl border border-border/60 bg-card p-8 text-center shadow-sm">
+            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+              <MonitorPlay className="h-8 w-8" />
+            </span>
+            <h2 className="mt-5 text-lg font-bold">
+              Xem video cùng nhau, trực tiếp
+            </h2>
+            <p className="mx-auto mt-2.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
+              Tạo phòng riêng, mời bạn bè cùng xem pháp thoại đúng một nhịp
+              và nói chuyện qua mic/cam.
+            </p>
+            <Button
+              asChild
+              className="mt-6 w-full"
+            >
+              <a href="/auth?returnTo=%2Fwatch">Đăng nhập để bắt đầu</a>
+            </Button>
+            <p className="mt-3 text-[11px] text-muted-foreground">
+              Cần đăng nhập để nhận diện thành viên trong phòng.
+            </p>
+          </div>
         </div>
       </AppShell>
     );

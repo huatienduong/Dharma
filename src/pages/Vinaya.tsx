@@ -1,7 +1,6 @@
 import { AppShell, ShellBackButton } from "@/components/AppShell";
-import { AIDocArticle } from "@/components/AIDocReader";
+import { AIDocArticle, DocThumb } from "@/components/AIDocReader";
 import { getVinayaDoc, VINAYA_DOCS } from "@/data/vinaya";
-import { Scale } from "lucide-react";
 import {
   loadLocalReadingPercent,
   saveLocalReading,
@@ -23,20 +22,21 @@ export default function Vinaya() {
             key={doc.id}
             type="button"
             onClick={() => navigate(`/vinaya/${doc.id}`)}
-            className="group flex h-full flex-col rounded-xl border border-border/60 bg-card/70 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+            className="group flex h-full gap-3 rounded-xl border border-border/60 bg-card/70 p-3.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary">
-              <Scale className="h-5 w-5 text-primary" />
+            {/* Thumbnail tự nạp hình ảnh minh họa Luật tạng */}
+            <DocThumb kind="vinaya" refId={doc.id} title={doc.title} size="h-20 w-20" />
+            <span className="min-w-0 flex-1">
+              <h3 className="line-clamp-1 text-sm font-semibold group-hover:text-primary">
+                {doc.title}
+              </h3>
+              <p className="text-[11px] italic text-muted-foreground">
+                {doc.subtitle}
+              </p>
+              <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-muted-foreground">
+                {doc.summary}
+              </p>
             </span>
-            <h3 className="mt-3 text-sm font-semibold group-hover:text-primary">
-              {doc.title}
-            </h3>
-            <p className="text-[11px] italic text-muted-foreground">
-              {doc.subtitle}
-            </p>
-            <p className="mt-2 flex-1 text-xs leading-relaxed text-muted-foreground">
-              {doc.summary}
-            </p>
           </button>
         ))}
       </div>

@@ -8,7 +8,7 @@ import { action, mutation, query } from "./_generated/server";
 /* Hướng dẫn nhân cách của trợ lý Phật pháp (Theravāda)                */
 /* ------------------------------------------------------------------ */
 
-const SYSTEM_PROMPT = `Bạn là "Trợ lý Pháp" — trợ lý Phật pháp chuyên ngành của ứng dụng Dhamma Stream, trả lời câu hỏi về Phật giáo theo truyền thống Theravāda (Nguyên thủy / Pāli Canon).
+const SYSTEM_PROMPT = `Bạn là "Trợ lý Phật học" — trợ lý Phật pháp chuyên ngành của ứng dụng Dhamma Stream, trả lời câu hỏi về Phật giáo theo truyền thống Theravāda (Nguyên thủy / Pāli Canon).
 
 Nguyên tắc trả lời:
 1. CHỈ trả lời trong phạm vi Phật học: giáo lý (Tứ Diệu Đế, Thánh Đạo 8 nhánh, Vô Thường - Khổ - Vô Ngã), kinh điển Pāli (Nikāya), Abhidhamma, Luật tạng, thiền định (samatha, vipassanā, anapanasati, mettā...), Pāli thuật ngữ, lịch sử Phật giáo nguyên thủy, thực hành đời sống bậc tu.
@@ -155,7 +155,7 @@ export const ask = action({
     const providers = listProviders(imageBase64 ? true : false);
     if (providers.length === 0) {
       throw new Error(
-        "Trợ lý Pháp chưa được cấu hình AI. Chủ ứng dụng vui lòng thêm khóa OPENAI_API_KEY hoặc GROQ_API_KEY qua tab Keys/API keys.",
+        "Trợ lý Phật học chưa được cấu hình AI. Chủ ứng dụng vui lòng thêm khóa OPENAI_API_KEY hoặc GROQ_API_KEY qua tab Keys/API keys.",
       );
     }
 
