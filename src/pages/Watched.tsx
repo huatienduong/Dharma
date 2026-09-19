@@ -8,6 +8,7 @@ import {
   loadLocalWatch,
   type LocalWatchRow,
 } from "@/lib/localProgress";
+import { useSettings } from "@/lib/settings";
 import { useQuery } from "convex/react";
 import { History, Play } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -109,6 +110,7 @@ function TalkRow({
 
 export default function Watched() {
   const { play, current } = usePlayer();
+  const { t } = useSettings();
   const progress = useQuery(api.dhamma.myProgress, {});
 
   // Tiến trình cục bộ — khách chưa đăng nhập vẫn thấy lịch sử của mình
@@ -135,8 +137,8 @@ export default function Watched() {
 
   return (
     <AppShell
-      title="Đã xem"
-      subtitle="Lịch sử xem của bạn — dừng ở đâu, quay lại đúng đoạn đó"
+      title={t("watched")}
+      subtitle={t("watchedSubtitle")}
     >
       {progress === undefined ? (
         <div className="space-y-1">

@@ -3,6 +3,7 @@ import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { formatCount, formatTime, usePlayer } from "@/lib/player";
+import { useSettings } from "@/lib/settings";
 import { APP_VERSION } from "@/lib/version";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ type ProgressRow = {
 
 export default function Dashboard() {
   const { play, current } = usePlayer();
+  const { t } = useSettings();
 
   const [search, setSearch] = useState("");
 
@@ -82,8 +84,8 @@ export default function Dashboard() {
 
   return (
     <AppShell
-      title="Pháp thoại Theravāda"
-      subtitle="Đề xuất thuyết giảng từ các vị giảng sư Phật giáo Nguyên thủy"
+      title={t("talksTitle")}
+      subtitle={t("talksSubtitle")}
       actions={<SyncButton />}
     >
       {/* ---------- Thanh tìm kiếm: mic TRÁI · kính lúp PHẢI (trong ô) ---------- */}
@@ -93,7 +95,7 @@ export default function Dashboard() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm pháp thoại, giảng sư…"
+            placeholder={t("searchPlaceholder")}
             className="h-10 w-full rounded-full border border-border/70 bg-card/80 pl-11 pr-11 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           />
           {search && (
@@ -101,7 +103,7 @@ export default function Dashboard() {
               type="button"
               onClick={() => setSearch("")}
               className="absolute right-10 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
-              aria-label="Xóa tìm kiếm"
+              aria-label={t("clearSearch")}
             >
               <X className="h-4 w-4" />
             </button>
@@ -131,7 +133,7 @@ export default function Dashboard() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6">
                   <Badge className="mb-2 border border-gold/60 bg-black/40 text-gold">
-                    <Sparkles className="mr-1 h-3 w-3" /> Đề xuất hôm nay
+                    <Sparkles className="mr-1 h-3 w-3" /> {t("todayPick")}
                   </Badge>
                   <h1 className="line-clamp-2 text-lg font-bold leading-snug text-white sm:text-2xl">
                     {hero.title}
@@ -239,11 +241,11 @@ export default function Dashboard() {
       {/* ---------- Chân trang: chỉ nhà phát triển + phiên bản ---------- */}
       <footer className="mt-14 border-t border-border/60 pt-5 text-center text-xs text-muted-foreground">
         <p>
-          Nhà phát triển:{" "}
+          {t("developer")}: {" "}
           <span className="font-medium text-foreground/80">
             Hứa Tiến Dương
           </span>{" "}
-          · Phiên bản {APP_VERSION}
+          · {t("version")} {APP_VERSION}
         </p>
       </footer>
     </AppShell>

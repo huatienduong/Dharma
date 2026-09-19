@@ -2,7 +2,6 @@ import { AppShell } from "@/components/AppShell";
 import { api } from "@/convex/_generated/api";
 import { APP_VERSION } from "@/lib/version";
 import {
-  FONT_SCALES,
   useSettings,
   type Language,
   type ThemeMode,
@@ -33,7 +32,6 @@ export default function Settings() {
     settings,
     t,
     setTheme,
-    setFontScale,
     setLanguage,
     setNotifications,
   } = useSettings();
@@ -103,28 +101,28 @@ export default function Settings() {
     >
       <div className="space-y-6">
         {/* ---------- Giao diện ---------- */}
-        <Section title="Giao diện" icon={<Sun className="h-4 w-4 text-gold" />}>
+        <Section title={t("sectionAppearance")} icon={<Sun className="h-4 w-4 text-gold" />}>
           {/* Chế độ sáng/tối: card lựa chọn */}
-          <ChoiceRow label="Chế độ sáng / tối">
+          <ChoiceRow label={t("modeLabel")}>
             <div className="grid grid-cols-3 gap-2">
               {(
                 [
                   {
                     key: "light",
-                    label: "Sáng",
-                    desc: "Nền nâu sáng",
+                    label: t("themeLight"),
+                    desc: t("lightDesc"),
                     icon: <Sun className="h-5 w-5" />,
                   },
                   {
                     key: "dark",
-                    label: "Tối",
-                    desc: "Dễ mắt khi đêm",
+                    label: t("themeDark"),
+                    desc: t("darkDesc"),
                     icon: <Moon className="h-5 w-5" />,
                   },
                   {
                     key: "system",
-                    label: "Hệ thống",
-                    desc: "Theo thiết bị",
+                    label: t("themeSystem"),
+                    desc: t("systemDesc"),
                     icon: <Monitor className="h-5 w-5" />,
                   },
                 ] as { key: ThemeMode; label: string; desc: string; icon: React.ReactNode }[]
@@ -160,31 +158,8 @@ export default function Settings() {
             </div>
           </ChoiceRow>
 
-          {/* Cỡ chữ: 4 mức dạng segmented */}
-          <ChoiceRow label="Cỡ chữ">
-            <div className="grid grid-cols-4 gap-2 rounded-xl border border-border/60 bg-card/40 p-1.5">
-              {FONT_SCALES.map((f) => (
-                <button
-                  key={f.value}
-                  type="button"
-                  onClick={() => setFontScale(f.value)}
-                  aria-pressed={settings.fontScale === f.value}
-                  className={cn(
-                    "rounded-lg py-2 text-center transition",
-                    settings.fontScale === f.value
-                      ? "bg-gold/20 font-semibold text-gold shadow-inner"
-                      : "text-muted-foreground hover:bg-accent/40",
-                  )}
-                  style={{ fontSize: `${0.8 + f.value * 0.12}rem` }}
-                >
-                  {t(f.labelKey)}
-                </button>
-              ))}
-            </div>
-          </ChoiceRow>
-
           {/* Ngôn ngữ */}
-          <ChoiceRow label="Ngôn ngữ ứng dụng">
+          <ChoiceRow label={t("language")}>
             <div className="grid grid-cols-2 gap-2">
               {(
                 [
@@ -218,9 +193,9 @@ export default function Settings() {
                 <Bell className="h-4 w-4" />
               </span>
               <div>
-                <p className="text-sm font-medium">Thông báo ứng dụng</p>
+                <p className="text-sm font-medium">{t("notifications")}</p>
                 <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  Nhắc nhở thực hành thiền và ngày Uposatha.
+                  {t("notifDesc")}.
                 </p>
               </div>
             </div>
@@ -233,15 +208,15 @@ export default function Settings() {
         </Section>
 
         {/* ---------- Phiên bản ---------- */}
-        <Section title="Ứng dụng" icon={<Info className="h-4 w-4 text-gold" />}>
+        <Section title={t("appSection")} icon={<Info className="h-4 w-4 text-gold" />}>
           <div className="rounded-xl border border-border/60 bg-card/40 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold">
-                  Phiên bản {APP_VERSION}
+                  {t("version")} {APP_VERSION}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Nhà phát triển: Hứa Tiến Dương
+                  {t("developer")}: Hứa Tiến Dương
                 </p>
               </div>
               <Button

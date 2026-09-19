@@ -3,6 +3,7 @@ import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { api } from "@/convex/_generated/api";
 import { getSutta, SUTTAS } from "@/data/suttas";
 import { useAuth } from "@/hooks/use-auth";
+import { useSettings } from "@/lib/settings";
 import {
   loadLocalReadingPercent,
   saveLocalReading,
@@ -36,6 +37,7 @@ const NIKAYA_TABS = [
 ];
 
 export default function Suttas() {
+  const { t } = useSettings();
   const [tab, setTab] = useState("all");
   const [search, setSearch] = useState("");
   const reading = useQuery(api.library.listReading, {});
@@ -65,8 +67,8 @@ export default function Suttas() {
 
   return (
     <AppShell
-      title="Kinh tạng"
-      subtitle="Sutta Piṭaka — học Kinh, luận giải và chú giải theo truyền thống Theravāda"
+      title={t("navSuttas")}
+      subtitle={t("suttasSubtitle")}
     >
       {/* Tìm kiếm — mic TRÁI, kính lúp PHẢI (trong ô) */}
       <div className="mb-4">
@@ -75,7 +77,7 @@ export default function Suttas() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm kinh theo tên, số hiệu, nội dung…"
+            placeholder={t("suttaSearchPlaceholder")}
             className="h-10 w-full rounded-full border border-border/70 bg-card/80 pl-11 pr-11 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           />
           {search && (
@@ -83,7 +85,7 @@ export default function Suttas() {
               type="button"
               onClick={() => setSearch("")}
               className="absolute right-10 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
-              aria-label="Xóa tìm kiếm"
+              aria-label={t("clearSearch")}
             >
               <X className="h-4 w-4" />
             </button>

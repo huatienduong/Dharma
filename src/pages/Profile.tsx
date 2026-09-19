@@ -2,6 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import { DhammaWheel } from "@/components/DhammaWheel";
 import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
+import { useSettings } from "@/lib/settings";
 import { APP_VERSION } from "@/lib/version";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ import { toast } from "sonner";
 
 export default function Profile() {
   const { user, isAuthenticated, isLoading, signOut } = useAuth();
+  const { t } = useSettings();
   const updateProfile = useMutation(api.profile.updateProfile);
   const stats = useQuery(api.profile.myStats, {});
 
@@ -59,22 +61,21 @@ export default function Profile() {
   if (!isAuthenticated || !user) {
     return (
       <AppShell
-        title="Hồ sơ"
-        subtitle="Đăng nhập để đồng bộ tiến trình của bạn"
+        title={t("navProfile")}
+        subtitle={t("guestNotice")}
       >
         <div className="mx-auto max-w-md space-y-4">
           <div className="rounded-2xl border border-gold/40 bg-gradient-to-b from-gold/10 to-transparent p-6 text-center">
             <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full border-2 border-gold/50 bg-gold/10">
               <UserRound className="h-8 w-8 text-gold" />
             </div>
-            <h2 className="text-lg font-bold">Bạn đang xem với tư cách khách</h2>
+            <h2 className="text-lg font-bold">{t("guestNotice")}</h2>
             <p className="mx-auto mt-1.5 max-w-xs text-sm leading-relaxed text-muted-foreground">
-              Bạn vẫn xem và nghe được toàn bộ nội dung. Đăng nhập để ứng dụng
-              ghi nhớ tiến trình pháp thoại, thiền và đọc Kinh trên mọi thiết bị.
+              {t("guestNotice")}
             </p>
             <Button asChild size="lg" className="mt-4 w-full gap-2">
               <Link to="/auth?returnTo=%2Fprofile">
-                <LogIn className="h-4 w-4" /> Đăng nhập / Đăng ký
+                <LogIn className="h-4 w-4" /> {t("loginRegister")}
               </Link>
             </Button>
           </div>

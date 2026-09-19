@@ -1,5 +1,6 @@
 import { DhammaWheel } from "@/components/DhammaWheel";
 import { useAuth } from "@/hooks/use-auth";
+import { useSettings, type TranslateKey } from "@/lib/settings";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,25 +24,25 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
 
 /** Tab chính — bên trái, đúng thứ tự người dùng yêu cầu. */
-const NAV = [
-  { to: "/dashboard", label: "Pháp thoại", icon: LayoutDashboard },
-  { to: "/suttas", label: "Học Kinh", icon: BookOpen },
-  { to: "/watch", label: "Phòng", icon: MonitorPlay },
-  { to: "/assistant", label: "Trợ lý Pháp AI", icon: Bot },
-  { to: "/meditation", label: "Thiền", icon: Heart },
+const NAV: { to: string; tKey: TranslateKey; icon: typeof LayoutDashboard }[] = [
+  { to: "/dashboard", tKey: "navTalks", icon: LayoutDashboard },
+  { to: "/suttas", tKey: "navSuttas", icon: BookOpen },
+  { to: "/watch", tKey: "room", icon: MonitorPlay },
+  { to: "/assistant", tKey: "navAssistant", icon: Bot },
+  { to: "/meditation", tKey: "navMeditation", icon: Heart },
 ];
 
 /** Nhóm học liệu mở rộng (dưới nhóm chính). */
-const NAV_LIB = [
-  { to: "/vinaya", label: "Luật tạng", icon: Scale },
-  { to: "/dictionary", label: "Từ điển", icon: BookMarked },
-  { to: "/calendar", label: "Lịch Phật giáo", icon: Calendar },
-  { to: "/watched", label: "Đã xem", icon: History },
+const NAV_LIB: { to: string; tKey: TranslateKey; icon: typeof Scale }[] = [
+  { to: "/vinaya", tKey: "navVinaya", icon: Scale },
+  { to: "/dictionary", tKey: "navDictionary", icon: BookMarked },
+  { to: "/calendar", tKey: "navCalendar", icon: Calendar },
+  { to: "/watched", tKey: "watched", icon: History },
 ];
 
 /** Mục phụ ở đáy sidebar: Hồ sơ + Cài đặt. */
-const SETTINGS_ITEM = { to: "/settings", label: "Cài đặt", icon: Settings };
-const PROFILE_ITEM = { to: "/profile", label: "Hồ sơ", icon: UserRound };
+const SETTINGS_ITEM = { to: "/settings", tKey: "navSettings" as TranslateKey, icon: Settings };
+const PROFILE_ITEM = { to: "/profile", tKey: "navProfile" as TranslateKey, icon: UserRound };
 
 /** Danh sách đầy đủ để tra cứu an toàn cho bottom-nav. */
 const ALL_ITEMS = [...NAV, ...NAV_LIB, PROFILE_ITEM, SETTINGS_ITEM];
@@ -72,6 +73,7 @@ export function AppShell({
   const navigate = useNavigate();
   const location = useLocation();
   const { signOut } = useAuth();
+  const { t } = useSettings();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const isActive = (to: string) =>
@@ -113,9 +115,9 @@ export function AppShell({
       >
         <DhammaWheel size={40} />
         <div className="min-w-0">
-          <p className="text-sm font-semibold leading-tight">Dhamma Stream</p>
+          <p className="text-sm font-semibold leading-tight">{t("appName")}</p>
           <p className="text-[11px] text-muted-foreground">
-            Theravāda — Nguyên thủy
+            {t("appTagline")}
           </p>
         </div>
       </button>
@@ -140,7 +142,7 @@ export function AppShell({
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                <span className="truncate">{item.label}</span>
+                <span className="truncate">{t(item.tKey)}</span>
               </button>
             );
           })}
@@ -165,7 +167,7 @@ export function AppShell({
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                <span className="truncate">{item.label}</span>
+                <span className="truncate">{t(item.tKey)}</span>
               </button>
             );
           })}
@@ -178,8 +180,8 @@ export function AppShell({
           type="button"
           onClick={() => go(SETTINGS_ITEM.to)}
           aria-current={isActive(SETTINGS_ITEM.to) ? "page" : undefined}
-          title="Cài đặt"
-          aria-label="Cài đặt"
+          title={t("navSettings")}
+          aria-label={t("navSettings")}
           className={cn(
             "flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium transition",
             isActive(SETTINGS_ITEM.to)
@@ -188,15 +190,15 @@ export function AppShell({
           )}
         >
           <Settings className="h-4 w-4" />
-          Cài đặt
+          {t("navSettings")}
         </button>
         <div className="flex items-center gap-0.5">
           <button
             type="button"
             onClick={() => go(PROFILE_ITEM.to)}
             aria-current={isActive(PROFILE_ITEM.to) ? "page" : undefined}
-            title="Hồ sơ người dùng"
-            aria-label="Hồ sơ người dùng"
+            title={t("navProfile")}
+            aria-label={t("navProfile")}
             className={cn(
               "flex h-9 w-9 items-center justify-center rounded-lg transition",
               isActive(PROFILE_ITEM.to)
@@ -209,8 +211,8 @@ export function AppShell({
           <button
             type="button"
             onClick={() => void signOut()}
-            title="Đăng xuất"
-            aria-label="Đăng xuất"
+            title={t("logout")}
+            aria-label={t("logout")}
             className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
           >
             <LogOut className="h-4 w-4" />
@@ -248,7 +250,7 @@ export function AppShell({
           type="button"
           onClick={() => setDrawerOpen(false)}
           className="absolute right-3 top-4 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-          aria-label="Đóng menu"
+          aria-label={t("closeMenu")}
         >
           <X className="h-4 w-4" />
         </button>
@@ -262,7 +264,7 @@ export function AppShell({
             type="button"
             onClick={() => setDrawerOpen(true)}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-foreground transition hover:bg-accent"
-            aria-label="Mở menu"
+            aria-label={t("openMenu")}
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -274,7 +276,7 @@ export function AppShell({
             <DhammaWheel size={30} />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold leading-tight">
-                Dhamma Stream
+                {t("appName")}
               </p>
               <p className="truncate text-[11px] text-muted-foreground">
                 {title}
@@ -323,7 +325,7 @@ export function AppShell({
               >
                 <Icon className="h-5 w-5" />
                 <span className="w-full truncate text-center leading-tight">
-                  {item.label}
+                  {t(item.tKey)}
                 </span>
               </button>
             );

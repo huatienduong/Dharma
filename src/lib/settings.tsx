@@ -126,6 +126,20 @@ const VI = {
   guestNotice:
     "Bạn đang xem với tư cách khách — tiến trình được lưu trên thiết bị này. Đăng nhập để đồng bộ mọi nơi.",
   loginRegister: "Đăng nhập / Đăng ký",
+  // Trang con
+  suttasSubtitle: "Sutta Piṭaka — học Kinh, luận giải và chú giải theo truyền thống Theravāda",
+  dictTitle: "Từ điển Phật học",
+  dictSubtitle: "Thuật ngữ Pāḷi chuyên ngành theo truyền thống Theravāda",
+  watchedSubtitle: "Lịch sử xem của bạn — dừng ở đâu, quay lại đúng đoạn đó",
+  suttaSearchPlaceholder: "Tìm kinh theo tên, số hiệu, nội dung…",
+  dictSearchPlaceholder: "Tìm thuật ngữ — ví dụ: anicca, niết bàn, uposatha…",
+  clearSearch: "Xóa tìm kiếm",
+  modeLabel: "Chế độ sáng / tối",
+  lightDesc: "Nền nâu sáng",
+  darkDesc: "Dễ mắt khi đêm",
+  systemDesc: "Theo thiết bị",
+  appSection: "Ứng dụng",
+  latestVersion: "Phiên bản mới nhất",
 };
 
 const EN: Partial<Record<keyof typeof VI, string>> = {
@@ -196,6 +210,22 @@ const EN: Partial<Record<keyof typeof VI, string>> = {
   guestNotice:
     "You are browsing as a guest — progress is saved on this device. Sign in to sync everywhere.",
   loginRegister: "Sign in / Sign up",
+  // Pages
+  suttasSubtitle:
+    "Sutta Piṭaka — study, commentary and exposition in the Theravāda tradition",
+  dictTitle: "Buddhist Dictionary",
+  dictSubtitle: "Pāli terminology of the Theravāda tradition",
+  watchedSubtitle:
+    "Your watch history — resume exactly where you stopped",
+  suttaSearchPlaceholder: "Search suttas by name, number or content…",
+  dictSearchPlaceholder: "Search terms — e.g. anicca, nibbāna, uposatha…",
+  clearSearch: "Clear search",
+  modeLabel: "Light / dark mode",
+  lightDesc: "Warm light theme",
+  darkDesc: "Easy on night eyes",
+  systemDesc: "Follow device",
+  appSection: "App",
+  latestVersion: "Latest version",
 };
 
 export type TranslateKey = keyof typeof VI;

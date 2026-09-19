@@ -1,5 +1,6 @@
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { AppShell } from "@/components/AppShell";
+import { useSettings } from "@/lib/settings";
 import {
   DICTIONARY,
   dictCategories,
@@ -20,6 +21,7 @@ const CAT_COLORS: Record<DictCategory, string> = {
 };
 
 export default function Dictionary() {
+  const { t } = useSettings();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<DictCategory | null>(null);
 
@@ -40,8 +42,8 @@ export default function Dictionary() {
 
   return (
     <AppShell
-      title="Từ điển Phật học"
-      subtitle="Thuật ngữ Pāḷi chuyên ngành theo truyền thống Theravāda"
+      title={t("dictTitle")}
+      subtitle={t("dictSubtitle")}
     >
       {/* Ô tìm kiếm — mic TRÁI, kính lúp PHẢI (trong ô) */}
       <div className="relative mb-4">
@@ -49,7 +51,7 @@ export default function Dictionary() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Tìm thuật ngữ — ví dụ: anicca, niết bàn, uposatha…"
+          placeholder={t("dictSearchPlaceholder")}
           className="w-full rounded-xl border border-border/70 bg-card/80 py-3 pl-11 pr-11 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
         />
         <VoiceSearchButton onResult={(text) => setQ(text)} />
