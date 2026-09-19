@@ -1,7 +1,8 @@
 import { AppShell } from "@/components/AppShell";
+import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { api } from "@/convex/_generated/api";
-import type { Doc } from "@/convex/_generated/dataModel";
-import { formatTime, usePlayer } from "@/lib/player";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { formatCount, formatTime, usePlayer } from "@/lib/player";
 import { APP_VERSION } from "@/lib/version";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,11 +10,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useAction, useQuery } from "convex/react";
 import {
-  Compass,
+  Clock,
+  Eye,
   History,
+  Loader2,
   Play,
   RefreshCw,
+  Search,
   Sparkles,
+  X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -21,7 +26,7 @@ import { toast } from "sonner";
 type Talk = Doc<"dhammaTalks">;
 
 type ProgressRow = {
-  talkId: string;
+  talkId: Id<"dhammaTalks">;
   youtubeId: string;
   title: string;
   teacher: string;
@@ -33,65 +38,130 @@ type ProgressRow = {
   updatedAt: number;
 };
 
-function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
+const PAGE_SIZE = 24;
 
 export default function Dashboard() {
-  const { play } = usePlayer();
+  const { play, current } = usePlayer();
 
-  const talks = useQuery(api.dhamma.list, { limit: 60 });
+  const [teacherFilter, setTeacherFilter] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [offset, setOffset] = useState(0);
+
   const teachers = useQuery(api.dhamma.teachers, {});
   const progress = useQuery(api.dhamma.myProgress, {});
 
-  const [teacherFilter, setTeacherFilter] = useState<string | null>(null);
+  // Trang đầu (luôn nạp) + trang kế tiếp khi bấm "Tải thêm"
+  const firstPage = useQuery(api.dhamma.list, {
+    teacher: teacherFilter ?? undefined,
+    limit: PAGE_SIZE,
+    offset: 0,
+  });
+  const nextPage = useQuery(
+    api.dhamma.list,
+    offset > 0
+      ? { teacher: teacherFilter ?? undefined, limit: PAGE_SIZE, offset }
+      : "skip",
+  );
 
-  // Map tiến trình theo talkId để không cần query riêng cho từng thẻ
-  const progressByTalk = useMemo(() => {
-    const map = new Map<string, ProgressRow>();
-    for (const p of progress ?? []) map.set(String(p.talkId), p);
-    return map;
-  }, [progress]);
+  const talks = useMemo(() => {
+    const a = firstPage ?? [];
+    const b = nextPage ?? [];
+    const seen = new Set<string>();
+    const out: Talk[] = [];
+    for (const t of [...a, ...b]) {
+      if (seen.has(t.youtubeId)) continue;
+      seen.add(t.youtubeId);
+      out.push(t);
+    }
+    return out;
+  }, [firstPage, nextPage]);
 
-  const filtered = useMemo(() => {
-    const rows = talks ?? [];
-    return teacherFilter ? rows.filter((t) => t.teacher === teacherFilter) : rows;
-  }, [talks, teacherFilter]);
+  const loading = firstPage === undefined;
+  const canLoadMore =
+    !loading && (nextPage === undefined || nextPage.length === PAGE_SIZE);
 
-  const newest = filtered[0];
-  const rest = filtered.slice(1);
-
-  const continueList = useMemo(
-    () => (progress ?? []).filter((p) => !p.completed && p.positionSec > 5).slice(0, 8),
+  // Đã xem: từ tiến trình
+  const watched = useMemo(
+    () => (progress ?? []).slice(0, 10),
     [progress],
   );
+
+  // Liên quan: cùng giảng sư với video đang phát (loại video đang phát)
+  const related = useMemo(() => {
+    if (!current) return [];
+    return talks
+      .filter(
+        (t) =>
+          t.youtubeId !== current.youtubeId &&
+          (t.teacher === current.teacher || t.channelName === current.channelName),
+      )
+      .slice(0, 8);
+  }, [talks, current]);
+
+  // Lọc tìm kiếm (tiêu đề + giảng sư)
+  const searchQ = search.trim().toLowerCase();
+  const filtered = useMemo(() => {
+    if (!searchQ) return talks;
+    return talks.filter(
+      (t) =>
+        t.title.toLowerCase().includes(searchQ) ||
+        t.teacher.toLowerCase().includes(searchQ),
+    );
+  }, [talks, searchQ]);
+
+  // Hero: bài mới nhất (chỉ khi không tìm kiếm)
+  const hero = !searchQ ? filtered[0] : undefined;
+  const rest = searchQ ? filtered : filtered.slice(1);
+
+  const changeTeacher = (t: string | null) => {
+    setTeacherFilter(t);
+    setOffset(0);
+  };
 
   return (
     <AppShell
       title="Pháp thoại Theravāda"
-      subtitle="Xem và nghe pháp thoại mới nhất từ các kênh Theravāda chính thống"
+      subtitle="Đề xuất thuyết giảng từ các vị giảng sư Phật giáo Nguyên thủy"
       actions={<SyncButton />}
     >
-        {/* ---------- Hero + Tiếp tục xem ---------- */}
-        <section className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-          {/* Pháp thoại mới nhất */}
-          {newest ? (
+      {/* ---------- Thanh tìm kiếm (kèm giọng nói) ---------- */}
+      <div className="mb-6 flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm pháp thoại, giảng sư…"
+            className="h-10 w-full rounded-full border border-border/70 bg-card/80 pl-9 pr-9 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          />
+          {search && (
             <button
               type="button"
-              onClick={() => play(newest)}
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
+              aria-label="Xóa tìm kiếm"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <VoiceSearchButton onResult={(text) => setSearch(text)} />
+      </div>
+
+      {/* ---------- Hero + Tiếp tục xem ---------- */}
+      {!searchQ && (
+        <section className="mb-8 grid gap-6 lg:grid-cols-[1fr_20rem]">
+          {hero ? (
+            <button
+              type="button"
+              onClick={() => play(hero)}
               className="group relative overflow-hidden rounded-2xl border border-border/60 text-left shadow-md transition hover:shadow-lg"
             >
               <div className="relative aspect-video w-full overflow-hidden bg-muted sm:aspect-[21/9]">
                 <img
-                  src={`https://i.ytimg.com/vi/${newest.youtubeId}/maxresdefault.jpg`}
+                  src={`https://i.ytimg.com/vi/${hero.youtubeId}/maxresdefault.jpg`}
                   onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = `https://i.ytimg.com/vi/${newest.youtubeId}/hqdefault.jpg`;
+                    (e.currentTarget as HTMLImageElement).src = `https://i.ytimg.com/vi/${hero.youtubeId}/hqdefault.jpg`;
                   }}
                   alt=""
                   className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
@@ -99,13 +169,21 @@ export default function Dashboard() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6">
                   <Badge className="mb-2 border border-gold/60 bg-black/40 text-gold">
-                    Pháp thoại mới nhất
+                    <Sparkles className="mr-1 h-3 w-3" /> Đề xuất hôm nay
                   </Badge>
                   <h1 className="line-clamp-2 text-lg font-bold leading-snug text-white sm:text-2xl">
-                    {newest.title}
+                    {hero.title}
                   </h1>
-                  <p className="mt-1 text-xs text-white/80 sm:text-sm">
-                    {newest.teacher} · {fmtDate(newest.publishedAt)}
+                  <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-white/80 sm:text-sm">
+                    <span>{hero.teacher}</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      {formatTime(hero.durationSec)}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Eye className="h-3.5 w-3.5" />
+                      {formatCount(hero.viewCount ?? 0)} lượt xem
+                    </span>
                   </p>
                 </div>
                 <span className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 backdrop-blur transition group-hover:scale-110 group-hover:bg-primary/90">
@@ -133,7 +211,7 @@ export default function Dashboard() {
                   <Skeleton key={i} className="h-16 w-full rounded-lg" />
                 ))}
               </div>
-            ) : continueList.length === 0 ? (
+            ) : watched.length === 0 ? (
               <div className="rounded-xl border border-dashed border-border/70 bg-card/40 p-4 text-center text-xs leading-relaxed text-muted-foreground">
                 Chưa có tiến trình xem.
                 <br />
@@ -142,238 +220,292 @@ export default function Dashboard() {
               </div>
             ) : (
               <ul className="space-y-2">
-                {continueList.map((p) => (
-                  <li key={String(p.talkId)}>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        play({
-                          _id: p.talkId,
-                          youtubeId: p.youtubeId,
-                          title: p.title,
-                          teacher: p.teacher,
-                          channelName: p.channelName,
-                          publishedAt: p.publishedAt,
-                          durationSec: p.durationSec,
-                        })
-                      }
-                      className="group flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card/60 p-2 text-left transition hover:border-primary/40 hover:bg-accent/60"
-                    >
-                      <span className="relative h-14 w-24 shrink-0 overflow-hidden rounded-lg bg-muted">
-                        <img
-                          src={`https://i.ytimg.com/vi/${p.youtubeId}/mqdefault.jpg`}
-                          alt=""
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                        />
-                        <span className="absolute inset-x-0 bottom-0 h-1 bg-black/30">
-                          <span
-                            className="block h-full bg-gold"
-                            style={{
-                              width: `${
-                                p.durationSec > 0
-                                  ? Math.min(
-                                      100,
-                                      (p.positionSec / p.durationSec) * 100,
-                                    )
-                                  : 0
-                              }%`,
-                            }}
-                          />
-                        </span>
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="line-clamp-2 block text-xs font-medium leading-snug group-hover:text-primary">
-                          {p.title}
-                        </span>
-                        <span className="mt-1 block text-[11px] text-muted-foreground">
-                          Còn lại{" "}
-                          <span className="tabular-nums">
-                            {formatTime(
-                              Math.max(0, p.durationSec - p.positionSec),
-                            )}
-                          </span>
-                        </span>
-                      </span>
-                    </button>
-                  </li>
+                {watched.map((p) => (
+                  <TalkRow
+                    key={String(p.talkId)}
+                    title={p.title}
+                    teacher={p.teacher}
+                    youtubeId={p.youtubeId}
+                    durationSec={p.durationSec}
+                    viewCount={undefined}
+                    progressSec={p.positionSec}
+                    completed={p.completed}
+                    active={current?.youtubeId === p.youtubeId}
+                    onClick={() =>
+                      play({
+                        _id: p.talkId,
+                        youtubeId: p.youtubeId,
+                        title: p.title,
+                        teacher: p.teacher,
+                        channelName: p.channelName,
+                        publishedAt: p.publishedAt,
+                        durationSec: p.durationSec,
+                      })
+                    }
+                  />
                 ))}
               </ul>
             )}
           </aside>
         </section>
+      )}
 
-        {/* ---------- Bộ lọc giảng sư ---------- */}
-        <section className="mt-10" aria-label="Lọc theo giảng sư">
-          <div className="flex flex-wrap items-center gap-2">
+      {/* ---------- Liên quan: cùng giảng sư với đang phát ---------- */}
+      {related.length > 0 && !searchQ && (
+        <section className="mb-8" aria-label="Pháp thoại liên quan">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <Sparkles className="h-4 w-4 text-gold" />
+            Liên quan · {current?.teacher}
+          </h2>
+          <div className="grid grid-cols-1 gap-x-5 gap-y-1 md:grid-cols-2">
+            {related.map((t) => (
+              <TalkRow
+                key={t._id}
+                title={t.title}
+                teacher={t.teacher}
+                youtubeId={t.youtubeId}
+                durationSec={t.durationSec}
+                viewCount={t.viewCount}
+                active={current?.youtubeId === t.youtubeId}
+                onClick={() => play(t)}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ---------- Bộ lọc giảng sư ---------- */}
+      <section className="mb-4" aria-label="Lọc theo giảng sư">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => changeTeacher(null)}
+            className={cn(
+              "rounded-full border px-3.5 py-1.5 text-xs font-medium transition",
+              teacherFilter === null
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border/70 bg-card/60 text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
+          >
+            Tất cả
+          </button>
+          {(teachers ?? []).map((t) => (
             <button
+              key={t.name}
               type="button"
-              onClick={() => setTeacherFilter(null)}
+              onClick={() =>
+                changeTeacher(teacherFilter === t.name ? null : t.name)
+              }
               className={cn(
                 "rounded-full border px-3.5 py-1.5 text-xs font-medium transition",
-                teacherFilter === null
+                teacherFilter === t.name
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border/70 bg-card/60 text-muted-foreground hover:bg-accent hover:text-accent-foreground",
               )}
             >
-              Tất cả
+              {t.name}
+              <span className="ml-1.5 opacity-60">{t.count}</span>
             </button>
-            {(teachers ?? []).map((t) => (
-              <button
-                key={t.name}
-                type="button"
-                onClick={() =>
-                  setTeacherFilter((prev) => (prev === t.name ? null : t.name))
-                }
-                className={cn(
-                  "rounded-full border px-3.5 py-1.5 text-xs font-medium transition",
-                  teacherFilter === t.name
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border/70 bg-card/60 text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                )}
-              >
-                {t.name}
-                <span className="ml-1.5 opacity-60">{t.count}</span>
-              </button>
+          ))}
+        </div>
+      </section>
+
+      {/* ---------- Danh sách chính ---------- */}
+      <section aria-label="Pháp thoại đề xuất">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            {searchQ ? (
+              <>
+                <Search className="h-4 w-4 text-gold" /> Kết quả tìm kiếm
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 text-gold" /> Đề xuất pháp thoại
+              </>
+            )}
+          </h2>
+          <span className="text-xs text-muted-foreground">
+            {loading ? "…" : `${filtered.length} bài`}
+          </span>
+        </div>
+
+        {loading ? (
+          <div className="space-y-1">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <Skeleton key={i} className="h-[5.25rem] w-full rounded-xl" />
             ))}
           </div>
-        </section>
-
-        {/* ---------- Lưới pháp thoại ---------- */}
-        <section className="mt-6" aria-label="Pháp thoại mới">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-lg font-semibold">
-              <Sparkles className="h-4 w-4 text-gold" />
-              Pháp thoại mới
-            </h2>
-            <span className="text-xs text-muted-foreground">
-              {talks === undefined ? "…" : `${filtered.length} bài`}
-            </span>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-10 text-center">
+            <Search className="mx-auto h-8 w-8 text-muted-foreground/50" />
+            <p className="mt-3 text-sm text-muted-foreground">
+              Không tìm thấy pháp thoại nào phù hợp.
+            </p>
           </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-x-5 gap-y-1 md:grid-cols-2">
+            {rest.map((t) => (
+              <TalkRow
+                key={t._id}
+                title={t.title}
+                teacher={t.teacher}
+                youtubeId={t.youtubeId}
+                durationSec={t.durationSec}
+                viewCount={t.viewCount}
+                progressSec={progressByTalk(progress, t)}
+                completed={completedByTalk(progress, t)}
+                active={current?.youtubeId === t.youtubeId}
+                onClick={() => play(t)}
+              />
+            ))}
+          </div>
+        )}
 
-          {!talks ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="space-y-2">
-                  <Skeleton className="aspect-video w-full rounded-xl" />
-                  <Skeleton className="h-4 w-4/5" />
-                  <Skeleton className="h-3 w-2/5" />
-                </div>
-              ))}
-            </div>
-          ) : rest.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-10 text-center">
-              <Compass className="mx-auto h-8 w-8 text-muted-foreground/50" />
-              <p className="mt-3 text-sm text-muted-foreground">
-                Không có pháp thoại nào cho lựa chọn này.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {rest.map((talk) => (
-                <TalkCard
-                  key={talk._id}
-                  talk={talk}
-                  progress={progressByTalk.get(String(talk._id))}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+        {/* Tải thêm — cuộn theo tối đa dữ liệu đã đồng bộ từ YouTube */}
+        {canLoadMore && !searchQ && (
+          <div className="mt-5 flex justify-center">
+            <Button
+              variant="outline"
+              onClick={() => setOffset((o) => o + PAGE_SIZE)}
+              disabled={nextPage === undefined}
+              className="gap-2"
+            >
+              {nextPage === undefined && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+              Tải thêm pháp thoại
+            </Button>
+          </div>
+        )}
+      </section>
 
-        {/* ---------- Chân trang ---------- */}
-        <footer className="mt-16 border-t border-border/60 pt-6 text-center text-xs leading-relaxed text-muted-foreground">
-          <p>
-            <span className="font-medium text-foreground/80">Dhamma Stream</span>{" "}
-            · Phiên bản {APP_VERSION} · Nhà phát triển:{" "}
-            <span className="font-medium text-foreground/80">Hứa Tiến Dương</span>
-          </p>
-          <p className="mt-1">
-            Nội dung pháp thoại thuộc bản quyền của các kênh YouTube tương ứng ·
-            Theravāda — Phật giáo Nguyên thủy
-          </p>
-        </footer>
+      {/* ---------- Chân trang: chỉ nhà phát triển + phiên bản ---------- */}
+      <footer className="mt-14 border-t border-border/60 pt-5 text-center text-xs text-muted-foreground">
+        <p>
+          Nhà phát triển:{" "}
+          <span className="font-medium text-foreground/80">
+            Hứa Tiến Dương
+          </span>{" "}
+          · Phiên bản {APP_VERSION}
+        </p>
+      </footer>
     </AppShell>
   );
 }
 
+/* ---------------------- helpers tiến trình ---------------------- */
+
+function progressByTalk(
+  progress: ProgressRow[] | undefined,
+  t: Talk,
+): number | undefined {
+  const row = progress?.find((p) => p.youtubeId === t.youtubeId);
+  return row && !row.completed && row.positionSec > 5
+    ? row.positionSec
+    : undefined;
+}
+
+function completedByTalk(
+  progress: ProgressRow[] | undefined,
+  t: Talk,
+): boolean {
+  return (
+    progress?.find((p) => p.youtubeId === t.youtubeId)?.completed ?? false
+  );
+}
+
 /* ------------------------------------------------------------------ */
-/* Thẻ pháp thoại                                                      */
+/* Hàng pháp thoại: thumbnail TRÁI — tiêu đề/thời lượng/lượt xem PHẢI  */
 /* ------------------------------------------------------------------ */
 
-function TalkCard({
-  talk,
-  progress,
+export function TalkRow({
+  title,
+  teacher,
+  youtubeId,
+  durationSec,
+  viewCount,
+  progressSec,
+  completed,
+  active,
+  onClick,
 }: {
-  talk: Talk;
-  progress?: ProgressRow;
+  title: string;
+  teacher?: string;
+  youtubeId: string;
+  durationSec: number;
+  viewCount?: number;
+  progressSec?: number;
+  completed?: boolean;
+  active?: boolean;
+  onClick(): void;
 }) {
-  const { play, current } = usePlayer();
-  const active = current?.youtubeId === talk.youtubeId;
-  const mine = progress;
+  const pct =
+    progressSec && durationSec > 0
+      ? Math.min(100, (progressSec / durationSec) * 100)
+      : undefined;
 
   return (
     <button
       type="button"
-      onClick={() => play(talk)}
+      onClick={onClick}
       className={cn(
-        "group overflow-hidden rounded-xl border bg-card/70 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
-        active
-          ? "border-primary/60 ring-1 ring-primary/40"
-          : "border-border/60 hover:border-primary/40",
+        "group flex w-full items-stretch gap-3 rounded-xl border border-transparent p-2 text-left transition hover:border-border/60 hover:bg-accent/40",
+        active && "border-primary/50 bg-primary/5",
       )}
     >
-      <span className="relative block aspect-video w-full overflow-hidden bg-muted">
-        <img
-          src={`https://i.ytimg.com/vi/${talk.youtubeId}/mqdefault.jpg`}
-          alt=""
-          className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-          loading="lazy"
-        />
-        {mine && !mine.completed && mine.positionSec > 5 && (
-          <span className="absolute inset-x-0 bottom-0 h-1 bg-black/30">
-            <span
-              className="block h-full bg-gold"
-              style={{
-                width: `${
-                  mine.durationSec > 0
-                    ? Math.min(100, (mine.positionSec / mine.durationSec) * 100)
-                    : 0
-                }%`,
-              }}
-            />
-          </span>
-        )}
-        {mine?.completed && (
-          <span className="absolute left-2 top-2">
-            <Badge variant="secondary" className="bg-background/85 text-[10px]">
-              Đã xem
-            </Badge>
+      {/* Thumbnail bên trái */}
+      <span className="relative block w-36 shrink-0 overflow-hidden rounded-lg bg-muted sm:w-44">
+        <span className="block aspect-video w-full">
+          <img
+            src={`https://i.ytimg.com/vi/${youtubeId}/mqdefault.jpg`}
+            alt=""
+            className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.04]"
+            loading="lazy"
+          />
+        </span>
+        {/* Thời lượng đè lên thumbnail */}
+        <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1 py-0.5 text-[10px] font-medium tabular-nums text-white">
+          {formatTime(durationSec)}
+        </span>
+        {completed && (
+          <span className="absolute left-1 top-1 rounded bg-primary px-1 py-0.5 text-[9px] font-medium text-primary-foreground">
+            Đã xem
           </span>
         )}
         {active && (
-          <span className="absolute left-2 top-2">
-            <Badge className="bg-primary text-[10px] text-primary-foreground">
-              Đang phát
-            </Badge>
+          <span className="absolute left-1 top-1 rounded bg-black/70 px-1 py-0.5 text-[9px] font-medium text-gold">
+            Đang phát
           </span>
         )}
-        <span className="absolute inset-0 flex items-center justify-center opacity-0 transition group-hover:opacity-100">
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/55 backdrop-blur">
-            <Play className="ml-0.5 h-5 w-5 fill-white text-white" />
+        {pct !== undefined && (
+          <span className="absolute inset-x-0 bottom-0 h-1 bg-black/40">
+            <span className="block h-full bg-gold" style={{ width: `${pct}%` }} />
+          </span>
+        )}
+      </span>
+
+      {/* Thông tin bên phải: tiêu đề + thời lượng + lượt xem */}
+      <span className="min-w-0 flex-1 py-0.5">
+        <span className="line-clamp-2 block text-sm font-medium leading-snug group-hover:text-primary">
+          {title}
+        </span>
+        <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            <span className="tabular-nums">{formatTime(durationSec)}</span>
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Eye className="h-3 w-3" />
+            <span className="tabular-nums">
+              {formatCount(viewCount ?? 0)} lượt xem
+            </span>
           </span>
         </span>
-      </span>
-      <span className="block p-3">
-        <span className="line-clamp-2 block text-sm font-medium leading-snug">
-          {talk.title}
-        </span>
-        <span className="mt-1.5 block truncate text-xs text-muted-foreground">
-          {talk.teacher}
-        </span>
-        <span className="mt-0.5 block text-[11px] text-muted-foreground/80">
-          {fmtDate(talk.publishedAt)}
-        </span>
+        {teacher && (
+          <span className="mt-0.5 block truncate text-[11px] text-muted-foreground/70">
+            {teacher}
+          </span>
+        )}
       </span>
     </button>
   );
@@ -395,7 +527,7 @@ function SyncButton() {
       onClick={async () => {
         setBusy(true);
         try {
-          const res = await sync({});
+          const res = await sync({ pages: 4 });
           toast.success(
             `Đã đồng bộ: +${res.inserted} mới, cập nhật ${res.updated}`,
           );
@@ -409,7 +541,7 @@ function SyncButton() {
           setBusy(false);
         }
       }}
-      className="hidden gap-2 sm:inline-flex"
+      className="gap-2"
     >
       <RefreshCw className={cn("h-3.5 w-3.5", busy && "animate-spin")} />
       Đồng bộ

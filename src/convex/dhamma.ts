@@ -7,14 +7,16 @@ export const list = query({
   args: {
     teacher: v.optional(v.string()),
     limit: v.optional(v.number()),
+    offset: v.optional(v.number()),
   },
-  handler: async (ctx, { teacher, limit }) => {
+  handler: async (ctx, { teacher, limit, offset }) => {
     let q = ctx.db.query("dhammaTalks").withIndex("by_publishedAt");
     const rows = await q.order("desc").collect();
     const filtered = teacher
       ? rows.filter((r) => r.teacher === teacher)
       : rows;
-    return filtered.slice(0, limit ?? 60);
+    const start = offset ?? 0;
+    return filtered.slice(start, start + (limit ?? 60));
   },
 });
 

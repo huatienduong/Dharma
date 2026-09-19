@@ -30,6 +30,7 @@ type VideoList = {
     id?: string;
     snippet?: { title?: string; publishedAt?: string; channelTitle?: string };
     contentDetails?: { duration?: string };
+    statistics?: { viewCount?: string };
   }>;
 };
 
@@ -40,9 +41,9 @@ function parseIsoDuration(iso: string | undefined): number {
   if (!m) return 0;
   const [, d, h, mi, s] = m;
   return (
-    (Number(d ?? 0) * 86400) +
-    (Number(h ?? 0) * 3600) +
-    (Number(mi ?? 0) * 60) +
+    Number(d ?? 0) * 86400 +
+    Number(h ?? 0) * 3600 +
+    Number(mi ?? 0) * 60 +
     Number(s ?? 0)
   );
 }
@@ -64,6 +65,7 @@ export const upsertTalk = internalMutation({
     channelName: v.string(),
     publishedAt: v.string(),
     durationSec: v.number(),
+    viewCount: v.number(),
   },
   handler: async (ctx, talk) => {
     const existing = await ctx.db
@@ -76,6 +78,7 @@ export const upsertTalk = internalMutation({
         channelName: talk.channelName || existing.channelName,
         publishedAt: talk.publishedAt || existing.publishedAt,
         durationSec: talk.durationSec > 0 ? talk.durationSec : existing.durationSec,
+        viewCount: talk.viewCount > 0 ? talk.viewCount : existing.viewCount,
         syncedAt: Date.now(),
       });
       return "updated" as const;
@@ -87,17 +90,20 @@ export const upsertTalk = internalMutation({
       channelName: talk.channelName,
       publishedAt: talk.publishedAt,
       durationSec: talk.durationSec,
+      viewCount: talk.viewCount,
       syncedAt: Date.now(),
     });
     return "inserted" as const;
   },
 });
 
-// Đồng bộ pháp thoại mới nhất từ các kênh Theravada. Cần YOUTUBE_API_KEY.
+// Đồng bộ pháp thoại mới từ các kênh Theravada. Cần YOUTUBE_API_KEY.
 // Public action để nút “Đồng bộ” trên giao diện có thể gọi.
+// `pages` = số trang playlistItems mỗi kênh (mỗi trang 50 video) —
+// tăng lên để kéo càng nhiều càng tốt từ YouTube, không giới hạn cứng.
 export const syncLatest = action({
-  args: {},
-  handler: async (ctx) => {
+  args: { pages: v.optional(v.number()) },
+  handler: async (ctx, { pages }) => {
     const key = process.env.YOUTUBE_API_KEY;
     if (!key) {
       throw new Error(
@@ -124,47 +130,65 @@ export const syncLatest = action({
       }
       if (!uploadsPlaylistId) continue;
 
-      // 2) Lấy các video mới nhất của kênh
-      const pl = (await ytFetch("playlistItems", {
-        part: "snippet",
-        playlistId: uploadsPlaylistId,
-        maxResults: "15",
-        key,
-      })) as PlaylistItems;
-      const entries = (pl.items ?? [])
-        .map((it) => ({
-          videoId: it.snippet?.resourceId?.videoId ?? "",
-          title: it.snippet?.title ?? "",
-          publishedAt: it.snippet?.publishedAt ?? "",
-          channelTitle: it.snippet?.channelTitle ?? "",
-        }))
-        .filter((e) => e.videoId && e.title);
+      // 2) Lấy nhiều trang video của kênh (mỗi trang 50 video)
+      const totalPages = Math.min(Math.max(1, pages ?? 4), 40);
+      const entries: Array<{
+        videoId: string;
+        title: string;
+        publishedAt: string;
+        channelTitle: string;
+      }> = [];
+      let pageToken: string | undefined;
+      for (let page = 0; page < totalPages; page++) {
+        const pl = (await ytFetch("playlistItems", {
+          part: "snippet",
+          playlistId: uploadsPlaylistId,
+          maxResults: "50",
+          ...(pageToken ? { pageToken } : {}),
+          key,
+        })) as PlaylistItems & { nextPageToken?: string };
+        for (const it of pl.items ?? []) {
+          const vid = it.snippet?.resourceId?.videoId ?? "";
+          const title = it.snippet?.title ?? "";
+          if (vid && title) {
+            entries.push({
+              videoId: vid,
+              title,
+              publishedAt: it.snippet?.publishedAt ?? "",
+              channelTitle: it.snippet?.channelTitle ?? "",
+            });
+          }
+        }
+        pageToken = pl.nextPageToken;
+        if (!pageToken) break;
+      }
       if (entries.length === 0) continue;
 
-      // 3) Lấy thời lượng
-      const ids = entries.map((e) => e.videoId).join(",");
-      const details = (await ytFetch("videos", {
-        part: "contentDetails",
-        id: ids,
-        key,
-      })) as VideoList;
-      const durations = new Map<string, number>();
-      for (const it of details.items ?? []) {
-        if (it.id) durations.set(it.id, parseIsoDuration(it.contentDetails?.duration));
-      }
-
-      // 4) Upsert vào bảng dhammaTalks
-      for (const e of entries) {
-        const result = await ctx.runMutation(internal.youtubeSync.upsertTalk, {
-          youtubeId: e.videoId,
-          title: e.title,
-          channelName: e.channelTitle,
-          publishedAt: e.publishedAt,
-          durationSec: durations.get(e.videoId) ?? 0,
-        });
-        videos++;
-        if (result === "inserted") inserted++;
-        else updated++;
+      // 3) Lấy thời lượng + lượt xem theo lô 50 video
+      for (let i = 0; i < entries.length; i += 50) {
+        const batch = entries.slice(i, i + 50);
+        const ids = batch.map((e) => e.videoId).join(",");
+        const details = (await ytFetch("videos", {
+          part: "contentDetails,statistics",
+          id: ids,
+          key,
+        })) as VideoList;
+        for (const e of batch) {
+          const d = (details.items ?? []).find((x) => x.id === e.videoId);
+          const result = await ctx.runMutation(internal.youtubeSync.upsertTalk, {
+            youtubeId: e.videoId,
+            title: e.title,
+            channelName: e.channelTitle,
+            publishedAt: e.publishedAt,
+            durationSec: parseIsoDuration(d?.contentDetails?.duration),
+            viewCount: Number(d?.statistics?.viewCount ?? 0),
+          });
+          videos++;
+          if (result === "inserted") inserted++;
+          else updated++;
+        }
+        // nhẹ nhàng với hạn mức API
+        if (i + 50 < entries.length) await new Promise((r) => setTimeout(r, 300));
       }
     }
 

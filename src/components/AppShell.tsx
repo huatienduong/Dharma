@@ -12,6 +12,7 @@ import {
   LogOut,
   Scale,
   Settings,
+  UserRound,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router";
 
@@ -22,6 +23,7 @@ const NAV = [
   { to: "/dictionary", label: "Từ điển", icon: BookMarked },
   { to: "/calendar", label: "Lịch Phật giáo", icon: Calendar },
   { to: "/meditation", label: "Thiền", icon: Heart },
+  { to: "/profile", label: "Hồ sơ", icon: UserRound },
   { to: "/settings", label: "Cài đặt", icon: Settings },
 ];
 

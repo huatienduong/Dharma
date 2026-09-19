@@ -132,8 +132,19 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Phông chữ rõ ràng: sans-serif chủ đạo cho UI, serif cho nội dung đọc */
     font-family:
-      ui-serif, Georgia, "Times New Roman", serif;
+      "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  h1, h2, h3, h4 {
+    letter-spacing: -0.01em;
+  }
+  /* Nội dung đọc Kinh/Luật dùng serif truyền thống cho dễ đọc dài */
+  .prose-dhamma, .readable-serif {
+    font-family: Georgia, "Times New Roman", ui-serif, serif;
+    line-height: 1.75;
   }
   button:not([disabled]),
   [role="button"]:not([disabled]) {
@@ -192,7 +203,7 @@
   opacity: 0.06;
 }
 
-/* ---------- Logo Bát Chánh Đạo quay ---------- */
+/* ---------- Logo Bánh xe Chuyển pháp luân quay ---------- */
 
 @keyframes dw-rotate {
   from {

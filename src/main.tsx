@@ -22,6 +22,7 @@ const Dictionary = lazy(() => import("./pages/Dictionary.tsx"));
 const CalendarPage = lazy(() => import("./pages/Calendar.tsx"));
 const Meditation = lazy(() => import("./pages/Meditation.tsx"));
 const SettingsPage = lazy(() => import("./pages/Settings.tsx"));
+const Profile = lazy(() => import("./pages/Profile.tsx"));
 
 // Simple loading fallback for route transitions
 function RouteLoading() {
@@ -224,6 +225,14 @@ createRoot(document.getElementById("root")!).render(
                   element={
                     <RequireAuth>
                       <SettingsPage />
+                    </RequireAuth>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <RequireAuth>
+                      <Profile />
                     </RequireAuth>
                   }
                 />

@@ -92,6 +92,14 @@ export function formatTime(sec: number): string {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
+/** "1.234 lượt xem" -> "1,2 Tr" · "1,5 N" · "230 N" */
+export function formatCount(n: number): string {
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1).replace(".", ",")} Tỷ`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(".", ",")} Tr`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(".", ",")} N`;
+  return String(n);
+}
+
 /* ------------------------------------------------------------------ */
 /* Types + Context                                                     */
 /* ------------------------------------------------------------------ */
@@ -104,6 +112,7 @@ export interface PlayerTalk {
   channelName: string;
   publishedAt: string;
   durationSec: number;
+  viewCount?: number;
 }
 
 interface PlayerContextValue {
@@ -162,7 +171,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const savedForTalkRef = useRef<Map<string, number>>(new Map());
   const [queued, setQueued] = useState<PlayerTalk | null>(null);
 
-  /* ----- Tạo player một lần, gắn vào khung luôn tồn tại ----- */
+  /* ----- Tạo player MỘT LẦN ngay khi app mở -----
+     FIX LỖI KHÔNG PHÁT ĐƯỢC VIDEO:
+     1. Khung chứa iframe (ytTargetRef) giờ LUÔN mounted từ lần render đầu
+        (nằm ngoài mọi điều kiện) — trước đây nó chỉ render khi có video,
+        nên effect tạo player chạy với ref=null và player không bao giờ
+        được khởi tạo → bấm phát chỉ xếp hàng vô hạn.
+     2. Truyền origin thật của trang cho playerVars.origin — YouTube từ
+        chối phát (lỗi 127.0.0.1:0) nếu origin sai khi chạy qua proxy dev.
+     3. seekTo sau khi video đã thực sự phát (onStateChange PLAYING lần
+        đầu) thay vì ngay sau loadVideoById — seek sớm bị YouTube bỏ qua. */
   useEffect(() => {
     let cancelled = false;
     loadYouTubeIframeApi().then((YT) => {
@@ -174,6 +192,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           playsinline: 1,
           rel: 0,
           modestbranding: 1,
+          origin: window.location.origin,
         },
         events: {
           onReady: () => setPlayerReady(true),
@@ -182,6 +201,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             if (e.data === S.PLAYING) {
               setIsPlaying(true);
               setIsBuffering(false);
+              // Đã phát thật → tua tới vị trí lưu (nếu chưa tua)
+              const st = pendingSeekRef.current;
+              if (st != null && playerRef.current) {
+                playerRef.current.seekTo(st, true);
+                pendingSeekRef.current = null;
+              }
             } else if (e.data === S.PAUSED) {
               setIsPlaying(false);
               setIsBuffering(false);
@@ -245,11 +270,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         return;
       }
       playerRef.current.loadVideoById(talk.youtubeId);
-      const st = pendingSeekRef.current;
-      if (st != null) {
-        playerRef.current.seekTo(st, true);
-        pendingSeekRef.current = null;
-      }
+      // seek sẽ được thực hiện trong onStateChange(PLAYING)
       playerRef.current.playVideo();
     },
     [playerReady],
@@ -485,245 +506,344 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
           {/* Thẻ thông tin mini (chỉ hiện khi thu nhỏ) */}
           {!expanded && (
-            <div className="fixed bottom-4 right-4 z-[95] w-[min(20rem,calc(100vw-2rem))] animate-in slide-in-from-bottom-2 fade-in">
-              <div className="overflow-hidden rounded-xl border border-border bg-popover/95 shadow-xl backdrop-blur">
-                <div className="py-2.5 pl-3 pr-3">
-                  <p className="truncate text-sm font-medium leading-snug">
-                    {current.title}
-                  </p>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {isBuffering
-                      ? "Đang tải…"
-                      : isPlaying
-                        ? "Đang phát"
-                        : "Tạm dừng"}{" "}
-                    ·{" "}
-                    <span className="tabular-nums">
-                      {formatTime(position)} / {formatTime(duration)}
-                    </span>
-                  </p>
-                </div>
-                <div className="flex items-center justify-between gap-2 border-t border-border/60 px-3 py-1.5">
-                  <span className="text-[11px] text-muted-foreground">
-                    Đang nghe nền
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => seek(Math.max(0, position - 15))}
-                      className="rounded-full px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-                      aria-label="Lùi 15 giây"
-                    >
-                      −15s
-                    </button>
-                    <button
-                      type="button"
-                      onClick={toggle}
-                      className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
-                      aria-label={isPlaying ? "Tạm dừng" : "Phát"}
-                    >
-                      {isPlaying ? (
-                        <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
-                          <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
-                        </svg>
-                      ) : (
-                        <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={close}
-                      className="rounded-full px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-                      aria-label="Đóng trình phát"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-                <div className="h-1 w-full bg-muted">
-                  <div
-                    className="h-full bg-gold transition-[width] duration-500"
-                    style={{
-                      width: `${
-                        duration > 0 ? Math.min(100, (position / duration) * 100) : 0
-                      }%`,
-                    }}
-                  />
-                </div>
-              </div>
-              {showFallback && (
-                <p className="mt-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                  Video này không cho phép phát nhúng.{" "}
-                  <a
-                    className="underline"
-                    href={`https://www.youtube.com/watch?v=${current.youtubeId}`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Xem trên YouTube
-                  </a>
-                </p>
-              )}
-            </div>
+            <MiniPlayerCard
+              title={current.title}
+              teacher={current.teacher}
+              isBuffering={isBuffering}
+              isPlaying={isPlaying}
+              position={position}
+              duration={duration}
+              onSeek={seek}
+              onToggle={toggle}
+              onClose={close}
+              showFallback={showFallback}
+              youtubeId={current.youtubeId}
+            />
           )}
 
           {/* Bảng điều khiển khi mở rộng (ngay dưới khung video) */}
           {expanded && (
-            <div
-              className="fixed left-1/2 z-[96] w-[min(92vw,56rem)] -translate-x-1/2"
-              style={{ top: "calc(2rem + min(92vw, 56rem) * 9 / 16 + 0.9rem)" }}
-            >
-              <div className="rounded-xl border border-border bg-popover/95 p-4 shadow-2xl backdrop-blur">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="truncate text-sm font-semibold sm:text-base">
-                      {current.title}
-                    </h3>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                      {current.teacher} · {current.channelName}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={replay}
-                      title="Xem lại từ đầu"
-                      aria-label="Xem lại từ đầu"
-                      className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-sm text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-                    >
-                      ⟲
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setExpanded(false)}
-                      title="Thu nhỏ"
-                      aria-label="Thu nhỏ trình phát"
-                      className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-                    >
-                      ▾
-                    </button>
-                    <button
-                      type="button"
-                      onClick={close}
-                      title="Đóng trình phát"
-                      aria-label="Đóng trình phát"
-                      className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex items-center gap-3">
-                  <span className="tabular-nums text-xs text-muted-foreground">
-                    {formatTime(position)}
-                  </span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={Math.max(1, Math.floor(duration))}
-                    value={Math.floor(position)}
-                    onChange={(e) => seek(Number(e.target.value))}
-                    className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-[var(--gold)]"
-                    aria-label="Tua theo thời gian"
-                  />
-                  <span className="tabular-nums text-xs text-muted-foreground">
-                    {formatTime(duration)}
-                  </span>
-                </div>
-
-                <div className="mt-3 flex items-center justify-center gap-4">
-                  <button
-                    type="button"
-                    onClick={() => seek(Math.max(0, position - 15))}
-                    className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-xs font-medium transition hover:bg-accent"
-                    aria-label="Lùi 15 giây"
-                  >
-                    −15s
-                  </button>
-                  <button
-                    type="button"
-                    onClick={toggle}
-                    className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:opacity-90"
-                    aria-label={isPlaying ? "Tạm dừng" : "Phát"}
-                  >
-                    {isPlaying ? (
-                      <svg viewBox="0 0 24 24" className="h-7 w-7 fill-current">
-                        <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
-                      </svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" className="h-7 w-7 fill-current">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => seek(position + 15)}
-                    className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-xs font-medium transition hover:bg-accent"
-                    aria-label="Tới 15 giây"
-                  >
-                    +15s
-                  </button>
-                </div>
-
-                {showFallback && (
-                  <p className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-center text-xs text-destructive">
-                    Video này không cho phép phát nhúng.{" "}
-                    <a
-                      className="underline"
-                      href={`https://www.youtube.com/watch?v=${current.youtubeId}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Xem trên YouTube
-                    </a>
-                  </p>
-                )}
-                <p className="mt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
-                  Âm thanh tiếp tục phát khi tắt màn hình hoặc chuyển tab (chế độ
-                  nghe nền). Tiến trình được lưu tự động.
-                </p>
-              </div>
-            </div>
+            <ExpandedControls
+              title={current.title}
+              teacher={current.teacher}
+              channelName={current.channelName}
+              isBuffering={isBuffering}
+              isPlaying={isPlaying}
+              position={position}
+              duration={duration}
+              onSeek={seek}
+              onToggle={toggle}
+              onClose={close}
+              onReplay={replay}
+              onMinimize={() => setExpanded(false)}
+              showFallback={showFallback}
+              youtubeId={current.youtubeId}
+            />
           )}
-
-          {/* Lớp chứa iframe — PHẢI luôn mounted ngay từ đầu để player
-              khởi tạo được; khi không có video thì ẩn ngoài màn hình.
-              Cấu trúc con giữ ổn định vì YouTube thay thế node ref bằng
-              iframe — không đặt node nào làm anh em ruột của node ref. */}
-          <div
-            className="fixed z-[97] overflow-hidden bg-black shadow-2xl transition-all duration-300"
-            style={
-              showPlayer
-                ? slotStyle
-                : {
-                    left: "-9999px",
-                    top: "-9999px",
-                    width: "320px",
-                    height: "180px",
-                    opacity: 0,
-                    pointerEvents: "none",
-                  }
-            }
-            aria-hidden={!showPlayer}
-          >
-            <div ref={ytTargetRef} className="h-full w-full" />
-            {/* Click để mở rộng khi ở chế độ mini */}
-            {showPlayer && !expanded && (
-              <button
-                type="button"
-                onClick={() => setExpanded(true)}
-                className="absolute inset-0 h-full w-full cursor-pointer"
-                aria-label="Mở trình phát toàn màn hình"
-              />
-            )}
-          </div>
         </>
       )}
+
+      {/* Lớp chứa iframe — LUÔN mounted ngay từ đầu (không nằm trong điều
+          kiện nào) để player khởi tạo được khi app vừa mở. Khi không có
+          video thì ẩn ngoài màn hình. Cấu trúc con giữ ổn định vì YouTube
+          thay thế node ref bằng iframe. */}
+      <div
+        className="fixed z-[97] overflow-hidden bg-black shadow-2xl transition-all duration-300"
+        style={
+          showPlayer
+            ? slotStyle
+            : {
+                left: "-9999px",
+                top: "-9999px",
+                width: "320px",
+                height: "180px",
+                opacity: 0,
+                pointerEvents: "none",
+              }
+        }
+        aria-hidden={!showPlayer}
+      >
+        <div ref={ytTargetRef} className="h-full w-full" />
+        {/* Click để mở rộng khi ở chế độ mini */}
+        {showPlayer && !expanded && (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="absolute inset-0 h-full w-full cursor-pointer"
+            aria-label="Mở trình phát toàn màn hình"
+          />
+        )}
+      </div>
     </PlayerContext.Provider>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Mini player card (được Dashboard cũng dùng được)                    */
+/* ------------------------------------------------------------------ */
+
+export function MiniPlayerCard({
+  title,
+  teacher,
+  isBuffering,
+  isPlaying,
+  position,
+  duration,
+  onSeek,
+  onToggle,
+  onClose,
+  showFallback,
+  youtubeId,
+}: {
+  title: string;
+  teacher?: string;
+  isBuffering: boolean;
+  isPlaying: boolean;
+  position: number;
+  duration: number;
+  onSeek(sec: number): void;
+  onToggle(): void;
+  onClose(): void;
+  showFallback?: boolean;
+  youtubeId?: string;
+}) {
+  return (
+    <div className="fixed bottom-4 right-4 z-[95] w-[min(20rem,calc(100vw-2rem))] animate-in slide-in-from-bottom-2 fade-in">
+      <div className="overflow-hidden rounded-xl border border-border bg-popover/95 shadow-xl backdrop-blur">
+        <div className="py-2.5 pl-3 pr-3">
+          <p className="truncate text-sm font-medium leading-snug">{title}</p>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {isBuffering
+              ? "Đang tải…"
+              : isPlaying
+                ? "Đang phát"
+                : "Tạm dừng"}{" "}
+            ·{" "}
+            <span className="tabular-nums">
+              {formatTime(position)} / {formatTime(duration)}
+            </span>
+          </p>
+        </div>
+        <div className="flex items-center justify-between gap-2 border-t border-border/60 px-3 py-1.5">
+          <span className="text-[11px] text-muted-foreground">
+            Đang nghe nền
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => onSeek(Math.max(0, position - 15))}
+              className="rounded-full px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+              aria-label="Lùi 15 giây"
+            >
+              −15s
+            </button>
+            <button
+              type="button"
+              onClick={onToggle}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
+              aria-label={isPlaying ? "Tạm dừng" : "Phát"}
+            >
+              {isPlaying ? (
+                <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                  <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+              aria-label="Đóng trình phát"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+        <div className="h-1 w-full bg-muted">
+          <div
+            className="h-full bg-gold transition-[width] duration-500"
+            style={{
+              width: `${
+                duration > 0 ? Math.min(100, (position / duration) * 100) : 0
+              }%`,
+            }}
+          />
+        </div>
+      </div>
+      {showFallback && youtubeId && (
+        <p className="mt-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          Video này không cho phép phát nhúng.{" "}
+          <a
+            className="underline"
+            href={`https://www.youtube.com/watch?v=${youtubeId}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Xem trên YouTube
+          </a>
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Bảng điều khiển mở rộng                                             */
+/* ------------------------------------------------------------------ */
+
+function ExpandedControls({
+  title,
+  teacher,
+  channelName,
+  isBuffering,
+  isPlaying,
+  position,
+  duration,
+  onSeek,
+  onToggle,
+  onClose,
+  onReplay,
+  onMinimize,
+  showFallback,
+  youtubeId,
+}: {
+  title: string;
+  teacher: string;
+  channelName: string;
+  isBuffering: boolean;
+  isPlaying: boolean;
+  position: number;
+  duration: number;
+  onSeek(sec: number): void;
+  onToggle(): void;
+  onClose(): void;
+  onReplay(): void;
+  onMinimize(): void;
+  showFallback: boolean;
+  youtubeId: string;
+}) {
+  return (
+    <div
+      className="fixed left-1/2 z-[96] w-[min(92vw,56rem)] -translate-x-1/2"
+      style={{ top: "calc(2rem + min(92vw, 56rem) * 9 / 16 + 0.9rem)" }}
+    >
+      <div className="rounded-xl border border-border bg-popover/95 p-4 shadow-2xl backdrop-blur">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-semibold sm:text-base">
+              {title}
+            </h3>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              {teacher} · {channelName}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onReplay}
+              title="Xem lại từ đầu"
+              aria-label="Xem lại từ đầu"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-sm text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+            >
+              ⟲
+            </button>
+            <button
+              type="button"
+              onClick={onMinimize}
+              title="Thu nhỏ"
+              aria-label="Thu nhỏ trình phát"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+            >
+              ▾
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              title="Đóng trình phát"
+              aria-label="Đóng trình phát"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-center gap-3">
+          <span className="tabular-nums text-xs text-muted-foreground">
+            {formatTime(position)}
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={Math.max(1, Math.floor(duration))}
+            value={Math.floor(position)}
+            onChange={(e) => onSeek(Number(e.target.value))}
+            className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-[var(--gold)]"
+            aria-label="Tua theo thời gian"
+          />
+          <span className="tabular-nums text-xs text-muted-foreground">
+            {formatTime(duration)}
+          </span>
+        </div>
+
+        <div className="mt-3 flex items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={() => onSeek(Math.max(0, position - 15))}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-xs font-medium transition hover:bg-accent"
+            aria-label="Lùi 15 giây"
+          >
+            −15s
+          </button>
+          <button
+            type="button"
+            onClick={onToggle}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:opacity-90"
+            aria-label={isPlaying ? "Tạm dừng" : "Phát"}
+          >
+            {isPlaying ? (
+              <svg viewBox="0 0 24 24" className="h-7 w-7 fill-current">
+                <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" className="h-7 w-7 fill-current">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => onSeek(position + 15)}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-xs font-medium transition hover:bg-accent"
+            aria-label="Tới 15 giây"
+          >
+            +15s
+          </button>
+        </div>
+
+        {showFallback && (
+          <p className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-center text-xs text-destructive">
+            Video này không cho phép phát nhúng.{" "}
+            <a
+              className="underline"
+              href={`https://www.youtube.com/watch?v=${youtubeId}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Xem trên YouTube
+            </a>
+          </p>
+        )}
+        <p className="mt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
+          Âm thanh tiếp tục phát khi tắt màn hình hoặc chuyển tab (chế độ nghe
+          nền). Tiến trình được lưu tự động.
+        </p>
+      </div>
+    </div>
   );
 }
 

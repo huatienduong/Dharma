@@ -30,6 +30,11 @@ const schema = defineSchema(
       isAnonymous: v.optional(v.boolean()), // is the user anonymous. do not remove
 
       role: v.optional(roleValidator), // role of the user. do not remove
+
+      // Hồ sơ người dùng Dhamma Stream
+      dhammaName: v.optional(v.string()), // pháp danh / tên thiền (không bắt buộc)
+      bio: v.optional(v.string()), // giới thiệu ngắn
+      birthYear: v.optional(v.number()), // năm sinh dương lịch
     }).index("email", ["email"]), // index for the email. do not remove or modify
 
     // Pháp thoại Theravada: một bản ghi cho mỗi video YouTube
@@ -40,6 +45,7 @@ const schema = defineSchema(
       channelName: v.string(), // tên kênh YouTube
       publishedAt: v.string(), // ngày phát hành (ISO)
       durationSec: v.number(), // thời lượng (giây), 0 nếu chưa rõ
+      viewCount: v.optional(v.number()), // số lượt xem trên YouTube
       description: v.optional(v.string()),
       syncedAt: v.number(), // thời điểm đồng bộ
     })

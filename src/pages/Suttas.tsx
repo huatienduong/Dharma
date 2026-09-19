@@ -1,4 +1,5 @@
 import { AppShell, ShellBackButton } from "@/components/AppShell";
+import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { api } from "@/convex/_generated/api";
 import { getSutta, SUTTAS } from "@/data/suttas";
 import { useMutation, useQuery } from "convex/react";
@@ -8,8 +9,10 @@ import {
   Eye,
   MapPin,
   ScrollText,
+  Search,
   Sparkles,
   User,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
@@ -29,12 +32,23 @@ const NIKAYA_TABS = [
 
 export default function Suttas() {
   const [tab, setTab] = useState("all");
+  const [search, setSearch] = useState("");
   const reading = useQuery(api.library.listReading, {});
 
-  const list = useMemo(
-    () => (tab === "all" ? SUTTAS : SUTTAS.filter((s) => s.nikaya === tab)),
-    [tab],
-  );
+  const searchQ = search.trim().toLowerCase();
+  const list = useMemo(() => {
+    let rows = tab === "all" ? SUTTAS : SUTTAS.filter((s) => s.nikaya === tab);
+    if (searchQ) {
+      rows = rows.filter(
+        (s) =>
+          s.title.toLowerCase().includes(searchQ) ||
+          s.id.toLowerCase().includes(searchQ) ||
+          (s as { pali?: string }).pali?.toLowerCase().includes(searchQ) ||
+          s.summary?.toLowerCase().includes(searchQ),
+      );
+    }
+    return rows;
+  }, [tab, searchQ]);
 
   const progressMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -49,6 +63,30 @@ export default function Suttas() {
       title="Kinh tạng"
       subtitle="Sutta Piṭaka — học Kinh, luận giải và chú giải theo truyền thống Theravāda"
     >
+      {/* Tìm kiếm (kèm giọng nói) */}
+      <div className="mb-4 flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm kinh theo tên, số hiệu, nội dung…"
+            className="h-10 w-full rounded-full border border-border/70 bg-card/80 pl-9 pr-9 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
+              aria-label="Xóa tìm kiếm"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <VoiceSearchButton onResult={(text) => setSearch(text)} />
+      </div>
+
       {/* Bộ lọc Nikaya */}
       <div className="mb-6 flex flex-wrap gap-2">
         {NIKAYA_TABS.map((t) => (

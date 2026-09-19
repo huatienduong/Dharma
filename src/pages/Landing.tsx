@@ -171,13 +171,9 @@ export default function Landing() {
       <footer className="border-t border-border/50 bg-card/40 py-6 backdrop-blur">
         <div className="mx-auto max-w-5xl px-4 text-center text-xs leading-relaxed text-muted-foreground">
           <p>
-            <span className="font-medium text-foreground/80">Dhamma Stream</span>{" "}
-            · Phiên bản {APP_VERSION} · Nhà phát triển:{" "}
-            <span className="font-medium text-foreground/80">Hứa Tiến Dương</span>
-          </p>
-          <p className="mt-1">
-            Sadhu · Sadhu · Sadhu — Ưu điểm của bản 1: xem và nghe pháp thoại,
-            tiến trình không bao giờ mất.
+            Nhà phát triển: {" "}
+            <span className="font-medium text-foreground/80">Hứa Tiến Dương</span>{" "}
+            · Phiên bản {APP_VERSION}
           </p>
         </div>
       </footer>

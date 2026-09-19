@@ -15,9 +15,11 @@ import {
 } from "@/components/ui/input-otp";
 import { useAuth } from "@/hooks/use-auth";
 import { DhammaWheel } from "@/components/DhammaWheel";
+import { APP_VERSION, APP_DEVELOPER } from "@/lib/version";
 import { ArrowRight, Loader2, Mail, UserRound } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
+import { cn } from "@/lib/utils";
 
 interface AuthProps {
   redirectAfterAuth?: string;
@@ -41,7 +43,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     searchParams.get("returnTo"),
     redirectAfterAuth,
   );
-  const [step, setStep] = useState<"signIn" | { email: string }>("signIn");
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [step, setStep] = useState<"form" | { email: string }>("form");
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +65,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       setStep({ email: formData.get("email") as string });
       setIsLoading(false);
     } catch (error) {
-      console.error("Email sign-in error:", error);
+      console.error("Email submit error:", error);
       setError(
         error instanceof Error
           ? error.message
@@ -72,7 +75,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
     }
   };
 
-  const handleOtpSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleOtpSubmit = async (event: React.FormEvent<HTMLFormElement>) =>
+  {
     event.preventDefault();
     setIsLoading(true);
     setError(null);
@@ -118,13 +122,43 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       </button>
 
       <Card className="w-full max-w-sm pb-0">
-        {step === "signIn" ? (
+        {step === "form" ? (
           <>
+            {/* Tabs Đăng nhập / Đăng ký */}
+            <div className="grid grid-cols-2 border-b border-border/60">
+              {(
+                [
+                  { key: "signin", label: "Đăng nhập" },
+                  { key: "signup", label: "Đăng ký" },
+                ] as const
+              ).map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => {
+                    setMode(t.key);
+                    setError(null);
+                  }}
+                  className={cn(
+                    "py-3 text-sm font-medium transition",
+                    mode === t.key
+                      ? "border-b-2 border-gold text-foreground"
+                      : "border-b-2 border-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
             <CardHeader className="text-center">
-              <CardTitle className="text-xl">Chào mừng trở lại</CardTitle>
+              <CardTitle className="text-xl">
+                {mode === "signin" ? "Chào mừng trở lại" : "Tạo tài khoản mới"}
+              </CardTitle>
               <CardDescription>
-                Đăng nhập để tiếp tục nghe pháp thoại và giữ nguyên tiến trình
-                của bạn
+                {mode === "signin"
+                  ? "Đăng nhập để tiếp tục nghe pháp thoại và giữ nguyên tiến trình của bạn"
+                  : "Đăng ký bằng email để lưu tiến trình xem, thiền và đọc trên mọi thiết bị"}
               </CardDescription>
             </CardHeader>
             <form onSubmit={handleEmailSubmit}>
@@ -176,7 +210,9 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                     disabled={isLoading}
                   >
                     <UserRound className="h-4 w-4" />
-                    Nghe với tư cách khách
+                    {mode === "signin"
+                      ? "Nghe với tư cách khách"
+                      : "Khám phá với tư cách khách"}
                   </Button>
                 </div>
               </CardContent>
@@ -187,7 +223,8 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
             <CardHeader className="mt-4 text-center">
               <CardTitle>Kiểm tra email</CardTitle>
               <CardDescription>
-                Chúng tôi đã gửi mã tới {step.email}
+                {mode === "signup" ? "Mã kích hoạt tài khoản đã gửi tới " : "Mã xác thực đã gửi tới "}
+                {step.email}
               </CardDescription>
             </CardHeader>
             <form onSubmit={handleOtpSubmit}>
@@ -229,7 +266,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                   <Button
                     variant="link"
                     className="h-auto p-0"
-                    onClick={() => setStep("signIn")}
+                    onClick={() => setStep("form")}
                   >
                     Gửi lại
                   </Button>
@@ -256,7 +293,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => setStep("signIn")}
+                  onClick={() => setStep("form")}
                   disabled={isLoading}
                   className="w-full"
                 >
@@ -269,7 +306,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
         <div className="border-t bg-muted/60 px-6 py-3 text-center text-[11px] text-muted-foreground">
           <p className="rounded-b-lg">
-            Dhamma Stream · Bản 1.0.0 · Hứa Tiến Dương
+            Dhamma Stream · Phiên bản {APP_VERSION} · {APP_DEVELOPER}
           </p>
         </div>
       </Card>
