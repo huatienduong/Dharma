@@ -118,7 +118,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
         aria-label="Về trang chủ"
       >
         <DhammaWheel size={64} />
-        <span className="text-sm font-semibold">Dhamma Stream</span>
+        <span className="text-sm font-semibold">Dharma</span>
       </button>
 
       <Card className="w-full max-w-sm pb-0">
@@ -306,7 +306,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
 
         <div className="border-t bg-muted/60 px-6 py-3 text-center text-[11px] text-muted-foreground">
           <p className="rounded-b-lg">
-            Dhamma Stream · Phiên bản {APP_VERSION} · {APP_DEVELOPER}
+            Dharma · Phiên bản {APP_VERSION} · {APP_DEVELOPER}
           </p>
         </div>
       </Card>

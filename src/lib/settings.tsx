@@ -40,7 +40,13 @@ const LS_KEY = "dhamma-stream-settings";
 function loadLocal(): AppSettings {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (raw) return { ...DEFAULTS, ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<AppSettings>;
+      // Ứng dụng mặc định chỉ dùng Tiếng Việt — ghi đè mọi lựa chọn cũ
+      const merged = { ...DEFAULTS, ...parsed };
+      merged.language = "vi";
+      return merged as AppSettings;
+    }
   } catch {
     /* bỏ qua */
   }
