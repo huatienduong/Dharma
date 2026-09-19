@@ -44,89 +44,89 @@
   --color-gold-soft: var(--gold-soft);
 }
 
-/* CHANGE VALUES FOR THEME — phong cách trẻ trung trắng đen */
+/* CHANGE VALUES FOR THEME — chủ đề Phật giáo Theravāda: kem ấm + nâu sẫm + vàng saffron */
 :root {
   --radius: 0.625rem;
-  --background: oklch(0.972 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0); /* đen chủ đạo */
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.955 0 0); /* xám sáng */
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.955 0 0);
-  --muted-foreground: oklch(0.5 0 0);
-  --accent: oklch(0.94 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --background: oklch(0.96 0.014 85);
+  --foreground: oklch(0.24 0.04 60);
+  --card: oklch(0.985 0.008 85);
+  --card-foreground: oklch(0.24 0.04 60);
+  --popover: oklch(0.99 0.006 88);
+  --popover-foreground: oklch(0.24 0.04 60);
+  --primary: oklch(0.42 0.08 55); /* nâu y cà sa sẫm */
+  --primary-foreground: oklch(0.985 0.008 85);
+  --secondary: oklch(0.9 0.05 80); /* saffron nhạt */
+  --secondary-foreground: oklch(0.33 0.05 62);
+  --muted: oklch(0.915 0.026 82);
+  --muted-foreground: oklch(0.47 0.035 62);
+  --accent: oklch(0.9 0.05 80);
+  --accent-foreground: oklch(0.33 0.05 62);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.9 0 0);
-  --ring: oklch(0.4 0 0);
-  --chart-1: oklch(0.205 0 0);
-  --chart-2: oklch(0.4 0 0);
-  --chart-3: oklch(0.556 0 0);
-  --chart-4: oklch(0.7 0 0);
-  --chart-5: oklch(0.85 0 0);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.94 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.9 0 0);
-  --sidebar-ring: oklch(0.4 0 0);
+  --border: oklch(0.865 0.036 74);
+  --input: oklch(0.865 0.036 74);
+  --ring: oklch(0.55 0.06 68);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.945 0.018 80);
+  --sidebar-foreground: oklch(0.24 0.04 60);
+  --sidebar-primary: oklch(0.45 0.07 62);
+  --sidebar-primary-foreground: oklch(0.985 0.008 85);
+  --sidebar-accent: oklch(0.9 0.04 78);
+  --sidebar-accent-foreground: oklch(0.33 0.05 62);
+  --sidebar-border: oklch(0.865 0.036 74);
+  --sidebar-ring: oklch(0.55 0.06 68);
 
-  /* Accent trung tính: "gold" giờ là đen/xám đậm (giữ tên biến cho tương thích) */
-  --brown-deep: #111111;
-  --brown-mid: #333333;
-  --gold: #171717;
-  --gold-soft: #525252;
-  --lotus: #e5e5e5;
+  /* Bảng màu Theravāda: nâu đất + vàng saffron y cà sa */
+  --brown-deep: #3f2d1a;
+  --brown-mid: #5f4630;
+  --gold: #c8871f; /* saffron trầm, trang nghiêm */
+  --gold-soft: #e2b45c;
+  --lotus: #e8b4b8;
 
   --font-size-scale: 1;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0); /* trắng chủ đạo */
-  --primary-foreground: oklch(0.145 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.279 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.2 0.03 60);
+  --foreground: oklch(0.93 0.02 78);
+  --card: oklch(0.25 0.034 62);
+  --card-foreground: oklch(0.93 0.02 78);
+  --popover: oklch(0.235 0.032 61);
+  --popover-foreground: oklch(0.93 0.02 78);
+  --primary: oklch(0.8 0.11 80); /* vàng saffron sáng */
+  --primary-foreground: oklch(0.22 0.03 58);
+  --secondary: oklch(0.33 0.038 62);
+  --secondary-foreground: oklch(0.93 0.02 78);
+  --muted: oklch(0.3 0.036 61);
+  --muted-foreground: oklch(0.73 0.03 75);
+  --accent: oklch(0.33 0.038 62);
+  --accent-foreground: oklch(0.93 0.02 78);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.808 0 0);
-  --chart-1: oklch(0.922 0 0);
-  --chart-2: oklch(0.708 0 0);
-  --chart-3: oklch(0.556 0 0);
-  --chart-4: oklch(0.4 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.175 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.922 0 0);
-  --sidebar-primary-foreground: oklch(0.145 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.808 0 0);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.8 0.11 80);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.25 0.034 62);
+  --sidebar-foreground: oklch(0.93 0.02 78);
+  --sidebar-primary: oklch(0.8 0.11 80);
+  --sidebar-primary-foreground: oklch(0.22 0.03 58);
+  --sidebar-accent: oklch(0.33 0.038 62);
+  --sidebar-accent-foreground: oklch(0.93 0.02 78);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.8 0.11 80);
 
-  --brown-deep: #0a0a0a;
-  --brown-mid: #262626;
-  --gold: #fafafa;
-  --gold-soft: #a3a3a3;
-  --lotus: #262626;
+  --brown-deep: #0f0a05;
+  --brown-mid: #2b2015;
+  --gold: #e2b45c;
+  --gold-soft: #caa04e;
+  --lotus: #6d4a4d;
 }
 
 @layer base {
@@ -192,15 +192,15 @@
     );
 }
 
-/* Họa tiết hoa sen mờ (SVG data-uri), trung tính đen trắng */
+/* Họa tiết hoa sen mờ (SVG data-uri), tông nâu Theravāda */
 .lotus-bg::after {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  opacity: 0.4;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260' viewBox='0 0 260 260'%3E%3Cg fill='none' stroke='%23888888' stroke-opacity='0.09'%3E%3Cpath d='M130 58c14 20 21 36 21 52s-7 32-21 52c-14-20-21-36-21-52s7-32 21-52Z'/%3E%3Cpath d='M130 162c-4-14-12-24-26-30 4 16 12 26 26 30Z'/%3E%3Cpath d='M130 162c4-14 12-24 26-30-4 16-12 26-26 30Z'/%3E%3Cpath d='M72 196c10-12 24-18 44-18-6 14-18 21-30 22-6 .4-11-1-14-4Z'/%3E%3Cpath d='M188 196c-10-12-24-18-44-18 6 14 18 21 30 22 6 .4 11-1 14-4Z'/%3E%3Ccircle cx='130' cy='58' r='4'/%3E%3C/g%3E%3C/svg%3E");
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260' viewBox='0 0 260 260'%3E%3Cg fill='none' stroke='%236d5130' stroke-opacity='0.10'%3E%3Cpath d='M130 58c14 20 21 36 21 52s-7 32-21 52c-14-20-21-36-21-52s7-32 21-52Z'/%3E%3Cpath d='M130 162c-4-14-12-24-26-30 4 16 12 26 26 30Z'/%3E%3Cpath d='M130 162c4-14 12-24 26-30-4 16-12 26-26 30Z'/%3E%3Cpath d='M72 196c10-12 24-18 44-18-6 14-18 21-30 22-6 .4-11-1-14-4Z'/%3E%3Cpath d='M188 196c-10-12-24-18-44-18 6 14 18 21 30 22 6 .4 11-1 14-4Z'/%3E%3Ccircle cx='130' cy='58' r='4'/%3E%3C/g%3E%3C/svg%3E");
   background-size: 420px 420px;
 }
 

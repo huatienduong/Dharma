@@ -1,81 +1,110 @@
-import { useId } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Bánh xe Chuyển pháp luân (Dharmachakra):
- * - Vành ngoài + vành trong kép
- * - 8 nan hoa (4 đường kính) nối vành trong vào tâm
- * - Tâm là đĩa vàng với hoa sen 8 cánh
- * Quay chậm liên tục (class dw-spin trong index.css).
+ * Logo bánh xe Chuyển pháp luân (Dharmachakra) — TỰ NẠP hình thật từ internet
+ * (Wikipedia Dharmachakra — không cần khóa, có cache). Fallback là SVG vẽ sẵn
+ * 8 nan hoa nếu không tải được mạng.
  */
-export function DhammaWheel({
-  size = 56,
-  className,
-  title = "Bánh xe Chuyển pháp luân",
-}: {
-  size?: number;
-  className?: string;
-  title?: string;
-}) {
-  // ID gradient duy nhất theo từng instance — tránh trùng khi có nhiều logo
-  const uid = useId();
-  const gid = `dhw-${uid.replace(/[^a-zA-Z0-9]/g, "")}`;
 
-  // 4 đường kính (xoay 45° mỗi bước) = 8 nan hoa
-  const diameters = [0, 45, 90, 135];
+const WHEEL_URL =
+  "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Dharma_Wheel.svg/240px-Dharma_Wheel.svg.png";
 
+let cachedUrl: string | null | undefined = undefined;
+
+function FallbackWheel({ size }: { size: number }) {
+  // 8 nan hoa: mỗi nan hoa là một đường kính, xoay 45° mỗi bước
+  const spokes = Array.from({ length: 8 }, (_, i) => i * 45);
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 64 64"
-      className={cn("shrink-0", className)}
+      className="shrink-0"
       role="img"
-      aria-label={title}
+      aria-label="Bánh xe Chuyển pháp luân"
     >
-      <title>{title}</title>
-      <defs>
-        <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#f0c96f" />
-          <stop offset="55%" stopColor="#d9a441" />
-          <stop offset="100%" stopColor="#a97e2e" />
-        </linearGradient>
-      </defs>
-
-      {/* Bánh xe quay: vành kép + nan hoa nối liền vành → tâm */}
-      <g
-        className="dw-spin"
-        style={{ transformOrigin: "32px 32px" }}
-        stroke={`url(#${gid})`}
-        fill="none"
-        strokeLinecap="round"
-      >
-        <circle cx="32" cy="32" r="27" strokeWidth="3" />
-        <circle cx="32" cy="32" r="22" strokeWidth="1.4" opacity="0.8" />
-        <g strokeWidth="2.4">
-          {diameters.map((deg) => (
-            <g key={deg} transform={`rotate(${deg} 32 32)`}>
-              <line x1="32" y1="6.5" x2="32" y2="57.5" />
-            </g>
-          ))}
-        </g>
-      </g>
-
-      {/* Tâm: đĩa vàng + hoa sen 8 cánh nâu */}
-      <circle cx="32" cy="32" r="7.5" fill={`url(#${gid})`} />
-      <g fill="#5b4423">
-        {Array.from({ length: 8 }, (_, i) => i * 45).map((deg) => (
-          <ellipse
+      <circle cx="32" cy="32" r="27" fill="none" stroke="currentColor" strokeWidth="3.5" />
+      <circle cx="32" cy="32" r="22" fill="none" stroke="currentColor" strokeWidth="1.2" opacity="0.5" />
+      <g stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
+        {spokes.map((deg) => (
+          <line
             key={deg}
-            cx="32"
-            cy="28.8"
-            rx="1.7"
-            ry="3.4"
+            x1="32"
+            y1="12"
+            x2="32"
+            y2="52"
             transform={`rotate(${deg} 32 32)`}
           />
         ))}
       </g>
-      <circle cx="32" cy="32" r="1.4" fill={`url(#${gid})`} />
+      <circle cx="32" cy="32" r="4.5" fill="currentColor" />
     </svg>
+  );
+}
+
+export function DhammaWheel({
+  size = 56,
+  className,
+  spin = true,
+}: {
+  size?: number;
+  className?: string;
+  /** Bánh xe quay chậm — biểu tượng Chuyển pháp luân */
+  spin?: boolean;
+}) {
+  const [src, setSrc] = useState<string | null | undefined>(cachedUrl);
+
+  useEffect(() => {
+    if (cachedUrl !== undefined) {
+      setSrc(cachedUrl);
+      return;
+    }
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) return;
+      cachedUrl = WHEEL_URL;
+      setSrc(WHEEL_URL);
+    };
+    img.onerror = () => {
+      if (cancelled) return;
+      cachedUrl = null;
+      setSrc(null);
+    };
+    img.src = WHEEL_URL;
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center",
+        spin && "dw-spin",
+        className,
+      )}
+      style={{ width: size, height: size }}
+    >
+      {src === undefined ? (
+        <span className={cn("animate-pulse", className)} style={{ width: size, height: size }}>
+          <FallbackWheel size={size} />
+        </span>
+      ) : src ? (
+        <img
+          src={src}
+          alt="Bánh xe Chuyển pháp luân"
+          width={size}
+          height={size}
+          className="h-full w-full object-contain"
+          draggable={false}
+        />
+      ) : (
+        <span className="text-gold">
+          <FallbackWheel size={size} />
+        </span>
+      )}
+    </span>
   );
 }
