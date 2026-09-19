@@ -1,6 +1,6 @@
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { AppShell } from "@/components/AppShell";
-import { AIDocArticle } from "@/components/AIDocReader";
+import { AIDocArticle, DocThumb } from "@/components/AIDocReader";
 import { useSettings } from "@/lib/settings";
 import {
   DICTIONARY,
@@ -9,7 +9,7 @@ import {
   type DictCategory,
   type DictEntry,
 } from "@/data/dictionary";
-import { ChevronDown, ChevronUp, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 
 const CAT_COLORS: Record<DictCategory, string> = {
@@ -90,10 +90,23 @@ export default function Dictionary() {
         ))}
       </div>
 
-      {/* Kết quả — bấm vào mục từ để mở rộng chi tiết do AI biên soạn */}
-      {list.length === 0 ? (
+      {/* Kết quả — AI tự nạp khi từ khóa chưa có trong kho */}
+      {list.length === 0 && q.trim() ? (
+        <section>
+          <div className="mb-3 flex items-center gap-2 rounded-xl border border-border/60 bg-muted/40 px-3.5 py-2.5 text-xs font-medium">
+            <Sparkles className="h-3.5 w-3.5 shrink-0" />
+            Chưa có «{q}» trong từ điển — Trợ lý Phật học tự nạp và tra cứu giúp bạn:
+          </div>
+          <AIDocArticle
+            kind="dictionary"
+            refId={q.trim()}
+            title={q.trim()}
+            extra={`Tra cứu thuật ngữ Phật học "${q}" (Pāli hoặc tiếng Việt) theo truyền thống Theravāda.`}
+          />
+        </section>
+      ) : list.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border/70 bg-card/40 p-10 text-center text-sm text-muted-foreground">
-          Không tìm thấy thuật ngữ «{q}».
+          Nhập từ khóa để tra cứu thuật ngữ Phật học.
         </div>
       ) : (
         <div className="grid gap-3">
@@ -122,30 +135,34 @@ function DictEntryCard({ entry }: { entry: DictEntry }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full p-4 text-left"
+        className="flex w-full gap-3 p-4 text-left"
       >
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-sm font-semibold">{entry.term}</h3>
-          <div className="flex items-center gap-2">
-            <span
-              className={
-                "rounded-full px-2 py-0.5 text-[10px] font-medium " +
-                CAT_COLORS[entry.category]
-              }
-            >
-              {entry.category}
+        {/* Thumbnail tự nạp hình minh họa theo thuật ngữ */}
+        <DocThumb kind="dictionary" refId={entry.pali || entry.term} title={entry.term} size="h-14 w-14" />
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="text-sm font-semibold">{entry.term}</h3>
+            <span className="flex items-center gap-2">
+              <span
+                className={
+                  "rounded-full px-2 py-0.5 text-[10px] font-medium " +
+                  CAT_COLORS[entry.category]
+                }
+              >
+                {entry.category}
+              </span>
+              {open ? (
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              )}
             </span>
-            {open ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
-          </div>
-        </div>
-        <p className="mt-0.5 text-xs italic text-gold">{entry.pali}</p>
-        <p className="mt-2 text-[13px] leading-relaxed text-foreground/85">
-          {entry.definition}
-        </p>
+          </span>
+          <p className="mt-0.5 text-xs italic text-muted-foreground">{entry.pali}</p>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-foreground/85">
+            {entry.definition}
+          </p>
+        </span>
       </button>
 
       {open && (
