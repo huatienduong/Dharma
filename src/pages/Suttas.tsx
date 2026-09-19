@@ -2,6 +2,11 @@ import { AppShell, ShellBackButton } from "@/components/AppShell";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { api } from "@/convex/_generated/api";
 import { getSutta, SUTTAS } from "@/data/suttas";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  loadLocalReadingPercent,
+  saveLocalReading,
+} from "@/lib/localProgress";
 import { useMutation, useQuery } from "convex/react";
 import {
   BookOpen,
@@ -171,21 +176,25 @@ export function SuttaReader() {
     docId ? { docId } : "skip",
   );
   const saveReading = useMutation(api.library.saveReading);
+  const { isAuthenticated } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const restoredRef = useRef(false);
 
-  // Khôi phục vị trí cuộn
+  // Khôi phục vị trí cuộn — GỘP server + local (mục lớn hơn thắng)
   useEffect(() => {
-    if (progress && !restoredRef.current) {
+    if (restoredRef.current) return;
+    const serverPct = progress?.percent ?? 0;
+    const localPct = sutta ? loadLocalReadingPercent(`sutta:${sutta.id}`) : 0;
+    const pct = Math.max(serverPct, localPct);
+    if (pct > 2 && scrollRef.current) {
       restoredRef.current = true;
-      if (progress.percent > 2 && scrollRef.current) {
-        const el = scrollRef.current;
-        const target =
-          (el.scrollHeight - el.clientHeight) * (progress.percent / 100);
-        requestAnimationFrame(() => window.scrollTo(0, target));
-      }
+      const el = scrollRef.current;
+      const target = (el.scrollHeight - el.clientHeight) * (pct / 100);
+      requestAnimationFrame(() => window.scrollTo(0, target));
+    } else if (progress !== undefined) {
+      restoredRef.current = true; // đã có dữ liệu nhưng chưa đọc sâu
     }
-  }, [progress]);
+  }, [progress, sutta]);
 
   // Lưu tiến trình khi cuộn (debounce nhẹ) — SERVER + LOCAL cho mọi người
   useEffect(() => {

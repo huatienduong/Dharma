@@ -6,6 +6,8 @@ import {
   MEDITATION_QUOTE,
 } from "@/data/meditation";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
+import { saveLocalMeditation } from "@/lib/localProgress";
 import { useMutation, useQuery } from "convex/react";
 import {
   ChevronLeft,
@@ -193,6 +195,7 @@ export function MeditationDetail() {
   const tech = id ? getMeditation(id) : undefined;
   const navigate = useNavigate();
   const saveSession = useMutation(api.library.saveMeditation);
+  const { isAuthenticated } = useAuth();
 
   const [plannedMin, setPlannedMin] = useState<number | null>(null);
   const [running, setRunning] = useState(false);
@@ -222,13 +225,17 @@ export function MeditationDetail() {
       chime();
       toast.success("Hoàn thành phiên thiền — hiện đầy đủ bình an.");
       if (plannedMin) {
-        void saveSession({
-          technique: tech?.id ?? "custom",
-          durationSec: elapsed,
-        }).catch(() => {});
+        // Local luôn lưu (khách vẫn có thống kê) + server khi đăng nhập
+        saveLocalMeditation(tech?.id ?? "custom", elapsed);
+        if (isAuthenticated) {
+          void saveSession({
+            technique: tech?.id ?? "custom",
+            durationSec: elapsed,
+          }).catch(() => {});
+        }
       }
     }
-  }, [done, running, elapsed, plannedMin, saveSession, tech]);
+  }, [done, running, elapsed, plannedMin, saveSession, tech, isAuthenticated]);
 
   if (!tech) {
     return (
