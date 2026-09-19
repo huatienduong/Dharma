@@ -8,6 +8,8 @@ import { action, internalMutation } from "./_generated/server";
 const CHANNEL_HANDLES = [
   "suhanhtue", // Sư Hạnh Tuệ Theravāda
   "theravadavn", // PHẬT GIÁO THERAVĀDA VN
+  "phapamnguyenthuy2024", // Pháp Âm Nguyên Thủy (Sư Toại Khanh, Sư Giác Nguyên…)
+  "thuvienhoasen", // Thư Viện Hoa Sen (TT. Thích Nhật Từ)
 ];
 
 type ChannelList = {

@@ -109,6 +109,23 @@ export default function Dashboard() {
     );
   }, [talks, searchQ]);
 
+  // Cuộn tự động: khi cổng (sentinel) chạm mép viewport thì nạp trang kế
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || searchQ) return;
+    if (!canLoadMore || nextPage === undefined) return; // đang nạp hoặc hết dữ liệu
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setOffset((o) => o + PAGE_SIZE);
+        }
+      },
+      { rootMargin: "600px 0px" }, // nạp trước khi người dùng cuộn tới
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [canLoadMore, nextPage, searchQ]);
+
   // Hero: bài mới nhất (chỉ khi không tìm kiếm)
   const hero = !searchQ ? filtered[0] : undefined;
   const rest = searchQ ? filtered : filtered.slice(1);
