@@ -31,10 +31,12 @@ import { toast } from "sonner";
 export default function Settings() {
   const {
     settings,
+    t,
     setTheme,
     setFontScale,
     setLanguage,
     setNotifications,
+    setScreenshotBlock,
   } = useSettings();
   const { user, isAuthenticated } = useAuth();
   const submitFeedback = useMutation(api.library.submitFeedback);
@@ -176,7 +178,7 @@ export default function Settings() {
                   )}
                   style={{ fontSize: `${0.8 + f.value * 0.12}rem` }}
                 >
-                  {f.label}
+                  {t(f.labelKey)}
                 </button>
               ))}
             </div>
