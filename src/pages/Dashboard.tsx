@@ -44,6 +44,7 @@ export default function Dashboard() {
 
   const [search, setSearch] = useState("");
 
+  // Tiến trình người dùng đã đăng nhập (server)
   const progress = useQuery(api.dhamma.myProgress, {});
 
   // Tải TOÀN BỘ kho pháp thoại một lần (không phân trang — khắc phục
@@ -86,7 +87,6 @@ export default function Dashboard() {
     <AppShell
       title={t("talksTitle")}
       subtitle={t("talksSubtitle")}
-      actions={<SyncButton />}
     >
       {/* ---------- Thanh tìm kiếm: mic TRÁI · kính lúp PHẢI (trong ô) ---------- */}
       <div className="mb-6">
@@ -169,11 +169,6 @@ export default function Dashboard() {
       {/* ---------- Liên quan: cùng giảng sư với đang phát ---------- */}
       {related.length > 0 && !searchQ && (
         <section className="mb-6" aria-label="Pháp thoại liên quan">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            <Sparkles className="h-4 w-4 shrink-0 text-gold" />
-            <span className="shrink-0">Liên quan ·</span>
-            <span className="truncate normal-case">{current?.teacher}</span>
-          </h2>
           <div className="grid grid-cols-1 gap-x-5 gap-y-1 md:grid-cols-2">
             {related.map((t) => (
               <TalkRow
@@ -343,28 +338,15 @@ export function TalkRow({
         )}
       </span>
 
-      {/* Thông tin bên phải: tiêu đề + thời lượng + lượt xem */}
+      {/* ---------- Thông tin video: CHỈ tiêu đề + thời lượng ---------- */}
       <span className="min-w-0 flex-1 py-0.5">
         <span className="line-clamp-2 block text-sm font-medium leading-snug group-hover:text-primary">
           {title}
         </span>
-        <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            <span className="tabular-nums">{formatTime(durationSec)}</span>
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Eye className="h-3 w-3" />
-            <span className="tabular-nums">
-              {formatCount(viewCount ?? 0)} lượt xem
-            </span>
-          </span>
+        <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span className="tabular-nums">{formatTime(durationSec)}</span>
         </span>
-        {teacher && (
-          <span className="mt-0.5 block truncate text-[11px] text-muted-foreground/70">
-            {teacher}
-          </span>
-        )}
       </span>
     </button>
   );

@@ -36,9 +36,11 @@ const NAV: { to: string; tKey: TranslateKey; icon: typeof LayoutDashboard }[] = 
 const NAV_LIB: { to: string; tKey: TranslateKey; icon: typeof Scale }[] = [
   { to: "/vinaya", tKey: "navVinaya", icon: Scale },
   { to: "/dictionary", tKey: "navDictionary", icon: BookMarked },
-  { to: "/calendar", tKey: "navCalendar", icon: Calendar },
   { to: "/watched", tKey: "watched", icon: History },
 ];
+
+/** Mục cố định ở đáy sidebar (thay chỗ Hồ sơ cũ). */
+const BOTTOM_ITEM = { to: "/calendar", tKey: "navCalendar" as TranslateKey, icon: Calendar };
 
 /** Mục phụ ở đáy sidebar: Hồ sơ + Cài đặt. */
 const SETTINGS_ITEM = { to: "/settings", tKey: "navSettings" as TranslateKey, icon: Settings };
@@ -67,6 +69,7 @@ export function AppShell({
 }: {
   title: string;
   subtitle?: string;
+  /** Đã ngừng dùng: khu vực này giờ hiển thị Cài đặt + Hồ sơ (tự động đồng bộ ngầm) */
   actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -108,19 +111,52 @@ export function AppShell({
 
   const sidebarContent = (
     <>
-      <button
-        type="button"
-        onClick={() => go("/dashboard")}
-        className="flex items-center gap-3 px-5 py-5 text-left"
-      >
-        <DhammaWheel size={40} />
-        <div className="min-w-0">
-          <p className="text-sm font-semibold leading-tight">{t("appName")}</p>
-          <p className="text-[11px] text-muted-foreground">
-            {t("appTagline")}
-          </p>
-        </div>
-      </button>
+      <div className="flex items-center gap-2 px-4 py-4">
+        <button
+          type="button"
+          onClick={() => go("/dashboard")}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <DhammaWheel size={40} />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold leading-tight">{t("appName")}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {t("appTagline")}
+            </p>
+          </div>
+        </button>
+        {/* Cài đặt + Hồ sơ — góc trên bên phải của sidebar */}
+        <button
+          type="button"
+          onClick={() => go(SETTINGS_ITEM.to)}
+          aria-current={isActive(SETTINGS_ITEM.to) ? "page" : undefined}
+          title={t("navSettings")}
+          aria-label={t("navSettings")}
+          className={cn(
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition",
+            isActive(SETTINGS_ITEM.to)
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+          )}
+        >
+          <Settings className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => go(PROFILE_ITEM.to)}
+          aria-current={isActive(PROFILE_ITEM.to) ? "page" : undefined}
+          title={t("navProfile")}
+          aria-label={t("navProfile")}
+          className={cn(
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition",
+            isActive(PROFILE_ITEM.to)
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+          )}
+        >
+          <UserRound className="h-4 w-4" />
+        </button>
+      </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-2">
         {/* Nhóm chính: Pháp thoại · Học Kinh · Phòng · Trợ lý Pháp AI · Thiền */}
@@ -174,50 +210,31 @@ export function AppShell({
         </div>
       </nav>
 
-      {/* Đáy sidebar: Cài đặt (trái) · Hồ sơ + Đăng xuất (phải, icon) */}
+      {/* Đáy sidebar: Lịch Phật giáo + Đăng xuất */}
       <div className="flex items-center justify-between border-t border-border/60 p-3">
         <button
           type="button"
-          onClick={() => go(SETTINGS_ITEM.to)}
-          aria-current={isActive(SETTINGS_ITEM.to) ? "page" : undefined}
-          title={t("navSettings")}
-          aria-label={t("navSettings")}
+          onClick={() => go(BOTTOM_ITEM.to)}
+          aria-current={isActive(BOTTOM_ITEM.to) ? "page" : undefined}
           className={cn(
             "flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm font-medium transition",
-            isActive(SETTINGS_ITEM.to)
+            isActive(BOTTOM_ITEM.to)
               ? "bg-primary text-primary-foreground shadow-sm"
               : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
           )}
         >
-          <Settings className="h-4 w-4" />
-          {t("navSettings")}
+          <Calendar className="h-4 w-4" />
+          {t(BOTTOM_ITEM.tKey)}
         </button>
-        <div className="flex items-center gap-0.5">
-          <button
-            type="button"
-            onClick={() => go(PROFILE_ITEM.to)}
-            aria-current={isActive(PROFILE_ITEM.to) ? "page" : undefined}
-            title={t("navProfile")}
-            aria-label={t("navProfile")}
-            className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-lg transition",
-              isActive(PROFILE_ITEM.to)
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-            )}
-          >
-            <UserRound className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            title={t("logout")}
-            aria-label={t("logout")}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => void signOut()}
+          title={t("logout")}
+          aria-label={t("logout")}
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+        >
+          <LogOut className="h-4 w-4" />
+        </button>
       </div>
     </>
   );
@@ -283,7 +300,35 @@ export function AppShell({
               </p>
             </div>
           </button>
-          {actions && <div className="flex shrink-0 items-center">{actions}</div>}
+          {/* Cài đặt + Hồ sơ — thay khu vực nút actions trên mobile */}
+          <div className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => go(SETTINGS_ITEM.to)}
+              aria-label={t("navSettings")}
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-lg transition",
+                isActive(SETTINGS_ITEM.to)
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+              )}
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => go(PROFILE_ITEM.to)}
+              aria-label={t("navProfile")}
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-lg transition",
+                isActive(PROFILE_ITEM.to)
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+              )}
+            >
+              <UserRound className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -301,6 +346,7 @@ export function AppShell({
                 <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
               )}
             </div>
+            {/* Khu actions desktop giữ chỗ trống (Cài đặt/Hồ sơ đã ở sidebar) */}
             {actions && <div className="flex items-center gap-2">{actions}</div>}
           </div>
           {children}

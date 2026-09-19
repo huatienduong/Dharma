@@ -158,6 +158,18 @@ const schema = defineSchema(
     text: v.string(),
     createdAt: v.number(),
   }).index("by_room", ["roomId"]),
+
+  // Nội dung Phật học do AI biên soạn (Kinh/Luật/Từ điển/Chú giải/Luận giải)
+  // — cache để người dùng sau đọc ngay không phải chờ AI.
+  aiDocs: defineTable({
+    kind: v.string(), // "sutta" | "vinaya" | "dictionary" | "commentary" | "subcommentary"
+    refId: v.string(), // khóa tra cứu: mã kinh / thuật ngữ / mã văn bản
+    title: v.string(),
+    body: v.string(), // markdown đơn giản: # / ## / đoạn văn —  · ** ** · — Phần X
+    source: v.string(), // nguồn: "Majjhima Nikāya 118 · Sutta Piṭaka, Theravāda"
+    createdAt: v.number(),
+  })
+    .index("by_kind_ref", ["kind", "refId"]),
   },
   {
     schemaValidation: false,
