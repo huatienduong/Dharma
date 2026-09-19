@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
+import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 import { cn } from "@/lib/utils";
 import { useAction, useMutation, useQuery } from "convex/react";
 import {
@@ -26,27 +27,6 @@ type Msg = { role: "user" | "assistant"; content: string };
 const GREETING =
   "Namo Tassa Bhagavato Arahato Sammā Sambuddhassa. Xin chào, tôi là Trợ lý Pháp. Hãy hỏi về giáo lý, kinh điển Pāli, thiền định hay thực hành theo truyền thống Theravāda — tôi sẽ trả lời trong phạm vi Phật học.";
 
-/** Đọc văn bản bằng giọng tiếng Việt của hệ điều hành (nếu có). */
-function speakVietnamese(text: string, onEnd?: () => void) {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-    onEnd?.();
-    return;
-  }
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "vi-VN";
-  u.rate = 1;
-  const voices = window.speechSynthesis.getVoices();
-  const vi =
-    voices.find((v) => v.lang?.toLowerCase().startsWith("vi")) ?? undefined;
-  if (vi) u.voice = vi;
-  if (onEnd) {
-    u.onend = () => onEnd();
-    u.onerror = () => onEnd();
-  }
-  window.speechSynthesis.speak(u);
-}
-
 export default function Assistant() {
   const { isAuthenticated, isLoading } = useAuth();
   const ask = useAction(api.aiChat.ask);
@@ -58,7 +38,6 @@ export default function Assistant() {
   const [pending, setPending] = useState<Msg[]>([]); // tin nhắn chưa lưu
   const [busy, setBusy] = useState(false);
   const [speakOn, setSpeakOn] = useState(true);
-  const [speaking, setSpeaking] = useState(false);
   // Ảnh đính kèm (nén về max 1024px, JPEG ~0.82)
   const [image, setImage] = useState<{ base64: string; mime: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -67,14 +46,8 @@ export default function Assistant() {
   const [callMode, setCallMode] = useState(false);
   const [callStatus, setCallStatus] = useState<"idle" | "listening" | "thinking" | "speaking">("idle");
 
-  // Khi AI trả lời xong trong chế độ call → tự đọc, xong tự nghe tiếp
-  useEffect(() => {
-    if (callMode && !busy && !speaking && callStatus === "thinking") {
-      // Reply đã được nói bởi luồng send(); chuyển sang nghe sau khi đọc xong
-    }
-  }, [callMode, busy, speaking, callStatus]);
-
   const { supported: micSupported, listening, start, stop } = useVoiceSearch();
+  const { speak: speakVI, stop: stopSpeaking, speaking, engine: ttsEngine } = useVietnameseTTS();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Gộp: lịch sử đã lưu + tin nhắn mới trong phiên
@@ -130,10 +103,8 @@ export default function Assistant() {
           setPending([]);
         }
         if (speakOn || callMode) {
-          setSpeaking(true);
           setCallStatus("speaking");
-          speakVietnamese(reply, () => {
-            setSpeaking(false);
+          speakVI(reply, () => {
             if (callMode) setCallStatus("listening");
           });
         }
@@ -145,7 +116,7 @@ export default function Assistant() {
         setBusy(false);
       }
     },
-    [ask, append, busy, image, isAuthenticated, pending, saved, speakOn, callMode],
+    [ask, append, busy, image, isAuthenticated, pending, saved, speakOn, callMode, speakVI],
   );
 
   // Hỏi bằng giọng nói → tự gửi (trong call: nghe → gửi → đọc → nghe tiếp)
@@ -242,8 +213,7 @@ export default function Assistant() {
                 if (callMode) {
                   // Rời call: dừng mọi âm thanh + nghe
                   stop();
-                  if (window.speechSynthesis) window.speechSynthesis.cancel();
-                  setSpeaking(false);
+                  stopSpeaking();
                 }
               }}
               title={callMode ? "Kết thúc call" : "Đàm thoại bằng giọng nói"}
@@ -264,8 +234,7 @@ export default function Assistant() {
               size="sm"
               onClick={() => {
                 setSpeakOn((s) => !s);
-                if (speakOn && window.speechSynthesis)
-                  window.speechSynthesis.cancel();
+                if (speakOn) stopSpeaking(); // dừng đọc triệt để cả server + browser
               }}
               title={speakOn ? "Tắt đọc đáp án" : "Bật đọc đáp án"}
               className="h-8 gap-1.5 text-xs"
@@ -307,13 +276,10 @@ export default function Assistant() {
           {speaking && (
             <div className="flex items-center gap-2 pl-1 text-xs text-muted-foreground">
               <Volume2 className="h-3.5 w-3.5 animate-pulse text-gold" />
-              Đang đọc đáp án…
+              Đang đọc đáp án {ttsEngine === "server" ? "(giọng Việt chuẩn)" : "(giọng máy)"} ·
               <button
                 type="button"
-                onClick={() => {
-                  window.speechSynthesis.cancel();
-                  setSpeaking(false);
-                }}
+                onClick={stopSpeaking}
                 className="text-destructive underline-offset-2 hover:underline"
               >
                 dừng
