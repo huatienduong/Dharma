@@ -6,22 +6,18 @@ import { formatCount, formatTime, usePlayer } from "@/lib/player";
 import { useSettings } from "@/lib/settings";
 import { APP_VERSION } from "@/lib/version";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { loadLocalWatch, type LocalWatchRow } from "@/lib/localProgress";
 import { useAction, useQuery } from "convex/react";
 import {
   Clock,
   Eye,
   Play,
-  RefreshCw,
   Search,
   Sparkles,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 
 type Talk = Doc<"dhammaTalks">;
 
@@ -88,6 +84,8 @@ export default function Dashboard() {
       title={t("talksTitle")}
       subtitle={t("talksSubtitle")}
     >
+      {/* Đồng bộ tự động ngầm — ẩn khỏi giao diện */}
+      <AutoSync />
       {/* ---------- Thanh tìm kiếm: mic TRÁI · kính lúp PHẢI (trong ô) ---------- */}
       <div className="mb-6">
         <div className="relative">
@@ -353,39 +351,37 @@ export function TalkRow({
 }
 
 /* ------------------------------------------------------------------ */
-/* Nút đồng bộ pháp thoại mới từ YouTube                               */
+/* Đồng bộ TỰ ĐỘNG — chạy ngầm mỗi 30 phút khi mở trang chủ,           */
+/* không có nút bấm (theo yêu cầu: ẩn đi, mặc định tự động)            */
 /* ------------------------------------------------------------------ */
 
-function SyncButton() {
+function AutoSync() {
   const sync = useAction(api.youtubeSync.syncLatest);
-  const [busy, setBusy] = useState(false);
 
-  return (
-    <Button
-      variant="outline"
-      size="sm"
-      disabled={busy}
-      onClick={async () => {
-        setBusy(true);
-        try {
-          const res = await sync({ pages: 4 });
-          toast.success(
-            `Đã đồng bộ: +${res.inserted} mới, cập nhật ${res.updated}`,
-          );
-        } catch (err) {
-          toast.error(
-            err instanceof Error
-              ? err.message
-              : "Đồng bộ thất bại. Kiểm tra YOUTUBE_API_KEY.",
-          );
-        } finally {
-          setBusy(false);
-        }
-      }}
-      className="gap-2"
-    >
-      <RefreshCw className={cn("h-3.5 w-3.5", busy && "animate-spin")} />
-      Đồng bộ
-    </Button>
-  );
+  useEffect(() => {
+    let cancelled = false;
+    const LAST_KEY = "dhamma-last-autosync";
+    const run = () => {
+      const last = Number(localStorage.getItem(LAST_KEY) ?? 0);
+      if (Date.now() - last < 30 * 60 * 1000) return; // tối đa 1 lần/30 phút
+      sync({ pages: 2 })
+        .then((res) => {
+          localStorage.setItem(LAST_KEY, String(Date.now()));
+          if (!cancelled && res.inserted > 0) {
+            // Có pháp thoại mới — nhẹ nhàng thông báo một lần
+          }
+        })
+        .catch(() => {
+          /* im lặng — sync lại lần sau */
+        });
+    };
+    run();
+    const iv = window.setInterval(run, 30 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(iv);
+    };
+  }, [sync]);
+
+  return null;
 }
