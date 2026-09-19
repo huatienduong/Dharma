@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "convex/react";
 import {
   Copy,
-  Eye,
   LogOut,
   MessageSquare,
   Mic,
@@ -162,17 +161,18 @@ export default function WatchTogether() {
   if (!isAuthenticated) {
     return (
       <AppShell title="Phòng">
-        <div className="mx-auto max-w-md rounded-2xl border border-border/60 bg-card/60 p-8 text-center">
-          <MonitorPlay className="mx-auto h-10 w-10 text-gold" />
-          <h2 className="mt-3 text-lg font-semibold">
+        <div className="mx-auto max-w-md rounded-2xl border border-gold/30 bg-gradient-to-b from-gold/10 to-transparent p-8 text-center">
+          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gold/15">
+            <MonitorPlay className="h-7 w-7 text-gold" />
+          </span>
+          <h2 className="mt-4 text-lg font-semibold">
             Xem video cùng nhau, trực tiếp
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             Tạo phòng riêng, mời bạn bè cùng xem pháp thoại đúng một nhịp và
-            nói chuyện qua mic/cam. Tính năng này cần đăng nhập để nhận diện
-            thành viên trong phòng.
+            nói chuyện qua mic/cam. Đăng nhập để nhận diện thành viên trong phòng.
           </p>
-          <Button className="mt-5" onClick={() => (window.location.href = "/profile")}>
+          <Button className="mt-5" onClick={() => (window.location.href = "/auth?returnTo=%2Fwatch")}>
             Đăng nhập để bắt đầu
           </Button>
         </div>
@@ -198,8 +198,10 @@ export default function WatchTogether() {
       subtitle="Phòng riêng — xem đồng bộ một nhịp, trò chuyện qua mic & cam"
     >
       <div className="mx-auto grid max-w-3xl gap-4 sm:grid-cols-2">
-        <section className="rounded-2xl border border-border/60 bg-card/60 p-6">
-          <MonitorPlay className="h-8 w-8 text-gold" />
+        <section className="rounded-2xl border border-gold/25 bg-gradient-to-b from-gold/10 to-card/50 p-6">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold/15">
+            <MonitorPlay className="h-5.5 w-5.5 text-gold" />
+          </span>
           <h2 className="mt-3 font-semibold">Tạo phòng mới</h2>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
             Bạn là chủ phòng: chọn video, điều khiển phát/tạm dừng/tua cho cả
@@ -226,7 +228,9 @@ export default function WatchTogether() {
         </section>
 
         <section className="rounded-2xl border border-border/60 bg-card/60 p-6">
-          <Users className="h-8 w-8 text-gold" />
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
+            <Users className="h-5.5 w-5.5 text-primary" />
+          </span>
           <h2 className="mt-3 font-semibold">Tham gia bằng mã</h2>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
             Nhập mã phòng 6 ký tự bạn bè gửi cho bạn.
@@ -571,7 +575,7 @@ function RoomView({
   /* ---------- Render ---------- */
   return (
     <AppShell
-      title="Phòng xem chung"
+      title="Phòng"
       subtitle={`Chủ phòng: ${room.hostName}`}
       actions={
         <Button variant="outline" size="sm" onClick={onLeave} className="gap-1.5">
@@ -586,8 +590,10 @@ function RoomView({
             <div className="aspect-video w-full">
               <div ref={ytHostRef} className="h-full w-full" />
               {!room.youtubeId && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-center text-sm text-white/70">
-                  <MonitorPlay className="h-8 w-8" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-muted/80 to-black/90 text-center text-sm text-white/70">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gold/20">
+                    <MonitorPlay className="h-6 w-6 text-gold" />
+                  </span>
                   {room.isHost
                     ? "Chọn một pháp thoại để cả phòng cùng xem"
                     : "Chủ phòng chưa chọn video"}
@@ -909,11 +915,8 @@ function VideoPicker({
                 <span className="line-clamp-2 block text-sm font-medium">
                   {t.title}
                 </span>
-                <span className="mt-0.5 flex items-center gap-3 text-[11px] text-muted-foreground">
-                  <span className="truncate">{t.teacher}</span>
-                  <span className="inline-flex items-center gap-1">
-                    <Eye className="h-3 w-3" /> {t.viewCount ?? 0}
-                  </span>
+                <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                  {t.teacher}
                 </span>
               </span>
             </button>
