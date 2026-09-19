@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { loadLocalWatch, type LocalWatchRow } from "@/lib/localProgress";
 import { useAction, useQuery } from "convex/react";
 import {
   Clock,
@@ -20,7 +21,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
@@ -46,6 +47,11 @@ export default function Dashboard() {
   const [search, setSearch] = useState("");
 
   const progress = useQuery(api.dhamma.myProgress, {});
+  // Tiến trình cục bộ — khách chưa đăng nhập vẫn thấy "Tiếp tục xem"
+  const [localProgress, setLocalProgress] = useState<LocalWatchRow[]>([]);
+  useEffect(() => {
+    setLocalProgress(loadLocalWatch());
+  }, [current?.youtubeId]);
 
   // Tải TOÀN BỘ kho pháp thoại một lần (không phân trang — khắc phục
   // triệt để lỗi nút Tải thêm không nạp video). Nút Đồng bộ trên header
@@ -54,11 +60,22 @@ export default function Dashboard() {
 
   const loading = talks === undefined;
 
-  // Đã xem: từ tiến trình
-  const watched = useMemo(
-    () => (progress ?? []).slice(0, 10),
-    [progress],
-  );
+  // Đã xem: GỘP server + local (mục mới hơn thắng), sắp theo updatedAt
+  const watched = useMemo(() => {
+    const byId = new Map<string, ProgressRow | LocalWatchRow>();
+    const times = new Map<string, number>();
+    for (const row of localProgress) {
+      byId.set(row.youtubeId, row);
+      times.set(row.youtubeId, row.updatedAt);
+    }
+    for (const row of progress ?? []) {
+      const prev = times.get(row.youtubeId) ?? 0;
+      if (row.updatedAt >= prev) byId.set(row.youtubeId, row);
+    }
+    return [...byId.values()]
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, 10);
+  }, [progress, localProgress]);
 
   // Liên quan: cùng giảng sư với video đang phát (loại video đang phát)
   const related = useMemo(() => {
@@ -235,7 +252,7 @@ export default function Dashboard() {
               <ul className="space-y-2">
                 {watched.map((p) => (
                   <TalkRow
-                    key={String(p.talkId)}
+                    key={p.youtubeId}
                     title={p.title}
                     teacher={p.teacher}
                     youtubeId={p.youtubeId}
@@ -246,7 +263,7 @@ export default function Dashboard() {
                     active={current?.youtubeId === p.youtubeId}
                     onClick={() =>
                       play({
-                        _id: p.talkId,
+                        _id: ("talkId" in p ? p.talkId : p.youtubeId) as Id<"dhammaTalks">,
                         youtubeId: p.youtubeId,
                         title: p.title,
                         teacher: p.teacher,

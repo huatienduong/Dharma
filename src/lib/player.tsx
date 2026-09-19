@@ -1,6 +1,7 @@
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useAuth } from "@/hooks/use-auth";
+import { loadLocalWatch, saveLocalWatch } from "@/lib/localProgress";
 import { ChevronDown, RotateCcw, X } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import {
@@ -220,17 +221,26 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             } else if (e.data === S.PAUSED) {
               setIsPlaying(false);
               setIsBuffering(false);
+              // LƯU NGAY khi tạm dừng — không chờ vòng 10s/đóng tab
+              const t = talkRef.current;
+              if (t && playerRef.current) {
+                try {
+                  persistProgress(
+                    t,
+                    playerRef.current.getCurrentTime(),
+                    playerRef.current.getDuration(),
+                  );
+                } catch {
+                  /* noop */
+                }
+              }
             } else if (e.data === S.BUFFERING) {
               setIsBuffering(true);
             } else if (e.data === S.ENDED) {
               const t = talkRef.current;
               const dur = playerRef.current?.getDuration() ?? 0;
               if (t && dur > 0) {
-                void saveProgress({
-                  youtubeId: t.youtubeId,
-                  positionSec: dur,
-                  durationSec: dur,
-                });
+                persistProgress(t, dur, dur);
               }
               talkRef.current = null;
               setCurrent(null);
@@ -323,7 +333,35 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(iv);
   }, [current]);
 
-  /* ----- Vòng lặp 10s: lưu tiến trình lên Convex ----- */
+  /* ----- Lưu tiến trình (server khi đăng nhập + local cho MỌI người) ----- */
+  const persistProgress = useCallback(
+    (t: PlayerTalk, positionSec: number, durationSec: number) => {
+      if (positionSec < 3) return; // quá đầu video thì chưa cần lưu
+      // 1. Luôn lưu cục bộ — khách xem vẫn "dừng ở đâu quay lại đúng đoạn đó"
+      saveLocalWatch({
+        youtubeId: t.youtubeId,
+        title: t.title,
+        teacher: t.teacher,
+        channelName: t.channelName,
+        publishedAt: t.publishedAt,
+        positionSec,
+        durationSec,
+      });
+      // 2. Server (chỉ khi đăng nhập)
+      if (isAuthenticated) {
+        void saveProgress({
+          youtubeId: t.youtubeId,
+          positionSec,
+          durationSec,
+        }).catch(() => {
+          /* giữ bản local làm dự phòng */
+        });
+      }
+    },
+    [isAuthenticated, saveProgress],
+  );
+
+  /* ----- Vòng lặp 10s: lưu tiến trình khi đang phát ----- */
   useEffect(() => {
     if (!current) return;
     const iv = window.setInterval(() => {
@@ -331,17 +369,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const t = talkRef.current;
       if (!p || !t || !isPlaying) return;
       try {
-        void saveProgress({
-          youtubeId: t.youtubeId,
-          positionSec: p.getCurrentTime(),
-          durationSec: p.getDuration(),
-        });
+        persistProgress(t, p.getCurrentTime(), p.getDuration());
       } catch {
         /* bỏ qua lỗi mạng tạm thời */
       }
     }, SAVE_INTERVAL_MS);
     return () => window.clearInterval(iv);
-  }, [current, isPlaying, saveProgress]);
+  }, [current, isPlaying, persistProgress]);
 
   /* ----- Lưu lần cuối khi ẩn trang / unmount ----- */
   useEffect(() => {
@@ -350,11 +384,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const t = talkRef.current;
       if (!p || !t) return;
       try {
-        void saveProgress({
-          youtubeId: t.youtubeId,
-          positionSec: p.getCurrentTime(),
-          durationSec: p.getDuration(),
-        });
+        persistProgress(t, p.getCurrentTime(), p.getDuration());
       } catch {
         /* noop */
       }
@@ -364,14 +394,27 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("pagehide", handler);
       handler();
     };
-  }, [saveProgress]);
+  }, [persistProgress]);
 
   /* ----- Nạp tiến trình đã lưu từ Convex ----- */
+  /* ----- Nạp "tiếp tục xem" GỘP local + server (mục mới hơn thắng) ----- */
   useEffect(() => {
-    if (!savedProgress) return;
     const map = new Map<string, number>();
-    for (const row of savedProgress) {
+    const times = new Map<string, number>();
+    // Local trước (nền tảng cho khách + dự phòng offline)
+    for (const row of loadLocalWatch()) {
       map.set(row.youtubeId, row.positionSec);
+      times.set(row.youtubeId, row.updatedAt);
+    }
+    // Server đè khi bản ghi mới hơn (đăng nhập / đa thiết bị)
+    if (savedProgress) {
+      for (const row of savedProgress) {
+        const prev = times.get(row.youtubeId) ?? 0;
+        if (row.updatedAt >= prev) {
+          map.set(row.youtubeId, row.positionSec);
+          times.set(row.youtubeId, row.updatedAt);
+        }
+      }
     }
     savedForTalkRef.current = map;
   }, [savedProgress]);
@@ -397,11 +440,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const t = talkRef.current;
     if (p && t) {
       try {
-        void saveProgress({
-          youtubeId: t.youtubeId,
-          positionSec: p.getCurrentTime(),
-          durationSec: p.getDuration(),
-        });
+        persistProgress(t, p.getCurrentTime(), p.getDuration());
       } catch {
         /* noop */
       }
@@ -413,7 +452,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setDuration(0);
     setExpanded(false);
     setShowFallback(false);
-  }, [saveProgress]);
+  }, [persistProgress]);
 
   const replay = useCallback(() => {
     const t = talkRef.current ?? current;

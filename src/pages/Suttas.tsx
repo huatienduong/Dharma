@@ -187,7 +187,7 @@ export function SuttaReader() {
     }
   }, [progress]);
 
-  // Lưu tiến trình khi cuộn (debounce nhẹ)
+  // Lưu tiến trình khi cuộn (debounce nhẹ) — SERVER + LOCAL cho mọi người
   useEffect(() => {
     if (!sutta) return;
     let t: ReturnType<typeof setTimeout> | undefined;
@@ -196,9 +196,14 @@ export function SuttaReader() {
       t = setTimeout(() => {
         const max = document.documentElement.scrollHeight - window.innerHeight;
         const pct = max > 0 ? Math.round((window.scrollY / max) * 100) : 100;
-        void saveReading({ docId: `sutta:${sutta.id}`, percent: pct }).catch(
-          () => {},
-        );
+        // Local luôn lưu (khách đọc vẫn quay lại đúng chỗ)
+        saveLocalReading(`sutta:${sutta.id}`, pct);
+        // Server lưu khi đăng nhập
+        if (isAuthenticated) {
+          void saveReading({ docId: `sutta:${sutta.id}`, percent: pct }).catch(
+            () => {},
+          );
+        }
       }, 500);
     };
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -206,7 +211,7 @@ export function SuttaReader() {
       window.removeEventListener("scroll", onScroll);
       if (t) clearTimeout(t);
     };
-  }, [sutta, saveReading]);
+  }, [sutta, saveReading, isAuthenticated]);
 
   if (!sutta) {
     return (
