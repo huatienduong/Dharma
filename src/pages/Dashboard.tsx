@@ -245,18 +245,16 @@ export default function Dashboard() {
 
       {/* ---------- Danh sách chính ---------- */}
       <section aria-label="Pháp thoại đề xuất">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            {searchQ && (
-              <>
-                <Search className="h-4 w-4 text-gold" /> Kết quả tìm kiếm
-              </>
-            )}
-          </h2>
-          <span className="text-xs text-muted-foreground">
-            {loading ? "…" : `${filtered.length} bài`}
-          </span>
-        </div>
+        {searchQ && (
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <Search className="h-4 w-4 text-gold" /> Kết quả tìm kiếm
+            </h2>
+            <span className="text-xs text-muted-foreground">
+              {loading ? "…" : `${filtered.length} bài`}
+            </span>
+          </div>
+        )}
 
         {loading ? (
           <div className="space-y-1">

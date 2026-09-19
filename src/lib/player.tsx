@@ -606,7 +606,7 @@ export function MiniPlayerCard({
   youtubeId?: string;
 }) {
   return (
-    <div className="fixed bottom-4 right-4 z-[95] w-[min(20rem,calc(100vw-2rem))] animate-in slide-in-from-bottom-2 fade-in">
+    <div className="fixed bottom-[4.25rem] right-4 z-[95] w-[min(20rem,calc(100vw-2rem))] animate-in slide-in-from-bottom-2 fade-in lg:bottom-4">
       <div className="overflow-hidden rounded-xl border border-border bg-popover/95 shadow-xl backdrop-blur">
         {/* Một hàng duy nhất: nút phát · tiêu đề · thời gian · đóng */}
         <div className="flex items-center gap-2.5 px-3 py-2">
