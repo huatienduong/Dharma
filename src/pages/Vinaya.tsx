@@ -20,7 +20,7 @@ export default function Vinaya() {
             className="group flex h-full flex-col rounded-xl border border-border/60 bg-card/70 p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
           >
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary">
-              <Scale className="h-4.5 w-4.5 text-primary" />
+              <Scale className="h-5 w-5 text-primary" />
             </span>
             <h3 className="mt-3 text-sm font-semibold group-hover:text-primary">
               {doc.title}
