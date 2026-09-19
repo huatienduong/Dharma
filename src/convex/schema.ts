@@ -108,15 +108,55 @@ const schema = defineSchema(
     latestVersion: v.string(),
     releaseNotes: v.optional(v.string()),
     releasedAt: v.optional(v.number()),
-  }).index("by_key", ["key"]),
-
-  // Hội thoại Phật pháp với trợ lý AI (lưu theo người dùng để quay lại không mất)
+  }).index("by_key", ["key"]),  // Hội thoại Phật pháp với trợ lý AI (lưu theo người dùng để quay lại không mất)
   aiMessages: defineTable({
     userId: v.id("users"),
     role: v.string(), // "user" | "assistant"
     content: v.string(),
     createdAt: v.number(),
   }).index("by_user", ["userId"]),
+  watchRooms: defineTable({
+    code: v.string(), // mã phòng 6 ký tự (duy nhất)
+    hostId: v.id("users"),
+    youtubeId: v.optional(v.string()), // video đang chọn
+    talkId: v.optional(v.id("dhammaTalks")),
+    isPlaying: v.boolean(),
+    positionSec: v.number(), // vị trí phát đồng bộ (giây)
+    stateUpdatedAt: v.number(), // để tính drift + tự nối tiếp vị trí
+    createdAt: v.number(),
+  })
+    .index("by_code", ["code"])
+    .index("by_host", ["hostId"]),
+
+  // Thành viên đang trong phòng (heartbeat để hiện danh sách + rút gọn)
+  roomMembers: defineTable({
+    roomId: v.id("watchRooms"),
+    userId: v.id("users"),
+    name: v.string(),
+    micOn: v.boolean(),
+    camOn: v.boolean(),
+    lastSeen: v.number(),
+  })
+    .index("by_room", ["roomId"])
+    .index("by_room_user", ["roomId", "userId"]),
+
+  // Tín hiệu WebRTC (offer/answer/ICE) trao đổi qua Convex — signal server
+  roomSignals: defineTable({
+    roomId: v.id("watchRooms"),
+    fromId: v.id("users"),
+    toId: v.id("users"),
+    payload: v.string(), // JSON SDP/ICE
+    createdAt: v.number(),
+  }).index("by_room_to", ["roomId", "toId"]),
+
+  // Nhắn tin trong phòng xem chung
+  roomChat: defineTable({
+    roomId: v.id("watchRooms"),
+    userId: v.id("users"),
+    name: v.string(),
+    text: v.string(),
+    createdAt: v.number(),
+  }).index("by_room", ["roomId"]),
   },
   {
     schemaValidation: false,
