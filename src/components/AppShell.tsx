@@ -29,6 +29,15 @@ const NAV = [
 const SETTINGS_ITEM = { to: "/settings", label: "Cài đặt", icon: Settings };
 const PROFILE_ITEM = { to: "/profile", label: "Hồ sơ", icon: UserRound };
 
+/** Danh sách đầy đủ (kể cả mục phụ) để tra cứu an toàn. */
+const ALL_ITEMS = [...NAV, PROFILE_ITEM, SETTINGS_ITEM];
+
+/** Bottom-nav mobile: tra theo đường dẫn, bỏ qua mục không tồn tại
+    (tránh crash khi NAV thay đổi). */
+const BOTTOM_NAV = ["/dashboard", "/suttas", "/calendar", "/meditation", "/profile"]
+  .map((to) => ALL_ITEMS.find((n) => n.to === to))
+  .filter((n): n is (typeof ALL_ITEMS)[number] => Boolean(n));
+
 export function AppShell({
   title,
   subtitle,
@@ -222,13 +231,7 @@ export function AppShell({
       {/* ---------- Bottom nav mobile ---------- */}
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-lg items-stretch justify-between px-1">
-          {[
-            NAV[0], // Pháp thoại
-            NAV[1], // Kinh tạng
-            NAV.find((n) => n.to === "/calendar")!,
-            NAV.find((n) => n.to === "/meditation")!,
-            NAV.find((n) => n.to === "/profile")!,
-          ].map((item) => {
+          {BOTTOM_NAV.map((item) => {
             const active = isActive(item.to);
             const Icon = item.icon;
             return (
