@@ -153,7 +153,7 @@ export default function WatchTogether() {
 
   if (authLoading) {
     return (
-      <AppShell title="Xem Phật pháp cùng nhau">
+      <AppShell title="Phòng">
         <p className="animate-pulse text-sm text-muted-foreground">Đang tải…</p>
       </AppShell>
     );
@@ -161,7 +161,7 @@ export default function WatchTogether() {
 
   if (!isAuthenticated) {
     return (
-      <AppShell title="Xem Phật pháp cùng nhau">
+      <AppShell title="Phòng">
         <div className="mx-auto max-w-md rounded-2xl border border-border/60 bg-card/60 p-8 text-center">
           <MonitorPlay className="mx-auto h-10 w-10 text-gold" />
           <h2 className="mt-3 text-lg font-semibold">
@@ -194,7 +194,7 @@ export default function WatchTogether() {
   /* ---------- Màn hình tạo / tham gia phòng ---------- */
   return (
     <AppShell
-      title="Xem Phật pháp cùng nhau"
+      title="Phòng — Xem Phật pháp cùng nhau"
       subtitle="Phòng riêng — xem đồng bộ một nhịp, trò chuyện qua mic & cam"
     >
       <div className="mx-auto grid max-w-3xl gap-4 sm:grid-cols-2">

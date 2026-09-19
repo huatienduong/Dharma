@@ -13,6 +13,7 @@ import {
   Clock,
   Eye,
   History,
+  MonitorPlay,
   Play,
   RefreshCw,
   Search,
@@ -20,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
 type Talk = Doc<"dhammaTalks">;
@@ -39,6 +41,7 @@ type ProgressRow = {
 
 export default function Dashboard() {
   const { play, current } = usePlayer();
+  const navigate = useNavigate();
 
   const [search, setSearch] = useState("");
 
@@ -115,6 +118,48 @@ export default function Dashboard() {
           <VoiceSearchButton onResult={(text) => setSearch(text)} />
         </div>
       </div>
+
+      {/* ---------- Phòng xem chung (vào từ trang chủ) ---------- */}
+      {!searchQ && (
+        <section
+          className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gold/30 bg-gradient-to-r from-gold/10 via-card/60 to-card/60 p-4"
+          aria-label="Phòng xem Phật pháp cùng nhau"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold/15">
+              <MonitorPlay className="h-5 w-5 text-gold" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold">Phòng</h2>
+              <p className="text-xs text-muted-foreground">
+                Xem pháp thoại cùng bạn bè — đồng bộ một nhịp, mic & cam
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={() => navigate("/watch")}
+            >
+              Mở Phòng
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const code = window.prompt("Nhập mã phòng 6 ký tự:");
+                if (code && code.trim().length >= 4) {
+                  const c = code.trim().toUpperCase();
+                  sessionStorage.setItem("watchRoom", c);
+                  navigate(`/watch?room=${c}`);
+                }
+              }}
+            >
+              Vào phòng
+            </Button>
+          </div>
+        </section>
+      )}
 
       {/* ---------- Hero + Tiếp tục xem ---------- */}
       {!searchQ && (

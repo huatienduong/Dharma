@@ -24,10 +24,78 @@ type ChatMessage = { role: "user" | "assistant"; content: string };
 
 const HISTORY_LIMIT = 12; // số tin nhắn gửi kèm làm ngữ cảnh
 
+/* ------------------------------------------------------------------ */
+/* Chọn nhà cung cấp AI theo khóa khả dụng (ưu tiên từ trên xuống)     */
+/* ------------------------------------------------------------------ */
+
+type ProviderChoice = {
+  label: string;
+  make: () => ReturnType<typeof createOpenAICompatible>;
+  model: string;
+};
+
+function pickProvider(): { choice: ProviderChoice | null; missing: string[] } {
+  const openaiKey = process.env.OPENAI_API_KEY;
+  const groqKey = process.env.GROQ_API_KEY;
+  const vlyKey = process.env.VLY_INTEGRATION_KEY;
+
+  if (openaiKey) {
+    return {
+      choice: {
+        label: "OpenAI",
+        make: () =>
+          createOpenAICompatible({
+            name: "openai",
+            baseURL: "https://api.openai.com/v1",
+            apiKey: openaiKey,
+          }),
+        model: "gpt-4.1-mini",
+      },
+      missing: [],
+    };
+  }
+
+  if (groqKey) {
+    return {
+      choice: {
+        label: "Groq (llama-3.3-70b-versatile)",
+        make: () =>
+          createOpenAICompatible({
+            name: "groq",
+            baseURL: "https://api.groq.com/openai/v1",
+            apiKey: groqKey,
+          }),
+        model: "llama-3.3-70b-versatile",
+      },
+      missing: [],
+    };
+  }
+
+  if (vlyKey) {
+    return {
+      choice: {
+        label: "Cổng AI tích hợp",
+        make: () =>
+          createOpenAICompatible({
+            name: "vly-gateway",
+            baseURL: "https://integrations.vly.ai/v1/llm",
+            headers: { Authorization: `Bearer ${vlyKey}` },
+          }),
+        model: "gpt-4.1-mini",
+      } as ProviderChoice,
+      missing: [],
+    };
+  }
+
+  return {
+    choice: null,
+    missing: ["OPENAI_API_KEY", "GROQ_API_KEY"],
+  };
+}
+
 /**
  * Gửi hội thoại tới AI trực tuyến và trả về câu trả lời.
- * Dùng AI Gateway của dự án (VLY_INTEGRATION_KEY trên môi trường Convex) —
- * không cần người dùng tự cấu hình khóa nào.
+ * Khách chưa đăng nhập vẫn hỏi được (chỉ không lưu lịch sử).
  */
 export const ask = action({
   args: {
@@ -39,8 +107,6 @@ export const ask = action({
     ),
   },
   handler: async (ctx, { messages }) => {
-    // Khách chưa đăng nhập vẫn hỏi được (chỉ không lưu lịch sử —
-    // việc lưu do mutation appendMessages tự kiểm tra đăng nhập).
     const userId = await getAuthUserId(ctx);
     void userId;
 
@@ -48,33 +114,24 @@ export const ask = action({
       throw new Error("Câu hỏi trống.");
     }
 
-    // Chỉ lấy những lượt gần nhất để giữ ngữ cảnh, luôn bắt đầu bằng system.
+    const { choice, missing } = pickProvider();
+    if (!choice) {
+      throw new Error(
+        "Trợ lý Pháp chưa được cấu hình AI. Chủ ứng dụng vui lòng thêm khóa " +
+          missing.join(" hoặc ") +
+          " qua tab Keys/API keys.",
+      );
+    }
+
     const recent: ChatMessage[] = messages.slice(-HISTORY_LIMIT);
     const payload = [
       { role: "system" as const, content: SYSTEM_PROMPT },
       ...recent,
     ];
 
-    // Ưu tiên khóa OpenAI riêng (đặt qua tab Keys/API keys). Nếu chưa có,
-    // fallback về cổng AI tích hợp sẵn của nền tảng.
-    const openaiKey = process.env.OPENAI_API_KEY;
-    const vlyKey = process.env.VLY_INTEGRATION_KEY;
-
-    const provider = openaiKey
-      ? createOpenAICompatible({
-          name: "openai",
-          baseURL: "https://api.openai.com/v1",
-          apiKey: openaiKey,
-        })
-      : createOpenAICompatible({
-          name: "vly-gateway",
-          baseURL: "https://integrations.vly.ai/v1/llm",
-          headers: { Authorization: `Bearer ${vlyKey ?? ""}` },
-        });
-
     try {
       const result = await generateText({
-        model: provider("gpt-4.1-mini"),
+        model: choice.make()(choice.model),
         messages: payload,
         temperature: 0.6,
         maxOutputTokens: 1200,
@@ -82,18 +139,23 @@ export const ask = action({
 
       const reply = result.text.trim();
       if (!reply) {
-        throw new Error(
-          "Trợ lý chưa trả lời được. Vui lòng thử gửi lại câu hỏi.",
-        );
+        throw new Error("Trợ lý chưa trả lời được. Vui lòng thử lại.");
       }
       return reply;
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Lỗi kết nối tới AI.";
-      const hint = openaiKey
-        ? ""
-        : " (Ứng dụng chưa có khóa AI riêng — chủ ứng dụng có thể thêm khóa OPENAI_API_KEY qua tab Keys/API keys để kích hoạt Trợ lý Pháp.)";
-      throw new Error(`Không kết nối được trợ lý AI: ${msg}${hint}`);
+      const msg = err instanceof Error ? err.message : "Lỗi kết nối tới AI.";
+      // Gợi ý rõ ràng khi khóa hết credits / unauthorized
+      if (/credit|billing/i.test(msg)) {
+        throw new Error(
+          `Tài khoản ${choice.label} đã hết credits. Vui lòng nạp thêm tại trang billing của nhà cung cấp, hoặc thêm khóa nhà cung cấp khác (GROQ_API_KEY) qua tab Keys/API keys.`,
+        );
+      }
+      if (/unauthorized|invalid|401/i.test(msg)) {
+        throw new Error(
+          `Khóa ${choice.label} bị từ chối (401). Vui lòng kiểm tra/đổi khóa qua tab Keys/API keys.`,
+        );
+      }
+      throw new Error(`Không kết nối được trợ lý AI: ${msg}`);
     }
   },
 });

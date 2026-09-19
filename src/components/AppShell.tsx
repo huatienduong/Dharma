@@ -30,8 +30,10 @@ const NAV = [
   { to: "/calendar", label: "Lịch Phật giáo", icon: Calendar },
   { to: "/meditation", label: "Thiền", icon: Heart },
   { to: "/assistant", label: "Trợ lý Pháp AI", icon: Bot },
-  { to: "/watch", label: "Xem cùng nhau", icon: MonitorPlay },
 ];
+
+/** "Phòng" không nằm ở sidebar — vào từ trang chủ (Dashboard). */
+const WATCH_ITEM = { to: "/watch", label: "Phòng", icon: MonitorPlay };
 
 /** Mục phụ ở đáy sidebar: Hồ sơ + Cài đặt. */
 const SETTINGS_ITEM = { to: "/settings", label: "Cài đặt", icon: Settings };
