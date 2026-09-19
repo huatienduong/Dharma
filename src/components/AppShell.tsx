@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import {
   BookOpen,
   BookMarked,
+  Bot,
   Calendar,
   Compass,
   Heart,
   LayoutDashboard,
   LogOut,
   Menu,
+  MonitorPlay,
   Scale,
   Settings,
   UserRound,
@@ -27,6 +29,8 @@ const NAV = [
   { to: "/dictionary", label: "Từ điển", icon: BookMarked },
   { to: "/calendar", label: "Lịch Phật giáo", icon: Calendar },
   { to: "/meditation", label: "Thiền", icon: Heart },
+  { to: "/assistant", label: "Trợ lý Pháp AI", icon: Bot },
+  { to: "/watch", label: "Xem cùng nhau", icon: MonitorPlay },
 ];
 
 /** Mục phụ ở đáy sidebar: Hồ sơ + Cài đặt. */
@@ -37,7 +41,12 @@ const PROFILE_ITEM = { to: "/profile", label: "Hồ sơ", icon: UserRound };
 const ALL_ITEMS = [...NAV, PROFILE_ITEM, SETTINGS_ITEM];
 
 /** Bottom-nav mobile: tra theo đường dẫn, bỏ qua mục không tồn tại. */
-const BOTTOM_NAV_PATHS = ["/dashboard", "/suttas", "/calendar", "/profile"];
+const BOTTOM_NAV_PATHS = [
+  "/dashboard",
+  "/suttas",
+  "/assistant",
+  "/profile",
+];
 const BOTTOM_NAV = BOTTOM_NAV_PATHS.map((to) =>
   ALL_ITEMS.find((n) => n.to === to),
 ).filter((n): n is (typeof ALL_ITEMS)[number] => Boolean(n));

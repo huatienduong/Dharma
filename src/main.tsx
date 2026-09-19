@@ -21,6 +21,8 @@ const CalendarPage = lazy(() => import("./pages/Calendar.tsx"));
 const Meditation = lazy(() => import("./pages/Meditation.tsx"));
 const SettingsPage = lazy(() => import("./pages/Settings.tsx"));
 const Profile = lazy(() => import("./pages/Profile.tsx"));
+const Assistant = lazy(() => import("./pages/Assistant.tsx"));
+const WatchTogether = lazy(() => import("./pages/WatchTogether.tsx"));
 
 // Simple loading fallback for route transitions
 function RouteLoading() {
@@ -157,6 +159,8 @@ createRoot(document.getElementById("root")!).render(
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/meditation" element={<Meditation />} />
                 <Route path="/meditation/:id" element={<MeditationDetail />} />
+                <Route path="/assistant" element={<Assistant />} />
+                <Route path="/watch" element={<WatchTogether />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="*" element={<NotFound />} />

@@ -1,3 +1,4 @@
+import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { AppShell } from "@/components/AppShell";
 import {
   DICTIONARY,
@@ -42,15 +43,16 @@ export default function Dictionary() {
       title="Từ điển Phật học"
       subtitle="Thuật ngữ Pāḷi chuyên ngành theo truyền thống Theravāda"
     >
-      {/* Ô tìm kiếm */}
+      {/* Ô tìm kiếm — mic nằm trong ô, cạnh kính lúp */}
       <div className="relative mb-4">
         <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Tìm thuật ngữ — ví dụ: anicca, niết bàn, uposatha…"
-          className="w-full rounded-xl border border-border/70 bg-card/80 py-3 pl-10 pr-4 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-xl border border-border/70 bg-card/80 py-3 pl-10 pr-16 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
         />
+        <VoiceSearchButton onResult={(text) => setQ(text)} className="right-3" />
       </div>
 
       {/* Bộ lọc nhóm */}

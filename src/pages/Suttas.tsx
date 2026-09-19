@@ -63,7 +63,7 @@ export default function Suttas() {
       title="Kinh tạng"
       subtitle="Sutta Piṭaka — học Kinh, luận giải và chú giải theo truyền thống Theravāda"
     >
-      {/* Tìm kiếm (kèm giọng nói) */}
+      {/* Tìm kiếm — mic nằm trong ô, cạnh kính lúp */}
       <div className="mb-4 flex items-center gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -71,20 +71,20 @@ export default function Suttas() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm kinh theo tên, số hiệu, nội dung…"
-            className="h-10 w-full rounded-full border border-border/70 bg-card/80 pl-9 pr-9 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+            className="h-10 w-full rounded-full border border-border/70 bg-card/80 pl-9 pr-16 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           />
           {search && (
             <button
               type="button"
               onClick={() => setSearch("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
+              className="absolute right-9 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
               aria-label="Xóa tìm kiếm"
             >
               <X className="h-4 w-4" />
             </button>
           )}
+          <VoiceSearchButton onResult={(text) => setSearch(text)} />
         </div>
-        <VoiceSearchButton onResult={(text) => setSearch(text)} />
       </div>
 
       {/* Bộ lọc Nikaya */}

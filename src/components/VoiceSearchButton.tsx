@@ -4,8 +4,9 @@ import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Nút tìm kiếm bằng giọng nói. `onResult` nhận câu nói của người dùng
- * khi họ ngừng nói. Ẩn nếu trình duyệt không hỗ trợ.
+ * Nút tìm kiếm bằng giọng nói đặt bên trong ô tìm kiếm.
+ * `onResult` nhận câu nói của người dùng khi họ ngừng nói.
+ * Ẩn nếu trình duyệt không hỗ trợ Web Speech API.
  */
 export function VoiceSearchButton({
   onResult,
@@ -34,21 +35,15 @@ export function VoiceSearchButton({
       aria-label={listening ? "Đang nghe — bấm để dừng" : "Tìm bằng giọng nói"}
       title={listening ? "Đang nghe…" : "Tìm bằng giọng nói"}
       className={cn(
-        "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/70 bg-card/70 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground",
-        listening && "border-destructive/60 bg-destructive/10 text-destructive",
+        // Nút nhỏ nằm trong ô input, bên phải (cạnh kính lúp)
+        "absolute right-2.5 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground",
+        listening && "text-destructive",
         className,
       )}
     >
-      {listening ? (
-        <>
-          <Mic className="h-4 w-4" />
-          <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-destructive" />
-          </span>
-        </>
-      ) : (
-        <Mic className="h-4 w-4" />
+      <Mic className="h-3.5 w-3.5" />
+      {listening && (
+        <span className="absolute inset-0 rounded-full border-2 border-destructive/60 animate-pulse" />
       )}
       <span className="sr-only">{listening ? "Dừng nghe" : "Nói để tìm"}</span>
     </button>
