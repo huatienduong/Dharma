@@ -19,7 +19,6 @@ export type AppSettings = {
   fontScale: number; // 0.9 | 1 | 1.15 | 1.3
   language: Language;
   notifications: boolean;
-  screenshotBlock: boolean;
 };
 
 export const FONT_SCALES = [
@@ -34,7 +33,6 @@ const DEFAULTS: AppSettings = {
   fontScale: 1,
   language: "vi",
   notifications: true,
-  screenshotBlock: false,
 };
 
 const LS_KEY = "dhamma-stream-settings";
@@ -210,7 +208,6 @@ type SettingsContextValue = {
   setFontScale: (v: number) => void;
   setLanguage: (l: Language) => void;
   setNotifications: (v: boolean) => void;
-  setScreenshotBlock: (v: boolean) => void;
 };
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -235,8 +232,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         fontScale: serverSettings.fontScale ?? prev.fontScale,
         language: (serverSettings.language as Language) ?? prev.language,
         notifications: serverSettings.notifications ?? prev.notifications,
-        screenshotBlock: (serverSettings as { screenshotBlock?: boolean })
-          .screenshotBlock ?? prev.screenshotBlock,
       }));
     }
   }, [serverSettings, syncedOnce]);
@@ -293,7 +288,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setFontScale: (v) => persist({ fontScale: v }),
       setLanguage: (l) => persist({ language: l }),
       setNotifications: (v) => persist({ notifications: v }),
-      setScreenshotBlock: (v) => persist({ screenshotBlock: v }),
     }),
     [settings, persist, t],
   );
@@ -317,6 +311,5 @@ export function useSettings() {
     setFontScale: () => {},
     setLanguage: () => {},
     setNotifications: () => {},
-    setScreenshotBlock: () => {},
   };
 }

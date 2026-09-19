@@ -41,18 +41,7 @@ function listProviders(): ProviderChoice[] {
   const groqKey = process.env.GROQ_API_KEY;
   const vlyKey = process.env.VLY_INTEGRATION_KEY;
 
-  if (openaiKey) {
-    out.push({
-      label: "OpenAI",
-      make: () =>
-        createOpenAICompatible({
-          name: "openai",
-          baseURL: "https://api.openai.com/v1",
-          apiKey: openaiKey,
-        }),
-      model: "gpt-4.1-mini",
-    });
-  }
+  // Groq ưu tiên đầu: nhanh, gói miễn phí, đang hoạt động ổn định
   if (groqKey) {
     out.push({
       label: "Groq",
@@ -63,6 +52,18 @@ function listProviders(): ProviderChoice[] {
           apiKey: groqKey,
         }),
       model: "openai/gpt-oss-120b",
+    });
+  }
+  if (openaiKey) {
+    out.push({
+      label: "OpenAI",
+      make: () =>
+        createOpenAICompatible({
+          name: "openai",
+          baseURL: "https://api.openai.com/v1",
+          apiKey: openaiKey,
+        }),
+      model: "gpt-4.1-mini",
     });
   }
   if (vlyKey) {

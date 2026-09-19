@@ -36,7 +36,6 @@ export default function Settings() {
     setFontScale,
     setLanguage,
     setNotifications,
-    setScreenshotBlock,
   } = useSettings();
   const { user, isAuthenticated } = useAuth();
   const submitFeedback = useMutation(api.library.submitFeedback);

@@ -1,6 +1,7 @@
 import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
 import { ScreenshotGuard } from "@/components/ScreenshotGuard";
+import { UpdateChecker } from "@/components/UpdateChecker";
 import { PlayerProvider } from "@/lib/player";
 import { SettingsProvider } from "@/lib/settings";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
@@ -140,6 +141,7 @@ createRoot(document.getElementById("root")!).render(
       <ConvexAuthProvider client={convex}>
         <SettingsProvider>
           <ScreenshotGuard />
+          <UpdateChecker />
           <PlayerProvider>
             <BrowserRouter>
             <RouteSyncer />

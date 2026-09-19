@@ -1,26 +1,37 @@
-import { useSettings } from "@/lib/settings";
 import { useEffect, useState } from "react";
 
 /**
- * CHỐNG CHỤP ẢNH MÀN HÌNH (mức tối đa nền tảng web cho phép):
+ * CHỐNG CHỤP ẢNH MÀN HÌNH — LUÔN BẬT cho mọi người dùng (không thể tắt).
  *
+ * Cơ chế (mức tối đa nền tảng web cho phép):
  * 1. Ẩn TOÀN BỘ nội dung khi trang mất focus / chuyển tab / thu nhỏ cửa sổ
- *    (chặn quay màn hình, chia sẻ cửa sổ, chụp khi app ở chế độ nền).
+ *    → chặn quay màn hình, chia sẻ cửa sổ, chụp khi app ở nền.
  * 2. Chặn phím tắt chụp màn hình phổ biến (PrintScreen,
  *    Cmd/Ctrl+Shift+3/4/5, Win+Shift+S) — che màn hình khi phát hiện.
- * 3. Chặn menu chuột phải + chống chọn văn bản khi chế độ bật.
+ * 3. Chặn menu chuột phải + chống chọn/nhân bản văn bản.
  *
- * Lưu ý: trình duyệt web không thể chặn 100% việc chụp bằng thiết bị ngoài;
+ * Lưu ý: trình duyệt web không thể chặn 100% chụp bằng thiết bị ngoài;
  * đây là lớp bảo vệ tốt nhất chuẩn web cho phép (tương tự app ngân hàng).
  */
 export function ScreenshotGuard() {
-  const { settings } = useSettings();
-  const enabled = settings.screenshotBlock;
+  return (
+    <>
+      <style>{`
+        body.ds-protect {
+          user-select: none;
+          -webkit-user-select: none;
+          -webkit-touch-callout: none;
+        }
+      `}</style>
+      <ScreenshotGuardBehavior />
+    </>
+  );
+}
+
+function ScreenshotGuardBehavior() {
   const [hidden, setHidden] = useState(false);
 
   useEffect(() => {
-    if (!enabled) return;
-
     const onVis = () => setHidden(document.visibilityState === "hidden");
     const onBlur = () => setHidden(true);
     const onFocus = () => setHidden(false);
@@ -55,23 +66,19 @@ export function ScreenshotGuard() {
       document.body.classList.remove("ds-protect");
       setHidden(false);
     };
-  }, [enabled]);
+  }, []);
 
-  if (!enabled) return null;
+  if (!hidden) return null;
 
   return (
-    <>
-      {hidden && (
-        <div
-          className="fixed inset-0 z-[99999] flex flex-col items-center justify-center gap-3 bg-background"
-          aria-hidden
-        >
-          <div className="text-4xl">🙏</div>
-          <p className="text-sm font-medium text-muted-foreground">
-            Nội dung được bảo vệ
-          </p>
-        </div>
-      )}
-    </>
+    <div
+      className="fixed inset-0 z-[99999] flex flex-col items-center justify-center gap-3 bg-background"
+      aria-hidden
+    >
+      <div className="text-4xl">🙏</div>
+      <p className="text-sm font-medium text-muted-foreground">
+        Nội dung được bảo vệ
+      </p>
+    </div>
   );
 }
