@@ -1,8 +1,12 @@
+import { useId } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Bánh xe Chuyển pháp luân (Dharmachakra): bánh xe Pháp với 8 nan hoa,
- * 2 vành kép, tâm hoa sen 8 cánh, quay chậm liên tục.
+ * Bánh xe Chuyển pháp luân (Dharmachakra):
+ * - Vành ngoài + vành trong kép
+ * - 8 nan hoa (4 đường kính) nối vành trong vào tâm
+ * - Tâm là đĩa vàng với hoa sen 8 cánh
+ * Quay chậm liên tục (class dw-spin trong index.css).
  */
 export function DhammaWheel({
   size = 56,
@@ -13,8 +17,12 @@ export function DhammaWheel({
   className?: string;
   title?: string;
 }) {
-  // 8 nan hoa: xoay 45° mỗi bước, mỗi nan hơi cong nhẹ
-  const spokes = Array.from({ length: 8 }, (_, i) => i * 45);
+  // ID gradient duy nhất theo từng instance — tránh trùng khi có nhiều logo
+  const uid = useId();
+  const gid = `dhw-${uid.replace(/[^a-zA-Z0-9]/g, "")}`;
+
+  // 4 đường kính (xoay 45° mỗi bước) = 8 nan hoa
+  const diameters = [0, 45, 90, 135];
 
   return (
     <svg
@@ -27,48 +35,47 @@ export function DhammaWheel({
     >
       <title>{title}</title>
       <defs>
-        <linearGradient id="dhw-gold" x1="0" y1="0" x2="1" y2="1">
+        <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#f0c96f" />
           <stop offset="55%" stopColor="#d9a441" />
           <stop offset="100%" stopColor="#a97e2e" />
         </linearGradient>
       </defs>
+
+      {/* Bánh xe quay: vành kép + nan hoa nối liền vành → tâm */}
       <g
         className="dw-spin"
         style={{ transformOrigin: "32px 32px" }}
-        stroke="url(#dhw-gold)"
+        stroke={`url(#${gid})`}
         fill="none"
         strokeLinecap="round"
       >
-        {/* Vành ngoài + vành trong (2 vành kép) */}
         <circle cx="32" cy="32" r="27" strokeWidth="3" />
-        <circle cx="32" cy="32" r="21.5" strokeWidth="1.4" opacity="0.75" />
-        {/* 8 nan hoa */}
-        <g strokeWidth="2.6">
-          {spokes.map((deg) => (
+        <circle cx="32" cy="32" r="22" strokeWidth="1.4" opacity="0.8" />
+        <g strokeWidth="2.4">
+          {diameters.map((deg) => (
             <g key={deg} transform={`rotate(${deg} 32 32)`}>
-              <line x1="32" y1="9.5" x2="32" y2="21.5" />
-              <line x1="32" y1="42.5" x2="32" y2="54.5" />
+              <line x1="32" y1="6.5" x2="32" y2="57.5" />
             </g>
           ))}
         </g>
       </g>
-      {/* Tâm hoa sen 8 cánh */}
-      <g fill="url(#dhw-gold)">
+
+      {/* Tâm: đĩa vàng + hoa sen 8 cánh nâu */}
+      <circle cx="32" cy="32" r="7.5" fill={`url(#${gid})`} />
+      <g fill="#5b4423">
         {Array.from({ length: 8 }, (_, i) => i * 45).map((deg) => (
           <ellipse
             key={deg}
             cx="32"
-            cy="26.5"
-            rx="2.6"
-            ry="5"
-            opacity="0.95"
+            cy="28.8"
+            rx="1.7"
+            ry="3.4"
             transform={`rotate(${deg} 32 32)`}
           />
         ))}
       </g>
-      <circle cx="32" cy="32" r="3.2" fill="#5b4423" />
-      <circle cx="32" cy="32" r="3.2" fill="none" stroke="url(#dhw-gold)" strokeWidth="1.2" />
+      <circle cx="32" cy="32" r="1.4" fill={`url(#${gid})`} />
     </svg>
   );
 }
