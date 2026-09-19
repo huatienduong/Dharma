@@ -524,13 +524,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  /* ----- Vị trí khung video theo chế độ (inline style, DOM không đổi) ----- */
+  /* ----- Vị trí khung video theo chế độ (inline style, DOM không đổi).
+     MỞ RỘNG: chỉ chiếm nửa trên màn hình — dưới đó vẫn lướt được danh sách
+     (backdrop không chặn, chỉ là lớp mờ nhẹ phía sau video). ----- */
   const slotStyle: CSSProperties = expanded
     ? {
         left: "50%",
-        top: "2rem",
+        top: "1rem",
         transform: "translateX(-50%)",
-        width: "min(92vw, 56rem)",
+        width: "min(94vw, 52rem)",
         aspectRatio: "16 / 9",
         borderRadius: "0.75rem",
       }
@@ -552,11 +554,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           nên âm thanh không bao giờ bị ngắt khi chuyển chế độ hay tab */}
       {showPlayer && (
         <>
-          {/* Nền mờ khi mở rộng */}
+          {/* Lớp mờ nhẹ khi mở rộng — KHÔNG chặn tương tác, danh sách dưới
+              vẫn lướt được khi đang xem video */}
           {expanded && (
             <div
-              className="fixed inset-0 z-[94] bg-black/70 backdrop-blur-sm"
-              onClick={() => setExpanded(false)}
+              className="pointer-events-none fixed inset-0 z-[93] bg-gradient-to-b from-black/45 via-black/15 to-transparent"
               aria-hidden
             />
           )}
@@ -773,10 +775,7 @@ function ExpandedControls({
   youtubeId: string;
 }) {
   return (
-    <div
-      className="fixed left-1/2 z-[96] w-[min(92vw,56rem)] -translate-x-1/2"
-      style={{ top: "calc(2rem + min(92vw, 56rem) * 9 / 16 + 0.75rem)" }}
-    >
+    <div className="fixed left-1/2 z-[96] w-[min(94vw,52rem)] -translate-x-1/2" style={{ top: "calc(1rem + min(94vw, 52rem) * 9 / 16 + 0.5rem)" }}>
       <div className="rounded-xl border border-border bg-popover/95 px-4 py-3 shadow-2xl backdrop-blur">
         {/* Hàng 1: tiêu đề + nút nhỏ (xem lại, thu nhỏ, đóng) */}
         <div className="flex items-center gap-3">

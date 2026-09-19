@@ -1,4 +1,5 @@
 import { AppShell, ShellBackButton } from "@/components/AppShell";
+import { AIDocArticle } from "@/components/AIDocReader";
 import { getVinayaDoc, VINAYA_DOCS } from "@/data/vinaya";
 import { Scale } from "lucide-react";
 import {
@@ -100,6 +101,15 @@ export function VinayaReader() {
       <div className="mb-5 rounded-xl border border-border/60 bg-card/60 p-4 text-xs leading-relaxed text-muted-foreground">
         {doc.summary}
       </div>
+
+      {/* Nội dung đầy đủ do AI biên soạn — đọc trực tiếp trong ứng dụng,
+          có nguồn Vinaya Piṭaka ở cuối */}
+      <AIDocArticle
+        kind="vinaya"
+        refId={doc.id}
+        title={doc.title}
+        extra={`Văn bản Luật tạng: ${doc.title}${doc.subtitle ? ` (${doc.subtitle})` : ""}.`}
+      />
 
       <div className="space-y-5">
         {doc.sections.map((sec, i) => (

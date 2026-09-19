@@ -1,13 +1,15 @@
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { AppShell } from "@/components/AppShell";
+import { AIDocArticle } from "@/components/AIDocReader";
 import { useSettings } from "@/lib/settings";
 import {
   DICTIONARY,
   dictCategories,
   normalize,
   type DictCategory,
+  type DictEntry,
 } from "@/data/dictionary";
-import { Search } from "lucide-react";
+import { ChevronDown, ChevronUp, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 
 const CAT_COLORS: Record<DictCategory, string> = {
@@ -88,7 +90,7 @@ export default function Dictionary() {
         ))}
       </div>
 
-      {/* Kết quả */}
+      {/* Kết quả — bấm vào mục từ để mở rộng chi tiết do AI biên soạn */}
       {list.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border/70 bg-card/40 p-10 text-center text-sm text-muted-foreground">
           Không tìm thấy thuật ngữ «{q}».
@@ -96,26 +98,7 @@ export default function Dictionary() {
       ) : (
         <div className="grid gap-3">
           {list.map((e) => (
-            <div
-              key={e.term}
-              className="rounded-xl border border-border/60 bg-card/70 p-4 transition hover:border-primary/30"
-            >
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h3 className="text-sm font-semibold">{e.term}</h3>
-                <span
-                  className={
-                    "rounded-full px-2 py-0.5 text-[10px] font-medium " +
-                    CAT_COLORS[e.category]
-                  }
-                >
-                  {e.category}
-                </span>
-              </div>
-              <p className="mt-0.5 text-xs italic text-gold">{e.pali}</p>
-              <p className="mt-2 text-[13px] leading-relaxed text-foreground/85">
-                {e.definition}
-              </p>
-            </div>
+            <DictEntryCard key={e.term} entry={e} />
           ))}
         </div>
       )}
@@ -124,5 +107,57 @@ export default function Dictionary() {
         {list.length} / {DICTIONARY.length} thuật ngữ
       </p>
     </AppShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Thẻ thuật ngữ: bấm để mở rộng chi tiết AI biên soạn (có cache)      */
+/* ------------------------------------------------------------------ */
+
+function DictEntryCard({ entry }: { entry: DictEntry }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="rounded-xl border border-border/60 bg-card/70 transition hover:border-primary/30">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full p-4 text-left"
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="text-sm font-semibold">{entry.term}</h3>
+          <div className="flex items-center gap-2">
+            <span
+              className={
+                "rounded-full px-2 py-0.5 text-[10px] font-medium " +
+                CAT_COLORS[entry.category]
+              }
+            >
+              {entry.category}
+            </span>
+            {open ? (
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            )}
+          </div>
+        </div>
+        <p className="mt-0.5 text-xs italic text-gold">{entry.pali}</p>
+        <p className="mt-2 text-[13px] leading-relaxed text-foreground/85">
+          {entry.definition}
+        </p>
+      </button>
+
+      {open && (
+        <div className="border-t border-border/50 p-4">
+          <AIDocArticle
+            kind="dictionary"
+            refId={entry.pali || entry.term}
+            title={entry.term}
+            extra={`Thuật ngữ ${entry.term} (${entry.pali}) — nhóm ${entry.category}.`}
+          />
+        </div>
+      )}
+    </div>
   );
 }

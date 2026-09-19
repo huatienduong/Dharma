@@ -1,4 +1,5 @@
 import { AppShell, ShellBackButton } from "@/components/AppShell";
+import { AIDocArticle } from "@/components/AIDocReader";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { api } from "@/convex/_generated/api";
 import { getSutta, SUTTAS } from "@/data/suttas";
@@ -273,56 +274,52 @@ export function SuttaReader() {
           </TabBtn>
         </div>
 
-        {tab === "text" &&
-          sutta.sections.map((sec, i) => (
-            <section key={i} className="mb-6">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gold">
-                {sec.heading}
-              </h3>
-              <div className="space-y-3 rounded-xl border border-border/60 bg-card/60 p-4 sm:p-5">
-                {sec.text.map((p, j) => (
-                  <p
-                    key={j}
-                    className="text-[15px] leading-[1.9] text-foreground/90"
-                  >
-                    {p}
-                  </p>
-                ))}
-              </div>
-            </section>
-          ))}
+        {tab === "text" && (
+          <>
+            {sutta.sections.map((sec, i) => (
+              <section key={i} className="mb-6">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gold">
+                  {sec.heading}
+                </h3>
+                <div className="space-y-3 rounded-xl border border-border/60 bg-card/60 p-4 sm:p-5">
+                  {sec.text.map((p, j) => (
+                    <p
+                      key={j}
+                      className="text-[15px] leading-[1.9] text-foreground/90"
+                    >
+                      {p}
+                    </p>
+                  ))}
+                </div>
+              </section>
+            ))}
+            {/* AI bổ sung bản kinh đầy đủ, đọc trực tiếp trong ứng dụng */}
+            <AIDocArticle
+              kind="sutta"
+              refId={sutta.id}
+              title={sutta.title}
+              extra={`Bài kinh ${sutta.paliTitle || sutta.title} (${sutta.nikaya} ${sutta.number}), do ${sutta.speaker} thuyết tại ${sutta.location}. Bản kinh tiếng Việt đầy đủ.`}
+            />
+          </>
+        )}
 
-        {tab === "meaning" &&
-          sutta.lunGiai.map((sec, i) => (
-            <section key={i} className="mb-6">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gold">
-                {sec.heading}
-              </h3>
-              <div className="space-y-3 rounded-xl border border-gold/30 bg-gradient-to-br from-card/80 to-secondary/30 p-4 sm:p-5">
-                {sec.text.map((p, j) => (
-                  <p key={j} className="text-[15px] leading-[1.9]">
-                    {p}
-                  </p>
-                ))}
-              </div>
-            </section>
-          ))}
+        {tab === "meaning" && (
+          <AIDocArticle
+            kind="subcommentary"
+            refId={sutta.id}
+            title={sutta.title}
+            extra={`Luận giải bài kinh ${sutta.paliTitle || sutta.title} (${sutta.nikaya} ${sutta.number}), do ${sutta.speaker} thuyết tại ${sutta.location}.`}
+          />
+        )}
 
-        {tab === "atthakatha" &&
-          sutta.chuGiai.map((sec, i) => (
-            <section key={i} className="mb-6">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gold">
-                {sec.heading}
-              </h3>
-              <div className="space-y-3 rounded-xl border border-border/60 bg-muted/40 p-4 sm:p-5">
-                {sec.text.map((p, j) => (
-                  <p key={j} className="text-[15px] leading-[1.9] text-foreground/85">
-                    {p}
-                  </p>
-                ))}
-              </div>
-            </section>
-          ))}
+        {tab === "atthakatha" && (
+          <AIDocArticle
+            kind="commentary"
+            refId={sutta.id}
+            title={sutta.title}
+            extra={`Chú giải Aṭṭhakathā cho bài kinh ${sutta.paliTitle || sutta.title} (${sutta.nikaya} ${sutta.number}).`}
+          />
+        )}
 
         {progress && progress.percent > 2 && (
           <p className="mt-4 flex items-center gap-1.5 text-[11px] text-muted-foreground">
