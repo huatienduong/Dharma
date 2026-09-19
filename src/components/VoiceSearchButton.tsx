@@ -35,8 +35,8 @@ export function VoiceSearchButton({
       aria-label={listening ? "Đang nghe — bấm để dừng" : "Tìm bằng giọng nói"}
       title={listening ? "Đang nghe…" : "Tìm bằng giọng nói"}
       className={cn(
-        // Nút nhỏ nằm trong ô input, bên phải (cạnh kính lúp)
-        "absolute right-2.5 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground",
+        // Nút nhỏ nằm trong ô input, BÊN TRÁI (kính lúp ở bên phải)
+        "absolute left-3 top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition hover:text-foreground",
         listening && "text-destructive",
         className,
       )}

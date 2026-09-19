@@ -9,6 +9,7 @@ import {
   Calendar,
   Compass,
   Heart,
+  History,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -35,6 +36,7 @@ const NAV_LIB = [
   { to: "/vinaya", label: "Luật tạng", icon: Scale },
   { to: "/dictionary", label: "Từ điển", icon: BookMarked },
   { to: "/calendar", label: "Lịch Phật giáo", icon: Calendar },
+  { to: "/watched", label: "Đã xem", icon: History },
 ];
 
 /** Mục phụ ở đáy sidebar: Hồ sơ + Cài đặt. */

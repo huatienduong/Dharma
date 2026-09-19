@@ -40,7 +40,7 @@ type ProgressRow = {
 export default function Dashboard() {
   const { play, current } = usePlayer();
 
-  const [search, setSearch("");
+  const [search, setSearch] = useState("");
 
   const progress = useQuery(api.dhamma.myProgress, {});
 

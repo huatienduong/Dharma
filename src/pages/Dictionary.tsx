@@ -43,16 +43,16 @@ export default function Dictionary() {
       title="Từ điển Phật học"
       subtitle="Thuật ngữ Pāḷi chuyên ngành theo truyền thống Theravāda"
     >
-      {/* Ô tìm kiếm — mic nằm trong ô, cạnh kính lúp */}
+      {/* Ô tìm kiếm — mic TRÁI, kính lúp PHẢI (trong ô) */}
       <div className="relative mb-4">
-        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Tìm thuật ngữ — ví dụ: anicca, niết bàn, uposatha…"
-          className="w-full rounded-xl border border-border/70 bg-card/80 py-3 pl-10 pr-16 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-xl border border-border/70 bg-card/80 py-3 pl-11 pr-11 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
         />
-        <VoiceSearchButton onResult={(text) => setQ(text)} className="right-3" />
+        <VoiceSearchButton onResult={(text) => setQ(text)} />
       </div>
 
       {/* Bộ lọc nhóm */}
