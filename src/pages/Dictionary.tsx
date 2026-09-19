@@ -1,6 +1,7 @@
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { AppShell } from "@/components/AppShell";
 import { AIDocArticle, DocThumb } from "@/components/AIDocReader";
+import { AIIndexList } from "@/components/AIIndexList";
 import { useSettings } from "@/lib/settings";
 import {
   DICTIONARY,
@@ -116,8 +117,21 @@ export default function Dictionary() {
         </div>
       )}
 
+      {/* Danh sách đề xuất do Trợ lý Phật học TỰ NẠP TOÀN BỘ — thay dữ liệu cũ */}
+      <section className="mt-8">
+        <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <Sparkles className="h-3.5 w-3.5" />
+          Thuật ngữ nên tra cứu — Trợ lý Phật học đề xuất
+        </h2>
+        <AIIndexList
+          indexKind="dictionary"
+          onOpen={(e) => setQ(e.title)}
+          emptyHint="Chưa nạp được danh sách thuật ngữ. Hãy thử lại."
+        />
+      </section>
+
       <p className="mt-6 text-center text-[11px] text-muted-foreground">
-        {list.length} / {DICTIONARY.length} thuật ngữ
+        {list.length} / {DICTIONARY.length} thuật ngữ trong kho cục bộ
       </p>
     </AppShell>
   );

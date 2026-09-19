@@ -1,8 +1,9 @@
 import { AppShell, ShellBackButton } from "@/components/AppShell";
 import { AIDocArticle, DocThumb } from "@/components/AIDocReader";
+import { AIIndexList } from "@/components/AIIndexList";
 import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { api } from "@/convex/_generated/api";
-import { getSutta, SUTTAS } from "@/data/suttas";
+import { getSutta } from "@/data/suttas";
 import { useAuth } from "@/hooks/use-auth";
 import { useSettings } from "@/lib/settings";
 import {
@@ -39,24 +40,11 @@ const NIKAYA_TABS = [
 
 export default function Suttas() {
   const { t } = useSettings();
-  const [tab, setTab] = useState("all");
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const reading = useQuery(api.library.listReading, {});
 
   const searchQ = search.trim().toLowerCase();
-  const list = useMemo(() => {
-    let rows = tab === "all" ? SUTTAS : SUTTAS.filter((s) => s.nikaya === tab);
-    if (searchQ) {
-      rows = rows.filter(
-        (s) =>
-          s.title.toLowerCase().includes(searchQ) ||
-          s.id.toLowerCase().includes(searchQ) ||
-          (s as { pali?: string }).pali?.toLowerCase().includes(searchQ) ||
-          s.summary?.toLowerCase().includes(searchQ),
-      );
-    }
-    return rows;
-  }, [tab, searchQ]);
 
   const progressMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -95,36 +83,15 @@ export default function Suttas() {
         </div>
       </div>
 
-      {/* Bộ lọc Nikaya */}
-      <div className="mb-6 flex flex-wrap gap-2">
-        {NIKAYA_TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            className={
-              "rounded-full border px-3.5 py-1.5 text-xs font-medium transition " +
-              (tab === t.key
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border/70 bg-card/60 text-muted-foreground hover:bg-accent")
-            }
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        {list.map((s) => {
-          const pct = progressMap.get(`sutta:${s.id}`) ?? 0;
-          return (
-            <SuttaCard key={s.id} id={s.id} pct={pct} />
-          );
-        })}
-      </div>
+      {/* Danh sách đề xuất do Trợ lý Phật học TỰ NẠP TOÀN BỘ — thay dữ liệu cũ */}
+      <AIIndexList
+        indexKind="suttas"
+        onOpen={(e) => navigate(`/suttas/${e.id}`)}
+        emptyHint="Chưa nạp được danh sách kinh đề xuất. Hãy thử lại."
+      />
 
       {/* AI tự nạp dữ liệu khi tìm kiếm không có kết quả */}
-      {list.length === 0 && searchQ && (
+      {searchQ && (
         <section className="mt-4">
           <div className="mb-3 flex items-center gap-2 rounded-xl border border-border/60 bg-muted/40 px-3.5 py-2.5 text-xs font-medium">
             <Sparkles className="h-3.5 w-3.5 shrink-0" />
@@ -238,6 +205,24 @@ export function SuttaReader() {
       if (t) clearTimeout(t);
     };
   }, [sutta, saveReading, isAuthenticated]);
+
+  // Kinh do danh sách AI đề xuất (chưa có trong kho cũ) → đọc bản AI đầy đủ
+  if (!sutta && id) {
+    return (
+      <AppShell
+        title={decodeURIComponent(id).replace(/[-_]/g, " ")}
+        subtitle="Bản kinh đầy đủ do Trợ lý Phật học tự nạp từ Kinh điển Pāli"
+        actions={<ShellBackButton />}
+      >
+        <AIDocArticle
+          kind="sutta"
+          refId={id}
+          title={decodeURIComponent(id).replace(/[-_]/g, " ")}
+          extra={`Bài kinh "${id}" trong Kinh tạng Pāli Theravāda — bản tiếng Việt đầy đủ.`}
+        />
+      </AppShell>
+    );
+  }
 
   if (!sutta) {
     return (

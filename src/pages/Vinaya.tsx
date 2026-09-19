@@ -1,6 +1,7 @@
 import { AppShell, ShellBackButton } from "@/components/AppShell";
-import { AIDocArticle, DocThumb } from "@/components/AIDocReader";
-import { getVinayaDoc, VINAYA_DOCS } from "@/data/vinaya";
+import { AIDocArticle } from "@/components/AIDocReader";
+import { AIIndexList } from "@/components/AIIndexList";
+import { getVinayaDoc } from "@/data/vinaya";
 import {
   loadLocalReadingPercent,
   saveLocalReading,
@@ -16,30 +17,12 @@ export default function Vinaya() {
       title="Luật tạng"
       subtitle="Vinaya Piṭaka — nền giới hạnh của Tăng-già theo truyền thống Theravāda"
     >
-      <div className="grid gap-4 sm:grid-cols-2">
-        {VINAYA_DOCS.map((doc) => (
-          <button
-            key={doc.id}
-            type="button"
-            onClick={() => navigate(`/vinaya/${doc.id}`)}
-            className="group flex h-full gap-3 rounded-xl border border-border/60 bg-card/70 p-3.5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
-          >
-            {/* Thumbnail tự nạp hình ảnh minh họa Luật tạng */}
-            <DocThumb kind="vinaya" refId={doc.id} title={doc.title} size="h-20 w-20" />
-            <span className="min-w-0 flex-1">
-              <h3 className="line-clamp-1 text-sm font-semibold group-hover:text-primary">
-                {doc.title}
-              </h3>
-              <p className="text-[11px] italic text-muted-foreground">
-                {doc.subtitle}
-              </p>
-              <p className="mt-1.5 line-clamp-3 text-xs leading-relaxed text-muted-foreground">
-                {doc.summary}
-              </p>
-            </span>
-          </button>
-        ))}
-      </div>
+      {/* Danh sách đề xuất do Trợ lý Phật học TỰ NẠP TOÀN BỘ — thay dữ liệu cũ */}
+      <AIIndexList
+        indexKind="vinaya"
+        onOpen={(e) => navigate(`/vinaya/${e.id}`)}
+        emptyHint="Chưa nạp được danh sách Luật tạng. Hãy thử lại."
+      />
     </AppShell>
   );
 }
@@ -83,6 +66,24 @@ export function VinayaReader() {
       if (t) clearTimeout(t);
     };
   }, [doc]);
+
+  // Văn bản do danh sách AI đề xuất (chưa có trong kho cũ) → đọc bản AI đầy đủ
+  if (!doc && id) {
+    return (
+      <AppShell
+        title={decodeURIComponent(id).replace(/[-_]/g, " ")}
+        subtitle="Nội dung Luật tạng do Trợ lý Phật học tự nạp"
+        actions={<ShellBackButton />}
+      >
+        <AIDocArticle
+          kind="vinaya"
+          refId={id}
+          title={decodeURIComponent(id).replace(/[-_]/g, " ")}
+          extra={`Văn bản Luật tạng Pāli "${id}" — nội dung đầy đủ.`}
+        />
+      </AppShell>
+    );
+  }
 
   if (!doc) {
     return (
