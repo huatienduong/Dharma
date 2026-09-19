@@ -783,7 +783,7 @@ function ExpandedControls({
           <div className="min-w-0 flex-1">
             <h3 className="truncate text-sm font-semibold">{title}</h3>
             <p className="truncate text-[11px] text-muted-foreground">
-              {teacher === channelName ? teacher : `${teacher} · ${channelName}`}
+              {isBuffering ? "Đang tải…" : teacher === channelName ? teacher : `${teacher} · ${channelName}`}
             </p>
             </div>
           <button
@@ -813,10 +813,8 @@ function ExpandedControls({
           >
             <X className="h-4 w-4" />
           </button>
-        </div>
-
-        {/* Hàng 2: thời gian · thanh tua · thời gian */}
-        <div className="mt-2 flex items-center gap-3">
+        </div>        {/* Hàng 2: thanh tua chiếm trọn chiều rộng + mốc thời gian 2 đầu */}
+        <div className="mt-2.5 flex items-center gap-2.5">
           <span className="w-11 shrink-0 tabular-nums text-xs text-muted-foreground">
             {formatTime(position)}
           </span>
@@ -832,41 +830,42 @@ function ExpandedControls({
           <span className="w-11 shrink-0 text-right tabular-nums text-xs text-muted-foreground">
             {formatTime(duration)}
           </span>
-          {/* Điều khiển phát gọn: lùi 15 · phát/tạm dừng · tới 15 */}
-          <div className="ml-1 flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              onClick={() => onSeek(Math.max(0, position - 15))}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-medium text-muted-foreground transition hover:bg-accent"
-              aria-label="Lùi 15 giây"
-            >
-              −15
-            </button>
-            <button
-              type="button"
-              onClick={onToggle}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow transition hover:opacity-90"
-              aria-label={isPlaying ? "Tạm dừng" : "Phát"}
-            >
-              {isPlaying ? (
-                <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
-                  <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => onSeek(position + 15)}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-medium text-muted-foreground transition hover:bg-accent"
-              aria-label="Tới 15 giây"
-            >
-              +15
-            </button>
-          </div>
+        </div>
+
+        {/* Hàng 3: cụm điều khiển căn giữa — lùi 15 · phát (to) · tới 15 */}
+        <div className="mt-2 flex items-center justify-center gap-5">
+          <button
+            type="button"
+            onClick={() => onSeek(Math.max(0, position - 15))}
+            className="flex h-9 items-center rounded-full px-3 text-xs font-semibold text-muted-foreground transition hover:bg-accent hover:text-foreground"
+            aria-label="Lùi 15 giây"
+          >
+            −15s
+          </button>
+          <button
+            type="button"
+            onClick={onToggle}
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition hover:scale-105 hover:opacity-95"
+            aria-label={isPlaying ? "Tạm dừng" : "Phát"}
+          >
+            {isPlaying ? (
+              <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current">
+                <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" className="ml-0.5 h-5 w-5 fill-current">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => onSeek(position + 15)}
+            className="flex h-9 items-center rounded-full px-3 text-xs font-semibold text-muted-foreground transition hover:bg-accent hover:text-foreground"
+            aria-label="Tới 15 giây"
+          >
+            +15s
+          </button>
         </div>
 
         {showFallback && (
