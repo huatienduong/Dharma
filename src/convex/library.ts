@@ -24,6 +24,7 @@ export const updateSettings = mutation({
     fontScale: v.optional(v.number()),
     language: v.optional(v.string()),
     notifications: v.optional(v.boolean()),
+    screenshotBlock: v.optional(v.boolean()),
   },
   handler: async (ctx, patch) => {
     const userId = await getAuthUserId(ctx);

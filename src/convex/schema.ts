@@ -71,6 +71,7 @@ const schema = defineSchema(
       fontScale: v.number(), // 0.9 | 1.0 | 1.15 | 1.3
       language: v.string(), // "vi" | "en"
       notifications: v.boolean(),
+      screenshotBlock: v.optional(v.boolean()), // chống chụp màn hình
     })
       .index("by_user", ["userId"]),
 
