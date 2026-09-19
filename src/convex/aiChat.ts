@@ -39,10 +39,10 @@ export const ask = action({
     ),
   },
   handler: async (ctx, { messages }) => {
+    // Khách chưa đăng nhập vẫn hỏi được (chỉ không lưu lịch sử —
+    // việc lưu do mutation appendMessages tự kiểm tra đăng nhập).
     const userId = await getAuthUserId(ctx);
-    if (userId === null) {
-      throw new Error("Bạn cần đăng nhập để trò chuyện với Trợ lý Pháp.");
-    }
+    void userId;
 
     if (messages.length === 0) {
       throw new Error("Câu hỏi trống.");

@@ -181,7 +181,14 @@ export default function WatchTogether() {
   }
 
   if (inRoom && room) {
-    return <RoomView room={room} myName={user?.dhammaName || user?.name || "Ẩn danh"} onLeave={leaveRoom} />;
+    return (
+      <RoomView
+        room={room}
+        myId={user?._id}
+        myName={user?.dhammaName || user?.name || "Ẩn danh"}
+        onLeave={leaveRoom}
+      />
+    );
   }
 
   /* ---------- Màn hình tạo / tham gia phòng ---------- */
@@ -260,10 +267,12 @@ export default function WatchTogether() {
 
 function RoomView({
   room,
+  myId,
   myName,
   onLeave,
 }: {
   room: RoomState;
+  myId?: Id<"users">;
   myName: string;
   onLeave(): void;
 }) {
@@ -438,18 +447,17 @@ function RoomView({
     [room.members],
   );
 
-  // Thiết lập mesh: userId nhỏ hơn làm initiator
+  // Thiết lập mesh: userId nhỏ hơn làm initiator (tránh cả hai cùng offer)
   useEffect(() => {
+    if (!myId) return;
     if (!room.youtubeId && !micOn && !camOn) return;
-    const me = room.members.find((m) => m.name === myName)?.userId;
-    if (!me) return;
     for (const m of room.members) {
-      if (m.userId === me) continue;
-      const initiator = String(m.userId) < String(me);
+      if (m.userId === myId) continue;
+      const initiator = String(m.userId) < String(myId);
       void ensurePeer(m.userId, initiator);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [membersKey]);
+  }, [membersKey, myId]);
 
   // Nhận + xử lý tín hiệu mỗi 1s
   useEffect(() => {
@@ -551,10 +559,9 @@ function RoomView({
   };
 
   /* ---------- Chat ---------- */
-  const chat = useQuery(
-    api.watchRooms.listChat,
-    room.youtubeId || chatEnabled(room) ? { code: room.code } : "skip",
-  ) as Doc<"roomChat">[] | undefined;
+  const chat = useQuery(api.watchRooms.listChat, {
+    code: room.code,
+  }) as Doc<"roomChat">[] | undefined;
   const [chatText, setChatText] = useState("");
   const chatScrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -656,7 +663,7 @@ function RoomView({
             <div className="flex flex-wrap gap-2">
               <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-background/70 px-3 py-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                  {myName.slice(0, 1).toUpperCase()}
+                  {(myName || "B").slice(0, 1).toUpperCase()}
                 </div>
                 <span className="max-w-28 truncate text-xs font-medium">{myName} (bạn)</span>
                 <button
@@ -685,7 +692,7 @@ function RoomView({
               </div>
 
               {room.members
-                .filter((m) => m.name !== myName)
+                .filter((m) => m.userId !== myId)
                 .map((m) => {
                   const rs = remoteStreams.find((r) => r.userId === m.userId);
                   return (
@@ -775,10 +782,6 @@ function RoomView({
       )}
     </AppShell>
   );
-}
-
-function chatEnabled(_room: RoomState) {
-  return true;
 }
 
 /* ------------------------------------------------------------------ */
