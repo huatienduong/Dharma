@@ -20,7 +20,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 type Talk = Doc<"dhammaTalks">;
@@ -45,6 +45,7 @@ export default function Dashboard() {
 
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const progress = useQuery(api.dhamma.myProgress, {});
 
@@ -75,6 +76,7 @@ export default function Dashboard() {
   }, [firstPage, nextPage]);
 
   const loading = firstPage === undefined;
+  // Còn nạp được nữa khi: chưa tải trang kế, hoặc trang kế trả về đủ một trang
   const canLoadMore =
     !loading && (nextPage === undefined || nextPage.length === PAGE_SIZE);
 
@@ -317,20 +319,15 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Tải thêm — cuộn theo tối đa dữ liệu đã đồng bộ từ YouTube */}
+        {/* Cổng cuộn tự động: chạm tới là nạp trang kế tiếp */}
         {canLoadMore && !searchQ && (
-          <div className="mt-5 flex justify-center">
-            <Button
-              variant="outline"
-              onClick={() => setOffset((o) => o + PAGE_SIZE)}
-              disabled={nextPage === undefined}
-              className="gap-2"
-            >
-              {nextPage === undefined && (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              )}
-              Tải thêm pháp thoại
-            </Button>
+          <div
+            ref={sentinelRef}
+            className="mt-6 flex items-center justify-center py-2 text-muted-foreground"
+          >
+            {nextPage === undefined && (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            )}
           </div>
         )}
       </section>
