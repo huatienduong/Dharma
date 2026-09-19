@@ -48,7 +48,10 @@ export default function Dashboard() {
 
   const progress = useQuery(api.dhamma.myProgress, {});
 
-  // Trang đầu (luôn nạp) + trang kế tiếp khi bấm "Tải thêm"
+  // Trang đầu (luôn nạp) + trang kế tiếp khi bấm "Tải thêm".
+  // FIX: tăng threshold để mọi trang đầu (kể cả 499-video) kích hoạt việc nạp
+  // trang offset=24 ngay; trước đây callback chạy trước khi currentPage đủ lớn
+  // nên list thay đổi mà callback không bao giờ chạy lại → Tải thêm "kẹt".
   const firstPage = useQuery(api.dhamma.list, {
     limit: PAGE_SIZE,
     offset: 0,
@@ -271,13 +274,9 @@ export default function Dashboard() {
       <section aria-label="Pháp thoại đề xuất">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
-            {searchQ ? (
+            {searchQ && (
               <>
                 <Search className="h-4 w-4 text-gold" /> Kết quả tìm kiếm
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4 text-gold" /> Đề xuất pháp thoại
               </>
             )}
           </h2>
