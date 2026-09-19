@@ -24,8 +24,10 @@ const NAV = [
   { to: "/calendar", label: "Lịch Phật giáo", icon: Calendar },
   { to: "/meditation", label: "Thiền", icon: Heart },
   { to: "/profile", label: "Hồ sơ", icon: UserRound },
-  { to: "/settings", label: "Cài đặt", icon: Settings },
 ];
+
+/** Mục Cài đặt tách riêng — hiển thị dạng icon ở góc phải sidebar. */
+const SETTINGS_ITEM = { to: "/settings", label: "Cài đặt", icon: Settings };
 
 export function AppShell({
   title,
@@ -42,6 +44,33 @@ export function AppShell({
   const location = useLocation();
   const { signOut } = useAuth();
 
+  const isActive = (to: string) =>
+    to === "/dashboard"
+      ? location.pathname === "/dashboard"
+      : location.pathname.startsWith(to);
+
+  const NavButton = ({ item }: { item: (typeof NAV)[number] }) => {
+    const active = isActive(item.to);
+    const Icon = item.icon;
+    return (
+      <button
+        key={item.to}
+        type="button"
+        onClick={() => navigate(item.to)}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition",
+          active
+            ? "bg-primary text-primary-foreground shadow-sm"
+            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+        )}
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+        {item.label}
+      </button>
+    );
+  };
+
   return (
     <div className="lotus-bg min-h-screen">
       {/* ---------- Sidebar desktop ---------- */}
@@ -55,36 +84,40 @@ export function AppShell({
             </p>
           </div>
         </div>
+
+        {/* Tab điều hướng chính — bên trái */}
         <nav className="flex-1 space-y-1 px-3 py-2">
-          {NAV.map((item) => {
-            const active = location.pathname.startsWith(item.to);
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.to}
-                type="button"
-                onClick={() => navigate(item.to)}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition",
-                  active
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {item.label}
-              </button>
-            );
-          })}
+          {NAV.map((item) => (
+            <NavButton key={item.to} item={item} />
+          ))}
         </nav>
-        <div className="border-t border-border/60 p-4">
+
+        {/* Cài đặt — icon riêng ở dưới bên phải */}
+        <div className="flex items-center justify-between border-t border-border/60 p-3">
+          <button
+            type="button"
+            onClick={() => navigate(SETTINGS_ITEM.to)}
+            aria-current={isActive(SETTINGS_ITEM.to) ? "page" : undefined}
+            title="Cài đặt"
+            aria-label="Cài đặt"
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition",
+              isActive(SETTINGS_ITEM.to)
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
+          >
+            <Settings className="h-4 w-4" />
+            Cài đặt
+          </button>
           <button
             type="button"
             onClick={() => void signOut()}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+            title="Đăng xuất"
+            aria-label="Đăng xuất"
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
           >
             <LogOut className="h-4 w-4" />
-            Đăng xuất
           </button>
         </div>
       </aside>
@@ -107,12 +140,28 @@ export function AppShell({
               </p>
             </div>
           </button>
-          {actions}
+          <div className="flex items-center gap-1.5">
+            {actions}
+            {/* Cài đặt — icon bên phải header mobile */}
+            <button
+              type="button"
+              onClick={() => navigate(SETTINGS_ITEM.to)}
+              aria-label="Cài đặt"
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-lg transition",
+                isActive(SETTINGS_ITEM.to)
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+              )}
+            >
+              <Settings className="h-5 w-5" />
+            </button>
+          </div>
         </div>
         {/* Chip điều hướng cuộn ngang trên mobile */}
         <div className="flex gap-1.5 overflow-x-auto px-4 pb-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {NAV.map((item) => {
-            const active = location.pathname.startsWith(item.to);
+            const active = isActive(item.to);
             return (
               <button
                 key={item.to}
@@ -156,13 +205,13 @@ export function AppShell({
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-lg items-stretch justify-between px-1">
           {[
-            NAV[0], // Trang chủ (pháp thoại)
+            NAV[0], // Pháp thoại
             NAV[1], // Kinh tạng
             NAV.find((n) => n.to === "/calendar")!,
             NAV.find((n) => n.to === "/meditation")!,
-            NAV.find((n) => n.to === "/settings")!,
+            NAV.find((n) => n.to === "/profile")!,
           ].map((item) => {
-            const active = location.pathname.startsWith(item.to);
+            const active = isActive(item.to);
             const Icon = item.icon;
             return (
               <button
