@@ -1,7 +1,12 @@
 import { AppShell, ShellBackButton } from "@/components/AppShell";
 import { getVinayaDoc, VINAYA_DOCS } from "@/data/vinaya";
 import { Scale } from "lucide-react";
+import {
+  loadLocalReadingPercent,
+  saveLocalReading,
+} from "@/lib/localProgress";
 import { useNavigate, useParams } from "react-router";
+import { useEffect, useRef } from "react";
 
 export default function Vinaya() {
   const navigate = useNavigate();
@@ -41,6 +46,42 @@ export default function Vinaya() {
 export function VinayaReader() {
   const { id } = useParams();
   const doc = id ? getVinayaDoc(id) : undefined;
+  const restoredRef = useRef(false);
+
+  // Khôi phục vị trí cuộn từ tiến trình cục bộ
+  useEffect(() => {
+    if (!doc || restoredRef.current) return;
+    const pct = loadLocalReadingPercent(`vinaya:${doc.id}`);
+    if (pct > 2) {
+      restoredRef.current = true;
+      const target =
+        (document.documentElement.scrollHeight - window.innerHeight) *
+        (pct / 100);
+      requestAnimationFrame(() => window.scrollTo(0, target));
+    } else {
+      restoredRef.current = true;
+    }
+  }, [doc]);
+
+  // Lưu tiến trình khi cuộn (debounce nhẹ) — cục bộ, mọi người dùng
+  useEffect(() => {
+    if (!doc) return;
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const onScroll = () => {
+      if (t) clearTimeout(t);
+      t = setTimeout(() => {
+        const max =
+          document.documentElement.scrollHeight - window.innerHeight;
+        const pct = max > 0 ? Math.round((window.scrollY / max) * 100) : 100;
+        saveLocalReading(`vinaya:${doc.id}`, pct);
+      }, 500);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (t) clearTimeout(t);
+    };
+  }, [doc]);
 
   if (!doc) {
     return (
