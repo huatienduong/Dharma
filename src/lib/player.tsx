@@ -1,6 +1,7 @@
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useAuth } from "@/hooks/use-auth";
+import { ChevronDown, RotateCcw, X } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import {
   createContext,
@@ -508,7 +509,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           {!expanded && (
             <MiniPlayerCard
               title={current.title}
-              teacher={current.teacher}
               isBuffering={isBuffering}
               isPlaying={isPlaying}
               position={position}
@@ -584,7 +584,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
 export function MiniPlayerCard({
   title,
-  teacher,
   isBuffering,
   isPlaying,
   position,
@@ -596,7 +595,6 @@ export function MiniPlayerCard({
   youtubeId,
 }: {
   title: string;
-  teacher?: string;
   isBuffering: boolean;
   isPlaying: boolean;
   position: number;
@@ -610,58 +608,48 @@ export function MiniPlayerCard({
   return (
     <div className="fixed bottom-4 right-4 z-[95] w-[min(20rem,calc(100vw-2rem))] animate-in slide-in-from-bottom-2 fade-in">
       <div className="overflow-hidden rounded-xl border border-border bg-popover/95 shadow-xl backdrop-blur">
-        <div className="py-2.5 pl-3 pr-3">
-          <p className="truncate text-sm font-medium leading-snug">{title}</p>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {isBuffering
-              ? "Đang tải…"
-              : isPlaying
-                ? "Đang phát"
-                : "Tạm dừng"}{" "}
-            ·{" "}
-            <span className="tabular-nums">
+        {/* Một hàng duy nhất: nút phát · tiêu đề · thời gian · đóng */}
+        <div className="flex items-center gap-2.5 px-3 py-2">
+          <button
+            type="button"
+            onClick={onToggle}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
+            aria-label={isPlaying ? "Tạm dừng" : "Phát"}
+          >
+            {isPlaying ? (
+              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            )}
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium leading-snug">{title}</p>
+            <p className="truncate text-[11px] tabular-nums text-muted-foreground">
+              {isBuffering ? "Đang tải…" : isPlaying ? "Đang phát" : "Tạm dừng"}
+              {" · "}
               {formatTime(position)} / {formatTime(duration)}
-            </span>
-          </p>
-        </div>
-        <div className="flex items-center justify-between gap-2 border-t border-border/60 px-3 py-1.5">
-          <span className="text-[11px] text-muted-foreground">
-            Đang nghe nền
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => onSeek(Math.max(0, position - 15))}
-              className="rounded-full px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-              aria-label="Lùi 15 giây"
-            >
-              −15s
-            </button>
-            <button
-              type="button"
-              onClick={onToggle}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
-              aria-label={isPlaying ? "Tạm dừng" : "Phát"}
-            >
-              {isPlaying ? (
-                <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
-                  <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full px-2 py-0.5 text-[11px] text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-              aria-label="Đóng trình phát"
-            >
-              ✕
-            </button>
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={() => onSeek(Math.max(0, position - 15))}
+            className="shrink-0 rounded-full px-1.5 py-1 text-[11px] text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+            aria-label="Lùi 15 giây"
+          >
+            −15s
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+            aria-label="Đóng trình phát"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
         <div className="h-1 w-full bg-muted">
           <div
@@ -729,51 +717,49 @@ function ExpandedControls({
   return (
     <div
       className="fixed left-1/2 z-[96] w-[min(92vw,56rem)] -translate-x-1/2"
-      style={{ top: "calc(2rem + min(92vw, 56rem) * 9 / 16 + 0.9rem)" }}
+      style={{ top: "calc(2rem + min(92vw, 56rem) * 9 / 16 + 0.75rem)" }}
     >
-      <div className="rounded-xl border border-border bg-popover/95 p-4 shadow-2xl backdrop-blur">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold sm:text-base">
-              {title}
-            </h3>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {teacher} · {channelName}
+      <div className="rounded-xl border border-border bg-popover/95 px-4 py-3 shadow-2xl backdrop-blur">
+        {/* Hàng 1: tiêu đề + nút nhỏ (xem lại, thu nhỏ, đóng) */}
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate text-sm font-semibold">{title}</h3>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {teacher === channelName ? teacher : `${teacher} · ${channelName}`}
             </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <button
-              type="button"
-              onClick={onReplay}
-              title="Xem lại từ đầu"
-              aria-label="Xem lại từ đầu"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-sm text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-            >
-              ⟲
-            </button>
-            <button
-              type="button"
-              onClick={onMinimize}
-              title="Thu nhỏ"
-              aria-label="Thu nhỏ trình phát"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-            >
-              ▾
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              title="Đóng trình phát"
-              aria-label="Đóng trình phát"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-            >
-              ✕
-            </button>
-          </div>
+            </div>
+          <button
+            type="button"
+            onClick={onReplay}
+            title="Xem lại từ đầu"
+            aria-label="Xem lại từ đầu"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onMinimize}
+            title="Thu nhỏ"
+            aria-label="Thu nhỏ trình phát"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            title="Đóng trình phát"
+            aria-label="Đóng trình phát"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
-        <div className="mt-3 flex items-center gap-3">
-          <span className="tabular-nums text-xs text-muted-foreground">
+        {/* Hàng 2: thời gian · thanh tua · thời gian */}
+        <div className="mt-2 flex items-center gap-3">
+          <span className="w-11 shrink-0 tabular-nums text-xs text-muted-foreground">
             {formatTime(position)}
           </span>
           <input
@@ -785,48 +771,48 @@ function ExpandedControls({
             className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-[var(--gold)]"
             aria-label="Tua theo thời gian"
           />
-          <span className="tabular-nums text-xs text-muted-foreground">
+          <span className="w-11 shrink-0 text-right tabular-nums text-xs text-muted-foreground">
             {formatTime(duration)}
           </span>
-        </div>
-
-        <div className="mt-3 flex items-center justify-center gap-4">
-          <button
-            type="button"
-            onClick={() => onSeek(Math.max(0, position - 15))}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-xs font-medium transition hover:bg-accent"
-            aria-label="Lùi 15 giây"
-          >
-            −15s
-          </button>
-          <button
-            type="button"
-            onClick={onToggle}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition hover:opacity-90"
-            aria-label={isPlaying ? "Tạm dừng" : "Phát"}
-          >
-            {isPlaying ? (
-              <svg viewBox="0 0 24 24" className="h-7 w-7 fill-current">
-                <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" className="h-7 w-7 fill-current">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => onSeek(position + 15)}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-xs font-medium transition hover:bg-accent"
-            aria-label="Tới 15 giây"
-          >
-            +15s
-          </button>
+          {/* Điều khiển phát gọn: lùi 15 · phát/tạm dừng · tới 15 */}
+          <div className="ml-1 flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => onSeek(Math.max(0, position - 15))}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-medium text-muted-foreground transition hover:bg-accent"
+              aria-label="Lùi 15 giây"
+            >
+              −15
+            </button>
+            <button
+              type="button"
+              onClick={onToggle}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow transition hover:opacity-90"
+              aria-label={isPlaying ? "Tạm dừng" : "Phát"}
+            >
+              {isPlaying ? (
+                <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                  <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => onSeek(position + 15)}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-medium text-muted-foreground transition hover:bg-accent"
+              aria-label="Tới 15 giây"
+            >
+              +15
+            </button>
+          </div>
         </div>
 
         {showFallback && (
-          <p className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-center text-xs text-destructive">
+          <p className="mt-2.5 rounded-lg bg-destructive/10 px-3 py-2 text-center text-xs text-destructive">
             Video này không cho phép phát nhúng.{" "}
             <a
               className="underline"
@@ -838,10 +824,6 @@ function ExpandedControls({
             </a>
           </p>
         )}
-        <p className="mt-3 text-center text-[11px] leading-relaxed text-muted-foreground">
-          Âm thanh tiếp tục phát khi tắt màn hình hoặc chuyển tab (chế độ nghe
-          nền). Tiến trình được lưu tự động.
-        </p>
       </div>
     </div>
   );
