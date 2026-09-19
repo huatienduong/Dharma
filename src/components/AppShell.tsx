@@ -282,18 +282,6 @@ export function AppShell({
               </button>
             );
           })}
-          {/* Nút menu mở drawer (đủ 6 tab + cài đặt) */}
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            className={cn(
-              "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition",
-              drawerOpen ? "text-primary" : "text-muted-foreground",
-            )}
-          >
-            <Menu className="h-5 w-5" />
-            Thêm
-          </button>
         </div>
       </nav>
     </div>

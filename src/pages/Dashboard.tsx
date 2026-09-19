@@ -13,14 +13,13 @@ import {
   Clock,
   Eye,
   History,
-  Loader2,
   Play,
   RefreshCw,
   Search,
   Sparkles,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 type Talk = Doc<"dhammaTalks">;
@@ -38,47 +37,19 @@ type ProgressRow = {
   updatedAt: number;
 };
 
-const PAGE_SIZE = 24;
-
 export default function Dashboard() {
   const { play, current } = usePlayer();
 
   const [search, setSearch] = useState("");
-  const [offset, setOffset] = useState(0);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const progress = useQuery(api.dhamma.myProgress, {});
 
-  // Trang đầu (luôn nạp) + trang kế tiếp khi bấm "Tải thêm".
-  // FIX: tăng threshold để mọi trang đầu (kể cả 499-video) kích hoạt việc nạp
-  // trang offset=24 ngay; trước đây callback chạy trước khi currentPage đủ lớn
-  // nên list thay đổi mà callback không bao giờ chạy lại → Tải thêm "kẹt".
-  const firstPage = useQuery(api.dhamma.list, {
-    limit: PAGE_SIZE,
-    offset: 0,
-  });
-  const nextPage = useQuery(
-    api.dhamma.list,
-    offset > 0 ? { limit: PAGE_SIZE, offset } : "skip",
-  );
+  // Tải TOÀN BỘ kho pháp thoại một lần (không phân trang — khắc phục
+  // triệt để lỗi nút Tải thêm không nạp video). Nút Đồng bộ trên header
+  // sẽ kéo thêm video mới từ các kênh YouTube vào kho chung.
+  const talks = useQuery(api.dhamma.list, { limit: 2000 });
 
-  const talks = useMemo(() => {
-    const a = firstPage ?? [];
-    const b = nextPage ?? [];
-    const seen = new Set<string>();
-    const out: Talk[] = [];
-    for (const t of [...a, ...b]) {
-      if (seen.has(t.youtubeId)) continue;
-      seen.add(t.youtubeId);
-      out.push(t);
-    }
-    return out;
-  }, [firstPage, nextPage]);
-
-  const loading = firstPage === undefined;
-  // Còn nạp được nữa khi: chưa tải trang kế, hoặc trang kế trả về đủ một trang
-  const canLoadMore =
-    !loading && (nextPage === undefined || nextPage.length === PAGE_SIZE);
+  const loading = talks === undefined;
 
   // Đã xem: từ tiến trình
   const watched = useMemo(
@@ -88,7 +59,7 @@ export default function Dashboard() {
 
   // Liên quan: cùng giảng sư với video đang phát (loại video đang phát)
   const related = useMemo(() => {
-    if (!current) return [];
+    if (!current || !talks) return [];
     return talks
       .filter(
         (t) =>
@@ -101,30 +72,13 @@ export default function Dashboard() {
   // Lọc tìm kiếm (tiêu đề + giảng sư)
   const searchQ = search.trim().toLowerCase();
   const filtered = useMemo(() => {
-    if (!searchQ) return talks;
-    return talks.filter(
+    if (!searchQ) return talks ?? [];
+    return (talks ?? []).filter(
       (t) =>
         t.title.toLowerCase().includes(searchQ) ||
         t.teacher.toLowerCase().includes(searchQ),
     );
   }, [talks, searchQ]);
-
-  // Cuộn tự động: khi cổng (sentinel) chạm mép viewport thì nạp trang kế
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || searchQ) return;
-    if (!canLoadMore || nextPage === undefined) return; // đang nạp hoặc hết dữ liệu
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setOffset((o) => o + PAGE_SIZE);
-        }
-      },
-      { rootMargin: "600px 0px" }, // nạp trước khi người dùng cuộn tới
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [canLoadMore, nextPage, searchQ]);
 
   // Hero: bài mới nhất (chỉ khi không tìm kiếm)
   const hero = !searchQ ? filtered[0] : undefined;
@@ -336,17 +290,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Cổng cuộn tự động: chạm tới là nạp trang kế tiếp */}
-        {canLoadMore && !searchQ && (
-          <div
-            ref={sentinelRef}
-            className="mt-6 flex items-center justify-center py-2 text-muted-foreground"
-          >
-            {nextPage === undefined && (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            )}
-          </div>
-        )}
       </section>
 
       {/* ---------- Chân trang: chỉ nhà phát triển + phiên bản ---------- */}
