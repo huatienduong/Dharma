@@ -102,15 +102,21 @@ const schema = defineSchema(
       appVersion: v.string(),
       status: v.string(), // "new" | "reading" | "resolved"
       createdAt: v.number(),
-    }).index("by_createdAt", ["createdAt"]),
+    }).index("by_createdAt", ["createdAt"]),  // Siêu dữ liệu ứng dụng: phiên bản mới nhất, ghi chú phát hành
+  appMeta: defineTable({
+    key: v.string(),
+    latestVersion: v.string(),
+    releaseNotes: v.optional(v.string()),
+    releasedAt: v.optional(v.number()),
+  }).index("by_key", ["key"]),
 
-    // Siêu dữ liệu ứng dụng: phiên bản mới nhất, ghi chú phát hành
-    appMeta: defineTable({
-      key: v.string(),
-      latestVersion: v.string(),
-      releaseNotes: v.optional(v.string()),
-      releasedAt: v.optional(v.number()),
-    }).index("by_key", ["key"]),
+  // Hội thoại Phật pháp với trợ lý AI (lưu theo người dùng để quay lại không mất)
+  aiMessages: defineTable({
+    userId: v.id("users"),
+    role: v.string(), // "user" | "assistant"
+    content: v.string(),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"]),
   },
   {
     schemaValidation: false,
