@@ -214,6 +214,101 @@ export const ask = action({
   },
 });
 
+/**
+ * TTS tiếng Việt chất lượng cao — server tổng hợp âm thanh rồi trả về base64.
+ * Thứ tự: Gemini TTS (free tier, giọng vi tự nhiên) → OpenAI TTS.
+ * Trả về null khi không có khóa TTS → client dùng Web Speech dự phòng.
+ */
+export const speak = action({
+  args: { text: v.string() },
+  handler: async (ctx, { text }) => {
+    void ctx;
+    const clean = text.trim().slice(0, 2400);
+    if (!clean) return null;
+
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const openaiKey = process.env.OPENAI_API_KEY;
+
+    // --- Gemini TTS (gemini-2.5-flash-preview-tts, giọng Kore chuẩn) ---
+    if (geminiKey) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-goog-api-key": geminiKey,
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    { text: `Đọc bằng tiếng Việt, giọng nữ nhẹ nhàng, chậm rãi trang nghiêm: ${clean}` },
+                  ],
+                },
+              ],
+              generationConfig: {
+                responseModalities: ["AUDIO"],
+                speechConfig: {
+                  voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } },
+                },
+              },
+            }),
+          },
+        );
+        if (res.ok) {
+          const json = (await res.json()) as {
+            candidates?: {
+              content?: {
+                parts?: { inlineData?: { data?: string; mimeType?: string } }[];
+              };
+            }[];
+          };
+          const part = json.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+          if (part?.data) {
+            return { audioBase64: part.data, mime: part.mimeType ?? "audio/L16;rate=24000" };
+          }
+        }
+      } catch {
+        /* thử nhà cung cấp tiếp theo */
+      }
+    }
+
+    // --- OpenAI TTS (gpt-4o-mini-tts) ---
+    if (openaiKey) {
+      try {
+        const res = await fetch("https://api.openai.com/v1/audio/speech", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${openaiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "gpt-4o-mini-tts",
+            voice: "shimmer",
+            input: clean,
+            response_format: "mp3",
+          }),
+        });
+        if (res.ok) {
+          const buf = await res.arrayBuffer();
+          let binary = "";
+          const bytes = new Uint8Array(buf);
+          for (let i = 0; i < bytes.length; i++) {
+            binary += String.fromCharCode(bytes[i]);
+          }
+          return { audioBase64: btoa(binary), mime: "audio/mpeg" };
+        }
+      } catch {
+        /* rơi về Web Speech */
+      }
+    }
+
+    return null;
+  },
+});
+
 /* ------------------------------------------------------------------ */
 /* Lưu / tải / xóa hội thoại (tiến trình không bị mất khi quay lại)     */
 /* ------------------------------------------------------------------ */
