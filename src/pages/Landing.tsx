@@ -89,21 +89,7 @@ export default function Landing() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
             className="flex flex-col items-center"
-          >
-            <DhammaWheel size={92} className="mb-6 drop-shadow-lg" />
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-gold">
-              Namo Tassa Bhagavato Arahato Sammā Sambuddhassa
-            </p>
-            <h1 className="max-w-2xl text-3xl font-bold leading-tight sm:text-5xl sm:leading-tight">
-              Nghe pháp thoại Theravāda{" "}
-              <span className="text-gold">một cách trọn vẹn</span>
-            </h1>
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Xem và nghe các bài pháp thoại từ những vị giảng sư Phật giáo
-              Nguyên thủy ngay trong ứng dụng. Tiến trình được ghi nhớ, âm
-              thanh tiếp tục khi tắt màn hình — để việc nghe Pháp không bao giờ
-              gián đoạn.
-            </p>
+          >            <DhammaWheel size={92} className="mb-6 drop-shadow-lg" />
             <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
               <Button asChild size="lg" className="gap-2 px-8">
                 <Link to="/auth">
