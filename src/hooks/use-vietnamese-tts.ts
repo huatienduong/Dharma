@@ -3,6 +3,42 @@ import { useAction } from "convex/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
+ * Bọc PCM thô (audio/L16 — định dạng Gemini TTS trả về) vào container WAV
+ * để trình duyệt phát được — trước đây Audio không phát PCM → im lặng.
+ */
+function pcmToWav(base64Pcm: string, sampleRate = 24000): string {
+  const bin = atob(base64Pcm);
+  const pcmLen = bin.length;
+  const buffer = new ArrayBuffer(44 + pcmLen);
+  const view = new DataView(buffer);
+  const w = (off: number, s: string) => {
+    for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i));
+  };
+  w(0, "RIFF");
+  view.setUint32(4, 36 + pcmLen, true);
+  w(8, "WAVE");
+  w(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  w(36, "data");
+  view.setUint32(40, pcmLen, true);
+  for (let i = 0; i < pcmLen; i++) view.setUint8(44 + i, bin.charCodeAt(i));
+  // Chuyển ArrayBuffer sang base64
+  const bytes = new Uint8Array(buffer);
+  let out = "";
+  const CH = 0x8000;
+  for (let i = 0; i < bytes.length; i += CH) {
+    out += String.fromCharCode(...bytes.subarray(i, i + CH));
+  }
+  return btoa(out);
+}
+
+/**
  * TTS tiếng Việt hai tầng cho Trợ lý Pháp:
  * 1. SERVER TTS (ưu tiên): Gemini TTS / OpenAI TTS trả về audio base64 →
  *    phát qua <Audio> — giọng tiếng Việt tự nhiên bất kể máy người dùng.
@@ -142,7 +178,11 @@ export function useVietnameseTTS() {
       try {
         const res = await speakAction({ text: clean.slice(0, 2400) });
         if (res && !stopFlagRef.current) {
-          const audio = new Audio(`data:${res.mime};base64,${res.audioBase64}`);
+          // Gemini trả PCM thô → bọc WAV; mp3/WAV dùng nguyên bản
+          const src = /L16|pcm/i.test(res.mime)
+            ? `data:audio/wav;base64,${pcmToWav(res.audioBase64)}`
+            : `data:${res.mime};base64,${res.audioBase64}`;
+          const audio = new Audio(src);
           audioRef.current = audio;
           setEngine("server");
           setSpeaking(true);
@@ -157,10 +197,14 @@ export function useVietnameseTTS() {
             // Server audio lỗi → rơi về Web Speech
             webSpeak(clean, onDone);
           };
-          await audio.play().catch(() => {
+          try {
+            await audio.play();
+            return;
+          } catch {
             setSpeaking(false);
+            audioRef.current = null;
             webSpeak(clean, onDone);
-          });
+          }
           return;
         }
       } catch {

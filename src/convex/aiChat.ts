@@ -209,7 +209,10 @@ export const ask = action({
       }
     }
     throw new Error(
-      `Không kết nối được trợ lý AI. Chi tiết: ${errors.join(" | ")}`,
+      `Không kết nối được trợ lý AI. Chi tiết: ${errors.join(" | ")}` +
+        (imageBase64 && !process.env.GEMINI_API_KEY
+          ? " — Gửi ảnh cần khóa GEMINI_API_KEY (miễn phí tại aistudio.google.com), dán vào tab Keys/API keys."
+          : ""),
     );
   },
 });

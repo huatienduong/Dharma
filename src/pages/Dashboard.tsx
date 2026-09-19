@@ -13,8 +13,6 @@ import { useAction, useQuery } from "convex/react";
 import {
   Clock,
   Eye,
-  History,
-  MonitorPlay,
   Play,
   RefreshCw,
   Search,
@@ -22,7 +20,6 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
 type Talk = Doc<"dhammaTalks">;
@@ -42,16 +39,10 @@ type ProgressRow = {
 
 export default function Dashboard() {
   const { play, current } = usePlayer();
-  const navigate = useNavigate();
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch("");
 
   const progress = useQuery(api.dhamma.myProgress, {});
-  // Tiến trình cục bộ — khách chưa đăng nhập vẫn thấy "Tiếp tục xem"
-  const [localProgress, setLocalProgress] = useState<LocalWatchRow[]>([]);
-  useEffect(() => {
-    setLocalProgress(loadLocalWatch());
-  }, [current?.youtubeId]);
 
   // Tải TOÀN BỘ kho pháp thoại một lần (không phân trang — khắc phục
   // triệt để lỗi nút Tải thêm không nạp video). Nút Đồng bộ trên header
@@ -59,23 +50,6 @@ export default function Dashboard() {
   const talks = useQuery(api.dhamma.list, { limit: 2000 });
 
   const loading = talks === undefined;
-
-  // Đã xem: GỘP server + local (mục mới hơn thắng), sắp theo updatedAt
-  const watched = useMemo(() => {
-    const byId = new Map<string, ProgressRow | LocalWatchRow>();
-    const times = new Map<string, number>();
-    for (const row of localProgress) {
-      byId.set(row.youtubeId, row);
-      times.set(row.youtubeId, row.updatedAt);
-    }
-    for (const row of progress ?? []) {
-      const prev = times.get(row.youtubeId) ?? 0;
-      if (row.updatedAt >= prev) byId.set(row.youtubeId, row);
-    }
-    return [...byId.values()]
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .slice(0, 10);
-  }, [progress, localProgress]);
 
   // Liên quan: cùng giảng sư với video đang phát (loại video đang phát)
   const related = useMemo(() => {
@@ -112,75 +86,33 @@ export default function Dashboard() {
       subtitle="Đề xuất thuyết giảng từ các vị giảng sư Phật giáo Nguyên thủy"
       actions={<SyncButton />}
     >
-      {/* ---------- Thanh tìm kiếm (mic nằm trong ô, cạnh kính lúp) ---------- */}
-      <div className="mb-6 flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      {/* ---------- Thanh tìm kiếm: mic TRÁI · kính lúp PHẢI (trong ô) ---------- */}
+      <div className="mb-6">
+        <div className="relative">
+          <VoiceSearchButton onResult={(text) => setSearch(text)} />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Tìm pháp thoại, giảng sư…"
-            className="h-10 w-full rounded-full border border-border/70 bg-card/80 pl-9 pr-16 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+            className="h-10 w-full rounded-full border border-border/70 bg-card/80 pl-11 pr-11 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           />
           {search && (
             <button
               type="button"
               onClick={() => setSearch("")}
-              className="absolute right-9 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
+              className="absolute right-10 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
               aria-label="Xóa tìm kiếm"
             >
               <X className="h-4 w-4" />
             </button>
           )}
-          <VoiceSearchButton onResult={(text) => setSearch(text)} />
+          <Search className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         </div>
       </div>
 
-      {/* ---------- Phòng xem chung (vào từ trang chủ) ---------- */}
+      {/* ---------- Hero (tràn khung, không cột phải) ---------- */}
       {!searchQ && (
-        <section
-          className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gold/30 bg-gradient-to-r from-gold/10 via-card/60 to-card/60 p-4"
-          aria-label="Phòng xem Phật pháp cùng nhau"
-        >
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gold/15">
-              <MonitorPlay className="h-5 w-5 text-gold" />
-            </span>
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold">Phòng</h2>
-              <p className="text-xs text-muted-foreground">
-                Xem pháp thoại cùng bạn bè — đồng bộ một nhịp, mic & cam
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              onClick={() => navigate("/watch")}
-            >
-              Mở Phòng
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                const code = window.prompt("Nhập mã phòng 6 ký tự:");
-                if (code && code.trim().length >= 4) {
-                  const c = code.trim().toUpperCase();
-                  sessionStorage.setItem("watchRoom", c);
-                  navigate(`/watch?room=${c}`);
-                }
-              }}
-            >
-              Vào phòng
-            </Button>
-          </div>
-        </section>
-      )}
-
-      {/* ---------- Hero + Tiếp tục xem ---------- */}
-      {!searchQ && (
-        <section className="mb-6 grid gap-6 lg:grid-cols-[1fr_20rem]">
+        <section className="mb-6">
           {hero ? (
             <button
               type="button"
@@ -229,54 +161,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Cột phải: Tiếp tục xem */}
-          <aside>
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              <History className="h-4 w-4" />
-              Tiếp tục xem
-            </h2>
-            {progress === undefined ? (
-              <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
-                ))}
-              </div>
-            ) : watched.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-border/70 bg-card/40 p-4 text-center text-xs leading-relaxed text-muted-foreground">
-                Chưa có tiến trình xem.
-                <br />
-                Hãy mở một pháp thoại — ứng dụng sẽ tự ghi nhớ vị trí bạn
-                dừng lại.
-              </div>
-            ) : (
-              <ul className="space-y-2">
-                {watched.map((p) => (
-                  <TalkRow
-                    key={p.youtubeId}
-                    title={p.title}
-                    teacher={p.teacher}
-                    youtubeId={p.youtubeId}
-                    durationSec={p.durationSec}
-                    viewCount={undefined}
-                    progressSec={p.positionSec}
-                    completed={p.completed}
-                    active={current?.youtubeId === p.youtubeId}
-                    onClick={() =>
-                      play({
-                        _id: ("talkId" in p ? p.talkId : p.youtubeId) as Id<"dhammaTalks">,
-                        youtubeId: p.youtubeId,
-                        title: p.title,
-                        teacher: p.teacher,
-                        channelName: p.channelName,
-                        publishedAt: p.publishedAt,
-                        durationSec: p.durationSec,
-                      })
-                    }
-                  />
-                ))}
-              </ul>
-            )}
-          </aside>
         </section>
       )}
 
