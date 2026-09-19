@@ -135,6 +135,47 @@ async function generateWithFallback(
   throw new Error(`Không tạo được nội dung. Chi tiết: ${errors.join(" | ")}`);
 }
 
+/**
+ * ĐỀ XUẤT TOÀN BỘ KINH ĐIỂN — AI tự nạp danh sách cho từng mục học liệu.
+ * Danh sách được cache dùng chung (aiDocs, kind = "index-*") và thay thế
+ * dữ liệu cứng cũ: người dùng mở mục nào là AI nạp đề xuất mục đó.
+ */
+export const generateIndex = action({
+  args: { indexKind: v.string() },
+  handler: async (ctx, { indexKind }) => {
+    await getAuthUserId(ctx);
+
+    const guides: Record<string, string> = {
+      suttas:
+        `Liệt kê 40 bài kinh QUAN TRỌNG NHẤT và PHỔ BIẾN NHẤT của Kinh tạng Pāli (Sutta Piṭaka) theo truyền thống Theravāda mà người Phật tử Việt Nam nên đọc: trải đều Đại bộ (DN), Trung bộ (MN), Tương Ưng (SN), Tăng Chi (AN) và Tiểu bộ (Dhammapada, Sutta Nipāta...). Ưu tiên kinh nền tảng: Chuyển pháp luân, Đại niệm xứ, Niệm hơi thở, Maṅgala, Raṭana, Sigālovāda, Cūḷakammavibhaṅga...`,
+      vinaya:
+        `Liệt kê 20 văn bản/thành phần chính của Luật tạng Pāli (Vinaya Piṭaka): Pārājika, Pācittiya, Mahāvagga, Cūḷavagga, Parivāra, Pātimokkha... với mô tả nội dung và số điều luật nếu có.`,
+      dictionary:
+        `Liệt kê 50 thuật ngữ Phật học Pāli CỐT LÕI theo truyền thống Theravāda mà người học cần tra cứu nhiều nhất: Tứ diệu đế, Bát chánh đạo, ngũ uẩn, thập nhị nhân duyên, thiền quán, thiền chỉ, các trạng thái tâm...`,
+      commentary:
+        `Liệt kê 20 bài chú giải (Aṭṭhakathā) quan trọng nhất cho các kinh nền tảng Theravāda (Chú giải Chuyển pháp luân, chú giải Đại niệm xứ, Dhammapada Aṭṭhakathā...).`,
+    };
+    const guide = guides[indexKind];
+    if (!guide) throw new Error("Loại danh sách không hợp lệ.");
+
+    const { text } = await generateWithFallback(
+      `${guide}
+
+TRẢ VỀ DUY NHẤT một mảng JSON hợp lệ (không thêm chữ nào ngoài JSON), mỗi phần tử:
+{"id":"ma-kinh-hoac-thuat-ngu-ky-tu-latin","title":"tên tiếng Việt","pali":"tên Pāli","desc":"mô tả 1 câu"}`,
+      6000,
+    );
+
+    // Trích mảng JSON từ phản hồi (AI có thể bọc ```json)
+    const start = text.indexOf("[");
+    const end = text.lastIndexOf("]");
+    if (start === -1 || end === -1 || end <= start) {
+      throw new Error("Trợ lý Phật học trả về danh sách không hợp lệ, thử lại.");
+    }
+    return text.slice(start, end + 1);
+  },
+});
+
 /** Lưu nội dung AI biên soạn vào cache dùng chung */
 export const cacheDoc = mutation({
   args: {
