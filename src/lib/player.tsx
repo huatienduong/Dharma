@@ -185,8 +185,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     loadYouTubeIframeApi().then((YT) => {
-      if (cancelled || !ytTargetRef.current || playerRef.current) return;
-      playerRef.current = new YT.Player(ytTargetRef.current, {
+      if (cancelled) return;
+      const host = ytTargetRef.current;
+      if (!host || playerRef.current) return;
+      // FIX: YT.Player THAY THẾ node được truyền bằng iframe. Nếu truyền
+      // trực tiếp div do React quản lý, React sẽ va chạm với iframe khi
+      // re-render (và StrictMode remount có thể gắn player vào node chết).
+      // → Truyền một node con tạm tạo bằng DOM API: React chỉ quản lý
+      //   `host` (luôn trống trong JSX), iframe sống bên trong node tạm.
+      const mount = document.createElement("div");
+      host.appendChild(mount);
+      playerRef.current = new YT.Player(mount, {
         width: "100%",
         height: "100%",
         playerVars: {
@@ -242,8 +251,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     });
     return () => {
       cancelled = true;
-      playerRef.current?.destroy();
+      try {
+        playerRef.current?.destroy();
+      } catch {
+        /* player chưa sẵn sàng */
+      }
       playerRef.current = null;
+      setPlayerReady(false);
+      // Dọn node tạm + iframe (an toàn cả khi StrictMode chạy lại effect
+      // trên cùng host — lần chạy sau sẽ tạo node tạm mới)
+      if (ytTargetRef.current) ytTargetRef.current.innerHTML = "";
     };
     // saveProgress là hàm ổn định từ useMutation
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -563,6 +580,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         }
         aria-hidden={!showPlayer}
       >
+        {/* Khung chứa iframe — host luôn trống trong JSX, node tạm cho
+            YouTube được tạo bằng DOM API trong effect (an toàn với React) */}
         <div ref={ytTargetRef} className="h-full w-full" />
         {/* Click để mở rộng khi ở chế độ mini */}
         {showPlayer && !expanded && (
