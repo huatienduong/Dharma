@@ -21,31 +21,34 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
 
-/** Tab chính — bên trái, đúng thứ tự. */
+/** Tab chính — bên trái, đúng thứ tự người dùng yêu cầu. */
 const NAV = [
   { to: "/dashboard", label: "Pháp thoại", icon: LayoutDashboard },
-  { to: "/suttas", label: "Kinh tạng", icon: BookOpen },
+  { to: "/suttas", label: "Học Kinh", icon: BookOpen },
+  { to: "/watch", label: "Phòng", icon: MonitorPlay },
+  { to: "/assistant", label: "Trợ lý Pháp AI", icon: Bot },
+  { to: "/meditation", label: "Thiền", icon: Heart },
+];
+
+/** Nhóm học liệu mở rộng (dưới nhóm chính). */
+const NAV_LIB = [
   { to: "/vinaya", label: "Luật tạng", icon: Scale },
   { to: "/dictionary", label: "Từ điển", icon: BookMarked },
   { to: "/calendar", label: "Lịch Phật giáo", icon: Calendar },
-  { to: "/meditation", label: "Thiền", icon: Heart },
-  { to: "/assistant", label: "Trợ lý Pháp AI", icon: Bot },
 ];
-
-/** "Phòng" không nằm ở sidebar — vào từ trang chủ (Dashboard). */
-const WATCH_ITEM = { to: "/watch", label: "Phòng", icon: MonitorPlay };
 
 /** Mục phụ ở đáy sidebar: Hồ sơ + Cài đặt. */
 const SETTINGS_ITEM = { to: "/settings", label: "Cài đặt", icon: Settings };
 const PROFILE_ITEM = { to: "/profile", label: "Hồ sơ", icon: UserRound };
 
 /** Danh sách đầy đủ để tra cứu an toàn cho bottom-nav. */
-const ALL_ITEMS = [...NAV, PROFILE_ITEM, SETTINGS_ITEM];
+const ALL_ITEMS = [...NAV, ...NAV_LIB, PROFILE_ITEM, SETTINGS_ITEM];
 
 /** Bottom-nav mobile: tra theo đường dẫn, bỏ qua mục không tồn tại. */
 const BOTTOM_NAV_PATHS = [
   "/dashboard",
   "/suttas",
+  "/watch",
   "/assistant",
   "/profile",
 ];
@@ -115,28 +118,56 @@ export function AppShell({
         </div>
       </button>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
-        {NAV.map((item) => {
-          const active = isActive(item.to);
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.to}
-              type="button"
-              onClick={() => go(item.to)}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition",
-                active
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {item.label}
-            </button>
-          );
-        })}
+      <nav className="flex-1 overflow-y-auto px-3 py-2">
+        {/* Nhóm chính: Pháp thoại · Học Kinh · Phòng · Trợ lý Pháp AI · Thiền */}
+        <div className="space-y-1">
+          {NAV.map((item) => {
+            const active = isActive(item.to);
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.to}
+                type="button"
+                onClick={() => go(item.to)}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition",
+                  active
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Nhóm học liệu: Luật tạng · Từ điển · Lịch Phật giáo */}
+        <div className="mt-3 border-t border-border/40 pt-3">
+          {NAV_LIB.map((item) => {
+            const active = isActive(item.to);
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.to}
+                type="button"
+                onClick={() => go(item.to)}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition",
+                  active
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </nav>
 
       {/* Đáy sidebar: Cài đặt (trái) · Hồ sơ + Đăng xuất (phải, icon) */}
@@ -289,7 +320,9 @@ export function AppShell({
                 )}
               >
                 <Icon className="h-5 w-5" />
-                <span className="truncate">{item.label.split(" ")[0]}</span>
+                <span className="w-full truncate text-center leading-tight">
+                  {item.label}
+                </span>
               </button>
             );
           })}

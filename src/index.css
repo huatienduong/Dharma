@@ -53,13 +53,13 @@
   --card-foreground: oklch(0.26 0.036 60);
   --popover: oklch(0.985 0.008 85);
   --popover-foreground: oklch(0.26 0.036 60);
-  --primary: oklch(0.455 0.06 68);
+  --primary: oklch(0.44 0.075 55); /* nâu y cà sa đậm */
   --primary-foreground: oklch(0.985 0.008 85);
-  --secondary: oklch(0.885 0.032 78);
+  --secondary: oklch(0.9 0.045 75); /* vàng saffron nhạt */
   --secondary-foreground: oklch(0.33 0.04 62);
   --muted: oklch(0.9 0.024 80);
   --muted-foreground: oklch(0.475 0.026 62);
-  --accent: oklch(0.885 0.032 78);
+  --accent: oklch(0.9 0.045 75);
   --accent-foreground: oklch(0.33 0.04 62);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.845 0.034 72);
@@ -79,11 +79,11 @@
   --sidebar-border: oklch(0.845 0.034 72);
   --sidebar-ring: oklch(0.55 0.052 70);
 
-  /* Bảng màu chủ đạo: nâu đất + vàng kim + sen hồng nhạt */
-  --brown-deep: #4a3520;
-  --brown-mid: #6d5130;
-  --gold: #d9a441;
-  --gold-soft: #e9c46f;
+  /* Bảng màu Theravāda: nâu đất + vàng saffron y cà sa + sen hồng */
+  --brown-deep: #3f2d1a;
+  --brown-mid: #5f4630;
+  --gold: #d98e2b; /* saffron vàng cam */
+  --gold-soft: #e9b45c;
   --lotus: #e8b4b8;
 
   --font-size-scale: 1;

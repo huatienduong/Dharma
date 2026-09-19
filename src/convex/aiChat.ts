@@ -34,14 +34,49 @@ type ProviderChoice = {
   model: string;
 };
 
-/** Đọc danh sách nhà cung cấp theo khóa khả dụng (ưu tiên từ trên xuống). */
-function listProviders(): ProviderChoice[] {
+/**
+ * Danh sách nhà cung cấp theo khóa khả dụng (ưu tiên từ trên xuống).
+ * `needVision=true` khi có ảnh → chỉ trả về nhà cung cấp hỗ trợ ảnh
+ * (Gemini qua REST, OpenAI); khi không có khóa vision, trả về mảng rỗng
+ * để báo lỗi rõ ràng thay vì gửi ảnh cho model văn bản.
+ */
+function listProviders(needVision: boolean): ProviderChoice[] {
   const out: ProviderChoice[] = [];
   const openaiKey = process.env.OPENAI_API_KEY;
   const groqKey = process.env.GROQ_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
   const vlyKey = process.env.VLY_INTEGRATION_KEY;
 
-  // Groq ưu tiên đầu: nhanh, gói miễn phí, đang hoạt động ổn định
+  if (needVision) {
+    // Ảnh: Groq không hỗ trợ — dùng Gemini (free tier) hoặc OpenAI
+    if (geminiKey) {
+      out.push({
+        label: "Gemini",
+        make: () =>
+          createOpenAICompatible({
+            name: "gemini",
+            baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
+            apiKey: geminiKey,
+          }),
+        model: "gemini-2.0-flash",
+      });
+    }
+    if (openaiKey) {
+      out.push({
+        label: "OpenAI",
+        make: () =>
+          createOpenAICompatible({
+            name: "openai",
+            baseURL: "https://api.openai.com/v1",
+            apiKey: openaiKey,
+          }),
+        model: "gpt-4.1-mini",
+      });
+    }
+    return out;
+  }
+
+  // Văn bản: Groq ưu tiên đầu (nhanh, miễn phí, ổn định)
   if (groqKey) {
     out.push({
       label: "Groq",
@@ -52,6 +87,18 @@ function listProviders(): ProviderChoice[] {
           apiKey: groqKey,
         }),
       model: "openai/gpt-oss-120b",
+    });
+  }
+  if (geminiKey) {
+    out.push({
+      label: "Gemini",
+      make: () =>
+        createOpenAICompatible({
+          name: "gemini",
+          baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
+          apiKey: geminiKey,
+        }),
+      model: "gemini-2.0-flash",
     });
   }
   if (openaiKey) {
@@ -93,16 +140,19 @@ export const ask = action({
         content: v.string(),
       }),
     ),
+    /** Ảnh người dùng tải lên (base64, chỉ lượt hỏi hiện tại) */
+    imageBase64: v.optional(v.string()),
+    imageMime: v.optional(v.string()),
   },
-  handler: async (ctx, { messages }) => {
+  handler: async (ctx, { messages, imageBase64, imageMime }) => {
     const userId = await getAuthUserId(ctx);
     void userId;
 
-    if (messages.length === 0) {
+    if (messages.length === 0 && !imageBase64) {
       throw new Error("Câu hỏi trống.");
     }
 
-    const providers = listProviders();
+    const providers = listProviders(imageBase64 ? true : false);
     if (providers.length === 0) {
       throw new Error(
         "Trợ lý Pháp chưa được cấu hình AI. Chủ ứng dụng vui lòng thêm khóa OPENAI_API_KEY hoặc GROQ_API_KEY qua tab Keys/API keys.",
@@ -110,9 +160,33 @@ export const ask = action({
     }
 
     const recent: ChatMessage[] = messages.slice(-HISTORY_LIMIT);
+    // Gắn ảnh vào tin nhắn user cuối (đa phương thức, chuẩn OpenAI)
+    type ContentPart =
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string } };
+    const withImage: Array<{
+      role: "user" | "assistant";
+      content: string | ContentPart[];
+    }> = recent.map((m, i) => {
+      if (
+        imageBase64 &&
+        i === recent.length - 1 &&
+        m.role === "user"
+      ) {
+        const parts: ContentPart[] = [
+          { type: "text", text: m.content || "Hãy mô tả và giải thích về hình ảnh này trong phạm vi Phật học." },
+        ];
+        parts.push({
+          type: "image_url",
+          image_url: { url: `data:${imageMime ?? "image/jpeg"};base64,${imageBase64}` },
+        });
+        return { ...m, content: parts };
+      }
+      return m;
+    });
     const payload = [
       { role: "system" as const, content: SYSTEM_PROMPT },
-      ...recent,
+      ...(withImage as ChatMessage[]),
     ];
 
     // Thử lần lượt từng nhà cung cấp — nhà sau tự thay khi nhà trước lỗi
@@ -122,7 +196,7 @@ export const ask = action({
       try {
         const result = await generateText({
           model: provider.make()(provider.model),
-          messages: payload,
+          messages: payload as never,
           temperature: 0.6,
           maxOutputTokens: 1200,
         });

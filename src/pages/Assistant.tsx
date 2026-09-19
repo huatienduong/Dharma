@@ -8,11 +8,15 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import {
   AudioLines,
   Eraser,
+  ImagePlus,
   Mic,
+  Phone,
+  PhoneOff,
   Send,
   Sparkles,
   Volume2,
   VolumeX,
+  X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -55,6 +59,20 @@ export default function Assistant() {
   const [busy, setBusy] = useState(false);
   const [speakOn, setSpeakOn] = useState(true);
   const [speaking, setSpeaking] = useState(false);
+  // Ảnh đính kèm (nén về max 1024px, JPEG ~0.82)
+  const [image, setImage] = useState<{ base64: string; mime: string } | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // ----- Chế độ Call: đàm thoại 2 bên bằng giọng nói -----
+  const [callMode, setCallMode] = useState(false);
+  const [callStatus, setCallStatus] = useState<"idle" | "listening" | "thinking" | "speaking">("idle");
+
+  // Khi AI trả lời xong trong chế độ call → tự đọc, xong tự nghe tiếp
+  useEffect(() => {
+    if (callMode && !busy && !speaking && callStatus === "thinking") {
+      // Reply đã được nói bởi luồng send(); chuyển sang nghe sau khi đọc xong
+    }
+  }, [callMode, busy, speaking, callStatus]);
 
   const { supported: micSupported, listening, start, stop } = useVoiceSearch();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -79,57 +97,45 @@ export default function Assistant() {
   const send = useCallback(
     async (text: string) => {
       const q = text.trim();
-      if (!q || busy) return;
+      if ((!q && !image) || busy) return;
+      const img = image;
+      const display = q || "📷 Hình ảnh";
 
-      // Người dùng chưa đăng nhập → trả lời trực tiếp, không lưu
-      if (!isAuthenticated) {
-        setInput("");
-        setPending((p) => [...p, { role: "user", content: q }]);
-        setBusy(true);
-        try {
-          const reply = await ask({ messages: [{ role: "user", content: q }] });
-          setPending((p) => [...p, { role: "assistant", content: reply }]);
-          if (speakOn) {
-            setSpeaking(true);
-            speakVietnamese(reply, () => setSpeaking(false));
-          }
-        } catch (err) {
-          toast.error(
-            err instanceof Error ? err.message : "Không gửi được câu hỏi.",
-          );
-        } finally {
-          setBusy(false);
-        }
-        return;
-      }
-
-      // Đã đăng nhập → lưu lịch sử vào Convex
+      // Gom lịch sử + câu hỏi hiện tại
+      const history: Msg[] = [
+        ...(saved ?? []).map((m) => ({
+          role: m.role as Msg["role"],
+          content: m.content,
+        })),
+        ...pending,
+      ];
+      const userMsg: Msg = { role: "user", content: display };
       setInput("");
-      setPending((p) => [...p, { role: "user", content: q }]);
+      setImage(null);
+      setPending((p) => [...p, userMsg]);
       setBusy(true);
+      setCallStatus("thinking");
       try {
-        const history: Msg[] = [
-          ...(saved ?? []).map((m) => ({
-            role: m.role as Msg["role"],
-            content: m.content,
-          })),
-          ...pending,
-          { role: "user" as const, content: q },
-        ];
-        const reply = await ask({ messages: history });
-        setPending((p) => [
-          ...p,
-          { role: "assistant", content: reply },
-        ]);
-        void append({ items: [
-          { role: "user", content: q },
-          { role: "assistant", content: reply },
-        ]});
-        // Xóa pending vì đã lưu xuống DB
-        setPending([]);
-        if (speakOn) {
+        const reply = await ask({
+          messages: [...history, { role: "user", content: display }],
+          imageBase64: img?.base64,
+          imageMime: img?.mime,
+        });
+        setPending((p) => [...p, { role: "assistant", content: reply }]);
+        if (isAuthenticated) {
+          void append({ items: [
+            { role: "user", content: display },
+            { role: "assistant", content: reply },
+          ]});
+          setPending([]);
+        }
+        if (speakOn || callMode) {
           setSpeaking(true);
-          speakVietnamese(reply, () => setSpeaking(false));
+          setCallStatus("speaking");
+          speakVietnamese(reply, () => {
+            setSpeaking(false);
+            if (callMode) setCallStatus("listening");
+          });
         }
       } catch (err) {
         toast.error(
@@ -139,17 +145,50 @@ export default function Assistant() {
         setBusy(false);
       }
     },
-    [ask, append, busy, isAuthenticated, pending, saved, speakOn],
+    [ask, append, busy, image, isAuthenticated, pending, saved, speakOn, callMode],
   );
 
-  // Hỏi bằng giọng nói → tự gửi
+  // Hỏi bằng giọng nói → tự gửi (trong call: nghe → gửi → đọc → nghe tiếp)
   const onVoice = useCallback(
     (text: string) => {
-      setInput(text);
-      void send(text);
+      if (callMode) {
+        void send(text);
+      } else {
+        setInput(text);
+        void send(text);
+      }
     },
-    [send],
+    [send, callMode],
   );
+
+  // ----- Nén ảnh trước khi gửi (canvas resize tối đa 1024px) -----
+  const pickImage = useCallback((file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Chỉ hỗ trợ file ảnh.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 1024;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+        setImage({
+          base64: dataUrl.split(",")[1] ?? "",
+          mime: "image/jpeg",
+        });
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  }, []);
 
   // Dừng đọc khi rời trang
   useEffect(() => {
@@ -194,6 +233,32 @@ export default function Assistant() {
             Trợ lý Pháp
           </div>
           <div className="flex items-center gap-1.5">
+            <Button
+              variant={callMode ? "default" : "secondary"}
+              size="sm"
+              onClick={() => {
+                setCallMode((c) => !c);
+                setCallStatus("idle");
+                if (callMode) {
+                  // Rời call: dừng mọi âm thanh + nghe
+                  stop();
+                  if (window.speechSynthesis) window.speechSynthesis.cancel();
+                  setSpeaking(false);
+                }
+              }}
+              title={callMode ? "Kết thúc call" : "Đàm thoại bằng giọng nói"}
+              className={cn(
+                "h-8 gap-1.5 text-xs",
+                callMode && "bg-destructive text-white hover:bg-destructive/90",
+              )}
+            >
+              {callMode ? (
+                <PhoneOff className="h-3.5 w-3.5" />
+              ) : (
+                <Phone className="h-3.5 w-3.5" />
+              )}
+              {callMode ? "Kết thúc" : "Call"}
+            </Button>
             <Button
               variant={speakOn ? "secondary" : "ghost"}
               size="sm"
@@ -257,6 +322,47 @@ export default function Assistant() {
           )}
         </div>
 
+        {/* ---------- Chế độ Call (đàm thoại 2 bên bằng giọng nói) ---------- */}
+        {callMode && (
+          <div className="flex flex-col items-center gap-3 border-b border-border/60 bg-gradient-to-b from-gold/10 to-transparent px-4 py-6">
+            <div
+              className={cn(
+                "flex h-20 w-20 items-center justify-center rounded-full bg-gold/15 text-3xl transition",
+                callStatus === "listening" && "animate-pulse ring-4 ring-gold/30",
+                callStatus === "speaking" && "ring-4 ring-primary/30",
+              )}
+            >
+              {callStatus === "listening" ? "🎙" : callStatus === "speaking" ? "🔊" : "🧘"}
+            </div>
+            <p className="text-sm font-medium">
+              {callStatus === "listening"
+                ? "Đang nghe — hãy hỏi về Phật pháp"
+                : callStatus === "thinking"
+                  ? "Trợ lý đang suy nghĩ…"
+                  : callStatus === "speaking"
+                    ? "Trợ lý đang trả lời…"
+                    : "Nhấn micro để bắt đầu hỏi"}
+            </p>
+            {micSupported && (
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => (listening ? stop() : start(onVoice))}
+                  className={cn(
+                    "flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition",
+                    listening
+                      ? "bg-destructive text-white"
+                      : "bg-primary text-primary-foreground hover:opacity-90",
+                  )}
+                  aria-label={listening ? "Dừng nói" : "Nói câu hỏi"}
+                >
+                  <Mic className="h-6 w-6" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ---------- Ô nhập + giọng nói ---------- */}
         <form
           onSubmit={(e) => {
@@ -265,7 +371,50 @@ export default function Assistant() {
           }}
           className="border-t border-border/60 p-3"
         >
+          {/* Xem trước ảnh đính kèm */}
+          {image && (
+            <div className="mb-2 flex items-center gap-2">
+              <div className="relative">
+                <img
+                  src={`data:${image.mime};base64,${image.base64}`}
+                  alt="Ảnh sẽ gửi"
+                  className="h-16 w-16 rounded-lg border border-border/60 object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => setImage(null)}
+                  className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white"
+                  aria-label="Xóa ảnh"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                Ảnh sẽ được gửi kèm câu hỏi
+              </span>
+            </div>
+          )}
           <div className="flex items-end gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) pickImage(f);
+                e.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-card/70 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+              aria-label="Gửi ảnh cho AI"
+              title="Gửi ảnh (tượng Phật, kinh sách, chữ Pāli…)"
+            >
+              <ImagePlus className="h-4 w-4" />
+            </button>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -293,7 +442,7 @@ export default function Assistant() {
             <Button
               type="submit"
               size="icon"
-              disabled={busy || !input.trim()}
+              disabled={busy || (!input.trim() && !image)}
               className="h-10 w-10 shrink-0 rounded-xl"
               aria-label="Gửi câu hỏi"
             >
