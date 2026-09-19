@@ -48,13 +48,6 @@ export const ask = action({
       throw new Error("Câu hỏi trống.");
     }
 
-    const apiKey = process.env.VLY_INTEGRATION_KEY;
-    if (!apiKey) {
-      throw new Error(
-        "Chưa cấu hình AI cho ứng dụng. Vui lòng thử lại sau hoặc báo lỗi qua mục Cài đặt.",
-      );
-    }
-
     // Chỉ lấy những lượt gần nhất để giữ ngữ cảnh, luôn bắt đầu bằng system.
     const recent: ChatMessage[] = messages.slice(-HISTORY_LIMIT);
     const payload = [
@@ -62,11 +55,22 @@ export const ask = action({
       ...recent,
     ];
 
-    const provider = createOpenAICompatible({
-      name: "vly-gateway",
-      baseURL: "https://integrations.vly.ai/v1/llm",
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
+    // Ưu tiên khóa OpenAI riêng (đặt qua tab Keys/API keys). Nếu chưa có,
+    // fallback về cổng AI tích hợp sẵn của nền tảng.
+    const openaiKey = process.env.OPENAI_API_KEY;
+    const vlyKey = process.env.VLY_INTEGRATION_KEY;
+
+    const provider = openaiKey
+      ? createOpenAICompatible({
+          name: "openai",
+          baseURL: "https://api.openai.com/v1",
+          apiKey: openaiKey,
+        })
+      : createOpenAICompatible({
+          name: "vly-gateway",
+          baseURL: "https://integrations.vly.ai/v1/llm",
+          headers: { Authorization: `Bearer ${vlyKey ?? ""}` },
+        });
 
     try {
       const result = await generateText({
@@ -86,7 +90,10 @@ export const ask = action({
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "Lỗi kết nối tới AI.";
-      throw new Error(`Không kết nối được trợ lý AI: ${msg}`);
+      const hint = openaiKey
+        ? ""
+        : " (Ứng dụng chưa có khóa AI riêng — chủ ứng dụng có thể thêm khóa OPENAI_API_KEY qua tab Keys/API keys để kích hoạt Trợ lý Pháp.)";
+      throw new Error(`Không kết nối được trợ lý AI: ${msg}${hint}`);
     }
   },
 });
