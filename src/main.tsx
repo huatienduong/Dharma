@@ -92,7 +92,14 @@ class RootErrorBoundary extends React.Component<
   }
 }
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+// Nối thẳng vào deployment steady-rhinoceros-488 — dùng VITE_CONVEX_URL nếu nền
+// tảng cấp URL MỚI (khác deployment cũ bị pause), nếu không thì dùng URL mới.
+const OLD_PAUSED_URL = "https://proficient-lapwing-860.convex.cloud";
+const FALLBACK_URL = "https://steady-rhinoceros-488.convex.cloud";
+const envUrl = import.meta.env.VITE_CONVEX_URL as string | undefined;
+const convexUrl =
+  envUrl && envUrl !== OLD_PAUSED_URL ? envUrl : FALLBACK_URL;
+const convex = new ConvexReactClient(convexUrl);
 
 // Lazy load các named export (trang đọc chi tiết)
 const SuttaReader = lazy(() =>
