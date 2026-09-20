@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { getSutta } from "@/data/suttas";
 import { useAuth } from "@/hooks/use-auth";
 import { useSettings } from "@/lib/settings";
+import { loadUiState, saveUiState, trackScroll, restoreScroll } from "@/lib/uiState";
 import { useMutation, useQuery } from "convex/react";
 import {
   BookOpen,
@@ -35,7 +36,22 @@ const NIKAYA_TABS = [
 export default function Suttas() {
   const { t } = useSettings();
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
+  // Từ khóa tìm kiếm giữ nguyên khi rời trang rồi quay lại
+  const [search, setSearch] = useState(() => loadUiState<string>("suttas-search", ""));
+  useEffect(() => {
+    saveUiState("suttas-search", search);
+  }, [search]);
+
+  useEffect(() => {
+    const stop = trackScroll("suttas");
+    return () => {
+      stop();
+    };
+  }, []);
+  useEffect(() => {
+    restoreScroll("suttas");
+  }, []);
+
   const reading = useQuery(api.library.listReading, {});
 
   const searchQ = search.trim().toLowerCase();

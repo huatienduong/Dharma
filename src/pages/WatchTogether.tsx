@@ -1,4 +1,3 @@
-import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
@@ -8,7 +7,9 @@ import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "convex/react";
 import {
   Copy,
-  LogOut,
+  DoorOpen,
+  Link2,
+  Maximize,
   MessageSquare,
   Mic,
   MicOff,
@@ -17,9 +18,12 @@ import {
   Play,
   Radio,
   Search,
+  SkipBack,
+  SkipForward,
   Users,
   Video,
   VideoOff,
+  Volume2,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -34,7 +38,7 @@ type RoomState = {
   isHost: boolean;
   youtubeId?: string;
   isPlaying: boolean;
-  positionSec: number;
+  positionSec: number
   stateUpdatedAt: number;
   hostName: string;
   members: { userId: Id<"users">; name: string; micOn: boolean; camOn: boolean }[];
@@ -151,33 +155,26 @@ export default function WatchTogether() {
   }, [code, heartbeat]);
 
   if (authLoading) {
-    return (
-      <AppShell title="Phòng">
-        <p className="animate-pulse text-sm text-muted-foreground">Đang tải…</p>
-      </AppShell>
-    );
+    return <LobbyShell />;
   }
 
   if (!isAuthenticated) {
     return (
-      <AppShell title="Phòng">
+      <LobbyShell>
         <div className="mx-auto max-w-md">
-          <div className="rounded-2xl border border-border/60 bg-card p-8 text-center shadow-sm">
-            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-              <MonitorPlay className="h-8 w-8" />
+          <div className="rounded-2xl border border-white/10 bg-zinc-900/80 p-8 text-center shadow-xl">
+            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gold/15">
+              <MonitorPlay className="h-8 w-8 text-gold" />
             </span>
-            <h2 className="mt-5 text-lg font-bold">
+            <h2 className="mt-5 text-lg font-bold text-zinc-100">
               Vui lòng đăng nhập để sử dụng tính năng này
             </h2>
-            <Button
-              asChild
-              className="mt-6 w-full"
-            >
-              <a href="/auth?returnTo=%2Fwatch">Đăng nhập</a>
-            </Button>
+            <p className="mt-2 text-xs text-zinc-500">
+              Đăng nhập đang được nâng cấp — hãy quay lại sau.
+            </p>
           </div>
         </div>
-      </AppShell>
+      </LobbyShell>
     );
   }
 
@@ -192,23 +189,28 @@ export default function WatchTogether() {
     );
   }
 
-  /* ---------- Màn hình tạo / tham gia phòng ---------- */
+  /* ---------- Sảnh: tạo / tham gia phòng (w2g style) ---------- */
   return (
-    <AppShell
-      title="Phòng"
-    >
-      <div className="mx-auto grid max-w-3xl gap-4 sm:grid-cols-2">
-        <section className="rounded-2xl border border-gold/25 bg-gradient-to-b from-gold/10 to-card/50 p-6">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gold/15">
-            <MonitorPlay className="h-5.5 w-5.5 text-gold" />
+    <LobbyShell>
+      <div className="mx-auto w-full max-w-2xl">
+        {/* Tiêu đề w2g style */}
+        <div className="mb-8 text-center">
+          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-gold/30 to-gold/5 ring-1 ring-gold/30">
+            <MonitorPlay className="h-8 w-8 text-gold" />
           </span>
-          <h2 className="mt-3 font-semibold">Tạo phòng mới</h2>
-          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            Bạn là chủ phòng: chọn video, điều khiển phát/tạm dừng/tua cho cả
-            phòng.
+          <h1 className="mt-4 text-2xl font-bold tracking-tight text-white">
+            Xem cùng nhau
+          </h1>
+          <p className="mt-2 text-sm text-zinc-400">
+            Tạo phòng, gửi mã cho bạn bè và cùng xem pháp thoại theo thời gian
+            thực — có mic, camera và chat.
           </p>
-          <Button
-            className="mt-4 w-full"
+        </div>
+
+        <div className="grid gap-4">
+          {/* Tạo phòng */}
+          <button
+            type="button"
             disabled={joining}
             onClick={async () => {
               try {
@@ -222,21 +224,27 @@ export default function WatchTogether() {
                 toast.error(e instanceof Error ? e.message : "Lỗi tạo phòng");
               }
             }}
+            className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-zinc-900/70 p-5 text-left transition hover:border-gold/40 hover:bg-zinc-800/80"
           >
-            Tạo phòng riêng
-          </Button>
-        </section>
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gold/15 transition group-hover:bg-gold/25">
+              <Link2 className="h-5.5 w-5.5 text-gold" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold text-zinc-100">
+                Tạo phòng mới
+              </span>
+              <span className="mt-0.5 block text-sm text-zinc-500">
+                Bạn là chủ phòng — chọn video và điều khiển cho cả phòng
+              </span>
+            </span>
+            <span className="text-zinc-600 transition group-hover:translate-x-0.5 group-hover:text-gold">
+              →
+            </span>
+          </button>
 
-        <section className="rounded-2xl border border-border/60 bg-card/60 p-6">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
-            <Users className="h-5.5 w-5.5 text-primary" />
-          </span>
-          <h2 className="mt-3 font-semibold">Tham gia bằng mã</h2>
-          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            Nhập mã phòng 6 ký tự bạn bè gửi cho bạn.
-          </p>
+          {/* Tham gia */}
           <form
-            className="mt-4 flex gap-2"
+            className="rounded-2xl border border-white/10 bg-zinc-900/70 p-5"
             onSubmit={(e) => {
               e.preventDefault();
               const c = codeInput.trim().toUpperCase();
@@ -248,25 +256,62 @@ export default function WatchTogether() {
               setCode(c);
             }}
           >
-            <input
-              value={codeInput}
-              onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
-              placeholder="VD: K7M2XQ"
-              maxLength={6}
-              className="h-10 flex-1 rounded-xl border border-border/70 bg-background/80 px-3 text-center font-mono text-lg tracking-widest uppercase outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-            />
-            <Button type="submit" disabled={joining}>
-              Vào phòng
-            </Button>
+            <div className="flex items-center gap-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/5">
+                <Users className="h-5.5 w-5.5 text-zinc-300" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <span className="block font-semibold text-zinc-100">
+                  Tham gia bằng mã
+                </span>
+                <span className="mt-0.5 block text-sm text-zinc-500">
+                  Nhập mã phòng 6 ký tự bạn bè gửi cho bạn
+                </span>
+              </div>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <input
+                value={codeInput}
+                onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
+                placeholder="VD: K7M2XQ"
+                maxLength={6}
+                className="h-11 flex-1 rounded-xl border border-white/10 bg-black/40 px-4 text-center font-mono text-lg tracking-[0.35em] text-zinc-100 uppercase outline-none placeholder:text-zinc-600 focus:border-gold/50 focus:ring-2 focus:ring-gold/20"
+              />
+              <Button
+                type="submit"
+                disabled={joining}
+                className="h-11 rounded-xl bg-gold px-6 font-semibold text-black hover:bg-gold/90"
+              >
+                Vào phòng
+              </Button>
+            </div>
           </form>
-        </section>
+        </div>
+
+        <p className="mt-6 text-center text-xs text-zinc-600">
+          Mã phòng gồm 6 ký tự — dễ chia sẻ qua tin nhắn.
+        </p>
       </div>
-    </AppShell>
+    </LobbyShell>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Phòng đang hoạt động                                                */
+/* Khung sảnh tối (được dùng cho mọi trạng thái ngoài phòng)           */
+/* ------------------------------------------------------------------ */
+
+function LobbyShell({ children }: { children?: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-zinc-950 pb-24">
+      <div className="mx-auto flex min-h-[60vh] w-full max-w-5xl flex-col justify-center px-4 py-10">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Phòng đang hoạt động — layout w2g.tv                                */
 /* ------------------------------------------------------------------ */
 
 function RoomView({
@@ -294,6 +339,8 @@ function RoomView({
   const ytHostRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayerLike | null>(null);
   const [ready, setReady] = useState(false);
+  const [curPos, setCurPos] = useState(0);
+  const [curDur, setCurDur] = useState(0);
 
   // Mục tiêu vị trí theo trạng thái phòng
   const targetSec = useCallback(() => {
@@ -342,7 +389,6 @@ function RoomView({
   }, [ready, room.youtubeId, room.isPlaying, targetSec]);
 
   // Đồng bộ play/pause + sửa trôi > 2s mỗi 3s
-  const lastEnforceRef = useRef(0);
   useEffect(() => {
     if (!ready || !playerRef.current || !room.youtubeId) return;
     const p = playerRef.current;
@@ -362,6 +408,23 @@ function RoomView({
     const iv = window.setInterval(enforce, 3000);
     return () => window.clearInterval(iv);
   }, [ready, room.isPlaying, room.youtubeId, targetSec]);
+
+  // Vòng 500ms: cập nhật hiển thị thời gian
+  useEffect(() => {
+    if (!room.youtubeId) return;
+    const iv = window.setInterval(() => {
+      try {
+        const p = playerRef.current;
+        if (!p) return;
+        setCurPos(p.getCurrentTime());
+        const d = p.getDuration();
+        if (d > 0) setCurDur(d);
+      } catch {
+        /* noop */
+      }
+    }, 500);
+    return () => window.clearInterval(iv);
+  }, [room.youtubeId]);
 
   // Host báo vị trí mỗi 10s khi đang phát
   useEffect(() => {
@@ -451,7 +514,7 @@ function RoomView({
     [room.members],
   );
 
-  // Thiết lập mesh: userId nhỏ hơn làm initiator (tránh cả hai cùng offer)
+  // Thiết lập mesh: userId nhỏ hơn làm initiator
   useEffect(() => {
     if (!myId) return;
     if (!room.youtubeId && !micOn && !camOn) return;
@@ -548,7 +611,7 @@ function RoomView({
             if (!exists) pc.addTrack(t, stream);
           }
         }
-        if (!micOn) setMicOn(true); // cam đi kèm mic
+        if (!micOn) setMicOn(true);
       } else if (localStreamRef.current) {
         localStreamRef.current.getVideoTracks().forEach((t) => {
           t.stop();
@@ -572,201 +635,275 @@ function RoomView({
     chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight });
   }, [chat?.length]);
 
-  /* ---------- Render ---------- */
+  /* ---------- Layout w2g.tv: video trên, chat phải, chân điều khiển ---------- */
   return (
-    <AppShell
-      title="Phòng"
-      subtitle={`Chủ phòng: ${room.hostName}`}
-      actions={
-        <Button variant="outline" size="sm" onClick={onLeave} className="gap-1.5">
-          <LogOut className="h-3.5 w-3.5" /> Rời phòng
-        </Button>
-      }
-    >
-      <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
-        {/* Cột trái: video + điều khiển */}
-        <div className="min-w-0 space-y-3">
-          <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-black shadow-md">
-            <div className="aspect-video w-full">
+    <div className="flex min-h-screen flex-col bg-zinc-950">
+      {/* ===== Hàng trên: video + sidebar ===== */}
+      <div className="flex flex-1 flex-col lg:flex-row">
+        {/* ----- Cột trái: màn hình điện ảnh ----- */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* Player */}
+          <div className="relative w-full bg-black">
+            <div className="mx-auto aspect-video w-full max-h-[70vh] lg:max-h-[78vh]">
               <div ref={ytHostRef} className="h-full w-full" />
               {!room.youtubeId && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-muted/80 to-black/90 text-center text-sm text-white/70">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gold/20">
-                    <MonitorPlay className="h-6 w-6 text-gold" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-b from-zinc-900 to-black text-center">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-gold/15 ring-1 ring-gold/30">
+                    <MonitorPlay className="h-7 w-7 text-gold" />
                   </span>
-                  {room.isHost
-                    ? "Chọn một pháp thoại để cả phòng cùng xem"
-                    : "Chủ phòng chưa chọn video"}
+                  <p className="text-sm text-zinc-400">
+                    {room.isHost
+                      ? "Chọn một pháp thoại để cả phòng cùng xem"
+                      : "Chủ phòng chưa chọn video"}
+                  </p>
+                  {room.isHost && (
+                    <Button
+                      size="sm"
+                      onClick={() => setShowPicker(true)}
+                      className="mt-1 rounded-full bg-gold font-medium text-black hover:bg-gold/90"
+                    >
+                      Chọn video
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Mã phòng + điều khiển host */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Thanh điều khiển dưới video (w2g style) */}
+          <div className="border-b border-white/5 bg-zinc-900/60 px-3 py-2.5 backdrop-blur">
+            <div className="flex items-center gap-3">
+              {/* Nút phát chính */}
+              {room.isHost && room.youtubeId && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    void setState({
+                      code: room.code,
+                      isPlaying: !room.isPlaying,
+                      positionSec: (() => {
+                        try {
+                          return playerRef.current?.getCurrentTime() ?? room.positionSec;
+                        } catch {
+                          return room.positionSec;
+                        }
+                      })(),
+                    })
+                  }
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold text-black shadow transition hover:scale-105 hover:bg-gold/90"
+                  aria-label={room.isPlaying ? "Tạm dừng cho cả phòng" : "Phát cho cả phòng"}
+                >
+                  {room.isPlaying ? (
+                    <Pause className="h-5 w-5 fill-current" />
+                  ) : (
+                    <Play className="ml-0.5 h-5 w-5 fill-current" />
+                  )}
+                </button>
+              )}
+              {!room.isHost && room.youtubeId && (
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/5 text-zinc-400">
+                  <Radio className="h-4.5 w-4.5 animate-pulse text-gold" />
+                </span>
+              )}
+
+              {/* Thời gian + thanh tua */}
+              {room.youtubeId && (
+                <>
+                  <span className="hidden w-12 shrink-0 text-right font-mono text-xs tabular-nums text-zinc-400 sm:block">
+                    {formatTime(curPos)}
+                  </span>
+                  <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="h-full rounded-full bg-gold transition-[width] duration-500"
+                      style={{
+                        width: `${
+                          curDur > 0 ? Math.min(100, (curPos / curDur) * 100) : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+                  <span className="hidden w-12 shrink-0 font-mono text-xs tabular-nums text-zinc-400 sm:block">
+                    {formatTime(curDur)}
+                  </span>
+                </>
+              )}
+
+              {/* Mã phòng + hành động */}
+              <div className="ml-auto flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(room.code);
+                    toast.success(`Đã sao chép mã phòng: ${room.code}`);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/10 px-3 py-1.5 font-mono text-xs font-bold tracking-widest text-gold transition hover:bg-gold/20"
+                  title="Bấm để sao chép mã"
+                >
+                  <Copy className="h-3 w-3" />
+                  {room.code}
+                </button>
+
+                {room.isHost && room.youtubeId && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPicker(true)}
+                    title="Đổi video"
+                    className="hidden h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition hover:bg-white/10 hover:text-zinc-100 sm:flex"
+                  >
+                    <SkipForward className="h-4 w-4" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onLeave}
+                  title="Rời phòng"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition hover:bg-red-500/10 hover:text-red-400"
+                >
+                  <DoorOpen className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Dải mic/cam của tôi */}
+          <div className="flex items-center gap-2 px-4 py-2.5">
+            <span className="mr-1 text-xs font-medium text-zinc-500">Của bạn:</span>
             <button
               type="button"
-              onClick={() => {
-                void navigator.clipboard.writeText(room.code);
-                toast.success(`Đã sao chép mã phòng: ${room.code}`);
-              }}
-              className="inline-flex items-center gap-2 rounded-full border border-gold/50 bg-gold/10 px-3 py-1.5 font-mono text-sm font-bold tracking-widest text-gold transition hover:bg-gold/20"
-              title="Bấm để sao chép mã"
+              onClick={() => void toggleMic()}
+              className={cn(
+                "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition",
+                micOn
+                  ? "bg-gold/20 text-gold ring-1 ring-gold/40"
+                  : "bg-white/5 text-zinc-400 hover:bg-white/10",
+              )}
             >
-              <Copy className="h-3.5 w-3.5" />
-              {room.code}
+              {micOn ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5" />}
+              {micOn ? "Mic bật" : "Mic tắt"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void toggleCam()}
+              className={cn(
+                "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition",
+                camOn
+                  ? "bg-gold/20 text-gold ring-1 ring-gold/40"
+                  : "bg-white/5 text-zinc-400 hover:bg-white/10",
+              )}
+            >
+              {camOn ? <Video className="h-3.5 w-3.5" /> : <VideoOff className="h-3.5 w-3.5" />}
+              {camOn ? "Cam bật" : "Cam tắt"}
             </button>
 
-            {room.isHost && (
-              <>
-                <Button size="sm" variant="secondary" onClick={() => setShowPicker(true)}>
-                  Chọn video
-                </Button>
-                {room.youtubeId && (
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="h-8 w-8"
-                    aria-label={room.isPlaying ? "Tạm dừng cho cả phòng" : "Phát cho cả phòng"}
-                    onClick={() =>
-                      void setState({
-                        code: room.code,
-                        isPlaying: !room.isPlaying,
-                        positionSec: (() => {
-                          try {
-                            return playerRef.current?.getCurrentTime() ?? room.positionSec;
-                          } catch {
-                            return room.positionSec;
-                          }
-                        })(),
-                      })
-                    }
-                  >
-                    {room.isPlaying ? (
-                      <Pause className="h-4 w-4" />
-                    ) : (
-                      <Play className="h-4 w-4" />
-                    )}
-                  </Button>
-                )}
-              </>
-            )}
-            {!room.isHost && room.youtubeId && (
-              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Radio className="h-3.5 w-3.5 animate-pulse text-gold" />
-                {room.isPlaying ? "Đang phát đồng bộ" : "Đã tạm dừng"} · chỉ chủ
-                phòng điều khiển
-              </span>
-            )}
-          </div>
-
-          {/* Dải mic/cam của tôi + tiles của mọi người */}
-          <section className="rounded-2xl border border-border/60 bg-card/60 p-4">
-            <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold">
-              <Users className="h-4 w-4 text-gold" />
-              Thành viên ({room.members.length})
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-background/70 px-3 py-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                  {(myName || "B").slice(0, 1).toUpperCase()}
-                </div>
-                <span className="max-w-28 truncate text-xs font-medium">{myName} (bạn)</span>
-                <button
-                  type="button"
-                  onClick={() => void toggleMic()}
-                  className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-full transition",
-                    micOn ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
-                  )}
-                  title={micOn ? "Tắt mic" : "Bật mic"}
-                >
-                  {micOn ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5" />}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void toggleCam()}
-                  className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-full transition",
-                    camOn ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
-                  )}
-                  title={camOn ? "Tắt cam" : "Bật cam"}
-                >
-                  {camOn ? <Video className="h-3.5 w-3.5" /> : <VideoOff className="h-3.5 w-3.5" />}
-                </button>
-                {camOn && localStreamRef.current && <LocalVideo stream={localStreamRef.current} />}
-              </div>
-
-              {room.members
-                .filter((m) => m.userId !== myId)
-                .map((m) => {
-                  const rs = remoteStreams.find((r) => r.userId === m.userId);
-                  return (
-                    <div
-                      key={m.userId}
-                      className="flex items-center gap-2 rounded-xl border border-border/60 bg-background/70 px-3 py-2"
-                    >
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-xs font-bold">
-                        {m.name.slice(0, 1).toUpperCase()}
-                      </div>
-                      <span className="max-w-28 truncate text-xs font-medium">{m.name}</span>
-                      {m.micOn ? (
-                        <Mic className="h-3.5 w-3.5 text-primary" />
-                      ) : (
-                        <MicOff className="h-3.5 w-3.5 text-muted-foreground/60" />
-                      )}
-                      {m.camOn ? (
-                        <Video className="h-3.5 w-3.5 text-primary" />
-                      ) : (
-                        <VideoOff className="h-3.5 w-3.5 text-muted-foreground/60" />
-                      )}
-                      {rs && <RemoteVideo stream={rs.stream} />}
-                    </div>
-                  );
-                })}
+            {/* Tiles video của mọi người (khi bật) */}
+            <div className="ml-auto flex items-center gap-1.5">
+              {camOn && localStreamRef.current && (
+                <LocalVideo stream={localStreamRef.current} />
+              )}
+              {remoteStreams.map((rs) => (
+                <RemoteVideo key={rs.userId} stream={rs.stream} />
+              ))}
             </div>
-          </section>
+          </div>
         </div>
 
-        {/* Cột phải: chat */}
-        <aside className="flex max-h-[32rem] min-h-80 flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/60 lg:max-h-none">
-          <div className="flex items-center gap-2 border-b border-border/60 px-4 py-2.5 text-sm font-medium">
-            <MessageSquare className="h-4 w-4 text-gold" />
-            Nhắn tin trong phòng
+        {/* ----- Sidebar phải: thành viên + chat ----- */}
+        <aside className="flex w-full shrink-0 flex-col border-t border-white/5 bg-zinc-900/40 lg:w-[21rem] lg:border-l lg:border-t-0">
+          {/* Thành viên */}
+          <div className="border-b border-white/5 px-4 py-3">
+            <h3 className="flex items-center gap-2 text-xs font-semibold tracking-wide text-zinc-400 uppercase">
+              <Users className="h-3.5 w-3.5 text-gold" />
+              Thành viên · {room.members.length}
+            </h3>
+            <div className="mt-2.5 space-y-1">
+              {room.members.map((m) => (
+                <div
+                  key={m.userId}
+                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5"
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-gold/40 to-gold/10 text-[11px] font-bold text-gold ring-1 ring-gold/20">
+                    {m.name.slice(0, 1).toUpperCase()}
+                  </span>
+                  <span
+                    className={cn(
+                      "min-w-0 flex-1 truncate text-sm",
+                      m.userId === myId ? "font-semibold text-gold" : "text-zinc-300",
+                    )}
+                  >
+                    {m.name}
+                    {m.userId === myId && " (bạn)"}
+                  </span>
+                  {m.micOn ? (
+                    <Mic className="h-3.5 w-3.5 shrink-0 text-gold/80" />
+                  ) : (
+                    <MicOff className="h-3.5 w-3.5 shrink-0 text-zinc-600" />
+                  )}
+                  {m.camOn ? (
+                    <Video className="h-3.5 w-3.5 shrink-0 text-gold/80" />
+                  ) : (
+                    <VideoOff className="h-3.5 w-3.5 shrink-0 text-zinc-600" />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-          <div ref={chatScrollRef} className="flex-1 space-y-2 overflow-y-auto p-3">
-            {(chat ?? []).length === 0 && (
-              <p className="py-6 text-center text-xs text-muted-foreground">
-                Chưa có tin nhắn. Chào cả phòng nhé!
-              </p>
-            )}
-            {(chat ?? []).map((c) => (
-              <div key={c._id} className="text-sm leading-snug">
-                <span className="font-medium text-gold">{c.name}: </span>
-                <span className="text-foreground/90">{c.text}</span>
-              </div>
-            ))}
+
+          {/* Chat */}
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex items-center gap-2 border-b border-white/5 px-4 py-2.5 text-xs font-semibold tracking-wide text-zinc-400 uppercase">
+              <MessageSquare className="h-3.5 w-3.5 text-gold" />
+              Nhắn tin trong phòng
+            </div>
+            <div
+              ref={chatScrollRef}
+              className="min-h-40 flex-1 space-y-2.5 overflow-y-auto px-4 py-3"
+            >
+              {(chat ?? []).length === 0 && (
+                <p className="py-8 text-center text-xs text-zinc-600">
+                  Chưa có tin nhắn. Chào cả phòng nhé!
+                </p>
+              )}
+              {(chat ?? []).map((c) => (
+                <div key={c._id} className="text-sm leading-snug">
+                  <span
+                    className={cn(
+                      "font-semibold",
+                      c.name === myName ? "text-gold" : "text-zinc-300",
+                    )}
+                  >
+                    {c.name}
+                  </span>
+                  <span className="text-zinc-500">: </span>
+                  <span className="text-zinc-200">{c.text}</span>
+                </div>
+              ))}
+            </div>
+            <form
+              className="flex gap-2 border-t border-white/5 p-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const t = chatText.trim();
+                if (!t) return;
+                setChatText("");
+                void sendChat({ code: room.code, text: t });
+              }}
+            >
+              <input
+                value={chatText}
+                onChange={(e) => setChatText(e.target.value)}
+                placeholder="Nhắn tin…"
+                className="h-10 flex-1 rounded-full border border-white/10 bg-black/40 px-4 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-gold/50 focus:ring-2 focus:ring-gold/20"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                disabled={!chatText.trim()}
+                className="h-10 rounded-full bg-gold px-5 font-semibold text-black hover:bg-gold/90"
+              >
+                Gửi
+              </Button>
+            </form>
           </div>
-          <form
-            className="flex gap-2 border-t border-border/60 p-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const t = chatText.trim();
-              if (!t) return;
-              setChatText("");
-              void sendChat({ code: room.code, text: t });
-            }}
-          >
-            <input
-              value={chatText}
-              onChange={(e) => setChatText(e.target.value)}
-              placeholder="Nhắn tin…"
-              className="h-9 flex-1 rounded-lg border border-border/70 bg-background/80 px-3 text-sm outline-none focus:border-primary/50"
-            />
-            <Button type="submit" size="sm" disabled={!chatText.trim()}>
-              Gửi
-            </Button>
-          </form>
         </aside>
       </div>
 
@@ -786,7 +923,7 @@ function RoomView({
           }}
         />
       )}
-    </AppShell>
+    </div>
   );
 }
 
@@ -805,7 +942,7 @@ function LocalVideo({ stream }: { stream: MediaStream }) {
       autoPlay
       muted
       playsInline
-      className="h-14 w-20 rounded-lg border border-border/60 object-cover"
+      className="h-16 w-24 rounded-lg border border-gold/30 object-cover shadow-md"
     />
   );
 }
@@ -820,13 +957,13 @@ function RemoteVideo({ stream }: { stream: MediaStream }) {
       ref={ref}
       autoPlay
       playsInline
-      className="h-14 w-20 rounded-lg border border-border/60 object-cover"
+      className="h-16 w-24 rounded-lg border border-white/10 object-cover shadow-md"
     />
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Hộp chọn video từ kho pháp thoại                                    */
+/* Hộp chọn video từ kho pháp thoại (w2g style tối)                    */
 /* ------------------------------------------------------------------ */
 
 function VideoPicker({
@@ -854,42 +991,44 @@ function VideoPicker({
 
   return (
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
       onClick={onClose}
       aria-hidden
     >
       <div
-        className="flex max-h-[80vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+        className="flex max-h-[80vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
-          <h3 className="text-sm font-semibold">Chọn pháp thoại cho cả phòng</h3>
+        <div className="flex items-center justify-between border-b border-white/5 px-4 py-3">
+          <h3 className="text-sm font-semibold text-zinc-100">
+            Chọn pháp thoại cho cả phòng
+          </h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-accent"
+            className="rounded-lg p-1.5 text-zinc-500 transition hover:bg-white/10 hover:text-zinc-200"
             aria-label="Đóng"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="border-b border-border/60 p-3">
+        <div className="border-b border-white/5 p-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-600" />
             <input
               autoFocus
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Tìm theo tiêu đề hoặc giảng sư…"
-              className="h-10 w-full rounded-xl border border-border/70 bg-background/80 pl-9 pr-3 text-sm outline-none focus:border-primary/50"
+              className="h-10 w-full rounded-xl border border-white/10 bg-black/40 pl-9 pr-3 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-gold/50"
             />
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-2">
           {filtered.length === 0 && (
-            <p className="py-8 text-center text-sm text-muted-foreground">
+            <p className="py-8 text-center text-sm text-zinc-500">
               Không tìm thấy bài phù hợp.
             </p>
           )}
@@ -898,24 +1037,24 @@ function VideoPicker({
               key={t._id}
               type="button"
               onClick={() => onPick(t)}
-              className="flex w-full items-center gap-3 rounded-xl p-2 text-left transition hover:bg-accent/60"
+              className="flex w-full items-center gap-3 rounded-xl p-2 text-left transition hover:bg-white/5"
             >
-              <span className="relative block w-28 shrink-0 overflow-hidden rounded-lg bg-muted">
+              <span className="relative block w-28 shrink-0 overflow-hidden rounded-lg bg-black">
                 <img
                   src={`https://i.ytimg.com/vi/${t.youtubeId}/mqdefault.jpg`}
                   alt=""
                   className="aspect-video w-full object-cover"
                   loading="lazy"
                 />
-                <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1 text-[10px] text-white">
+                <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1 text-[10px] tabular-nums text-white">
                   {formatTime(t.durationSec)}
                 </span>
               </span>
               <span className="min-w-0 flex-1">
-                <span className="line-clamp-2 block text-sm font-medium">
+                <span className="line-clamp-2 block text-sm font-medium text-zinc-100">
                   {t.title}
                 </span>
-                <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                <span className="mt-0.5 block truncate text-[11px] text-zinc-500">
                   {t.teacher}
                 </span>
               </span>

@@ -3,6 +3,7 @@ import { SearchToolbar } from "@/components/SearchToolbar";
 import { AIDocArticle, DocThumb } from "@/components/AIDocReader";
 import { AIIndexList } from "@/components/AIIndexList";
 import { useSettings } from "@/lib/settings";
+import { loadUiState, saveUiState, trackScroll, restoreScroll } from "@/lib/uiState";
 import {
   DICTIONARY,
   dictCategories,
@@ -11,7 +12,7 @@ import {
   type DictEntry,
 } from "@/data/dictionary";
 import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const CAT_COLORS: Record<DictCategory, string> = {
   "giáo lý": "bg-gold/15 text-gold",
@@ -25,8 +26,25 @@ const CAT_COLORS: Record<DictCategory, string> = {
 
 export default function Dictionary() {
   const { t } = useSettings();
-  const [q, setQ] = useState("");
-  const [cat, setCat] = useState<DictCategory | null>(null);
+  // Từ khóa + bộ lọc giữ nguyên khi rời trang rồi quay lại
+  const [q, setQ] = useState(() => loadUiState<string>("dict-q", ""));
+  const [cat, setCat] = useState<DictCategory | null>(() =>
+    loadUiState<DictCategory | null>("dict-cat", null),
+  );
+  useEffect(() => {
+    saveUiState("dict-q", q);
+    saveUiState("dict-cat", cat);
+  }, [q, cat]);
+
+  useEffect(() => {
+    const stop = trackScroll("dictionary");
+    return () => {
+      stop();
+    };
+  }, []);
+  useEffect(() => {
+    restoreScroll("dictionary");
+  }, []);
 
   const cats = useMemo(() => dictCategories(), []);
 

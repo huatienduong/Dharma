@@ -8,9 +8,21 @@ import {
 } from "@/lib/localProgress";
 import { useNavigate, useParams } from "react-router";
 import { useEffect, useRef } from "react";
+import { trackScroll, restoreScroll } from "@/lib/uiState";
 
 export default function Vinaya() {
   const navigate = useNavigate();
+
+  // Giữ vị trí cuộn khi rời trang rồi quay lại
+  useEffect(() => {
+    const stop = trackScroll("vinaya");
+    return () => {
+      stop();
+    };
+  }, []);
+  useEffect(() => {
+    restoreScroll("vinaya");
+  }, []);
 
   return (
     <AppShell

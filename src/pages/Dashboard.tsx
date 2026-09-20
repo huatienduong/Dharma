@@ -8,6 +8,7 @@ import { APP_VERSION } from "@/lib/version";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { loadUiState, saveUiState, trackScroll, restoreScroll } from "@/lib/uiState";
 import { useAction, useQuery } from "convex/react";
 import {
   Eye,
@@ -36,7 +37,22 @@ export default function Dashboard() {
   const { play, current } = usePlayer();
   const { t } = useSettings();
 
-  const [search, setSearch] = useState("");
+  // Từ khóa tìm kiếm giữ nguyên khi rời trang rồi quay lại (sessionStorage)
+  const [search, setSearch] = useState(() => loadUiState<string>("dashboard-search", ""));
+  useEffect(() => {
+    saveUiState("dashboard-search", search);
+  }, [search]);
+
+  // Khôi phục vị trí cuộn khi quay lại trang
+  useEffect(() => {
+    const stop = trackScroll("dashboard");
+    return () => {
+      stop();
+    };
+  }, []);
+  useEffect(() => {
+    if (!loading) restoreScroll("dashboard");
+  }, [loading]);
 
   // Tiến trình người dùng đã đăng nhập (server)
   const progress = useQuery(api.dhamma.myProgress, {});
@@ -127,6 +143,9 @@ export default function Dashboard() {
                     </span>
                   </p>
                 </div>
+                <span className="absolute bottom-2 right-2 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white">
+                  {formatTime(hero.durationSec)}
+                </span>
                 <span className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 backdrop-blur transition group-hover:scale-110 group-hover:bg-primary/90">
                   <Play className="ml-1 h-7 w-7 fill-white text-white" />
                 </span>
@@ -155,6 +174,7 @@ export default function Dashboard() {
                 youtubeId={t.youtubeId}
                 durationSec={t.durationSec}
                 viewCount={t.viewCount}
+                showDuration
                 active={current?.youtubeId === t.youtubeId}
                 onClick={() => play(t)}
               />
@@ -199,6 +219,7 @@ export default function Dashboard() {
                 youtubeId={t.youtubeId}
                 durationSec={t.durationSec}
                 viewCount={t.viewCount}
+                showDuration
                 progressSec={progressByTalk(progress, t)}
                 completed={completedByTalk(progress, t)}
                 active={current?.youtubeId === t.youtubeId}
@@ -254,6 +275,7 @@ export function TalkRow({
   progressSec,
   completed,
   active,
+  showDuration = true,
   onClick,
 }: {
   title: string;
@@ -264,6 +286,8 @@ export function TalkRow({
   progressSec?: number;
   completed?: boolean;
   active?: boolean;
+  /** hiển thị thời lượng ở góc thumbnail (mặc định bật) */
+  showDuration?: boolean;
   onClick(): void;
 }) {
   const pct =
@@ -290,6 +314,11 @@ export function TalkRow({
             loading="lazy"
           />
         </span>
+        {showDuration && (
+          <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1 py-0.5 text-[10px] font-medium tabular-nums text-white">
+            {formatTime(durationSec)}
+          </span>
+        )}
         {completed && (
           <span className="absolute left-1 top-1 rounded bg-primary px-1 py-0.5 text-[9px] font-medium text-primary-foreground">
             Đã xem
@@ -307,7 +336,7 @@ export function TalkRow({
         )}
       </span>
 
-      {/* ---------- Thông tin video: CHỈ tiêu đề + thời lượng ---------- */}
+      {/* ---------- Thông tin video: tiêu đề + lượt xem (không người đăng/mô tả) ---------- */}
       <span className="min-w-0 flex-1 py-0.5">
         <span className="line-clamp-2 block text-sm font-medium leading-snug group-hover:text-primary">
           {title}
