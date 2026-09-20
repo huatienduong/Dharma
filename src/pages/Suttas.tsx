@@ -6,10 +6,6 @@ import { api } from "@/convex/_generated/api";
 import { getSutta } from "@/data/suttas";
 import { useAuth } from "@/hooks/use-auth";
 import { useSettings } from "@/lib/settings";
-import {
-  loadLocalReadingPercent,
-  saveLocalReading,
-} from "@/lib/localProgress";
 import { useMutation, useQuery } from "convex/react";
 import {
   BookOpen,
@@ -147,12 +143,11 @@ export function SuttaReader() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const restoredRef = useRef(false);
 
-  // Khôi phục vị trí cuộn — GỘP server + local (mục lớn hơn thắng)
+  // Khôi phục vị trí cuộn từ tiến trình SERVER (không còn bản lưu cục bộ —
+  // danh sách Kinh giờ hoàn toàn do Trợ lý Phật học đề xuất)
   useEffect(() => {
     if (restoredRef.current) return;
-    const serverPct = progress?.percent ?? 0;
-    const localPct = sutta ? loadLocalReadingPercent(`sutta:${sutta.id}`) : 0;
-    const pct = Math.max(serverPct, localPct);
+    const pct = progress?.percent ?? 0;
     if (pct > 2 && scrollRef.current) {
       restoredRef.current = true;
       const el = scrollRef.current;
@@ -163,23 +158,18 @@ export function SuttaReader() {
     }
   }, [progress, sutta]);
 
-  // Lưu tiến trình khi cuộn (debounce nhẹ) — SERVER + LOCAL cho mọi người
+  // Lưu tiến trình khi cuộn (debounce nhẹ) — chỉ SERVER khi đăng nhập
   useEffect(() => {
-    if (!sutta) return;
+    if (!sutta || !isAuthenticated) return;
     let t: ReturnType<typeof setTimeout> | undefined;
     const onScroll = () => {
       if (t) clearTimeout(t);
       t = setTimeout(() => {
         const max = document.documentElement.scrollHeight - window.innerHeight;
         const pct = max > 0 ? Math.round((window.scrollY / max) * 100) : 100;
-        // Local luôn lưu (khách đọc vẫn quay lại đúng chỗ)
-        saveLocalReading(`sutta:${sutta.id}`, pct);
-        // Server lưu khi đăng nhập
-        if (isAuthenticated) {
-          void saveReading({ docId: `sutta:${sutta.id}`, percent: pct }).catch(
-            () => {},
-          );
-        }
+        void saveReading({ docId: `sutta:${sutta.id}`, percent: pct }).catch(
+          () => {},
+        );
       }, 500);
     };
     window.addEventListener("scroll", onScroll, { passive: true });

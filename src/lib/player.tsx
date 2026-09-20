@@ -3,6 +3,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useAuth } from "@/hooks/use-auth";
 import {
   ChevronDown,
+  ChevronUp,
   Maximize,
   Minimize,
   RotateCcw,
@@ -19,6 +20,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
 /* YouTube IFrame API                                                  */
@@ -98,7 +100,7 @@ export function formatTime(sec: number): string {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-/** "1.234 lượt xem" -> "1,2 Tr" · "1,5 N" · "230 N" */
+/** "1234567" -> "1,2 Tr" · "1,5 N" · "230 N" */
 export function formatCount(n: number): string {
   if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1).replace(".", ",")} Tỷ`;
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(".", ",")} Tr`;
@@ -132,7 +134,7 @@ interface PlayerContextValue {
   seek(sec: number): void;
   close(): void;
   replay(): void;
-  /** true khi video đang ở chế độ "rời đi" (thu nhỏ thành thẻ mini) */
+  /** true khi trình phát ở chế độ dock (trang độc lập trong luồng trang) */
   isExpanded: boolean;
   setExpanded(v: boolean): void;
   /** true khi video đang chiếm toàn màn hình (Fullscreen API) */
@@ -153,6 +155,9 @@ export function usePlayer(): PlayerContextValue {
 /* ------------------------------------------------------------------ */
 
 const SAVE_INTERVAL_MS = 10_000;
+
+/** Chế độ hiển thị của khung chứa iframe (class-only — node KHÔNG đổi). */
+type ShellMode = "hidden" | "docked" | "mini";
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -181,8 +186,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [isBuffering, setIsBuffering] = useState(false);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(0);
-  /** true = thẻ mini; false = video dock trên cùng trang (inline) */
-  const [expanded, setExpanded] = useState(true);
+  /** false = dock (mặc định, trong luồng trang); true = thẻ mini */
+  const [mini, setMini] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
 
   const pendingSeekRef = useRef<number | null>(null);
@@ -190,9 +195,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const savedForTalkRef = useRef<Map<string, number>>(new Map());
   const [queued, setQueued] = useState<PlayerTalk | null>(null);
 
+  const mode: ShellMode = !current
+    ? "hidden"
+    : mini
+      ? "mini"
+      : "docked";
+
   /* ----- Tạo player MỘT LẦN ngay khi app mở -----
-     - Khung chứa iframe luôn mounted (nằm ngoài mọi điều kiện render).
-     - Node con tạm được tạo bằng DOM API: React chỉ quản lý host trống,
+     - Khung chứa iframe LUÔN mounted (không nằm trong điều kiện render
+       nào): khi đổi chế độ chỉ đổi class, iframe không bao giờ bị hủy.
+     - Node con tạm tạo bằng DOM API: React chỉ quản lý host trống,
        iframe sống bên trong node tạm → an toàn với re-render/StrictMode.
      - origin thật của trang (YouTube từ chối phát nếu origin sai). */
   useEffect(() => {
@@ -249,7 +261,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
               const t = talkRef.current;
               const dur = playerRef.current?.getDuration() ?? 0;
               if (t && dur > 0) persistProgress(t, dur, dur);
-              // Thoát fullscreen nếu đang bật
               if (document.fullscreenElement) {
                 void document.exitFullscreen().catch(() => {});
               }
@@ -259,7 +270,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
               setIsBuffering(false);
               setPosition(0);
               setDuration(0);
-              setExpanded(true);
+              setMini(false);
             }
           },
           onError: () => {
@@ -281,6 +292,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setPlayerReady(false);
       if (ytTargetRef.current) ytTargetRef.current.innerHTML = "";
     };
+    // persistProgress được tham chiếu qua biến closure trong các effect
+    // khác; effect này chỉ chạy 1 lần nên không cần phụ thuộc.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -292,8 +305,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const play = useCallback(
     (talk: PlayerTalk) => {
       setShowFallback(false);
-      // Mới phát → luôn mở video dock phía trên (không nổi đè nội dung)
-      setExpanded(true);
+      // Phát mới → luôn mở trình phát DOCK (trong luồng trang, không nổi)
+      setMini(false);
       setCurrent(talk);
       setPosition(0);
       setDuration(talk.durationSec > 0 ? talk.durationSec : 0);
@@ -437,7 +450,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setCurrent(null);
     setPosition(0);
     setDuration(0);
-    setExpanded(true);
+    setMini(false);
     setShowFallback(false);
   }, [persistProgress]);
 
@@ -482,16 +495,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     document.title = current && isPlaying ? `▶ ${current.title}` : base;
   }, [current, isPlaying]);
 
-  /* ----- Thu nhỏ về thẻ mini bằng phím Esc (khi đang dock) ----- */
-  useEffect(() => {
-    if (!current || expanded || isFullscreen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setExpanded(true);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [current, expanded, isFullscreen]);
-
   const value = useMemo<PlayerContextValue>(
     () => ({
       current,
@@ -504,8 +507,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       seek,
       close,
       replay,
-      isExpanded: !expanded, // true khi đang thẻ mini (thu nhỏ)
-      setExpanded: (v: boolean) => setExpanded(!v),
+      isExpanded: mode === "docked",
+      setExpanded: (v: boolean) => setMini(!v),
       isFullscreen,
       toggleFullscreen,
     }),
@@ -520,104 +523,102 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       seek,
       close,
       replay,
-      expanded,
+      mode,
       isFullscreen,
       toggleFullscreen,
     ],
   );
 
-  const showPlayer = current != null;
-
   return (
     <PlayerContext.Provider value={value}>
-      {children}
-
-      {/* ----- Lớp trình phát DOCK: nằm trong luồng trang, KHÔNG nổi đè.
-            Khi có video, một khoảng trống chiếm chỗ phía trên trang
-            (placeholder) và iframe được neo vào đó bằng position sticky
-            — mọi nội dung đều nằm dưới, không bị che hay thao tác khó. ----- */}
-      {showPlayer && !expanded && (
-        <>
-          {/* Khoảng đệm chiếm chỗ (16:9 + thanh điều khiển) để nội dung
-              không bị trình phát che — cuộn theo trang bình thường */}
-          <div aria-hidden className="h-0" />
-
-          <div className="pointer-events-none fixed inset-x-0 top-0 z-30">
-            <div className="pointer-events-auto mx-auto w-full max-w-5xl px-3 pt-2 sm:px-5 lg:pt-6">
-              <div
-                ref={wrapperRef}
-                className="overflow-hidden rounded-xl border border-border/70 bg-black shadow-lg"
-              >
-                <div className="relative aspect-video w-full">
-                  {/* Khung chứa iframe — host luôn trống trong JSX */}
-                  <div ref={ytTargetRef} className="absolute inset-0 h-full w-full" />
-                  {/* Lớp phủ chặn mọi click vào UI/logo YouTube */}
-                  <div className="absolute inset-0" aria-hidden />
-                </div>
-                <PlayerBar
-                  title={current.title}
-                  teacher={current.teacher}
-                  channelName={current.channelName}
-                  isBuffering={isBuffering}
-                  isPlaying={isPlaying}
-                  position={position}
-                  duration={duration}
-                  onSeek={seek}
-                  onToggle={toggle}
-                  onReplay={replay}
-                  onCollapse={() => setExpanded(false)}
-                  onClose={close}
-                  fullscreen={isFullscreen}
-                  onFullscreen={toggleFullscreen}
-                />
-              </div>
-              {showFallback && (
-                <p className="mt-2 rounded-lg bg-destructive/10 px-3 py-2 text-center text-xs text-destructive">
-                  Video này không cho phép phát nhúng. Vui lòng chọn video khác.
-                </p>
-              )}
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* ----- Thẻ mini khi thu nhỏ ----- */}
-      {showPlayer && expanded && (
-        <MiniPlayerCard
-          title={current.title}
-          isBuffering={isBuffering}
-          isPlaying={isPlaying}
-          position={position}
-          duration={duration}
-          onSeek={seek}
-          onToggle={toggle}
-          onClose={close}
-          onExpand={() => setExpanded(true)}
-          showFallback={showFallback}
-        />
-      )}
-
-      {/* ----- Khung chứa iframe khi ẩn / chưa có video — LUÔN mounted.
-            Khi trình phát dock đang hiển thị, iframe đã sống trong dock ở
-            trên; React giữ 2 host (dock + ẩn) nhưng chỉ MỘT host có player:
-            ta di chuyển node bằng appendChild khi chuyển chế độ. ----- */}
-      {!showPlayer && (
+      {/* ----- Trình phát ĐỘC LẬP — MỘT node duy nhất luôn mounted.
+            Đổi chế độ chỉ đổi class, iframe không bị hủy:
+            · docked: nằm TRONG luồng trang ở đầu trang (không nổi đè)
+            · mini  : thẻ nhỏ góc phải (người dùng chủ động thu nhỏ)
+            · hidden: ẩn ngoài màn hình khi không có video ----- */}
+      <div
+        className={cn(
+          "z-30",
+          mode === "docked" && "relative w-full lg:pl-60",
+          mode === "mini" &&
+            "fixed bottom-[4.6rem] right-4 z-[95] w-[min(20rem,calc(100vw-2rem))] lg:bottom-4",
+          mode === "hidden" &&
+            "pointer-events-none fixed left-[-9999px] top-[-9999px] w-72 opacity-0",
+        )}
+      >
+        {/* Container căn giữa — chỉ có tác dụng bố cục ở chế độ dock.
+            Chế độ khác dùng display:contents để node vẫn tồn tại. */}
         <div
-          aria-hidden
-          className="fixed left-[-9999px] top-[-9999px] h-[180px] w-[320px] overflow-hidden opacity-0"
+          className={cn(
+            mode === "docked"
+              ? // pt-[4.25rem]: chừa chiều cao header sticky mobile (h-14) để
+                // video không bị header đè lên; desktop không có header → pt-4
+                "mx-auto w-full max-w-5xl px-3 pt-[4.25rem] sm:px-5 lg:pt-4"
+              : "contents",
+          )}
         >
-          <div ref={ytTargetRef} className="h-full w-full" />
+          <div
+            ref={wrapperRef}
+            className={cn(
+              "overflow-hidden bg-black",
+              mode === "docked" &&
+                "rounded-xl border border-border/70 shadow-lg",
+              mode === "mini" &&
+                "rounded-xl border border-border bg-popover shadow-2xl",
+            )}
+          >
+            <div className="relative aspect-video w-full">
+              {/* Host iframe — LUÔN trống trong JSX, node tạm cho YouTube
+                  được tạo bằng DOM API trong effect */}
+              <div
+                ref={ytTargetRef}
+                className="absolute inset-0 h-full w-full"
+              />
+              {/* Lớp phủ chặn mọi click vào UI/logo YouTube */}
+              <div className="absolute inset-0" aria-hidden />
+            </div>
+
+            {mode !== "hidden" && (
+              <PlayerBar
+                compact={mode === "mini"}
+                title={current?.title ?? ""}
+                teacher={current?.teacher ?? ""}
+                channelName={current?.channelName ?? ""}
+                isBuffering={isBuffering}
+                isPlaying={isPlaying}
+                position={position}
+                duration={duration}
+                onSeek={seek}
+                onToggle={toggle}
+                onReplay={replay}
+                onExpand={() => setMini(false)}
+                onCollapse={() => setMini(true)}
+                onClose={close}
+                fullscreen={isFullscreen}
+                onFullscreen={toggleFullscreen}
+              />
+            )}
+
+            {showFallback && mode !== "hidden" && (
+              <p className="bg-destructive/10 px-3 py-2 text-center text-xs text-destructive">
+                Video này không cho phép phát nhúng. Vui lòng chọn video khác.
+              </p>
+            )}
+          </div>
         </div>
-      )}
+      </div>
+
+      {children}
     </PlayerContext.Provider>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Thanh điều khiển nằm NGAY DƯỚI video (phong cách YouTube thu gọn)   */
+/* Thanh điều khiển nằm NGAY DƯỚI video (dock + mini dùng chung)       */
 /* ------------------------------------------------------------------ */
 
 function PlayerBar({
+  compact,
   title,
   teacher,
   channelName,
@@ -628,11 +629,13 @@ function PlayerBar({
   onSeek,
   onToggle,
   onReplay,
+  onExpand,
   onCollapse,
   onClose,
   fullscreen,
   onFullscreen,
 }: {
+  compact: boolean;
   title: string;
   teacher: string;
   channelName: string;
@@ -643,15 +646,104 @@ function PlayerBar({
   onSeek(sec: number): void;
   onToggle(): void;
   onReplay(): void;
+  onExpand(): void;
   onCollapse(): void;
   onClose(): void;
   fullscreen: boolean;
   onFullscreen(): void;
 }) {
+  if (compact) {
+    /* ----- Mini: một hàng gọn + dải tua chạm được ----- */
+    return (
+      <div className="bg-popover">
+        <div className="flex items-center gap-2 px-2.5 py-2">
+          <button
+            type="button"
+            onClick={onToggle}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
+            aria-label={isPlaying ? "Tạm dừng" : "Phát"}
+          >
+            {isPlaying ? (
+              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            )}
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-medium leading-tight">{title}</p>
+            <p className="truncate text-[10px] text-muted-foreground">
+              {isBuffering
+                ? "Đang tải…"
+                : `${formatTime(position)} / ${formatTime(duration)}`}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onExpand}
+            title="Mở trình phát"
+            aria-label="Mở trình phát"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          >
+            <ChevronUp className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onFullscreen}
+            title={fullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
+            aria-label={fullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          >
+            {fullscreen ? (
+              <Minimize className="h-4 w-4" />
+            ) : (
+              <Maximize className="h-4 w-4" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            title="Đóng trình phát"
+            aria-label="Đóng trình phát"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <button
+          type="button"
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const ratio = Math.min(
+              1,
+              Math.max(0, (e.clientX - rect.left) / rect.width),
+            );
+            onSeek(ratio * duration);
+          }}
+          className="block h-1.5 w-full bg-muted"
+          aria-label="Tua theo tiến trình"
+        >
+          <span
+            className="block h-full bg-gold transition-[width] duration-500"
+            style={{
+              width: `${
+                duration > 0 ? Math.min(100, (position / duration) * 100) : 0
+              }%`,
+            }}
+          />
+        </button>
+      </div>
+    );
+  }
+
+  /* ----- Dock: thanh điều khiển đầy đủ phía dưới video ----- */
   return (
-    <div className="bg-card border-t border-border/60">
+    <div className="border-t border-border/60 bg-card">
       {/* Thanh tua */}
-      <div className="flex items-center gap-2 px-3 pt-2.5">
+      <div className="flex items-center gap-2.5 px-3 pt-2.5">
         <span className="w-11 shrink-0 tabular-nums text-xs text-muted-foreground">
           {formatTime(position)}
         </span>
@@ -669,10 +761,12 @@ function PlayerBar({
         </span>
       </div>
 
-      {/* Hàng điều khiển: xem lại · phát · thu nhỏ · toàn màn hình · đóng */}
+      {/* Hàng điều khiển: tiêu đề | xem lại · phát · thu nhỏ · fullscreen · đóng */}
       <div className="flex items-center gap-1 px-3 py-2">
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-sm font-semibold leading-tight">{title}</h3>
+        <div className="min-w-0 flex-1 pr-1">
+          <h3 className="truncate text-sm font-semibold leading-tight">
+            {title}
+          </h3>
           <p className="truncate text-[11px] text-muted-foreground">
             {isBuffering
               ? "Đang tải…"
@@ -699,11 +793,11 @@ function PlayerBar({
           aria-label={isPlaying ? "Tạm dừng" : "Phát"}
         >
           {isPlaying ? (
-            <svg viewBox="0 0 24 24" className="h-4.5 w-4.5 fill-current">
+            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current">
               <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
             </svg>
           ) : (
-            <svg viewBox="0 0 24 24" className="ml-0.5 h-4.5 w-4.5 fill-current">
+            <svg viewBox="0 0 24 24" className="ml-0.5 h-5 w-5 fill-current">
               <path d="M8 5v14l11-7z" />
             </svg>
           )}
@@ -743,117 +837,6 @@ function PlayerBar({
           <X className="h-4 w-4" />
         </button>
       </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Thẻ mini (khi thu nhỏ)                                              */
-/* ------------------------------------------------------------------ */
-
-export function MiniPlayerCard({
-  title,
-  isBuffering,
-  isPlaying,
-  position,
-  duration,
-  onSeek,
-  onToggle,
-  onClose,
-  onExpand,
-  showFallback,
-}: {
-  title: string;
-  isBuffering: boolean;
-  isPlaying: boolean;
-  position: number;
-  duration: number;
-  onSeek(sec: number): void;
-  onToggle(): void;
-  onClose(): void;
-  onExpand(): void;
-  showFallback?: boolean;
-}) {
-  return (
-    <div className="fixed bottom-[4.25rem] right-4 z-[95] w-[min(20rem,calc(100vw-2rem))] animate-in slide-in-from-bottom-2 fade-in lg:bottom-4">
-      <div className="overflow-hidden rounded-xl border border-border bg-popover/95 shadow-xl backdrop-blur">
-        {/* Một hàng: nút phát · tiêu đề · thời gian · mở rộng · đóng */}
-        <div className="flex items-center gap-2.5 px-3 py-2">
-          <button
-            type="button"
-            onClick={onToggle}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
-            aria-label={isPlaying ? "Tạm dừng" : "Phát"}
-          >
-            {isPlaying ? (
-              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
-                <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={onExpand}
-            className="min-w-0 flex-1 text-left"
-            title="Mở trình phát"
-          >
-            <p className="truncate text-sm font-medium leading-snug">{title}</p>
-            <p className="truncate text-[11px] text-muted-foreground">
-              {isBuffering ? "Đang tải…" : isPlaying ? "Đang phát" : "Tạm dừng"}
-            </p>
-          </button>
-          <button
-            type="button"
-            onClick={onExpand}
-            title="Mở trình phát"
-            aria-label="Mở trình phát"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4 fill-current">
-              <path d="M4 4h7v2.5H8.9l4.6 4.6-1.4 1.4-4.6-4.6V11H4zm13.5 10.7-4.6-4.6 1.4-1.4 4.6 4.6V11H20v7h-7v-2.5h2.1l-4.6-4.6 1.4-1.4z" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-            aria-label="Đóng trình phát"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Tua nhanh: tap dải tiến trình để tua tới đó */}
-        <button
-          type="button"
-          onClick={(e) => {
-            const el = e.currentTarget;
-            const rect = el.getBoundingClientRect();
-            const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-            onSeek(ratio * duration);
-          }}
-          className="block h-1.5 w-full bg-muted"
-          aria-label="Tua theo tiến trình"
-        >
-          <span
-            className="block h-full bg-gold transition-[width] duration-500"
-            style={{
-              width: `${
-                duration > 0 ? Math.min(100, (position / duration) * 100) : 0
-              }%`,
-            }}
-          />
-        </button>
-      </div>
-      {showFallback && (
-        <p className="mt-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
-          Video này không cho phép phát nhúng. Vui lòng chọn video khác.
-        </p>
-      )}
     </div>
   );
 }

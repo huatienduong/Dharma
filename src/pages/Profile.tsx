@@ -14,18 +14,16 @@ import {
   Check,
   Eye,
   Flame,
-  LogIn,
-  LogOut,
   Mail,
   Pencil,
   UserRound,
+  Wrench,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
 import { toast } from "sonner";
 
 export default function Profile() {
-  const { user, isAuthenticated, isLoading, signOut } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const { t } = useSettings();
   const updateProfile = useMutation(api.profile.updateProfile);
   const stats = useQuery(api.profile.myStats, {});
@@ -57,23 +55,25 @@ export default function Profile() {
     );
   }
 
-  // Chưa đăng nhập: YÊU CẦU ĐĂNG NHẬP — không còn chế độ khách cho Hồ sơ
+  // Chưa đăng nhập: tính năng đăng nhập đang được nâng cấp — hiển thị thông báo
   if (!isAuthenticated || !user) {
     return (
       <AppShell title="Hồ sơ">
         <div className="mx-auto max-w-md">
           <div className="rounded-2xl border border-border/60 bg-card p-8 text-center shadow-sm">
-            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-              <UserRound className="h-8 w-8" />
+            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gold/15">
+              <Wrench className="h-8 w-8 text-gold" />
             </span>
-            <h2 className="mt-5 text-lg font-bold">
-              Vui lòng đăng nhập để sử dụng tính năng này
+            <h2 className="mt-5 text-lg font-bold leading-snug">
+              Đội ngũ kỹ thuật đang tiến hành nâng cấp hệ thống
             </h2>
-            <Button asChild size="lg" className="mt-6 w-full gap-2">
-              <Link to="/auth?returnTo=%2Fprofile">
-                <LogIn className="h-4 w-4" /> Đăng nhập
-              </Link>
-            </Button>
+            <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
+              Hiện tại bạn không thể sử dụng tính năng Hồ sơ cho đến khi chúng
+              tôi hoàn thành bản cập nhật mới.
+            </p>
+            <p className="mt-3 text-sm font-medium text-gold">
+              Xin lỗi vì sự bất tiện này đã gây ra cho bạn!
+            </p>
           </div>
         </div>
       </AppShell>
@@ -248,14 +248,6 @@ export default function Profile() {
               an toàn theo tài khoản.
             </p>
           </div>
-          <Button
-            variant="outline"
-            onClick={() => void signOut()}
-            className="mt-4 gap-2"
-          >
-            <LogOut className="h-4 w-4" />
-            Đăng xuất
-          </Button>
         </section>
       </div>
     </AppShell>

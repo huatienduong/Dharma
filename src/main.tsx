@@ -155,10 +155,7 @@ createRoot(document.getElementById("root")!).render(
                 {/* Khách chưa đăng nhập vẫn xem được toàn bộ nội dung;
                     tiến trình chỉ được lưu khi đã đăng nhập. */}
                 <Route path="/" element={<Dashboard />} />
-                <Route
-                  path="/auth"
-                  element={<AuthPage redirectAfterAuth="/dashboard" />}
-                />
+                <Route path="/auth" element={<AuthPage />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/suttas" element={<Suttas />} />
                 <Route path="/suttas/:id" element={<SuttaReader />} />

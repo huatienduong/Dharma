@@ -3,15 +3,11 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { formatTime, usePlayer } from "@/lib/player";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import {
-  loadLocalWatch,
-  type LocalWatchRow,
-} from "@/lib/localProgress";
 import { useSettings } from "@/lib/settings";
 import { useQuery } from "convex/react";
-import { History, Play } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { History, LogIn, Play } from "lucide-react";
+import { Link } from "react-router";
+import { cn } from "@/lib/utils";
 
 type ProgressRow = {
   talkId: Id<"dhammaTalks">;
@@ -111,29 +107,8 @@ function TalkRow({
 export default function Watched() {
   const { play, current } = usePlayer();
   const { t } = useSettings();
+  // Lịch sử xem lấy từ tiến trình server (không còn bản lưu cục bộ)
   const progress = useQuery(api.dhamma.myProgress, {});
-
-  // Tiến trình cục bộ — khách chưa đăng nhập vẫn thấy lịch sử của mình
-  const [localProgress, setLocalProgress] = useState<LocalWatchRow[]>([]);
-  useEffect(() => {
-    setLocalProgress(loadLocalWatch());
-  }, [current?.youtubeId]);
-
-  // Gộp server + local (mục mới hơn thắng), sắp theo updatedAt
-  const watched = useMemo(() => {
-    const byId = new Map<string, ProgressRow | LocalWatchRow>();
-    const times = new Map<string, number>();
-    for (const row of localProgress) {
-      byId.set(row.youtubeId, row);
-      times.set(row.youtubeId, row.updatedAt);
-    }
-    for (const row of progress ?? []) {
-      const prev = times.get(row.youtubeId) ?? 0;
-      if (row.updatedAt >= prev) byId.set(row.youtubeId, row);
-    }
-    return [...byId.values()].sort((a, b) => b.updatedAt - a.updatedAt);
-  }, [progress, localProgress]);
-
 
   return (
     <AppShell
@@ -146,17 +121,26 @@ export default function Watched() {
             <Skeleton key={i} className="h-[5.25rem] w-full rounded-xl" />
           ))}
         </div>
-      ) : watched.length === 0 ? (
+      ) : progress.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-12 text-center">
           <History className="mx-auto h-10 w-10 text-muted-foreground/40" />
           <p className="mt-4 text-sm font-medium">Chưa có lịch sử xem</p>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Hãy mở một pháp thoại — ứng dụng sẽ tự ghi nhớ vị trí bạn dừng lại.
+          <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
+            Đăng nhập để ứng dụng tự ghi nhớ vị trí bạn dừng lại trong mỗi pháp
+            thoại. Khi hệ thống hoàn tất nâng cấp, lịch sử của bạn sẽ được đồng
+            bộ tại đây.
           </p>
+          <Link
+            to="/auth"
+            className="mt-5 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+          >
+            <LogIn className="h-4 w-4" />
+            Đăng nhập
+          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-x-5 gap-y-1 md:grid-cols-2">
-          {watched.map((p) => (
+          {progress.map((p) => (
             <TalkRow
               key={p.youtubeId}
               title={p.title}
@@ -168,7 +152,7 @@ export default function Watched() {
               active={current?.youtubeId === p.youtubeId}
               onClick={() =>
                 play({
-                  _id: ("talkId" in p ? p.talkId : p.youtubeId) as Id<"dhammaTalks">,
+                  _id: p.talkId,
                   youtubeId: p.youtubeId,
                   title: p.title,
                   teacher: p.teacher,
