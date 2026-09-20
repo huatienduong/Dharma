@@ -1,5 +1,5 @@
-import { VoiceSearchButton } from "@/components/VoiceSearchButton";
 import { AppShell } from "@/components/AppShell";
+import { SearchToolbar } from "@/components/SearchToolbar";
 import { AIDocArticle, DocThumb } from "@/components/AIDocReader";
 import { AIIndexList } from "@/components/AIIndexList";
 import { useSettings } from "@/lib/settings";
@@ -10,7 +10,7 @@ import {
   type DictCategory,
   type DictEntry,
 } from "@/data/dictionary";
-import { ChevronDown, ChevronUp, Search, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 
 const CAT_COLORS: Record<DictCategory, string> = {
@@ -48,16 +48,13 @@ export default function Dictionary() {
       title={t("dictTitle")}
       subtitle={t("dictSubtitle")}
     >
-      {/* Ô tìm kiếm — mic TRÁI, kính lúp PHẢI (trong ô) */}
-      <div className="relative mb-4">
-        <Search className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
+      {/* Ô tìm kiếm dùng chung — mic trái, kính lúp phải trong pill */}
+      <div className="mb-4">
+        <SearchToolbar
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={setQ}
           placeholder={t("dictSearchPlaceholder")}
-          className="w-full rounded-xl border border-border/70 bg-card/80 py-3 pl-11 pr-11 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
         />
-        <VoiceSearchButton onResult={(text) => setQ(text)} />
       </div>
 
       {/* Bộ lọc nhóm */}
