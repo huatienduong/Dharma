@@ -1,8 +1,7 @@
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useAuth } from "@/hooks/use-auth";
-import { loadLocalWatch, saveLocalWatch } from "@/lib/localProgress";
-import { ChevronDown, RotateCcw, X } from "lucide-react";
+import { ChevronDown, Maximize, Minimize, RotateCcw, X } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import {
   createContext,
@@ -128,9 +127,12 @@ interface PlayerContextValue {
   seek(sec: number): void;
   close(): void;
   replay(): void;
-  /** true khi đang ở chế độ overlay toàn màn hình */
+  /** true khi đang ở chế độ xem lớn (gắn trên cùng trang) */
   isExpanded: boolean;
   setExpanded(v: boolean): void;
+  /** true khi video đang chiếm toàn màn hình (Fullscreen API) */
+  isFullscreen: boolean;
+  toggleFullscreen(): void;
 }
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -157,7 +159,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const resetProgress = useMutation(api.dhamma.resetProgress);
 
   const ytTargetRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  /* ----- Đồng bộ trạng thái fullscreen (thoát bằng Esc/nút hệ thống) ----- */
+  useEffect(() => {
+    const onFsChange = () => {
+      if (!document.fullscreenElement) setIsFullscreen(false);
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
   const [playerReady, setPlayerReady] = useState(false);
 
   const [current, setCurrent] = useState<PlayerTalk | null>(null);
@@ -341,17 +354,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const persistProgress = useCallback(
     (t: PlayerTalk, positionSec: number, durationSec: number) => {
       if (positionSec < 3) return; // quá đầu video thì chưa cần lưu
-      // 1. Luôn lưu cục bộ — khách xem vẫn "dừng ở đâu quay lại đúng đoạn đó"
-      saveLocalWatch({
-        youtubeId: t.youtubeId,
-        title: t.title,
-        teacher: t.teacher,
-        channelName: t.channelName,
-        publishedAt: t.publishedAt,
-        positionSec,
-        durationSec,
-      });
-      // 2. Server (chỉ khi đăng nhập)
+      // Chỉ lưu trên server — tiến trình xem cục bộ (localStorage) đã loại bỏ
       if (isAuthenticated) {
         void saveProgress({
           youtubeId: t.youtubeId,
@@ -400,24 +403,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     };
   }, [persistProgress]);
 
-  /* ----- Nạp tiến trình đã lưu từ Convex ----- */
-  /* ----- Nạp "tiếp tục xem" GỘP local + server (mục mới hơn thắng) ----- */
+  /* ----- Nạp tiến trình đã lưu từ Convex (duy nhất — không còn bản cục bộ) ----- */
   useEffect(() => {
     const map = new Map<string, number>();
-    const times = new Map<string, number>();
-    // Local trước (nền tảng cho khách + dự phòng offline)
-    for (const row of loadLocalWatch()) {
-      map.set(row.youtubeId, row.positionSec);
-      times.set(row.youtubeId, row.updatedAt);
-    }
-    // Server đè khi bản ghi mới hơn (đăng nhập / đa thiết bị)
     if (savedProgress) {
       for (const row of savedProgress) {
-        const prev = times.get(row.youtubeId) ?? 0;
-        if (row.updatedAt >= prev) {
-          map.set(row.youtubeId, row.positionSec);
-          times.set(row.youtubeId, row.updatedAt);
-        }
+        map.set(row.youtubeId, row.positionSec);
       }
     }
     savedForTalkRef.current = map;
