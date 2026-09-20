@@ -63,12 +63,15 @@ export function AppShell({
   title,
   subtitle,
   actions,
+  hideTitle,
   children,
 }: {
   title: string;
   subtitle?: string;
   /** Ngừng dùng: khu vực nút cũ — các nút chính đã vào sidebar */
   actions?: React.ReactNode;
+  /** Ẩn tiêu đề trang (trang tự vẽ tiêu đề riêng, vd Trợ lý Phật học) */
+  hideTitle?: boolean;
   children: React.ReactNode;
 }) {
   const navigate = useNavigate();
@@ -300,18 +303,20 @@ export function AppShell({
       <div className="lg:pl-60">
         <main className="mx-auto w-full max-w-5xl px-3 pb-24 pt-3 sm:px-5 lg:pb-16 lg:pt-6">
           {/* Tiêu đề trang desktop (mobile đã có trong header) */}
-          <div className="mb-5 hidden items-end justify-between gap-3 lg:flex">
-            <div className="min-w-0">
-              <h1 className="truncate text-2xl font-bold tracking-tight">
-                {title}
-              </h1>
-              {subtitle && (
-                <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>
-              )}
+          {!hideTitle && (
+            <div className="mb-5 hidden items-end justify-between gap-3 lg:flex">
+              <div className="min-w-0">
+                <h1 className="truncate text-2xl font-bold tracking-tight">
+                  {title}
+                </h1>
+                {subtitle && (
+                  <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>
+                )}
+              </div>
+              {/* Khu actions desktop giữ chỗ trống (Cài đặt/Hồ sơ đã ở sidebar) */}
+              {actions && <div className="flex items-center gap-2">{actions}</div>}
             </div>
-            {/* Khu actions desktop giữ chỗ trống (Cài đặt/Hồ sơ đã ở sidebar) */}
-            {actions && <div className="flex items-center gap-2">{actions}</div>}
-          </div>
+          )}
           {children}
         </main>
       </div>

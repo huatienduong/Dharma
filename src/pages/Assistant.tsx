@@ -473,9 +473,9 @@ export default function Assistant() {
 
   if (isLoading) {
     return (
-      <AppShell title="Trợ lý Phật học">
-        <div className="animate-pulse text-sm text-muted-foreground">
-          Đang tải…
+      <AppShell title="Trợ lý Phật học" hideTitle>
+        <div className="flex min-h-[50dvh] items-center justify-center">
+          <div className="animate-pulse text-sm text-muted-foreground">Đang tải…</div>
         </div>
       </AppShell>
     );
@@ -484,8 +484,8 @@ export default function Assistant() {
   const isEmpty = messages.length === 0;
 
   return (
-    <AppShell title="Trợ lý Phật học">
-      <div className="mx-auto flex h-[calc(100dvh-13rem)] max-w-4xl flex-col sm:h-[calc(100dvh-12rem)] lg:h-[calc(100dvh-10.5rem)]">
+    <AppShell title="Trợ lý Phật học" hideTitle>
+      <div className="mx-auto flex h-[calc(100dvh-12rem)] max-w-4xl flex-col sm:h-[calc(100dvh-11rem)] lg:h-[calc(100dvh-8rem)]">
         {/* ---------- Thanh trên kiểu Gemini ---------- */}
         <div className="flex items-center justify-between px-0.5 pb-3">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -521,7 +521,7 @@ export default function Assistant() {
           </div>
         </div>
 
-        {/* ---------- Khu hội thoại (không khung — nền liền一体 kiểu Gemini) ---------- */}
+        {/* ---------- Khu hội thoại (nền liền mạch kiểu Gemini) ---------- */}
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
           {isEmpty ? (
             <div className="flex h-full flex-col items-center justify-center px-2 text-center">
@@ -551,7 +551,7 @@ export default function Assistant() {
               </div>
             </div>
           ) : (
-            <div className="space-y-7 px-0.5 py-3">
+            <div className="mx-auto w-full max-w-3xl space-y-7 px-0.5 py-3">
               {messages.map((m, i) =>
                 m.role === "user" ? (
                   <UserMessage key={i} content={m.content} />
@@ -675,11 +675,9 @@ export default function Assistant() {
           </div>
 
           {!isAuthenticated && (
-            <MaintenanceNotice
-              variant="compact"
-              feature="lưu hội thoại"
-              className="mt-2 flex w-full"
-            />
+            <div className="mt-1.5 flex justify-center">
+              <MaintenanceNotice variant="compact" feature="lưu hội thoại" />
+            </div>
           )}
         </form>
       </div>
