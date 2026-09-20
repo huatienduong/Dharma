@@ -57,31 +57,24 @@ export default function Profile() {
     );
   }
 
-  // Chưa đăng nhập: mời đăng nhập để lưu tiến trình, không chặn xem app
+  // Chưa đăng nhập: YÊU CẦU ĐĂNG NHẬP — không còn chế độ khách cho Hồ sơ
   if (!isAuthenticated || !user) {
     return (
-      <AppShell
-        title={t("navProfile")}
-        subtitle={t("guestNotice")}
-      >
-        <div className="mx-auto max-w-md space-y-4">
-          <div className="rounded-2xl border border-gold/40 bg-gradient-to-b from-gold/10 to-transparent p-6 text-center">
-            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full border-2 border-gold/50 bg-gold/10">
-              <UserRound className="h-8 w-8 text-gold" />
-            </div>
-            <h2 className="text-lg font-bold">{t("guestNotice")}</h2>
-            <p className="mx-auto mt-1.5 max-w-xs text-sm leading-relaxed text-muted-foreground">
-              {t("guestNotice")}
-            </p>
-            <Button asChild size="lg" className="mt-4 w-full gap-2">
+      <AppShell title="Hồ sơ">
+        <div className="mx-auto max-w-md">
+          <div className="rounded-2xl border border-border/60 bg-card p-8 text-center shadow-sm">
+            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+              <UserRound className="h-8 w-8" />
+            </span>
+            <h2 className="mt-5 text-lg font-bold">
+              Vui lòng đăng nhập để sử dụng tính năng này
+            </h2>
+            <Button asChild size="lg" className="mt-6 w-full gap-2">
               <Link to="/auth?returnTo=%2Fprofile">
-                <LogIn className="h-4 w-4" /> {t("loginRegister")}
+                <LogIn className="h-4 w-4" /> Đăng nhập
               </Link>
             </Button>
           </div>
-          <p className="text-center text-xs text-muted-foreground">
-            Khi là khách, lịch sử xem và phiên thiền sẽ không được lưu.
-          </p>
         </div>
       </AppShell>
     );

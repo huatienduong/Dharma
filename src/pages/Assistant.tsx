@@ -24,7 +24,14 @@ import { toast } from "sonner";
 type Msg = { role: "user" | "assistant"; content: string };
 
 const GREETING =
-  "Namo Tassa Bhagavato Arahato Sammā Sambuddhassa. Xin chào, tôi là Trợ lý Phật học. Hãy hỏi về giáo lý, kinh điển Pāli, thiền định hay thực hành theo truyền thống Theravāda — tôi sẽ trả lời trong phạm vi Phật học.";
+  "Namo Tassa Bhagavato Arahato Sammā Sambuddhassa.\n\nXin chào, tôi là Trợ lý Phật học. Hãy hỏi về giáo lý, kinh điển Pāli, thiền định hay thực hành theo truyền thống Theravāda — tôi sẽ trả lời trong phạm vi Phật học.";
+
+const SUGGESTIONS = [
+  "Tứ Diệu Đế là gì?",
+  "Hướng dẫn thiền niệm hơi thở cho người mới",
+  "Thiền Vipassanā khác Samatha như thế nào?",
+  "Ý nghĩa của Bát Chánh Đạo",
+];
 
 export default function Assistant() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -43,10 +50,13 @@ export default function Assistant() {
 
   // ----- Chế độ Call: đàm thoại 2 bên bằng giọng nói -----
   const [callMode, setCallMode] = useState(false);
-  const [callStatus, setCallStatus] = useState<"idle" | "listening" | "thinking" | "speaking">("idle");
+  const [callStatus, setCallStatus] = useState<
+    "idle" | "listening" | "thinking" | "speaking"
+  >("idle");
 
   const { supported: micSupported, listening, start, stop } = useVoiceSearch();
-  const { speak: speakVI, stop: stopSpeaking, speaking, engine: ttsEngine } = useVietnameseTTS();
+  const { speak: speakVI, stop: stopSpeaking, speaking, engine: ttsEngine } =
+    useVietnameseTTS();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Gộp: lịch sử đã lưu + tin nhắn mới trong phiên
@@ -95,10 +105,12 @@ export default function Assistant() {
         });
         setPending((p) => [...p, { role: "assistant", content: reply }]);
         if (isAuthenticated) {
-          void append({ items: [
-            { role: "user", content: display },
-            { role: "assistant", content: reply },
-          ]});
+          void append({
+            items: [
+              { role: "user", content: display },
+              { role: "assistant", content: reply },
+            ],
+          });
           setPending([]);
         }
         // Luôn đọc đáp án (tự động, không cần bật tắt)
@@ -114,7 +126,17 @@ export default function Assistant() {
         setBusy(false);
       }
     },
-    [ask, append, busy, image, isAuthenticated, pending, saved, callMode, speakVI],
+    [
+      ask,
+      append,
+      busy,
+      image,
+      isAuthenticated,
+      pending,
+      saved,
+      callMode,
+      speakVI,
+    ],
   );
 
   // Hỏi bằng giọng nói → tự gửi (trong call: nghe → gửi → đọc → nghe tiếp)
@@ -189,99 +211,73 @@ export default function Assistant() {
     );
   }
 
+  const isEmpty = messages.length === 0;
+
   return (
-    <AppShell
-      title="Trợ lý Phật học — Trò chuyện Phật pháp cùng AI"
-      subtitle="Hỏi đáp trong phạm vi Phật học Theravāda · Hỏi bằng giọng nói · AI trả lời tự động bằng giọng nói"
-    >
-      <div className="mx-auto flex h-[calc(100dvh-13rem)] max-w-3xl flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/50">
-        {/* ---------- Thanh công cụ trên ---------- */}
+    <AppShell title="Trợ lý Phật học">
+      <div className="mx-auto flex h-[calc(100dvh-11.5rem)] max-w-3xl flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/40 shadow-sm">
+        {/* ---------- Thanh trên: tối giản kiểu ChatGPT ---------- */}
         <div className="flex items-center justify-between border-b border-border/60 px-4 py-2.5">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <Sparkles className="h-4 w-4 text-gold" />
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Sparkles className="h-3.5 w-3.5" />
+            </span>
             Trợ lý Phật học
+            <span className="hidden text-xs font-normal text-muted-foreground sm:inline">
+              · Theravāda
+            </span>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <Button
-              variant={callMode ? "default" : "secondary"}
-              size="sm"
+              variant={callMode ? "default" : "ghost"}
+              size="icon"
               onClick={() => {
                 setCallMode((c) => !c);
                 setCallStatus("idle");
                 if (callMode) {
-                  // Rời call: dừng mọi âm thanh + nghe
                   stop();
                   stopSpeaking();
                 }
               }}
-              title={callMode ? "Kết thúc call" : "Đàm thoại bằng giọng nói"}
+              title={callMode ? "Kết thúc đàm thoại" : "Đàm thoại bằng giọng nói"}
               className={cn(
-                "h-8 gap-1.5 text-xs",
+                "h-8 w-8",
                 callMode && "bg-destructive text-white hover:bg-destructive/90",
               )}
             >
               {callMode ? (
-                <PhoneOff className="h-3.5 w-3.5" />
+                <PhoneOff className="h-4 w-4" />
               ) : (
-                <Phone className="h-3.5 w-3.5" />
+                <Phone className="h-4 w-4" />
               )}
-              {callMode ? "Kết thúc" : "Call"}
             </Button>
-            {/* Nút "Đang đọc đáp án" đã bỏ — đọc tự động luôn bật; giữ nút dừng
-                trong khi đang đọc bên dưới */}
             <Button
               variant="ghost"
-              size="sm"
+              size="icon"
               onClick={() => void clearAll()}
-              className="h-8 gap-1.5 text-xs"
+              title="Xóa hội thoại"
+              className="h-8 w-8"
             >
-              <Eraser className="h-3.5 w-3.5" />
-              Xóa hội thoại
+              <Eraser className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        {/* ---------- Khung hội thoại ---------- */}
-        <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
-          <Bubble role="assistant" content={GREETING} />
-
-          {messages.map((m, i) => (
-            <Bubble key={i} role={m.role} content={m.content} />
-          ))}
-
-          {busy && (
-            <div className="flex items-center gap-2 pl-1 text-xs text-muted-foreground">
-              <AudioLines className="h-3.5 w-3.5 animate-pulse text-gold" />
-              Trợ lý đang suy nghĩ…
-            </div>
-          )}
-
-          {speaking && (
-            <div className="flex items-center gap-2 pl-1 text-xs text-muted-foreground">
-              <Volume2 className="h-3.5 w-3.5 animate-pulse text-gold" />
-              Đang đọc đáp án {ttsEngine === "server" ? "(giọng Việt chuẩn)" : "(giọng máy)"} ·
-              <button
-                type="button"
-                onClick={stopSpeaking}
-                className="text-destructive underline-offset-2 hover:underline"
-              >
-                dừng
-              </button>
-            </div>
-          )}
-        </div>
-
         {/* ---------- Chế độ Call (đàm thoại 2 bên bằng giọng nói) ---------- */}
         {callMode && (
-          <div className="flex flex-col items-center gap-3 border-b border-border/60 bg-gradient-to-b from-gold/10 to-transparent px-4 py-6">
+          <div className="flex flex-col items-center gap-3 border-b border-border/60 bg-gradient-to-b from-primary/10 to-transparent px-4 py-6">
             <div
               className={cn(
-                "flex h-20 w-20 items-center justify-center rounded-full bg-gold/15 text-3xl transition",
-                callStatus === "listening" && "animate-pulse ring-4 ring-gold/30",
-                callStatus === "speaking" && "ring-4 ring-primary/30",
+                "flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-3xl transition",
+                callStatus === "listening" && "animate-pulse ring-4 ring-primary/25",
+                callStatus === "speaking" && "ring-4 ring-primary/20",
               )}
             >
-              {callStatus === "listening" ? "🎙" : callStatus === "speaking" ? "🔊" : "🧘"}
+              {callStatus === "listening"
+                ? "🎙"
+                : callStatus === "speaking"
+                  ? "🔊"
+                  : "🧘"}
             </div>
             <p className="text-sm font-medium">
               {callStatus === "listening"
@@ -293,26 +289,86 @@ export default function Assistant() {
                     : "Nhấn micro để bắt đầu hỏi"}
             </p>
             {micSupported && (
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => (listening ? stop() : start(onVoice))}
-                  className={cn(
-                    "flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition",
-                    listening
-                      ? "bg-destructive text-white"
-                      : "bg-primary text-primary-foreground hover:opacity-90",
-                  )}
-                  aria-label={listening ? "Dừng nói" : "Nói câu hỏi"}
-                >
-                  <Mic className="h-6 w-6" />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => (listening ? stop() : start(onVoice))}
+                className={cn(
+                  "flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition",
+                  listening
+                    ? "bg-destructive text-white"
+                    : "bg-primary text-primary-foreground hover:opacity-90",
+                )}
+                aria-label={listening ? "Dừng nói" : "Nói câu hỏi"}
+              >
+                <Mic className="h-6 w-6" />
+              </button>
             )}
           </div>
         )}
 
-        {/* ---------- Ô nhập + giọng nói ---------- */}
+        {/* ---------- Khung hội thoại ---------- */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto">
+          {isEmpty ? (
+            /* ----- Empty state kiểu ChatGPT ----- */
+            <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-md">
+                <Sparkles className="h-7 w-7" />
+              </span>
+              <h2 className="mt-4 text-xl font-bold tracking-tight">
+                Hôm nay tôi có thể giúp gì cho bạn?
+              </h2>
+              <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
+                Hỏi về giáo lý, kinh điển Pāli, thiền định, Luật tạng — hoặc gửi
+                ảnh kinh sách để tôi giải nghĩa.
+              </p>
+              <div className="mt-6 grid w-full max-w-md grid-cols-1 gap-2 sm:grid-cols-2">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => void send(s)}
+                    className="rounded-xl border border-border/60 bg-background/70 px-3.5 py-2.5 text-left text-[13px] leading-snug text-foreground/90 transition hover:border-primary/40 hover:bg-accent"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="mx-auto max-w-3xl space-y-5 px-4 py-5">
+              <AssistantMessage content={GREETING} />
+
+              {messages.map((m, i) =>
+                m.role === "user" ? (
+                  <UserMessage key={i} content={m.content} />
+                ) : (
+                  <AssistantMessage key={i} content={m.content} />
+                ),
+              )}
+
+              {busy && (
+                <AssistantThinking />
+              )}
+
+              {speaking && (
+                <div className="flex items-center gap-2 pl-11 text-xs text-muted-foreground">
+                  <Volume2 className="h-3.5 w-3.5 animate-pulse text-gold" />
+                  Đang đọc đáp án{" "}
+                  {ttsEngine === "server" ? "(giọng Việt chuẩn)" : "(giọng máy)"} ·
+                  <button
+                    type="button"
+                    onClick={stopSpeaking}
+                    className="text-destructive underline-offset-2 hover:underline"
+                  >
+                    dừng
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ---------- Ô nhập kiểu ChatGPT: pill tròn, nút bên trong ---------- */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -343,7 +399,8 @@ export default function Assistant() {
               </span>
             </div>
           )}
-          <div className="flex items-end gap-2">
+
+          <div className="flex items-end gap-2 rounded-2xl border border-border/70 bg-background/85 p-2 shadow-sm transition focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15">
             <input
               ref={fileRef}
               type="file"
@@ -358,12 +415,13 @@ export default function Assistant() {
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-card/70 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
               aria-label="Gửi ảnh cho AI"
               title="Gửi ảnh (tượng Phật, kinh sách, chữ Pāli…)"
             >
               <ImagePlus className="h-4 w-4" />
             </button>
+
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -379,8 +437,9 @@ export default function Assistant() {
                   ? "Đang nghe… hãy hỏi về Phật pháp"
                   : "Hỏi về giáo lý, kinh điển, thiền định…"
               }
-              className="max-h-32 min-h-10 flex-1 resize-none rounded-xl border border-border/70 bg-background/80 p-3 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+              className="max-h-32 min-h-9 flex-1 resize-none bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/60"
             />
+
             {micSupported && (
               <VoiceAskButton
                 listening={listening}
@@ -388,18 +447,24 @@ export default function Assistant() {
                 onStop={stop}
               />
             )}
+
             <Button
               type="submit"
               size="icon"
               disabled={busy || (!input.trim() && !image)}
-              className="h-10 w-10 shrink-0 rounded-xl"
+              className="h-9 w-9 shrink-0 rounded-full"
               aria-label="Gửi câu hỏi"
             >
-              <Send className="h-4 w-4" />
+              {busy ? (
+                <AudioLines className="h-4 w-4 animate-pulse" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </Button>
           </div>
+
           {!isAuthenticated && (
-            <p className="mt-2 text-[11px] text-muted-foreground">
+            <p className="mt-2 text-center text-[11px] text-muted-foreground">
               Đăng nhập để lưu lịch sử hội thoại.
             </p>
           )}
@@ -410,29 +475,53 @@ export default function Assistant() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Bong bóng chat                                                      */
+/* Bong bóng chat kiểu ChatGPT                                         */
 /* ------------------------------------------------------------------ */
 
-function Bubble({ role, content }: { role: Msg["role"]; content: string }) {
-  const isUser = role === "user";
+function AssistantMessage({ content }: { content: string }) {
   return (
-    <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
-      <div
-        className={cn(
-          "max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-          isUser
-            ? "rounded-br-md bg-primary text-primary-foreground"
-            : "rounded-bl-md border border-border/60 bg-background/80",
-        )}
-      >
+    <div className="flex items-start gap-2.5">
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+        <Sparkles className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1 whitespace-pre-wrap pt-1 text-sm leading-relaxed text-foreground/95">
         {content}
       </div>
     </div>
   );
 }
 
+function UserMessage({ content }: { content: string }) {
+  return (
+    <div className="flex justify-end">
+      <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-sm leading-relaxed text-primary-foreground">
+        {content}
+      </div>
+    </div>
+  );
+}
+
+function AssistantThinking() {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+        <Sparkles className="h-4 w-4" />
+      </span>
+      <div className="flex h-9 items-center gap-1.5 pt-1">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground/50"
+            style={{ animationDelay: `${i * 150}ms` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
-/* Nút mic hỏi bằng giọng nói                                          */
+/* Nút mic hỏi bằng giọng nói (nằm trong ô nhập)                       */
 /* ------------------------------------------------------------------ */
 
 function VoiceAskButton({
@@ -451,14 +540,13 @@ function VoiceAskButton({
       aria-label={listening ? "Dừng nghe" : "Hỏi bằng giọng nói"}
       title={listening ? "Đang nghe — bấm để dừng" : "Hỏi bằng giọng nói"}
       className={cn(
-        "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-card/70 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground",
-        listening &&
-          "border-destructive/60 bg-destructive/10 text-destructive",
+        "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground",
+        listening && "bg-destructive/10 text-destructive",
       )}
     >
       <Mic className="h-4 w-4" />
       {listening && (
-        <span className="absolute -right-1 -top-1 flex h-2.5 w-2.5">
+        <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-destructive" />
         </span>

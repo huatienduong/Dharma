@@ -16,7 +16,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { DhammaWheel } from "@/components/DhammaWheel";
 import { APP_VERSION, APP_DEVELOPER } from "@/lib/version";
-import { ArrowRight, Loader2, Mail, UserRound } from "lucide-react";
+import { ArrowRight, Loader2, Mail } from "lucide-react";
 import { Suspense, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { cn } from "@/lib/utils";
@@ -89,23 +89,6 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       setError("Mã xác thực không đúng. Vui lòng kiểm tra lại.");
       setIsLoading(false);
       setOtp("");
-    }
-  };
-
-  const handleGuestLogin = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      await signIn("anonymous");
-      navigate(redirect);
-    } catch (error) {
-      console.error("Guest login error:", error);
-      setError(
-        `Không thể vào với tư cách khách: ${
-          error instanceof Error ? error.message : "Lỗi không rõ"
-        }`,
-      );
-      setIsLoading(false);
     }
   };
 
@@ -190,32 +173,6 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
                   </Button>
                 </div>
                 {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
-
-                <div className="mt-4">
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-card px-2 text-muted-foreground">
-                        Hoặc
-                      </span>
-                    </div>
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="mt-4 w-full gap-2"
-                    onClick={handleGuestLogin}
-                    disabled={isLoading}
-                  >
-                    <UserRound className="h-4 w-4" />
-                    {mode === "signin"
-                      ? "Nghe với tư cách khách"
-                      : "Khám phá với tư cách khách"}
-                  </Button>
-                </div>
               </CardContent>
             </form>
           </>

@@ -688,10 +688,8 @@ export function MiniPlayerCard({
           </button>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium leading-snug">{title}</p>
-            <p className="truncate text-[11px] tabular-nums text-muted-foreground">
+            <p className="truncate text-[11px] text-muted-foreground">
               {isBuffering ? "Đang tải…" : isPlaying ? "Đang phát" : "Tạm dừng"}
-              {" · "}
-              {formatTime(position)} / {formatTime(duration)}
             </p>
           </div>
           <button
@@ -760,42 +758,15 @@ function ExpandedControls({
   return (
     <div className="fixed left-1/2 z-[96] w-[min(94vw,52rem)] -translate-x-1/2" style={{ top: "calc(1rem + min(94vw, 52rem) * 9 / 16 + 0.5rem)" }}>
       <div className="rounded-xl border border-border bg-popover/95 px-4 py-3 shadow-2xl backdrop-blur">
-        {/* Hàng 1: tiêu đề + nút nhỏ (xem lại, thu nhỏ, đóng) */}
-        <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate text-sm font-semibold">{title}</h3>
-            <p className="truncate text-[11px] text-muted-foreground">
-              {isBuffering ? "Đang tải…" : teacher === channelName ? teacher : `${teacher} · ${channelName}`}
-            </p>
-            </div>
-          <button
-            type="button"
-            onClick={onReplay}
-            title="Xem lại từ đầu"
-            aria-label="Xem lại từ đầu"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-          >
-            <RotateCcw className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={onMinimize}
-            title="Thu nhỏ"
-            aria-label="Thu nhỏ trình phát"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-          >
-            <ChevronDown className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            title="Đóng trình phát"
-            aria-label="Đóng trình phát"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>        {/* Hàng 2: thanh tua chiếm trọn chiều rộng + mốc thời gian 2 đầu */}
+        {/* Hàng 1: tiêu đề */}
+        <div className="min-w-0">
+          <h3 className="truncate text-sm font-semibold">{title}</h3>
+          <p className="truncate text-[11px] text-muted-foreground">
+            {isBuffering ? "Đang tải…" : teacher === channelName ? teacher : `${teacher} · ${channelName}`}
+          </p>
+        </div>
+
+        {/* Hàng 2: thanh tua + thời gian 2 đầu */}
         <div className="mt-2.5 flex items-center gap-2.5">
           <span className="w-11 shrink-0 tabular-nums text-xs text-muted-foreground">
             {formatTime(position)}
@@ -814,8 +785,17 @@ function ExpandedControls({
           </span>
         </div>
 
-        {/* Hàng 3: nút phát to căn giữa */}
-        <div className="mt-2 flex items-center justify-center gap-5">
+        {/* Hàng 3: MỌI NÚT CẠNH NHAU — xem lại · phát · thu nhỏ · đóng */}
+        <div className="mt-2.5 flex items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={onReplay}
+            title="Xem lại từ đầu"
+            aria-label="Xem lại từ đầu"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </button>
           <button
             type="button"
             onClick={onToggle}
@@ -831,6 +811,24 @@ function ExpandedControls({
                 <path d="M8 5v14l11-7z" />
               </svg>
             )}
+          </button>
+          <button
+            type="button"
+            onClick={onMinimize}
+            title="Thu nhỏ"
+            aria-label="Thu nhỏ trình phát"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            title="Đóng trình phát"
+            aria-label="Đóng trình phát"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
           </button>
         </div>
 

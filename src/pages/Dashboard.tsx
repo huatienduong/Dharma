@@ -10,7 +10,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useAction, useQuery } from "convex/react";
 import {
-  Clock,
   Eye,
   Play,
   Search,
@@ -138,10 +137,6 @@ export default function Dashboard() {
                   </h1>
                   <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-white/80 sm:text-sm">
                     <span>{hero.teacher}</span>
-                    <span className="inline-flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" />
-                      {formatTime(hero.durationSec)}
-                    </span>
                     <span className="inline-flex items-center gap-1">
                       <Eye className="h-3.5 w-3.5" />
                       {formatCount(hero.viewCount ?? 0)} lượt xem
@@ -311,10 +306,6 @@ export function TalkRow({
             loading="lazy"
           />
         </span>
-        {/* Thời lượng đè lên thumbnail */}
-        <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1 py-0.5 text-[10px] font-medium tabular-nums text-white">
-          {formatTime(durationSec)}
-        </span>
         {completed && (
           <span className="absolute left-1 top-1 rounded bg-primary px-1 py-0.5 text-[9px] font-medium text-primary-foreground">
             Đã xem
@@ -337,15 +328,9 @@ export function TalkRow({
         <span className="line-clamp-2 block text-sm font-medium leading-snug group-hover:text-primary">
           {title}
         </span>
-        <span className="mt-1.5 flex items-center gap-3 text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            <span className="tabular-nums">{formatTime(durationSec)}</span>
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Eye className="h-3 w-3" />
-            <span className="tabular-nums">{formatCount(viewCount ?? 0)} lượt xem</span>
-          </span>
+        <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+          <Eye className="h-3 w-3" />
+          <span className="tabular-nums">{formatCount(viewCount ?? 0)} lượt xem</span>
         </span>
       </span>
     </button>

@@ -1,5 +1,4 @@
 import { DhammaWheel } from "@/components/DhammaWheel";
-import { useAuth } from "@/hooks/use-auth";
 import { useSettings, type TranslateKey } from "@/lib/settings";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -12,11 +11,11 @@ import {
   Heart,
   History,
   LayoutDashboard,
-  LogOut,
   Menu,
   MonitorPlay,
   Scale,
   Settings,
+  UserRound,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -71,9 +70,10 @@ export function AppShell({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signOut } = useAuth();
   const { t } = useSettings();
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  const PROFILE_ITEM = { to: "/profile", icon: UserRound, label: "Hồ sơ" };
 
   const isActive = (to: string) =>
     to === "/dashboard"
@@ -112,24 +112,26 @@ export function AppShell({
           type="button"
           onClick={() => go("/dashboard")}
           className="flex min-w-0 flex-1 items-center gap-3 text-left"
-        >
-          <DhammaWheel size={40} />
-          <div className="min-w-0">
-            <p className="text-sm font-semibold leading-tight">{t("appName")}</p>
-            <p className="truncate text-[11px] text-muted-foreground">
-              Giới - Định - Tuệ
-            </p>
-          </div>
+        >            <DhammaWheel size={40} />
+            <div className="min-w-0">
+              <p className="text-sm font-bold uppercase tracking-wide leading-tight">DHARMA</p>
+            </div>
         </button>
-        {/* Cài đặt + Đăng xuất — ICON BÊN PHẢI */}
+        {/* Hồ sơ + Cài đặt — ICON BÊN PHẢI (không còn Đăng xuất) */}
         <button
           type="button"
-          onClick={() => void signOut()}
-          title={t("logout")}
-          aria-label={t("logout")}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+          onClick={() => go(PROFILE_ITEM.to)}
+          aria-current={isActive(PROFILE_ITEM.to) ? "page" : undefined}
+          title={PROFILE_ITEM.label}
+          aria-label={PROFILE_ITEM.label}
+          className={cn(
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition",
+            isActive(PROFILE_ITEM.to)
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+          )}
         >
-          <LogOut className="h-4 w-4" />
+          <UserRound className="h-4 w-4" />
         </button>
         <button
           type="button"
@@ -258,23 +260,26 @@ export function AppShell({
           >
             <DhammaWheel size={30} />
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold leading-tight">
-                {t("appName")}
-              </p>
-              <p className="truncate text-[11px] text-muted-foreground">
-                {title}
+              <p className="truncate text-sm font-bold uppercase tracking-wide leading-tight">
+                DHARMA
               </p>
             </div>
           </button>
-          {/* Mobile header: Cài đặt + Đăng xuất — ICON BÊN PHẢI */}
+          {/* Mobile header: Hồ sơ + Cài đặt — ICON BÊN PHẢI */}
           <button
             type="button"
-            onClick={() => void signOut()}
-            title={t("logout")}
-            aria-label={t("logout")}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+            onClick={() => go(PROFILE_ITEM.to)}
+            aria-current={isActive(PROFILE_ITEM.to) ? "page" : undefined}
+            title={PROFILE_ITEM.label}
+            aria-label={PROFILE_ITEM.label}
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition",
+              isActive(PROFILE_ITEM.to)
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
           >
-            <LogOut className="h-4 w-4" />
+            <UserRound className="h-4 w-4" />
           </button>
           <button
             type="button"
