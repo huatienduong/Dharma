@@ -161,8 +161,51 @@
   }
 }
 
-/* ---------- Nền hoa sen chủ đạo ---------- */
+/* ---------- Nền: trắng sạch kiểu Facebook + gợi ý hoa sen nâu Theravāda ---------- */
 
+.fb-bg {
+  position: relative;
+  background-color: var(--background);
+}
+
+/* Vệt hoa sen rất nhạt ở đỉnh — giữ chất Theravāda nhưng tổng thể trắng sạch */
+.fb-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      40rem 26rem at 50% -8rem,
+      color-mix(in oklab, var(--gold) 10%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      32rem 22rem at 94% 4%,
+      color-mix(in oklab, var(--lotus) 8%, transparent),
+      transparent 72%
+    );
+}
+
+/* Họa tiết hoa sen cực mờ (SVG data-uri), tông nâu Theravāda */
+.fb-bg::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.14;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260' viewBox='0 0 260 260'%3E%3Cg fill='none' stroke='%236d5130' stroke-opacity='0.10'%3E%3Cpath d='M130 58c14 20 21 36 21 52s-7 32-21 52c-14-20-21-36-21-52s7-32 21-52Z'/%3E%3Cpath d='M130 162c-4-14-12-24-26-30 4 16 12 26 26 30Z'/%3E%3Cpath d='M130 162c4-14 12-24 26-30-4 16-12 26-26 30Z'/%3E%3Cpath d='M72 196c10-12 24-18 44-18-6 14-18 21-30 22-6 .4-11-1-14-4Z'/%3E%3Cpath d='M188 196c-10-12-24-18-44-18 6 14 18 21 30 22 6 .4 11-1 14-4Z'/%3E%3Ccircle cx='130' cy='58' r='4'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 460px 460px;
+}
+
+.dark .fb-bg::after {
+  filter: invert(1);
+  opacity: 0.04;
+}
+
+/* Tương thích: trang cũ dùng lotus-bg → cũng là nền trắng sạch */
 .lotus-bg {
   position: relative;
   background-color: var(--background);
@@ -176,37 +219,26 @@
   pointer-events: none;
   background:
     radial-gradient(
-      42rem 30rem at 50% -6rem,
-      color-mix(in oklab, var(--gold) 22%, transparent),
-      transparent 70%
-    ),
-    radial-gradient(
-      36rem 26rem at 8% 108%,
-      color-mix(in oklab, var(--lotus) 16%, transparent),
-      transparent 70%
-    ),
-    radial-gradient(
-      30rem 22rem at 96% 92%,
-      color-mix(in oklab, var(--gold) 12%, transparent),
+      40rem 26rem at 50% -8rem,
+      color-mix(in oklab, var(--gold) 10%, transparent),
       transparent 72%
     );
 }
 
-/* Họa tiết hoa sen mờ (SVG data-uri), tông nâu Theravāda */
 .lotus-bg::after {
   content: "";
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  opacity: 0.5;
+  opacity: 0.14;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260' viewBox='0 0 260 260'%3E%3Cg fill='none' stroke='%236d5130' stroke-opacity='0.10'%3E%3Cpath d='M130 58c14 20 21 36 21 52s-7 32-21 52c-14-20-21-36-21-52s7-32 21-52Z'/%3E%3Cpath d='M130 162c-4-14-12-24-26-30 4 16 12 26 26 30Z'/%3E%3Cpath d='M130 162c4-14 12-24 26-30-4 16-12 26-26 30Z'/%3E%3Cpath d='M72 196c10-12 24-18 44-18-6 14-18 21-30 22-6 .4-11-1-14-4Z'/%3E%3Cpath d='M188 196c-10-12-24-18-44-18 6 14 18 21 30 22 6 .4 11-1 14-4Z'/%3E%3Ccircle cx='130' cy='58' r='4'/%3E%3C/g%3E%3C/svg%3E");
-  background-size: 420px 420px;
+  background-size: 460px 460px;
 }
 
 .dark .lotus-bg::after {
   filter: invert(1);
-  opacity: 0.06;
+  opacity: 0.04;
 }
 
 /* ---------- Logo Bánh xe Chuyển pháp luân quay ---------- */
