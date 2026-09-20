@@ -480,7 +480,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   /* ----- Tiêu đề tab khi nghe nền ----- */
   useEffect(() => {
-    const base = "Dharma — Pháp thoại Theravada";
+    const base = "Dharma — Giới - Định - Tuệ";
     document.title = current && isPlaying ? `▶ ${current.title}` : base;
   }, [current, isPlaying]);
 

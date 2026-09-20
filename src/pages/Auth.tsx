@@ -119,6 +119,7 @@ function Auth({ redirectAfterAuth }: AuthProps = {}) {
       >
         <DhammaWheel size={64} />
         <span className="text-sm font-semibold">Dharma</span>
+        <span className="text-xs text-muted-foreground">Giới - Định - Tuệ</span>
       </button>
 
       <Card className="w-full max-w-sm pb-0">
