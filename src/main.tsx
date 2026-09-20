@@ -147,8 +147,8 @@ createRoot(document.getElementById("root")!).render(
         <SettingsProvider>
           <ScreenshotGuard />
           <UpdateChecker />
-          <PlayerProvider>
-            <BrowserRouter>
+          <BrowserRouter>
+            <PlayerProvider>
             <RouteSyncer />
             <Suspense fallback={<RouteLoading />}>
               <Routes>
@@ -173,8 +173,8 @@ createRoot(document.getElementById("root")!).render(
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
-          </BrowserRouter>
           </PlayerProvider>
+          </BrowserRouter>
         </SettingsProvider>
         <Toaster />
       </ConvexAuthProvider>

@@ -20,6 +20,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useLocation } from "react-router";
 import { cn } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ */
@@ -156,11 +157,15 @@ export function usePlayer(): PlayerContextValue {
 
 const SAVE_INTERVAL_MS = 10_000;
 
+/** Trang cho phép trình phát mở dạng dock; trang khác tự thu mini. */
+const DOCK_ROUTES = ["/dashboard", "/", "/watched"];
+
 /** Chế độ hiển thị của khung chứa iframe (class-only — node KHÔNG đổi). */
 type ShellMode = "hidden" | "docked" | "mini";
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
   const savedProgress = useQuery(
     api.dhamma.myProgress,
     isAuthenticated ? {} : "skip",
@@ -201,6 +206,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       ? "mini"
       : "docked";
 
+  /* ----- Khi vào trang có giao diện riêng (phòng xem cùng, trợ lý,
+     reader, thiền…): trình phát TỰ THU NHỎ thành thẻ mini — không còn
+     hai trình phát đè/lặp trên cùng một màn hình. Trở lại trang nội
+     dung (trang chủ, lịch sử…) thì mở lại dock như cũ. */
+  const pathAllowsDock =
+    location.pathname === "/" ||
+    DOCK_ROUTES.some((r) => r !== "/" && location.pathname.startsWith(r));
+  useEffect(() => {
+    if (!current) return;
+    setMini(!pathAllowsDock || document.fullscreenElement != null);
+  }, [pathAllowsDock, current]);
+
   /* ----- Tạo player MỘT LẦN ngay khi app mở -----
      - Khung chứa iframe LUÔN mounted (không nằm trong điều kiện render
        nào): khi đổi chế độ chỉ đổi class, iframe không bao giờ bị hủy.
@@ -226,6 +243,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           rel: 0,
           fs: 0,
           iv_load_policy: 3,
+          cc_load_policy: 0, // TẮT PHỤ ĐỀ mặc định
+          hl: "vi",
           origin: window.location.origin,
         },
         events: {
@@ -416,6 +435,23 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     savedForTalkRef.current = map;
   }, [savedProgress]);
 
+  /* ----- Tắt phụ đề mọi lúc (kể cả người dùng bật nhầm qua phím tắt) ----- */
+  useEffect(() => {
+    if (!playerReady) return;
+    const iv = window.setInterval(() => {
+      const mod = playerRef.current as unknown as
+        | { unloadModule?(n: string): void; setOption?(m: string, k: string, v: unknown): void }
+        | null;
+      try {
+        mod?.unloadModule?.("captions");
+        mod?.setOption?.("captions", "track", {});
+      } catch {
+        /* API phụ đề không khả dụng — bỏ qua */
+      }
+    }, 4000);
+    return () => window.clearInterval(iv);
+  }, [playerReady]);
+
   /* ----- Điều khiển ----- */
   const toggle = useCallback(() => {
     const p = playerRef.current;
@@ -578,26 +614,24 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
               <div className="absolute inset-0" aria-hidden />
             </div>
 
-            {mode !== "hidden" && (
-              <PlayerBar
-                compact={mode === "mini"}
-                title={current?.title ?? ""}
-                teacher={current?.teacher ?? ""}
-                channelName={current?.channelName ?? ""}
-                isBuffering={isBuffering}
-                isPlaying={isPlaying}
-                position={position}
-                duration={duration}
-                onSeek={seek}
-                onToggle={toggle}
-                onReplay={replay}
-                onExpand={() => setMini(false)}
-                onCollapse={() => setMini(true)}
-                onClose={close}
-                fullscreen={isFullscreen}
-                onFullscreen={toggleFullscreen}
-              />
-            )}
+      {/* Chỉ còn video — mọi thông tin (tiêu đề/người đăng/kênh) đã loại bỏ */}
+      {mode !== "hidden" && (
+        <PlayerBar
+          compact={mode === "mini"}
+          isBuffering={isBuffering}
+          isPlaying={isPlaying}
+          position={position}
+          duration={duration}
+          onSeek={seek}
+          onToggle={toggle}
+          onReplay={replay}
+          onExpand={() => setMini(false)}
+          onCollapse={() => setMini(true)}
+          onClose={close}
+          fullscreen={isFullscreen}
+          onFullscreen={toggleFullscreen}
+        />
+      )}
 
             {showFallback && mode !== "hidden" && (
               <p className="bg-destructive/10 px-3 py-2 text-center text-xs text-destructive">
@@ -615,13 +649,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
 /* ------------------------------------------------------------------ */
 /* Thanh điều khiển nằm NGAY DƯỚI video (dock + mini dùng chung)       */
-/* ------------------------------------------------------------------ */
-
-function PlayerBar({
+/* ------------------------------------------------------------------ */function PlayerBar({
   compact,
-  title,
-  teacher,
-  channelName,
   isBuffering,
   isPlaying,
   position,
@@ -636,9 +665,6 @@ function PlayerBar({
   onFullscreen,
 }: {
   compact: boolean;
-  title: string;
-  teacher: string;
-  channelName: string;
   isBuffering: boolean;
   isPlaying: boolean;
   position: number;
@@ -653,7 +679,7 @@ function PlayerBar({
   onFullscreen(): void;
 }) {
   if (compact) {
-    /* ----- Mini: một hàng gọn + dải tua chạm được ----- */
+    /* ----- Mini: hàng nút + dải tua chạm được (không còn thông tin) ----- */
     return (
       <div className="bg-popover">
         <div className="flex items-center gap-2 px-2.5 py-2">
@@ -673,14 +699,7 @@ function PlayerBar({
               </svg>
             )}
           </button>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-medium leading-tight">{title}</p>
-            <p className="truncate text-[10px] text-muted-foreground">
-              {isBuffering
-                ? "Đang tải…"
-                : `${formatTime(position)} / ${formatTime(duration)}`}
-            </p>
-          </div>
+          <div className="min-w-0 flex-1" />
           <button
             type="button"
             onClick={onExpand}
@@ -759,23 +778,8 @@ function PlayerBar({
         <span className="w-11 shrink-0 text-right tabular-nums text-xs text-muted-foreground">
           {formatTime(duration)}
         </span>
-      </div>
-
-      {/* Hàng điều khiển: tiêu đề | xem lại · phát · thu nhỏ · fullscreen · đóng */}
-      <div className="flex items-center gap-1 px-3 py-2">
-        <div className="min-w-0 flex-1 pr-1">
-          <h3 className="truncate text-sm font-semibold leading-tight">
-            {title}
-          </h3>
-          <p className="truncate text-[11px] text-muted-foreground">
-            {isBuffering
-              ? "Đang tải…"
-              : teacher === channelName
-                ? teacher
-                : `${teacher} · ${channelName}`}
-          </p>
-        </div>
-
+      </div>      {/* Hàng điều khiển: xem lại · phát · thu nhỏ · fullscreen · đóng */}
+      <div className="flex items-center justify-center gap-1 px-3 py-2">
         <button
           type="button"
           onClick={onReplay}
