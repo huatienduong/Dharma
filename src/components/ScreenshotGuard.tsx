@@ -1,84 +1,69 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 /**
- * CHỐNG CHỤP ẢNH MÀN HÌNH — LUÔN BẬT cho mọi người dùng (không thể tắt).
+ * CHỐNG SAO CHÉP VĂN BẢN — LUÔN BẬT cho mọi người dùng (không thể tắt).
  *
- * Cơ chế (mức tối đa nền tảng web cho phép):
- * 1. Ẩn TOÀN BỘ nội dung khi trang mất focus / chuyển tab / thu nhỏ cửa sổ
- *    → chặn quay màn hình, chia sẻ cửa sổ, chụp khi app ở nền.
- * 2. Chặn phím tắt chụp màn hình phổ biến (PrintScreen,
- *    Cmd/Ctrl+Shift+3/4/5, Win+Shift+S) — che màn hình khi phát hiện.
- * 3. Chặn menu chuột phải + chống chọn/nhân bản văn bản.
- *
- * Lưu ý: trình duyệt web không thể chặn 100% chụp bằng thiết bị ngoài;
- * đây là lớp bảo vệ tốt nhất chuẩn web cho phép (tương tự app ngân hàng).
+ * ĐÃ GỠ chế độ chống chụp ảnh màn hình theo yêu cầu.
+ * Còn giữ:
+ * 1. `user-select: none` toàn ứng dụng — không bôi đen/chép nội dung.
+ * 2. Chặn menu chuột phải + Ctrl/Cmd+C, Ctrl/Cmd X (ngoài ô nhập liệu).
  */
 export function ScreenshotGuard() {
-  return (
-    <>
-      <style>{`
-        body.ds-protect {
-          user-select: none;
-          -webkit-user-select: none;
-          -webkit-touch-callout: none;
-        }
-      `}</style>
-      <ScreenshotGuardBehavior />
-    </>
-  );
-}
-
-function ScreenshotGuardBehavior() {
-  const [hidden, setHidden] = useState(false);
-
   useEffect(() => {
-    const onVis = () => setHidden(document.visibilityState === "hidden");
-    const onBlur = () => setHidden(true);
-    const onFocus = () => setHidden(false);
-
-    const onKey = (e: KeyboardEvent) => {
-      const k = e.key.toLowerCase();
-      if (
-        k === "printscreen" ||
-        (e.metaKey && e.shiftKey && ["3", "4", "5", "s"].includes(k))
-      ) {
-        e.preventDefault();
-        setHidden(true);
-        window.setTimeout(() => setHidden(false), 1500);
-      }
+    const isEditable = (el: EventTarget | null) => {
+      const node = el as HTMLElement | null;
+      const tag = node?.tagName;
+      return (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        (node?.isContentEditable ?? false)
+      );
     };
 
     const blockCtx = (e: MouseEvent) => e.preventDefault();
 
-    document.addEventListener("visibilitychange", onVis);
-    window.addEventListener("blur", onBlur);
-    window.addEventListener("focus", onFocus);
-    window.addEventListener("keydown", onKey, true);
+    const blockClipboard = (e: ClipboardEvent) => {
+      if (!isEditable(e.target)) e.preventDefault();
+    };
+
+    const blockKey = (e: KeyboardEvent) => {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        (e.key === "c" || e.key === "C" || e.key === "x" || e.key === "X") &&
+        !isEditable(e.target)
+      ) {
+        e.preventDefault();
+      }
+    };
+
     document.addEventListener("contextmenu", blockCtx);
+    document.addEventListener("copy", blockClipboard);
+    document.addEventListener("cut", blockClipboard);
+    document.addEventListener("keydown", blockKey, true);
     document.body.classList.add("ds-protect");
 
     return () => {
-      document.removeEventListener("visibilitychange", onVis);
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("keydown", onKey, true);
       document.removeEventListener("contextmenu", blockCtx);
+      document.removeEventListener("copy", blockClipboard);
+      document.removeEventListener("cut", blockClipboard);
+      document.removeEventListener("keydown", blockKey, true);
       document.body.classList.remove("ds-protect");
-      setHidden(false);
     };
   }, []);
 
-  if (!hidden) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-[99999] flex flex-col items-center justify-center gap-3 bg-background"
-      aria-hidden
-    >
-      <div className="text-4xl">🙏</div>
-      <p className="text-sm font-medium text-muted-foreground">
-        Nội dung được bảo vệ
-      </p>
-    </div>
+    <style>{`
+      body.ds-protect {
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+      }
+      /* Ô nhập liệu vẫn chọn/biên tập bình thường */
+      body.ds-protect input,
+      body.ds-protect textarea {
+        user-select: text;
+        -webkit-user-select: text;
+      }
+    `}</style>
   );
 }

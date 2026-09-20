@@ -201,8 +201,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         height: "100%",
         playerVars: {
           playsinline: 1,
-          rel: 0,
+          controls: 0, // TẮT TOÀN BỘ UI YouTube — chỉ còn khung hình video
+          disablekb: 1,
           modestbranding: 1,
+          rel: 0,
+          fs: 0,
+          iv_load_policy: 3, // ẩn chú thích nổi trên video
           origin: window.location.origin,
         },
         events: {
@@ -622,15 +626,20 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         aria-hidden={!showPlayer}
       >
         {/* Khung chứa iframe — host luôn trống trong JSX, node tạm cho
-            YouTube được tạo bằng DOM API trong effect (an toàn với React) */}
+            YouTube được tạo bằng DOM API trong effect (an toàn với React).
+            LỚP PHỦ TRÊN IFRAME: chặn mọi thao tác click vào UI/logo YouTube
+            (controls=0 đã tắt UI nhưng logo "Watch on YouTube" vẫn hiện khi
+            tạm dừng — lớp phủ này chặn click vào nó). Người dùng điều khiển
+            hoàn toàn bằng bảng điều khiển riêng bên dưới. */}
         <div ref={ytTargetRef} className="h-full w-full" />
-        {/* Click để mở rộng khi ở chế độ mini */}
-        {showPlayer && !expanded && (
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            className="absolute inset-0 h-full w-full cursor-pointer"
-            aria-label="Mở trình phát toàn màn hình"
+        {showPlayer && (
+          <div
+            className="absolute inset-0"
+            style={{ cursor: expanded ? "default" : "pointer" }}
+            onClick={() => {
+              if (!expanded) setExpanded(true);
+            }}
+            aria-hidden
           />
         )}
       </div>

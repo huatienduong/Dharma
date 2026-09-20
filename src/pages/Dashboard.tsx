@@ -85,27 +85,29 @@ export default function Dashboard() {
     >
       {/* Đồng bộ tự động ngầm — ẩn khỏi giao diện */}
       <AutoSync />
-      {/* ---------- Thanh tìm kiếm: mic TRÁI · kính lúp PHẢI (trong ô) ---------- */}
+      {/* ---------- Thanh tìm kiếm kiểu YouTube: kính lúp PHẢI trong ô · mic tròn độc lập PHẢI ---------- */}
       <div className="mb-6">
-        <div className="relative">
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("searchPlaceholder")}
+              className="h-10 w-full rounded-full border border-border/70 bg-card/80 pl-4 pr-11 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-10 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
+                aria-label={t("clearSearch")}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+            <Search className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          </div>
           <VoiceSearchButton onResult={(text) => setSearch(text)} />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("searchPlaceholder")}
-            className="h-10 w-full rounded-full border border-border/70 bg-card/80 pl-11 pr-11 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch("")}
-              className="absolute right-10 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
-              aria-label={t("clearSearch")}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-          <Search className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         </div>
       </div>
 
