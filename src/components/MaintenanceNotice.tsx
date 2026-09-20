@@ -52,35 +52,37 @@ export function MaintenanceNotice({
 
   if (variant === "dark") {
     return (
-      <div
-        className={cn(
-          "mx-auto max-w-md rounded-2xl border border-white/10 bg-zinc-900/80 p-8 text-center shadow-xl",
-          className,
-        )}
-      >
-        <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gold/15">
-          <Wrench className="h-8 w-8 text-gold" />
-        </span>
-        <h2 className="mt-5 text-lg font-bold leading-snug text-zinc-100">
-          {title}
-        </h2>
-        <p className="mt-2.5 text-sm leading-relaxed text-zinc-400">{body}</p>
-        <p className="mt-3 text-sm font-medium text-gold">{sorry}</p>
-        {onBack && (
-          <button
-            type="button"
-            onClick={onBack}
-            className="mt-6 w-full rounded-full bg-white/10 py-2.5 text-sm font-medium text-zinc-100 transition hover:bg-white/20"
-          >
-            {backLabel}
-          </button>
-        )}
+      <div className="flex min-h-[70dvh] items-center justify-center">
+        <div
+          className={cn(
+            "mx-auto w-full max-w-md rounded-2xl border border-white/10 bg-zinc-900/80 p-8 text-center shadow-xl",
+            className,
+          )}
+        >
+          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gold/15">
+            <Wrench className="h-8 w-8 text-gold" />
+          </span>
+          <h2 className="mt-5 text-lg font-bold leading-snug text-zinc-100">
+            {title}
+          </h2>
+          <p className="mt-2.5 text-sm leading-relaxed text-zinc-400">{body}</p>
+          <p className="mt-3 text-sm font-medium text-gold">{sorry}</p>
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="mt-6 w-full rounded-full bg-white/10 py-2.5 text-sm font-medium text-zinc-100 transition hover:bg-white/20"
+            >
+              {backLabel}
+            </button>
+          )}
+        </div>
       </div>
     );
   }
 
   const isPage = variant === "page";
-  return (
+  const card = (
     <div
       className={cn(
         "w-full rounded-2xl border border-border/70 bg-card p-7 text-center shadow-sm sm:p-8",
@@ -106,5 +108,11 @@ export function MaintenanceNotice({
         </button>
       )}
     </div>
+  );
+
+  // Bản "inline" tự căn giữa màn hình — thông báo luôn nổi giữa trang
+  if (isPage) return card;
+  return (
+    <div className="flex min-h-[60dvh] items-center justify-center">{card}</div>
   );
 }
