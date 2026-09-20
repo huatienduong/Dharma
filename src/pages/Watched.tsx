@@ -1,11 +1,12 @@
 import { AppShell } from "@/components/AppShell";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { formatTime, usePlayer } from "@/lib/player";
+import { formatCount, formatTime, usePlayer } from "@/lib/player";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSettings } from "@/lib/settings";
 import { useQuery } from "convex/react";
-import { History, LogIn, Play } from "lucide-react";
+import { Eye, History, LogIn, Play } from "lucide-react";
+import { useMemo } from "react";
 import { Link } from "react-router";
 import { cn } from "@/lib/utils";
 
@@ -111,6 +112,13 @@ export default function Watched() {
   const { t } = useSettings();
   // Lịch sử xem lấy từ tiến trình server (không còn bản lưu cục bộ)
   const progress = useQuery(api.dhamma.myProgress, {});
+  // Kho pháp thoại để lấy lượt xem đồng bộ với trang chủ
+  const talks = useQuery(api.dhamma.list, { limit: 2000 });
+  const viewCountBy = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of talks ?? []) m.set(t.youtubeId, t.viewCount ?? 0);
+    return m;
+  }, [talks]);
 
   return (
     <AppShell
@@ -146,9 +154,9 @@ export default function Watched() {
             <TalkRow
               key={p.youtubeId}
               title={p.title}
-              teacher={p.teacher}
               youtubeId={p.youtubeId}
               durationSec={p.durationSec}
+              viewCount={viewCountBy.get(p.youtubeId)}
               progressSec={p.positionSec}
               completed={p.completed}
               active={current?.youtubeId === p.youtubeId}

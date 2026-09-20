@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { useAuth } from "@/hooks/use-auth";
-import { formatTime } from "@/lib/player";
+import { formatCount, formatTime } from "@/lib/player";
 import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "convex/react";
 import {
@@ -1054,8 +1054,8 @@ function VideoPicker({
                 <span className="line-clamp-2 block text-sm font-medium text-zinc-100">
                   {t.title}
                 </span>
-                <span className="mt-0.5 block truncate text-[11px] text-zinc-500">
-                  {t.teacher}
+                <span className="mt-0.5 block text-[11px] tabular-nums text-zinc-500">
+                  {formatCount(t.viewCount ?? 0)} lượt xem
                 </span>
               </span>
             </button>
