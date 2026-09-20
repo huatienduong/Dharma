@@ -12,6 +12,7 @@ import { useAction, useQuery } from "convex/react";
 import {
   Eye,
   Play,
+  Search as SearchIcon,
   Sparkles,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -167,7 +168,7 @@ export default function Dashboard() {
         {searchQ && (
           <div className="mb-3 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-lg font-semibold">
-              <Search className="h-4 w-4 text-gold" /> Kết quả tìm kiếm
+              <SearchIcon className="h-4 w-4 text-gold" /> Kết quả tìm kiếm
             </h2>
             <span className="text-xs text-muted-foreground">
               {loading ? "…" : `${filtered.length} bài`}
@@ -183,7 +184,7 @@ export default function Dashboard() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-10 text-center">
-            <Search className="mx-auto h-8 w-8 text-muted-foreground/50" />
+            <SearchIcon className="mx-auto h-8 w-8 text-muted-foreground/50" />
             <p className="mt-3 text-sm text-muted-foreground">
               Không tìm thấy pháp thoại nào phù hợp.
             </p>
