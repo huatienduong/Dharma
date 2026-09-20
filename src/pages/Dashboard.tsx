@@ -1,5 +1,5 @@
 import { AppShell } from "@/components/AppShell";
-import { VoiceSearchButton } from "@/components/VoiceSearchButton";
+import { SearchToolbar } from "@/components/SearchToolbar";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { formatCount, formatTime, usePlayer } from "@/lib/player";
@@ -12,9 +12,7 @@ import { useAction, useQuery } from "convex/react";
 import {
   Eye,
   Play,
-  Search,
   Sparkles,
-  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
