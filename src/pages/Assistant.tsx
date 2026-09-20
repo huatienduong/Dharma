@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
@@ -673,9 +674,13 @@ export default function Assistant() {
             </Button>
           </div>
 
-          <p className="mt-2 text-center text-[11px] leading-relaxed text-muted-foreground">
-            {isAuthenticated ? "" : "Đăng nhập để lưu hội thoại."}
-          </p>
+          {!isAuthenticated && (
+            <MaintenanceNotice
+              variant="compact"
+              feature="lưu hội thoại"
+              className="mt-2 flex w-full"
+            />
+          )}
         </form>
       </div>
 

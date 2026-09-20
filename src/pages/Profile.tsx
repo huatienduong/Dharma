@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import { DhammaWheel } from "@/components/DhammaWheel";
+import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useSettings } from "@/lib/settings";
@@ -17,7 +18,6 @@ import {
   Mail,
   Pencil,
   UserRound,
-  Wrench,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -55,26 +55,12 @@ export default function Profile() {
     );
   }
 
-  // Chưa đăng nhập: tính năng đăng nhập đang được nâng cấp — hiển thị thông báo
+  // Chưa đăng nhập: tính năng đăng nhập đang được nâng cấp — thông báo đồng bộ
   if (!isAuthenticated || !user) {
     return (
       <AppShell title="Hồ sơ">
         <div className="mx-auto max-w-md">
-          <div className="rounded-2xl border border-border/60 bg-card p-8 text-center shadow-sm">
-            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gold/15">
-              <Wrench className="h-8 w-8 text-gold" />
-            </span>
-            <h2 className="mt-5 text-lg font-bold leading-snug">
-              Đội ngũ kỹ thuật đang tiến hành nâng cấp hệ thống
-            </h2>
-            <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
-              Hiện tại bạn không thể sử dụng tính năng Hồ sơ cho đến khi chúng
-              tôi hoàn thành bản cập nhật mới.
-            </p>
-            <p className="mt-3 text-sm font-medium text-gold">
-              Xin lỗi vì sự bất tiện này đã gây ra cho bạn!
-            </p>
-          </div>
+          <MaintenanceNotice variant="inline" feature="Hồ sơ" />
         </div>
       </AppShell>
     );

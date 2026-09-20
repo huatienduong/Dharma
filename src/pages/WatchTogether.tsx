@@ -1,3 +1,4 @@
+import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
@@ -161,19 +162,7 @@ export default function WatchTogether() {
   if (!isAuthenticated) {
     return (
       <LobbyShell>
-        <div className="mx-auto max-w-md">
-          <div className="rounded-2xl border border-white/10 bg-zinc-900/80 p-8 text-center shadow-xl">
-            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gold/15">
-              <MonitorPlay className="h-8 w-8 text-gold" />
-            </span>
-            <h2 className="mt-5 text-lg font-bold text-zinc-100">
-              Vui lòng đăng nhập để sử dụng tính năng này
-            </h2>
-            <p className="mt-2 text-xs text-zinc-500">
-              Đăng nhập đang được nâng cấp — hãy quay lại sau.
-            </p>
-          </div>
-        </div>
+        <MaintenanceNotice variant="dark" feature="Phòng xem cùng" />
       </LobbyShell>
     );
   }
