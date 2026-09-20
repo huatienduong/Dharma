@@ -24,18 +24,18 @@ type ProgressRow = {
 
 function TalkRow({
   title,
-  teacher,
   youtubeId,
   durationSec,
+  viewCount,
   progressSec,
   completed,
   active,
   onClick,
 }: {
   title: string;
-  teacher?: string;
   youtubeId: string;
   durationSec: number;
+  viewCount?: number;
   progressSec?: number;
   completed?: boolean;
   active?: boolean;
@@ -67,6 +67,7 @@ function TalkRow({
         <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1 py-0.5 text-[10px] font-medium tabular-nums text-white">
           {formatTime(durationSec)}
         </span>
+        {/* Lượt xem (đồng bộ với trang chủ) */}
         {completed && (
           <span className="absolute left-1 top-1 rounded bg-primary px-1 py-0.5 text-[9px] font-medium text-primary-foreground">
             Đã xem
@@ -93,12 +94,13 @@ function TalkRow({
             <span className="tabular-nums">{formatTime(progressSec ?? 0)}</span>
             <span className="text-muted-foreground/60">/ {formatTime(durationSec)}</span>
           </span>
+          {typeof viewCount === "number" && (
+            <span className="inline-flex items-center gap-1">
+              <Eye className="h-3 w-3" />
+              <span className="tabular-nums">{formatCount(viewCount)} lượt xem</span>
+            </span>
+          )}
         </span>
-        {teacher && (
-          <span className="mt-0.5 block truncate text-[11px] text-muted-foreground/70">
-            {teacher}
-          </span>
-        )}
       </span>
     </button>
   );

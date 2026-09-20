@@ -43,17 +43,6 @@ export default function Dashboard() {
     saveUiState("dashboard-search", search);
   }, [search]);
 
-  // Khôi phục vị trí cuộn khi quay lại trang
-  useEffect(() => {
-    const stop = trackScroll("dashboard");
-    return () => {
-      stop();
-    };
-  }, []);
-  useEffect(() => {
-    if (!loading) restoreScroll("dashboard");
-  }, [loading]);
-
   // Tiến trình người dùng đã đăng nhập (server)
   const progress = useQuery(api.dhamma.myProgress, {});
 
@@ -63,6 +52,17 @@ export default function Dashboard() {
   const talks = useQuery(api.dhamma.list, { limit: 2000 });
 
   const loading = talks === undefined;
+
+  // Khôi phục vị trí cuộn khi quay lại trang (sau khi dữ liệu đã sẵn sàng)
+  useEffect(() => {
+    const stop = trackScroll("dashboard");
+    return () => {
+      stop();
+    };
+  }, []);
+  useEffect(() => {
+    if (!loading) restoreScroll("dashboard");
+  }, [loading]);
 
   // Liên quan: cùng giảng sư với video đang phát (loại video đang phát)
   const related = useMemo(() => {
@@ -136,7 +136,6 @@ export default function Dashboard() {
                     {hero.title}
                   </h1>
                   <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-white/80 sm:text-sm">
-                    <span>{hero.teacher}</span>
                     <span className="inline-flex items-center gap-1">
                       <Eye className="h-3.5 w-3.5" />
                       {formatCount(hero.viewCount ?? 0)} lượt xem
