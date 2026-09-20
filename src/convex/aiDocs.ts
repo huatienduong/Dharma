@@ -52,7 +52,8 @@ function listProviders(): Provider[] {
           baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
           apiKey: geminiKey,
         }),
-      model: "gemini-2.0-flash",
+      // FIX: gemini-2.0-flash đã bị Google ngừng (404) → dùng alias mới nhất
+      model: "gemini-flash-latest",
     });
   }
   if (openaiKey) {

@@ -59,6 +59,37 @@ export default function Assistant() {
     useVietnameseTTS();
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  /* ----- MỞ KHÓA AUTOPLAY ÂM THANH -----
+     Trình duyệt chặn Audio.play() cho đến khi người dùng tương tác (bấm/
+     chạm). Ghi lại flag sau tương tác ĐẦU TIÊN (bấm mic/bấm bất kỳ nút)
+     để TTS được phát tự động mà không bị chặn lần đầu. */
+  const audioUnlockedRef = useRef(false);
+  useEffect(() => {
+    const unlock = () => {
+      audioUnlockedRef.current = true;
+      // Tạo + phát 1 audio tĩnh vô thanh để "mở khóa" autoplay policy
+      try {
+        const ctx = new AudioContext();
+        const buf = ctx.createBuffer(1, 1, 22050);
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        src.connect(ctx.destination);
+        src.start(0);
+        void ctx.resume();
+      } catch {
+        /* trình duyệt cũ — bỏ qua */
+      }
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
   // Gộp: lịch sử đã lưu + tin nhắn mới trong phiên
   const messages: Msg[] = [
     ...(saved ?? []).map((m) => ({
@@ -113,11 +144,19 @@ export default function Assistant() {
           });
           setPending([]);
         }
-        // Luôn đọc đáp án (tự động, không cần bật tắt)
+        // Luôn đọc đáp án (tự động, không cần bật tắt).
+        // Nếu autoplay bị chặn (người dùng chưa từng tương tác) → báo lỗi
+        // rõ ràng để họ bấm nút loa nghe lại thay vì im lặng vô căn cứ.
         if (callMode) setCallStatus("speaking");
-        speakVI(reply, () => {
-          if (callMode) setCallStatus("listening");
-        });
+        try {
+          await speakVI(reply, () => {
+            if (callMode) setCallStatus("listening");
+          });
+        } catch {
+          toast.error(
+            "Trình duyệt chặn âm thanh tự động. Bấm nút loa hoặc chạm màn hình rồi thử lại.",
+          );
+        }
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : "Không gửi được câu hỏi.",
