@@ -101,9 +101,14 @@ export default function Assistant() {
   const sendingRef = useRef(false);
   const mutedRef = useRef(false);
   const micDeniedRef = useRef(false);
+  const busyRef = useRef(false);
   const lastAiWordAtRef = useRef(0);
   const recRef = useRef<RecLike | null>(null);
   const startListeningRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
 
   /* ----- Mở khóa autoplay âm thanh (chạm/bấm đầu tiên) ----- */
   useEffect(() => {
@@ -175,7 +180,8 @@ export default function Assistant() {
         setInput("");
         setImage(null);
       }
-      if (!opts?.fromCall) setPending((p) => [...p, userMsg]);
+      // Luôn thêm vào phiên (kể cả call) để giữ ngữ cảnh và không mất lịch sử
+      setPending((p) => [...p, userMsg]);
       setBusy(true);
 
       try {
@@ -184,24 +190,22 @@ export default function Assistant() {
           imageBase64: opts?.fromCall ? undefined : image?.base64,
           imageMime: opts?.fromCall ? undefined : image?.mime,
         });
-        if (!opts?.fromCall) {
-          setPending((p) => [...p, { role: "assistant", content: reply }]);
-          if (isAuthenticated) {
-            void append({
-              items: [
-                { role: "user", content: q },
-                { role: "assistant", content: reply },
-              ],
-            });
-          }
-          // SỬA LỖI: KHÔNG await TTS — nút gửi không bị khóa suốt lúc đọc
-          void speakVI(reply);
-        } else {
+        setPending((p) => [...p, { role: "assistant", content: reply }]);
+        if (isAuthenticated) {
+          void append({
+            items: [
+              { role: "user", content: q },
+              { role: "assistant", content: reply },
+            ],
+          });
+        }
+        if (opts?.fromCall) {
           // Trong cuộc gọi: đọc to xong rồi tự nghe tiếp (rảnh tay)
           if (!callActiveRef.current) return;
           setAiCaption(reply);
           aiSpeakingRef.current = true;
           sendingRef.current = false;
+          setInterim("");
           setCallStatus("speaking");
           speakVI(reply, () => {
             aiSpeakingRef.current = false;
@@ -210,6 +214,9 @@ export default function Assistant() {
             setCallStatus("listening");
             startListeningRef.current();
           });
+        } else {
+          // SỬA LỖI: KHÔNG await TTS — nút gửi không bị khóa suốt lúc đọc
+          void speakVI(reply);
         }
       } catch (err) {
         if (!opts?.fromCall) {
@@ -236,7 +243,14 @@ export default function Assistant() {
   /* ----- Đàm thoại: xử lý một câu người dùng vừa nói ----- */
   const handleUtterance = useCallback(
     (text: string) => {
+      // SỬA LỖI kẹt "Đang suy niệm…": nếu trợ lý đang bận (xử lý câu trước
+      // hoặc đang đọc) thì bỏ qua câu này và tiếp tục nghe, KHÔNG khóa mic.
+      if (busyRef.current || sendingRef.current) {
+        window.setTimeout(() => startListeningRef.current(), 600);
+        return;
+      }
       setUserCaption(text);
+      setInterim("");
       sendingRef.current = true;
       setCallStatus("thinking");
       void send(text, { fromCall: true });
@@ -345,6 +359,9 @@ export default function Assistant() {
     stopSpeaking();
     micDeniedRef.current = false;
     mutedRef.current = false;
+    sendingRef.current = false;
+    aiSpeakingRef.current = false;
+    busyRef.current = false;
     setUserCaption("");
     setAiCaption("");
     setInterim("");
@@ -776,7 +793,15 @@ export default function Assistant() {
               {callStatus === "speaking" && (
                 <button
                   type="button"
-                  onClick={stopSpeaking}
+                  onClick={() => {
+                    // SỬA LỖI: dừng đọc phải khôi phục mic ngay — không kẹt
+                    // ở trạng thái "Đang trả lời" vĩnh viễn.
+                    stopSpeaking();
+                    aiSpeakingRef.current = false;
+                    sendingRef.current = false;
+                    setCallStatus("listening");
+                    startListeningRef.current();
+                  }}
                   className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10 backdrop-blur transition hover:bg-white/20"
                   aria-label="Ngừng đọc"
                   title="Ngừng đọc"
