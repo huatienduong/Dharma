@@ -828,7 +828,7 @@ function AssistantMessage({
 function UserMessage({ content }: { content: string }) {
   return (
     <div className="flex justify-end">
-      <div className="max-w-[85%] whitespace-pre-wrap rounded-3xl rounded-br-lg bg-muted px-4.5 py-3 text-[15px] leading-relaxed sm:text-base">
+      <div className="max-w-[85%] whitespace-pre-wrap rounded-3xl rounded-br-lg bg-muted px-4 py-3 text-[15px] leading-relaxed sm:text-base">
         {content}
       </div>
     </div>

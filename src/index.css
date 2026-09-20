@@ -263,6 +263,96 @@
   }
 }
 
+/* ---------- Quả cầu đàm thoại Trợ lý (kiểu Gemini) ---------- */
+
+.orb-shell {
+  position: relative;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: rgba(41, 28, 12, 0.55);
+  display: grid;
+  place-items: center;
+}
+
+/* Lớp hào quang xoay — tách khỏi lõi để lõi đứng yên */
+.orb-shell::before {
+  content: "";
+  position: absolute;
+  inset: -22%;
+  background: conic-gradient(
+    from 180deg,
+    rgba(251, 191, 36, 0.6),
+    rgba(180, 83, 9, 0.85),
+    rgba(245, 158, 11, 0.55),
+    rgba(120, 53, 15, 0.9),
+    rgba(251, 191, 36, 0.6)
+  );
+  filter: blur(16px) saturate(1.15);
+  animation: orb-spin 14s linear infinite;
+}
+
+.orb-thinking .orb-shell::before {
+  animation-duration: 4s;
+}
+
+.orb-core {
+  position: relative;
+  z-index: 1;
+  width: 72%;
+  height: 72%;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle at 38% 32%,
+    rgba(255, 251, 235, 0.9),
+    rgba(253, 230, 138, 0.85) 38%,
+    rgba(180, 83, 9, 0.9) 100%
+  );
+  box-shadow:
+    0 0 42px rgba(245, 158, 11, 0.45),
+    inset 0 0 24px rgba(255, 255, 255, 0.35);
+  animation: orb-breathe 3.6s ease-in-out infinite;
+}
+
+.orb-listening .orb-core {
+  animation: orb-breathe 1.4s ease-in-out infinite;
+}
+
+.orb-speaking .orb-core {
+  animation: orb-breathe 0.7s ease-in-out infinite;
+}
+
+.orb-thinking .orb-core {
+  animation: orb-breathe 0.5s ease-in-out infinite;
+}
+
+@keyframes orb-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orb-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.06);
+    filter: brightness(1.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orb-shell,
+  .orb-core {
+    animation: none;
+  }
+}
+
 /* Chống chọn/nhân bản nội dung khi bật chế độ chống chụp màn hình */
 body.ds-protect {
   user-select: none;
