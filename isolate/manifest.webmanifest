@@ -1,11 +1,11 @@
 {
-  "name": "Dharma - Pháp thoại Theravada",
+  "name": "Dharma — Giới - Định - Tuệ",
   "short_name": "Dharma",
-  "description": "Nghe và xem pháp thoại Theravada - Phật giáo Nguyên thủy",
+  "description": "Ứng dụng Phật giáo Theravāda — Giới - Định - Tuệ",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#4a3520",
-  "theme_color": "#4a3520",
+  "background_color": "#140d05",
+  "theme_color": "#140d05",
   "icons": [
     {
       "src": "/logo.svg",
