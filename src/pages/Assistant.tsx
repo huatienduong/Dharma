@@ -593,7 +593,7 @@ export default function Assistant() {
                 </button>
               </div>
               <span className="text-xs text-muted-foreground">
-                Ảnh sẽ được gửi kèm câu hỏi
+                Ảnh kèm câu hỏi
               </span>
             </div>
           )}
@@ -674,9 +674,7 @@ export default function Assistant() {
           </div>
 
           <p className="mt-2 text-center text-[11px] leading-relaxed text-muted-foreground">
-            {isAuthenticated
-              ? "Trợ lý có thể nhầm lẫn — hãy đối chiếu với kinh điển Pāli."
-              : "Lịch sử hội thoại chỉ lưu khi đăng nhập · Trợ lý có thể nhầm lẫn — hãy đối chiếu kinh điển."}
+            {isAuthenticated ? "" : "Đăng nhập để lưu hội thoại."}
           </p>
         </form>
       </div>

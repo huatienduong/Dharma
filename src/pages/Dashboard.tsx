@@ -90,6 +90,8 @@ export default function Dashboard() {
   // Hero: bài mới nhất (chỉ khi không tìm kiếm)
   const hero = !searchQ ? filtered[0] : undefined;
   const rest = searchQ ? filtered : filtered.slice(1);
+  // Đang phát video nào đó → trang chủ chỉ hiện video + video liên quan
+  const hasActiveVideo = Boolean(current);
 
 
 
@@ -161,7 +163,7 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* ---------- Liên quan: cùng giảng sư với đang phát ---------- */}
+      {/* ---------- Liên quan: khi đang phát → CHỈ hiện video liên quan ---------- */}
       {related.length > 0 && !searchQ && (
         <section className="mb-6" aria-label="Pháp thoại liên quan">
           <div className="grid grid-cols-1 gap-x-5 gap-y-1 md:grid-cols-2">
@@ -182,8 +184,9 @@ export default function Dashboard() {
         </section>
       )}
 
-      {/* ---------- Danh sách chính ---------- */}
-      <section aria-label="Pháp thoại đề xuất">
+      {/* ---------- Danh sách chính: ẨN khi đang phát video (chỉ còn liên quan) ---------- */}
+      {!hasActiveVideo && (
+        <section aria-label="Pháp thoại đề xuất">
         {searchQ && (
           <div className="mb-3 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-lg font-semibold">
@@ -227,8 +230,8 @@ export default function Dashboard() {
             ))}
           </div>
         )}
-
-      </section>
+        </section>
+      )}
 
       {/* ---------- Chân trang: tên app + phiên bản ---------- */}
       <footer className="mt-14 border-t border-border/60 pt-5 text-center">

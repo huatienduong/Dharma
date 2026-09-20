@@ -42,13 +42,18 @@ const SETTINGS_ITEM = { to: "/settings", tKey: "navSettings" as TranslateKey, ic
 /** Danh sách đầy đủ để tra cứu an toàn cho bottom-nav. */
 const ALL_ITEMS = [...NAV, ...NAV_LIB, SETTINGS_ITEM];
 
-/** Bottom-nav mobile: tra theo đường dẫn, bỏ qua mục không tồn tại. */
+/** Nhóm quản lý tài khoản (cuối sidebar — thay cho icon trùng lặp trên đầu). */
+const NAV_ACCOUNT: { to: string; tKey: TranslateKey; icon: typeof Scale }[] = [
+  { to: "/profile", tKey: "navProfile", icon: UserRound },
+  { to: "/settings", tKey: "navSettings", icon: Settings },
+];
+
+/** Bottom-nav mobile: 4 mục chính (Cài đặt/Hồ sơ đã về sidebar — không lặp). */
 const BOTTOM_NAV_PATHS = [
   "/dashboard",
   "/suttas",
   "/watch",
   "/assistant",
-  "/settings",
 ];
 const BOTTOM_NAV = BOTTOM_NAV_PATHS.map((to) =>
   ALL_ITEMS.find((n) => n.to === to),
@@ -100,7 +105,7 @@ export function AppShell({
 
   const sidebarContent = (
     <>
-      <div className="flex items-center gap-1.5 px-3 pt-3 pb-2">
+      <div className="flex items-center px-3 pt-3 pb-2">
         <button
           type="button"
           onClick={() => go("/dashboard")}
@@ -110,37 +115,6 @@ export function AppShell({
           <span className="min-w-0 truncate text-lg font-bold tracking-tight text-foreground">
             DHARMA
           </span>
-        </button>
-        {/* Hồ sơ + Cài đặt — ICON BÊN PHẢI (không còn Đăng xuất) */}
-        <button
-          type="button"
-          onClick={() => go(PROFILE_ITEM.to)}
-          aria-current={isActive(PROFILE_ITEM.to) ? "page" : undefined}
-          title={PROFILE_ITEM.label}
-          aria-label={PROFILE_ITEM.label}
-          className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
-            isActive(PROFILE_ITEM.to)
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-foreground hover:bg-accent",
-          )}
-        >
-          <UserRound className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => go(SETTINGS_ITEM.to)}
-          aria-current={isActive(SETTINGS_ITEM.to) ? "page" : undefined}
-          title={t("navSettings")}
-          aria-label={t("navSettings")}
-          className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
-            isActive(SETTINGS_ITEM.to)
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-foreground hover:bg-accent",
-          )}
-        >
-          <Settings className="h-4 w-4" />
         </button>
       </div>
 
@@ -178,6 +152,36 @@ export function AppShell({
         {/* Nhóm học liệu: Luật tạng · Từ điển · Đã xem */}
         <div className="mt-2 border-t border-border/60 pt-2">
           {NAV_LIB.map((item) => {
+            const active = isActive(item.to);
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.to}
+                type="button"
+                onClick={() => go(item.to)}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-medium transition",
+                  active
+                    ? "bg-primary/10 text-primary"
+                    : "text-foreground/85 hover:bg-accent",
+                )}
+              >
+                <Icon
+                  className={cn(
+                    "h-5 w-5 shrink-0",
+                    active ? "text-primary" : "text-gold",
+                  )}
+                />
+                <span className="truncate">{t(item.tKey)}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Nhóm tài khoản: Hồ sơ · Cài đặt (một chỗ duy nhất — không lặp) */}
+        <div className="mt-2 border-t border-border/60 pt-2">
+          {NAV_ACCOUNT.map((item) => {
             const active = isActive(item.to);
             const Icon = item.icon;
             return (
