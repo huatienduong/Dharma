@@ -1,8 +1,8 @@
 import { api } from "@/convex/_generated/api";
 import { APP_VERSION } from "@/lib/version";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { Download, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 /** So sánh semver đơn giản: trả về true nếu `latest` mới hơn `current`. */
@@ -25,8 +25,24 @@ function isNewer(latest: string, current: string): boolean {
  */
 export function UpdateChecker() {
   const meta = useQuery(api.library.getAppVersion, {});
+  const seedVersion = useMutation(api.library.seedAppVersion);
   const [dismissed, setDismissed] = useState<string | null>(null);
   const [toasted, setToasted] = useState<string | null>(null);
+  const seededRef = useRef(false);
+
+  /* ----- SỬA LỖI "không xuất phiên bản mới nhất": bảng appMeta trên server
+     chưa từng được khởi tạo (seedAppVersion không có chỗ gọi) → meta null
+     → không bao giờ có thông tin bản mới. Tự gieo bản ghi lần đầu với
+     phiên bản hiện tại; lần sau chủ app chỉ cần cập nhật bản ghi này
+     (dashboard/seed) là mọi thiết bị nhận banner cập nhật ngay. */
+  useEffect(() => {
+    if (meta === null && !seededRef.current) {
+      seededRef.current = true;
+      void seedVersion({ latestVersion: APP_VERSION }).catch(() => {
+        seededRef.current = false;
+      });
+    }
+  }, [meta, seedVersion]);
 
   const latest = meta?.latestVersion;
   const hasUpdate =
