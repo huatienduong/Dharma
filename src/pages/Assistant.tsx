@@ -381,7 +381,11 @@ export default function Assistant() {
                 m.role === "user" ? (
                   <UserMessage key={i} content={m.content} />
                 ) : (
-                  <AssistantMessage key={i} content={m.content} />
+                  <AssistantMessage
+                    key={i}
+                    content={m.content}
+                    onSpeak={() => speakVI(m.content)}
+                  />
                 ),
               )}
 
@@ -517,14 +521,31 @@ export default function Assistant() {
 /* Bong bóng chat kiểu ChatGPT                                         */
 /* ------------------------------------------------------------------ */
 
-function AssistantMessage({ content }: { content: string }) {
+function AssistantMessage({
+  content,
+  onSpeak,
+}: {
+  content: string;
+  onSpeak?: () => void;
+}) {
   return (
-    <div className="flex items-start gap-2.5">
+    <div className="group flex items-start gap-2.5">
       <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
         <Sparkles className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-1 whitespace-pre-wrap pt-1 text-sm leading-relaxed text-foreground/95">
         {content}
+        {onSpeak && (
+          <button
+            type="button"
+            onClick={onSpeak}
+            title="Nghe câu trả lời"
+            aria-label="Nghe câu trả lời bằng giọng nói"
+            className="ml-2 inline-flex h-6 w-6 translate-y-1 items-center justify-center rounded-full text-muted-foreground opacity-60 transition hover:bg-accent hover:text-foreground hover:opacity-100 group-hover:opacity-100"
+          >
+            <Volume2 className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
     </div>
   );
