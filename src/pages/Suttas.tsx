@@ -1,7 +1,7 @@
 import { AppShell, ShellBackButton } from "@/components/AppShell";
 import { AIDocArticle, DocThumb } from "@/components/AIDocReader";
 import { AIIndexList } from "@/components/AIIndexList";
-import { VoiceSearchButton } from "@/components/VoiceSearchButton";
+import { SearchToolbar } from "@/components/SearchToolbar";
 import { api } from "@/convex/_generated/api";
 import { getSutta } from "@/data/suttas";
 import { useAuth } from "@/hooks/use-auth";
@@ -17,10 +17,8 @@ import {
   Eye,
   MapPin,
   ScrollText,
-  Search,
   Sparkles,
   User,
-  X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
