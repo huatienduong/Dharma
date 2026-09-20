@@ -111,8 +111,8 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* ---------- Hero (tràn khung, không cột phải) ---------- */}
-      {!searchQ && (
+      {/* ---------- Hero (ẩn khi đang phát — chỉ còn video + liên quan) ---------- */}
+      {!searchQ && !hasActiveVideo && (
         <section className="mb-6">
           {hero ? (
             <button

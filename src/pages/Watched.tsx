@@ -5,9 +5,8 @@ import { formatCount, formatTime, usePlayer } from "@/lib/player";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSettings } from "@/lib/settings";
 import { useQuery } from "convex/react";
-import { Eye, History, LogIn, Play } from "lucide-react";
+import { Eye, History, Play } from "lucide-react";
 import { useMemo } from "react";
-import { Link } from "react-router";
 import { cn } from "@/lib/utils";
 
 type ProgressRow = {
@@ -136,17 +135,8 @@ export default function Watched() {
           <History className="mx-auto h-10 w-10 text-muted-foreground/40" />
           <p className="mt-4 text-sm font-medium">Chưa có lịch sử xem</p>
           <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
-            Đăng nhập để ứng dụng tự ghi nhớ vị trí bạn dừng lại trong mỗi pháp
-            thoại. Khi hệ thống hoàn tất nâng cấp, lịch sử của bạn sẽ được đồng
-            bộ tại đây.
+            Những pháp thoại bạn xem sẽ xuất hiện tại đây.
           </p>
-          <Link
-            to="/auth"
-            className="mt-5 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition hover:opacity-90"
-          >
-            <LogIn className="h-4 w-4" />
-            Đăng nhập
-          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-x-5 gap-y-1 md:grid-cols-2">
