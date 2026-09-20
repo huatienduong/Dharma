@@ -1,6 +1,5 @@
 import { generateText } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { action, mutation, query } from "./_generated/server";
 
@@ -142,8 +141,7 @@ async function generateWithFallback(
  */
 export const generateIndex = action({
   args: { indexKind: v.string() },
-  handler: async (ctx, { indexKind }) => {
-    await getAuthUserId(ctx);
+  handler: async (_ctx, { indexKind }) => {
 
     const guides: Record<string, string> = {
       suttas:
@@ -186,8 +184,6 @@ export const cacheDoc = mutation({
     source: v.string(),
   },
   handler: async (ctx, { kind, refId, title, body, source }) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) throw new Error("Cần đăng nhập.");
     const existing = await ctx.db
       .query("aiDocs")
       .withIndex("by_kind_ref", (q) => q.eq("kind", kind).eq("refId", refId))
@@ -213,8 +209,7 @@ export const generateSutta = action({
     title: v.optional(v.string()),
     extra: v.optional(v.string()),
   },
-  handler: async (ctx, { refId, title, extra }) => {
-    await getAuthUserId(ctx);
+  handler: async (_ctx, { refId, title, extra }) => {
     const prompt = `Hãy biên soạn BÀI KINH PHẬT GIÁO đầy đủ, có thể đọc trực tiếp và thực hành chiêm nghiệm, theo yêu cầu sau:
 - Mã kinh: ${refId}
 - Tên gợi ý: ${title ?? "(tự xác định theo mã kinh)"}
@@ -238,8 +233,7 @@ export const generateVinaya = action({
     title: v.optional(v.string()),
     extra: v.optional(v.string()),
   },
-  handler: async (ctx, { refId, title, extra }) => {
-    await getAuthUserId(ctx);
+  handler: async (_ctx, { refId, title, extra }) => {
     const prompt = `Hãy biên soạn NỘI DUNG LUẬT TẠNG (Vinaya Piṭaka) đầy đủ, đọc trực tiếp được:
 - Mã văn bản: ${refId}
 - Tên gợi ý: ${title ?? "(tự xác định)"}
@@ -261,8 +255,7 @@ export const generateDictEntry = action({
     title: v.optional(v.string()),
     extra: v.optional(v.string()),
   },
-  handler: async (ctx, { refId, title, extra }) => {
-    await getAuthUserId(ctx);
+  handler: async (_ctx, { refId, title, extra }) => {
     const prompt = `Hãy viết MỤC TỪ ĐIỂN PHẬT HỌC chi tiết cho thuật ngữ:
 - Thuật ngữ / Pāli: ${refId}
 - Tên gợi ý: ${title ?? ""}
@@ -285,8 +278,7 @@ export const generateCommentary = action({
     title: v.optional(v.string()),
     extra: v.optional(v.string()),
   },
-  handler: async (ctx, { refId, title, extra }) => {
-    await getAuthUserId(ctx);
+  handler: async (_ctx, { refId, title, extra }) => {
     const prompt = `Hãy biên soạn CHÚ GIẢI (Aṭṭhakathā) cho văn bản/kinh:
 - Văn bản: ${refId}
 - Tên gợi ý: ${title ?? ""}
@@ -308,8 +300,7 @@ export const generateSubcommentary = action({
     title: v.optional(v.string()),
     extra: v.optional(v.string()),
   },
-  handler: async (ctx, { refId, title, extra }) => {
-    await getAuthUserId(ctx);
+  handler: async (_ctx, { refId, title, extra }) => {
     const prompt = `Hãy biên soạn LUẬN GIẢI (Ṭīkā / phân tích hiện đại theo truyền thống Theravāda) cho văn bản/kinh:
 - Văn bản: ${refId}
 - Tên gợi ý: ${title ?? ""}

@@ -2,7 +2,6 @@ import { AppShell } from "@/components/AppShell";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@/hooks/use-auth";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { ImageOff, Loader2, ScrollText, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -317,7 +316,6 @@ export function AIDocArticle({
   showRelated?: boolean;
   showThumb?: boolean;
 }) {
-  const { isAuthenticated } = useAuth();
   const cached = useQuery(api.aiDocs.getDoc, { kind, refId });
   const cacheDoc = useMutation(api.aiDocs.cacheDoc);
 
@@ -345,8 +343,9 @@ export function AIDocArticle({
   }, [source]);
 
   // Tự sinh AI khi chưa có cache — AI tự nạp dữ liệu mỗi lần tra cứu mới
+  // (không yêu cầu đăng nhập: hành vi AI cho cả khách + thành viên)
   useEffect(() => {
-    if (cached || generating || pendingBody !== null || !isAuthenticated) return;
+    if (cached || generating || pendingBody !== null) return;
     setGenerating(true);
     genAction({ refId, title, extra })
       .then((text) => {
@@ -358,12 +357,12 @@ export function AIDocArticle({
         void cacheDoc({ kind, refId, title: title ?? docTitle, body: clean, source: src }).catch(() => undefined);
       })
       .catch((err: Error) => {
-        toast.error(err.message);
         setPendingBody("");
+        setPendingSource("");
       })
       .finally(() => setGenerating(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cached, refId, isAuthenticated]);
+  }, [cached, refId]);
 
   const loading = cached === undefined || (generating && !pendingBody);
 

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 /**
  * Logo bánh xe Chuyển pháp luân (Dharmachakra) — TỰ NẠP hình thật từ internet
  * (Wikipedia Dharmachakra — không cần khóa, có cache). Fallback là SVG vẽ sẵn
- * 8 nan hoa nếu không tải được mạng.
+ * 8 nan hoa nếu không tải được mạng. LOGO TĨNH — không quay.
  */
 
 const WHEEL_URL =
@@ -46,12 +46,9 @@ function FallbackWheel({ size }: { size: number }) {
 export function DhammaWheel({
   size = 56,
   className,
-  spin = true,
 }: {
   size?: number;
   className?: string;
-  /** Bánh xe quay chậm — biểu tượng Chuyển pháp luân */
-  spin?: boolean;
 }) {
   const [src, setSrc] = useState<string | null | undefined>(cachedUrl);
 
@@ -80,17 +77,11 @@ export function DhammaWheel({
 
   return (
     <span
-      className={cn(
-        "inline-flex shrink-0 items-center justify-center",
-        spin && "dw-spin",
-        className,
-      )}
+      className={cn("inline-flex shrink-0 items-center justify-center", className)}
       style={{ width: size, height: size }}
     >
       {src === undefined ? (
-        <span className={cn("animate-pulse", className)} style={{ width: size, height: size }}>
-          <FallbackWheel size={size} />
-        </span>
+        <FallbackWheel size={size} />
       ) : src ? (
         <img
           src={src}

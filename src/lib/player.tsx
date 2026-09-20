@@ -696,14 +696,6 @@ export function MiniPlayerCard({
           </div>
           <button
             type="button"
-            onClick={() => onSeek(Math.max(0, position - 15))}
-            className="shrink-0 rounded-full px-1.5 py-1 text-[11px] text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-            aria-label="Lùi 15 giây"
-          >
-            −15s
-          </button>
-          <button
-            type="button"
             onClick={onClose}
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
             aria-label="Đóng trình phát"
@@ -721,20 +713,11 @@ export function MiniPlayerCard({
             }}
           />
         </div>
-      </div>
-      {showFallback && youtubeId && (
-        <p className="mt-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
-          Video này không cho phép phát nhúng.{" "}
-          <a
-            className="underline"
-            href={`https://www.youtube.com/watch?v=${youtubeId}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Xem trên YouTube
-          </a>
-        </p>
-      )}
+      </div>        {showFallback && youtubeId && (
+          <p className="mt-2 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            Video này không cho phép phát nhúng. Vui lòng chọn video khác.
+          </p>
+        )}
     </div>
   );
 }
@@ -831,16 +814,8 @@ function ExpandedControls({
           </span>
         </div>
 
-        {/* Hàng 3: cụm điều khiển căn giữa — lùi 15 · phát (to) · tới 15 */}
+        {/* Hàng 3: nút phát to căn giữa */}
         <div className="mt-2 flex items-center justify-center gap-5">
-          <button
-            type="button"
-            onClick={() => onSeek(Math.max(0, position - 15))}
-            className="flex h-9 items-center rounded-full px-3 text-xs font-semibold text-muted-foreground transition hover:bg-accent hover:text-foreground"
-            aria-label="Lùi 15 giây"
-          >
-            −15s
-          </button>
           <button
             type="button"
             onClick={onToggle}
@@ -857,27 +832,11 @@ function ExpandedControls({
               </svg>
             )}
           </button>
-          <button
-            type="button"
-            onClick={() => onSeek(position + 15)}
-            className="flex h-9 items-center rounded-full px-3 text-xs font-semibold text-muted-foreground transition hover:bg-accent hover:text-foreground"
-            aria-label="Tới 15 giây"
-          >
-            +15s
-          </button>
         </div>
 
         {showFallback && (
           <p className="mt-2.5 rounded-lg bg-destructive/10 px-3 py-2 text-center text-xs text-destructive">
-            Video này không cho phép phát nhúng.{" "}
-            <a
-              className="underline"
-              href={`https://www.youtube.com/watch?v=${youtubeId}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Xem trên YouTube
-            </a>
+            Video này không cho phép phát nhúng. Vui lòng chọn video khác.
           </p>
         )}
       </div>

@@ -320,11 +320,7 @@ export function SuttaReader() {
           />
         )}
 
-        {progress && progress.percent > 2 && (
-          <p className="mt-4 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <BookOpenText className="h-3 w-3" /> Bạn đã đọc tới {progress.percent}%.{" "}
-          </p>
-        )}
+
       </div>
     </AppShell>
   );

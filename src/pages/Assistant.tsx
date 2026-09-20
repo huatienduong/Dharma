@@ -400,8 +400,7 @@ export default function Assistant() {
           </div>
           {!isAuthenticated && (
             <p className="mt-2 text-[11px] text-muted-foreground">
-              Bạn đang trò chuyện với tư cách khách — hội thoại sẽ không được
-              lưu. Đăng nhập tại Hồ sơ để lưu lịch sử.
+              Đăng nhập để lưu lịch sử hội thoại.
             </p>
           )}
         </form>

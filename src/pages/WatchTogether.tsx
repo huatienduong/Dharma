@@ -167,21 +167,14 @@ export default function WatchTogether() {
               <MonitorPlay className="h-8 w-8" />
             </span>
             <h2 className="mt-5 text-lg font-bold">
-              Xem video cùng nhau, trực tiếp
+              Vui lòng đăng nhập để sử dụng tính năng này
             </h2>
-            <p className="mx-auto mt-2.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              Tạo phòng riêng, mời bạn bè cùng xem pháp thoại đúng một nhịp
-              và nói chuyện qua mic/cam.
-            </p>
             <Button
               asChild
               className="mt-6 w-full"
             >
-              <a href="/auth?returnTo=%2Fwatch">Đăng nhập để bắt đầu</a>
+              <a href="/auth?returnTo=%2Fwatch">Đăng nhập</a>
             </Button>
-            <p className="mt-3 text-[11px] text-muted-foreground">
-              Cần đăng nhập để nhận diện thành viên trong phòng.
-            </p>
           </div>
         </div>
       </AppShell>
@@ -202,8 +195,7 @@ export default function WatchTogether() {
   /* ---------- Màn hình tạo / tham gia phòng ---------- */
   return (
     <AppShell
-      title="Phòng — Xem Phật pháp cùng nhau"
-      subtitle="Phòng riêng — xem đồng bộ một nhịp, trò chuyện qua mic & cam"
+      title="Phòng"
     >
       <div className="mx-auto grid max-w-3xl gap-4 sm:grid-cols-2">
         <section className="rounded-2xl border border-gold/25 bg-gradient-to-b from-gold/10 to-card/50 p-6">

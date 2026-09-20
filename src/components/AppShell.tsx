@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
-import { APP_DEVELOPER as DEVELOPER_NAME } from "@/lib/version";
 
 /** Tab chính — Lịch Phật giáo NGAY CẠNH Trợ lý Phật học. */
 const NAV: { to: string; tKey: TranslateKey; icon: typeof LayoutDashboard }[] = [
@@ -118,7 +117,7 @@ export function AppShell({
           <div className="min-w-0">
             <p className="text-sm font-semibold leading-tight">{t("appName")}</p>
             <p className="truncate text-[11px] text-muted-foreground">
-              {DEVELOPER_NAME} · {t("developer")}
+              Giới - Định - Tuệ
             </p>
           </div>
         </button>
@@ -201,25 +200,8 @@ export function AppShell({
         </div>
       </nav>
 
-      {/* Đáy sidebar: Lịch Phật giáo (cạnh Trợ lý Phật học về luồng điều hướng) */}
-      <div className="flex items-center justify-between border-t border-border/60 p-3">
-        <a
-          href="https://facebook.com/huatienduong.official"
-          target="_blank"
-          rel="noreferrer"
-          className="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1.5 text-[11px] leading-tight text-muted-foreground/80 transition hover:text-foreground"
-          title="Liên hệ nhà phát triển qua Facebook"
-        >
-          <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 fill-[#1877F2]" aria-hidden>
-            <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.66c0-3.025 1.792-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.971H15.83c-1.491 0-1.956.93-1.956 1.886v2.264h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
-          </svg>
-          <span className="truncate">
-            {DEVELOPER_NAME}
-            <br />
-            <span className="text-[10px] text-muted-foreground/60">Liên hệ Facebook</span>
-          </span>
-        </a>
-      </div>
+      {/* Đáy sidebar: giữ đơn giản — không còn khối thông tin liên hệ */}
+      <div className="border-t border-border/60 p-3" />
     </>
   );
 
@@ -284,7 +266,31 @@ export function AppShell({
               </p>
             </div>
           </button>
-          {/* Mobile header: logo + tên + tiêu đề trang (đủ rồi) */}
+          {/* Mobile header: Cài đặt + Đăng xuất — ICON BÊN PHẢI */}
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            title={t("logout")}
+            aria-label={t("logout")}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => go(SETTINGS_ITEM.to)}
+            aria-current={isActive(SETTINGS_ITEM.to) ? "page" : undefined}
+            title={t("navSettings")}
+            aria-label={t("navSettings")}
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition",
+              isActive(SETTINGS_ITEM.to)
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
+          >
+            <Settings className="h-4 w-4" />
+          </button>
         </div>
       </header>
 
