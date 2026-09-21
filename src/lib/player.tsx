@@ -24,6 +24,14 @@ type PlayerContextValue = {
   clear: () => void;
 };
 
+const defaultContext: PlayerContextValue = {
+  current: null,
+  isOpen: false,
+  play: () => undefined,
+  pause: () => undefined,
+  clear: () => undefined,
+};
+
 const PlayerContext = createContext<PlayerContextValue | undefined>(undefined);
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
@@ -57,10 +65,5 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
 export function usePlayer() {
   const context = useContext(PlayerContext);
-
-  if (!context) {
-    throw new Error("usePlayer must be used within a PlayerProvider");
-  }
-
-  return context;
+  return context ?? defaultContext;
 }
