@@ -147,7 +147,7 @@ createRoot(document.getElementById("root")!).render(
         <SettingsProvider>
           <ScreenshotGuard />
           <UpdateChecker />
-          <BrowserRouter>
+          <BrowserRouter basename="/dharma">
             <PlayerProvider>
             <RouteSyncer />
             <Suspense fallback={<RouteLoading />}>
