@@ -68,7 +68,7 @@ export function AppShell({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [railOpen, setRailOpen] = useState(true); // sidebar desktop thu gọn
 
-  // Logo ứng dụng chính thức — ảnh chủ app tải lên Convex Storage
+  // Ảnh app chính thức — chủ app tải lên Convex Storage
   const logo = useQuery(anyApi.appLogo.get);
 
   const isActive = (to: string) =>
@@ -118,11 +118,7 @@ export function AppShell({
             active ? "text-primary" : "text-foreground/70",
           )}
         />
-        <span className="truncate tracking-wide">
-          {item.to === "/assistant"
-            ? ASSISTANT_LABEL
-            : upperLabel(t(item.tKey))}
-        </span>
+        <span className="truncate tracking-wide">{upperLabel(t(item.tKey))}</span>
       </button>
     );
   };
@@ -183,24 +179,23 @@ export function AppShell({
           </button>
         </div>
 
-        {/* Giữa: LOGO ỨNG DỤNG chính thức (ảnh từ Convex Storage) */}
+        {/* Giữa: TÊN ỨNG DỤNG DHARMA + ảnh app chính thức */}
         <button
           type="button"
           onClick={() => go("/dashboard")}
           aria-label="Trang chủ Dharma"
-          className="mx-auto flex min-w-0 items-center justify-center rounded-full px-2 py-1 transition hover:bg-accent"
+          className="mx-auto flex min-w-0 items-center justify-center gap-2 rounded-full px-2 py-1 transition hover:bg-accent"
         >
-          {logo?.url ? (
+          {logo?.url && (
             <img
               src={logo.url}
-              alt="Dharma"
-              className="h-9 w-auto max-w-[10rem] object-contain"
+              alt=""
+              className="h-7 w-7 shrink-0 rounded-full object-cover"
             />
-          ) : (
-            <span className="truncate text-[19px] font-bold uppercase tracking-[0.08em] text-foreground">
-              Dharma
-            </span>
           )}
+          <span className="truncate text-[19px] font-bold uppercase tracking-[0.08em] text-foreground">
+            DHARMA
+          </span>
         </button>
 
         {/* Phải: chỉ còn Cài đặt (Hồ sơ đã bỏ) */}
@@ -261,9 +256,7 @@ export function AppShell({
                     )}
                   />
                   <span className="w-full truncate text-center">
-                    {item.to === "/assistant"
-                      ? ASSISTANT_LABEL
-                      : t(item.tKey)}
+                    {upperLabel(t(item.tKey))}
                   </span>
                 </button>
               );
@@ -289,7 +282,7 @@ export function AppShell({
         )}
         aria-hidden={!drawerOpen}
       >
-        {/* Đầu drawer: logo + đóng */}
+        {/* Đầu drawer: tên app + đóng */}
         <div className="flex h-14 shrink-0 items-center gap-2 px-3">
           <button
             type="button"
@@ -299,17 +292,16 @@ export function AppShell({
           >
             <Menu className="h-5 w-5" />
           </button>
-          {logo?.url ? (
+          {logo?.url && (
             <img
               src={logo.url}
-              alt="Dharma"
-              className="h-9 w-auto max-w-[10rem] object-contain"
+              alt=""
+              className="h-7 w-7 rounded-full object-cover"
             />
-          ) : (
-            <span className="text-[19px] font-bold uppercase tracking-tight">
-              Dharma
-            </span>
           )}
+          <span className="text-[19px] font-bold uppercase tracking-tight">
+            DHARMA
+          </span>
         </div>
         {sidebarContent}
       </aside>
@@ -367,9 +359,7 @@ export function AppShell({
               >
                 <Icon className="h-5 w-5" />
                 <span className="w-full truncate text-center leading-tight">
-                  {item.to === "/assistant"
-                    ? ASSISTANT_LABEL
-                    : t(item.tKey)}
+                  {upperLabel(t(item.tKey))}
                 </span>
               </button>
             );

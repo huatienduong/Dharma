@@ -9,10 +9,22 @@ import { loadLocalWatch } from "@/lib/localProgress";
 import { loadUiState, saveUiState, trackScroll, restoreScroll } from "@/lib/uiState";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { useAction, useQuery } from "convex/react";
+import { anyApi } from "convex/server";
 import { Eye, Loader2, Mic, Search as SearchIcon, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Talk = Doc<"dhammaTalks">;
+
+type YtRow = {
+  _id: string;
+  youtubeId: string;
+  title: string;
+  teacher: string;
+  channelName: string;
+  publishedAt: string;
+  durationSec: number;
+  viewCount?: number;
+};
 
 export default function Dashboard() {
   const { play, current } = usePlayer();
@@ -33,10 +45,86 @@ export default function Dashboard() {
     return () => window.clearInterval(iv);
   }, [current]);
 
-  // Tải TOÀN BỘ kho pháp thoại một lần. Đồng bộ ngầm tự kéo video mới.
-  const talks = useQuery(api.dhamma.list, { limit: 2000 });
+  // Ảnh app chính thức — chủ app tải lên Convex Storage
+  const logo = useQuery(anyApi.appLogo.get);
 
+  // Kho cục bộ (kết quả YouTube tìm được cũng được lưu về đây)
+  const talks = useQuery(api.dhamma.list, { limit: 2000 });
   const loading = talks === undefined;
+
+  // ===== Tìm kiếm TRỰC TIẾP YouTube API — tự động cuộn trang kết quả =====
+  const [ytResults, setYtResults] = useState<YtRow[] | null>(null);
+  const [ytLoading, setYtLoading] = useState(false);
+  const [nextPage, setNextPage] = useState<string | undefined>(undefined);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const ytSearch = useAction(anyApi.youtubeSync.search);
+
+  const searchQ = search.trim();
+
+  useEffect(() => {
+    if (searchQ.length === 0) {
+      setYtResults(null);
+      setNextPage(undefined);
+      return;
+    }
+    let cancelled = false;
+    setYtLoading(true);
+    const t = window.setTimeout(() => {
+      ytSearch({ q: searchQ })
+        .then((r: { items: YtRow[]; nextPageToken?: string }) => {
+          if (cancelled) return;
+          setYtResults(r.items);
+          setNextPage(r.nextPageToken);
+        })
+        .catch(() => {
+          if (!cancelled) setYtResults(null);
+        })
+        .finally(() => {
+          if (!cancelled) setYtLoading(false);
+        });
+    }, 450); // debounce gõ chữ
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQ]);
+
+  const loadMore = () => {
+    if (!nextPage || loadingMore || searchQ.length === 0) return;
+    setLoadingMore(true);
+    ytSearch({ q: searchQ, pageToken: nextPage })
+      .then((r: { items: YtRow[]; nextPageToken?: string }) => {
+        setYtResults((prev) => [...(prev ?? []), ...r.items]);
+        setNextPage(r.nextPageToken);
+      })
+      .catch(() => undefined)
+      .finally(() => setLoadingMore(false));
+  };
+
+  // ===== Đề xuất liên quan TRỰC TIẾP YouTube API khi đang phát =====
+  const [related, setRelated] = useState<YtRow[]>([]);
+  const ytRelated = useAction(anyApi.youtubeSync.related);
+  const relatedKey = current?.youtubeId ?? "";
+  const relatedTitle = current?.title ?? "";
+  useEffect(() => {
+    if (!relatedKey) {
+      setRelated([]);
+      return;
+    }
+    let cancelled = false;
+    ytRelated({ youtubeId: relatedKey, title: relatedTitle })
+      .then((r: { items: YtRow[] }) => {
+        if (!cancelled) setRelated(r.items);
+      })
+      .catch(() => {
+        if (!cancelled) setRelated([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [relatedKey, relatedTitle]);
 
   // Khôi phục vị trí cuộn khi quay lại trang (sau khi dữ liệu đã sẵn sàng)
   useEffect(() => {
@@ -49,53 +137,55 @@ export default function Dashboard() {
     if (!loading) restoreScroll("dashboard");
   }, [loading]);
 
-  // Liên quan: cùng giảng sư với video đang phát (loại video đang phát)
-  const related = useMemo(() => {
-    if (!current || !talks) return [];
-    return talks
-      .filter(
-        (tk) =>
-          tk.youtubeId !== current.youtubeId &&
-          (tk.teacher === current.teacher || tk.channelName === current.channelName),
-      )
-      .slice(0, 8);
-  }, [talks, current]);
-
-  // Lọc tìm kiếm (tiêu đề + giảng sư)
-  const searchQ = search.trim().toLowerCase();
-  const filtered = useMemo(() => {
-    if (!searchQ) return [];
-    return (talks ?? []).filter(
-      (tk) =>
-        tk.title.toLowerCase().includes(searchQ) ||
-        tk.teacher.toLowerCase().includes(searchQ),
-    );
-  }, [talks, searchQ]);
-
   const hasActiveVideo = Boolean(current);
   const isIdle = !hasActiveVideo && searchQ.length === 0;
+
+  // Ghép tiến trình xem cục bộ vào kết quả YouTube
+  const rowToTalk = (r: YtRow): Talk =>
+    ({
+      _id: r._id,
+      youtubeId: r.youtubeId,
+      title: r.title,
+      teacher: r.teacher || r.channelName,
+      channelName: r.channelName,
+      publishedAt: r.publishedAt,
+      durationSec: r.durationSec,
+      viewCount: r.viewCount,
+      syncedAt: Date.now(),
+    }) as unknown as Talk;
 
   return (
     <AppShell title={t("talksTitle")} hideTitle>
       {/* Đồng bộ tự động ngầm — ẩn khỏi giao diện */}
       <AutoSync />
 
-      {/* ===== THANH TÌM KIẾM DUY NHẤT — dính cố định dưới header =====
-          Một instance duy nhất để ô nhập không mất focus khi chuyển màn. */}
-      <div
-        className={cn(
-          "sticky top-14 z-30 -mx-3 bg-background px-3 py-3 shadow-sm sm:-mx-5 sm:px-5",
+      {/* ===== THANH TÌM KIẾM — ẨN khi đang xem video (chỉ còn video + liên quan) ===== */}
+      <div className="sticky top-14 z-30 -mx-3 bg-background px-3 py-3 shadow-sm sm:-mx-5 sm:px-5">
+        {!hasActiveVideo && (
+          <SearchRow
+            value={search}
+            onChange={setSearch}
+            logoUrl={logo?.url ?? null}
+          />
         )}
-      >
-        <SearchRow value={search} onChange={setSearch} />
-        <DockPlayer className={cn(hasActiveVideo && "mt-4")} />
+        <DockPlayer className={cn(hasActiveVideo && "mt-1")} />
       </div>
 
-      {/* ================= CHẾ ĐỘ MẶC ĐỊNH — màn tìm kiếm kiểu YouTube ============ */}
+      {/* ================= MÀN MẶC ĐỊNH — tìm kiếm giữa màn kiểu YouTube ============ */}
       {isIdle && (
-        <div className="flex flex-col items-center px-2 pb-16 pt-6 sm:pt-10">
-          {/* Bánh xe Chuyển Pháp Luân 8 cánh đang quay */}
-          <DharmaWheel className="h-24 w-24 sm:h-28 sm:w-28" />
+        <div className="flex flex-col items-center px-2 pb-16 pt-10 sm:pt-16">
+          {/* Ảnh app chính thức thay bánh xe Chuyển Pháp Luân */}
+          {logo?.url ? (
+            <img
+              src={logo.url}
+              alt="Dharma"
+              className="h-28 w-28 rounded-full object-cover shadow-lg sm:h-32 sm:w-32"
+            />
+          ) : (
+            <span className="flex h-28 w-28 items-center justify-center rounded-full bg-primary text-3xl font-bold text-primary-foreground shadow-lg sm:h-32 sm:w-32">
+              D
+            </span>
+          )}
 
           {/* Thẻ trống kiểu YouTube: "Thử tìm kiếm để bắt đầu" */}
           <div className="mt-10 w-full max-w-2xl rounded-3xl border border-border/60 bg-card px-6 py-10 text-center">
@@ -113,29 +203,29 @@ export default function Dashboard() {
       {/* ============ ĐANG TÌM / ĐANG PHÁT ============ */}
       {!isIdle && (
         <>
-          {/* Liên quan: khi đang phát → CHỈ hiện video liên quan */}
+          {/* Liên quan: khi đang phát → CHỈ hiện video liên quan (YouTube API) */}
           {related.length > 0 && !searchQ && (
             <section className="mb-6" aria-label="Pháp thoại liên quan">
               <h2 className="mb-3 text-lg font-semibold tracking-tight">
                 Pháp thoại liên quan
               </h2>
               <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-                {related.map((talk) => (
+                {related.map((r) => (
                   <TalkRow
-                    key={talk._id}
-                    title={talk.title}
-                    youtubeId={talk.youtubeId}
-                    durationSec={talk.durationSec}
-                    viewCount={talk.viewCount}
-                    active={current?.youtubeId === talk.youtubeId}
-                    onClick={() => play(talk)}
+                    key={r.youtubeId}
+                    title={r.title}
+                    youtubeId={r.youtubeId}
+                    durationSec={r.durationSec}
+                    viewCount={r.viewCount}
+                    active={current?.youtubeId === r.youtubeId}
+                    onClick={() => play(rowToTalk(r))}
                   />
                 ))}
               </div>
             </section>
           )}
 
-          {/* Kết quả tìm kiếm */}
+          {/* Kết quả tìm kiếm YouTube API — tự cuộn thêm trang */}
           {searchQ.length > 0 && (
             <section aria-label="Kết quả tìm kiếm">
               <div className="mb-3 flex items-center justify-between">
@@ -144,11 +234,11 @@ export default function Dashboard() {
                   {t("results")}
                 </h2>
                 <span className="text-xs text-muted-foreground">
-                  {loading ? "…" : `${filtered.length} ${t("articles")}`}
+                  {ytLoading ? "…" : ytResults ? `${ytResults.length} ${t("articles")}` : ""}
                 </span>
               </div>
 
-              {loading ? (
+              {ytLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <div key={i} className="flex gap-4">
@@ -160,7 +250,7 @@ export default function Dashboard() {
                     </div>
                   ))}
                 </div>
-              ) : filtered.length === 0 ? (
+              ) : !ytResults || ytResults.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-10 text-center">
                   <SearchIcon className="mx-auto h-8 w-8 text-muted-foreground/50" />
                   <p className="mt-3 text-sm text-muted-foreground">
@@ -168,21 +258,35 @@ export default function Dashboard() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-1">
-                  {filtered.map((talk) => (
-                    <TalkRow
-                      key={talk._id}
-                      title={talk.title}
-                      youtubeId={talk.youtubeId}
-                      durationSec={talk.durationSec}
-                      viewCount={talk.viewCount}
-                      progressSec={localProgressByTalk(localWatch, talk)}
-                      completed={localCompletedByTalk(localWatch, talk)}
-                      active={current?.youtubeId === talk.youtubeId}
-                      onClick={() => play(talk)}
-                    />
-                  ))}
-                </div>
+                <>
+                  <div className="space-y-1">
+                    {ytResults.map((r) => (
+                      <TalkRow
+                        key={r.youtubeId}
+                        title={r.title}
+                        youtubeId={r.youtubeId}
+                        durationSec={r.durationSec}
+                        viewCount={r.viewCount}
+                        progressSec={localProgressByTalk(localWatch, r.youtubeId, r.durationSec)}
+                        completed={localCompletedByTalk(localWatch, r.youtubeId)}
+                        active={current?.youtubeId === r.youtubeId}
+                        onClick={() => play(rowToTalk(r))}
+                      />
+                    ))}
+                  </div>
+                  {nextPage && (
+                    <div className="mt-5 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={loadMore}
+                        disabled={loadingMore}
+                        className="rounded-full border border-border/60 px-5 py-2 text-sm font-medium text-foreground transition hover:bg-accent disabled:opacity-60"
+                      >
+                        {loadingMore ? "Đang tải…" : "Xem thêm kết quả"}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </section>
           )}
@@ -193,66 +297,21 @@ export default function Dashboard() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Bánh xe Chuyển Pháp Luân 8 cánh QUAY — biểu tượng Pháp thoại         */
-/* ------------------------------------------------------------------ */
-
-export function DharmaWheel({ className }: { className?: string }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg",
-        className,
-      )}
-      aria-hidden
-    >
-      <svg
-        viewBox="0 0 48 48"
-        className="dharma-wheel h-[72%] w-[72%]"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.4"
-      >
-        {/* Vành xe */}
-        <circle cx="24" cy="24" r="19" />
-        <circle cx="24" cy="24" r="15" strokeWidth="1.4" />
-        {/* 8 nan hoa — 8 nhánh Bát Chánh Đạo */}
-        {Array.from({ length: 8 }).map((_, i) => {
-          const a = (i * Math.PI) / 4;
-          const x1 = 24 + 4 * Math.cos(a);
-          const y1 = 24 + 4 * Math.sin(a);
-          const x2 = 24 + 15 * Math.cos(a);
-          const y2 = 24 + 15 * Math.sin(a);
-          return (
-            <line
-              key={i}
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              strokeWidth="2.2"
-            />
-          );
-        })}
-        {/* Lõi xe */}
-        <circle cx="24" cy="24" r="3.4" fill="currentColor" stroke="none" />
-      </svg>
-    </span>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Hàng tìm kiếm kiểu YouTube: logo app · pill · mic tròn phải          */
+/* Hàng tìm kiếm kiểu YouTube: Ảnh app · pill GIỮA · mic tròn phải      */
 /* ------------------------------------------------------------------ */
 
 function SearchRow({
   value,
   onChange,
+  logoUrl,
 }: {
   value: string;
   onChange: (text: string) => void;
+  logoUrl: string | null;
 }) {
   const { supported: micSupported, listening, start, stop } = useVoiceSearch();
   const hasText = value.trim().length > 0;
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!listening) return;
@@ -264,15 +323,30 @@ function SearchRow({
   }, [listening, stop]);
 
   return (
-    <div className="flex items-center gap-2.5" role="search">
-      {/* Pill nhập (đã xóa logo con bên trái theo yêu cầu) */}
+    <div className="flex items-center justify-center gap-2.5" role="search">
+      {/* Ảnh app chính thức bên trái pill */}
+      {logoUrl ? (
+        <img
+          src={logoUrl}
+          alt=""
+          className="h-9 w-9 shrink-0 rounded-full object-cover"
+        />
+      ) : (
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
+          D
+        </span>
+      )}
+
+      {/* Pill nhập — GIỮA, giống YouTube */}
       <div
         className={cn(
-          "flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full bg-muted px-4 transition",
+          "flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full bg-muted px-4 transition sm:max-w-xl",
           (listening || hasText) && "ring-2 ring-destructive/25",
         )}
+        onClick={() => inputRef.current?.focus()}
       >
         <input
+          ref={inputRef}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
@@ -303,7 +377,7 @@ function SearchRow({
           aria-label={listening ? "Đang nghe — bấm để dừng" : "Tìm bằng giọng nói"}
           title={listening ? "Đang nghe…" : "Tìm bằng giọng nói"}
           className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
             listening
               ? "bg-destructive/15 text-destructive"
               : "bg-accent text-foreground hover:bg-border",
@@ -319,7 +393,7 @@ function SearchRow({
           )}
         </button>
       ) : (
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-muted-foreground/50">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-muted-foreground/50">
           <Loader2 className="h-5 w-5" />
         </span>
       )}
@@ -329,13 +403,22 @@ function SearchRow({
 
 /* ---------------------- helpers tiến trình cục bộ ---------------------- */
 
-function localProgressByTalk(rows: ReturnType<typeof loadLocalWatch>, t: Talk) {
-  const row = rows.find((p) => p.youtubeId === t.youtubeId);
-  return row && !row.completed && row.positionSec > 5 ? row.positionSec : undefined;
+function localProgressByTalk(
+  rows: ReturnType<typeof loadLocalWatch>,
+  youtubeId: string,
+  durationSec: number,
+) {
+  const row = rows.find((p) => p.youtubeId === youtubeId);
+  return row && !row.completed && row.positionSec > 5 && durationSec > 0
+    ? row.positionSec
+    : undefined;
 }
 
-function localCompletedByTalk(rows: ReturnType<typeof loadLocalWatch>, t: Talk) {
-  return rows.find((p) => p.youtubeId === t.youtubeId)?.completed ?? false;
+function localCompletedByTalk(
+  rows: ReturnType<typeof loadLocalWatch>,
+  youtubeId: string,
+) {
+  return rows.find((p) => p.youtubeId === youtubeId)?.completed ?? false;
 }
 
 /* ------------------------------------------------------------------ */
