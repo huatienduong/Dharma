@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "convex/react";
+import { useMemo } from "react";
 import {
   Bell,
   Bug,
@@ -16,14 +17,14 @@ import {
   Download,
   Info,
   Lightbulb,
-  Monitor,
   Moon,
   RefreshCw,
   Send,
   Sun,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Paperclip, X } from "lucide-react";
 
 export default function Settings() {
   const {
@@ -31,7 +32,6 @@ export default function Settings() {
     t,
     setTheme,
     setNotifications,
-    setDisplayName,
   } = useSettings();
   const submitFeedback = useMutation(api.library.submitFeedback);
   const meta = useQuery(api.library.getAppVersion, {});
@@ -39,6 +39,10 @@ export default function Settings() {
   const [fbType, setFbType] = useState<"idea" | "bug">("idea");
   const [fbMessage, setFbMessage] = useState("");
   const [fbEmail, setFbEmail] = useState("");
+  const [fbFile, setFbFile] = useState<File | null>(null);
+  const [fbAppVersion, setFbAppVersion] = useState(APP_VERSION);
+  const [fbDevice, setFbDevice] = useState("");
+  const fbFileRef = useRef<HTMLInputElement>(null);
   const [sending, setSending] = useState(false);
 
   // Kiểm tra cập nhật: chỉ chạy khi bấm nút, hiển thị kết quả
@@ -68,6 +72,40 @@ export default function Settings() {
     setChecking(false);
   };
 
+  // Thiết bị/hệ điều hành phát hiện tự động từ trình duyệt
+  const detectedDevice = useMemo(() => {
+    if (typeof navigator === "undefined") return "";
+    const ua = navigator.userAgent;
+    const os = /Android/i.test(ua)
+      ? "Android"
+      : /iPhone|iPad|iPod/i.test(ua)
+        ? "iOS"
+        : /Windows/i.test(ua)
+          ? "Windows"
+          : /Mac OS X/i.test(ua)
+            ? "macOS"
+            : /Linux/i.test(ua)
+              ? "Linux"
+              : "Không xác định";
+    const browser = /Edg\//.test(ua)
+      ? "Edge"
+      : /OPR\//.test(ua)
+        ? "Opera"
+        : /Chrome\//.test(ua)
+          ? "Chrome"
+          : /Safari\//.test(ua)
+            ? "Safari"
+            : /Firefox\//.test(ua)
+              ? "Firefox"
+              : "Trình duyệt khác";
+    return `${os} · ${browser}`;
+  }, []);
+
+  // Tự điền thiết bị nếu ô nhập còn trống
+  useEffect(() => {
+    setFbDevice((d) => d || detectedDevice);
+  }, [detectedDevice]);
+
   const handleSend = async () => {
     if (fbMessage.trim().length < 5) {
       toast.error("Nội dung góp ý quá ngắn.");
@@ -75,15 +113,29 @@ export default function Settings() {
     }
     setSending(true);
     try {
+      // Báo lỗi có đính kèm: ghi chú tệp + thiết bị vào nội dung (lưu cùng feedback)
+      const attachmentNote =
+        fbType === "bug" && fbFile
+          ? `\n\n[Đính kèm: ${fbFile.name} — ${(fbFile.size / 1024).toFixed(0)}KB]`
+          : "";
+      const deviceNote =
+        fbType === "bug" && fbDevice.trim()
+          ? `\n[Thiết bị: ${fbDevice.trim()}]`
+          : "";
       await submitFeedback({
         type: fbType,
-        message: fbMessage,
+        message: `${fbMessage}${attachmentNote}${deviceNote}`,
         email: fbEmail || undefined,
-        appVersion: APP_VERSION,
+        appVersion: fbType === "bug" && fbAppVersion.trim() ? fbAppVersion.trim() : APP_VERSION,
       });
-      toast.success("Đã gửi góp ý. Xin cảm ơn bạn!");
+      toast.success(
+        fbType === "bug"
+          ? "Đã gửi báo lỗi. Xin cảm ơn bạn!"
+          : "Đã gửi góp ý. Xin cảm ơn bạn!",
+      );
       setFbMessage("");
       setFbEmail("");
+      setFbFile(null);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Gửi thất bại.");
     } finally {
@@ -99,9 +151,9 @@ export default function Settings() {
       <div className="space-y-6">
         {/* ---------- Giao diện ---------- */}
         <Section title={t("sectionAppearance")} icon={<Sun className="h-4 w-4 text-gold" />}>
-          {/* Chế độ sáng/tối: card lựa chọn */}
+          {/* Chế độ sáng/tối: chỉ Sáng và Tối (đã bỏ Theo hệ thống) */}
           <ChoiceRow label={t("modeLabel")}>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {(
                 [
                   {
@@ -115,12 +167,6 @@ export default function Settings() {
                     label: t("themeDark"),
                     desc: t("darkDesc"),
                     icon: <Moon className="h-5 w-5" />,
-                  },
-                  {
-                    key: "system",
-                    label: t("themeSystem"),
-                    desc: t("systemDesc"),
-                    icon: <Monitor className="h-5 w-5" />,
                   },
                 ] as { key: ThemeMode; label: string; desc: string; icon: React.ReactNode }[]
               ).map((opt) => (
@@ -178,27 +224,6 @@ export default function Settings() {
 
         {/* ---------- Phiên bản ---------- */}
         <Section title={t("appSection")} icon={<Info className="h-4 w-4 text-gold" />}>
-          {/* Tên hiển thị — dùng trong Trợ lý Phật học */}
-          <div className="rounded-xl border border-border/60 bg-card/40 p-4">
-            <label
-              htmlFor="ds-display-name"
-              className="text-sm font-semibold"
-            >
-              {t("displayNameLabel")}
-            </label>
-            <input
-              id="ds-display-name"
-              type="text"
-              value={settings.displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Ví dụ: Minh An"
-              className="mt-2 w-full rounded-lg border border-border/70 bg-background px-3 py-2 text-sm outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
-            />
-            <p className="mt-1.5 text-xs text-muted-foreground">
-              {t("displayNameHint")}
-            </p>
-          </div>
-
           <div className="rounded-xl border border-border/60 bg-card/40 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -311,27 +336,92 @@ export default function Settings() {
             value={fbMessage}
             onChange={(e) => setFbMessage(e.target.value)}
             rows={4}
-            placeholder={
-              fbType === "bug"
-                ? "Mô tả lỗi: bạn làm gì, thấy gì, mong đợi điều gì…"
-                : "Bạn mong muốn ứng dụng có tính năng gì tiếp theo?"
-            }
+            placeholder=""
+            aria-label="Nội dung góp ý hoặc báo lỗi"
             className="w-full rounded-xl border border-border/70 bg-card/80 p-3 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           />
-          <input
-            value={fbEmail}
-            onChange={(e) => setFbEmail(e.target.value)}
-            placeholder="Email liên hệ (không bắt buộc)"
-            type="email"
-            className="w-full rounded-xl border border-border/70 bg-card/80 p-3 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-          />
+
+          {/* BÁO LỖI: đính kèm ảnh/video + thông tin phiên bản & thiết bị */}
+          {fbType === "bug" && (
+            <>
+              <div>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fbFileRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] ?? null;
+                      setFbFile(f);
+                      e.target.value = "";
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fbFileRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card/60 px-3 py-1.5 text-xs font-medium text-foreground/85 transition hover:bg-accent"
+                  >
+                    <Paperclip className="h-3.5 w-3.5" />
+                    Đính kèm ảnh / video
+                  </button>
+                  {fbFile && (
+                    <button
+                      type="button"
+                      onClick={() => setFbFile(null)}
+                      className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2.5 py-1 text-[11px] font-medium text-destructive transition hover:bg-destructive/20"
+                    >
+                      <X className="h-3 w-3" />
+                      {fbFile.name.length > 28
+                        ? `${fbFile.name.slice(0, 26)}…`
+                        : fbFile.name}
+                    </button>
+                  )}
+                </div>
+                {fbFile && (
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    Tệp đã sẵn sàng — dung lượng tối đa khuyến nghị 10MB.
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <label className="rounded-xl border border-border/70 bg-card/60 p-3">
+                  <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Số phiên bản ứng dụng
+                  </span>
+                  <input
+                    value={fbAppVersion}
+                    onChange={(e) => setFbAppVersion(e.target.value)}
+                    placeholder=""
+                    className="mt-1 w-full bg-transparent text-sm outline-none"
+                  />
+                </label>
+                <label className="rounded-xl border border-border/70 bg-card/60 p-3">
+                  <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Thiết bị / hệ điều hành
+                  </span>
+                  <input
+                    value={fbDevice}
+                    onChange={(e) => setFbDevice(e.target.value)}
+                    placeholder=""
+                    className="mt-1 w-full bg-transparent text-sm outline-none"
+                  />
+                </label>
+              </div>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Thiết bị phát hiện tự động: {detectedDevice}
+              </p>
+            </>
+          )}
+
           <Button
             onClick={handleSend}
             disabled={sending}
             className="gap-2 w-full sm:w-auto"
           >
             <Send className="h-4 w-4" />
-            {sending ? "Đang gửi…" : "Gửi góp ý"}
+            {sending ? "Đang gửi…" : fbType === "bug" ? "Gửi báo lỗi" : "Gửi góp ý"}
           </Button>
         </Section>
       </div>

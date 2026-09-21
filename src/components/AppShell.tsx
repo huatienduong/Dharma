@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
-import { Bot } from "lucide-react";
 
 /** Nhóm trái: nội dung học liệu. */
 const NAV_LEFT: { to: string; tKey: TranslateKey; icon: typeof LayoutDashboard }[] = [

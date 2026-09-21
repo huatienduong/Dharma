@@ -83,8 +83,8 @@ export default function Dashboard() {
       {/* ================= CHẾ ĐỘ MẶC ĐỊNH — màn tìm kiếm kiểu YouTube ============ */}
       {isIdle && (
         <div className="flex flex-col items-center px-2 pb-16 pt-10 sm:pt-16">
-          {/* Logo nút play đỏ kiểu YouTube */}
-          <PlayLogo className="h-20 w-28 sm:h-24 sm:w-32" />
+          {/* Bánh xe Chuyển Pháp Luân 8 cánh đang quay */}
+          <DharmaWheel className="h-24 w-24 sm:h-28 sm:w-28" />
 
           {/* Hàng tìm kiếm: nút tròn trái · pill · mic tròn phải */}
           <div className="mt-8 w-full max-w-xl">
@@ -194,20 +194,48 @@ export default function Dashboard() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Logo nút play đỏ — dựng thuần CSS/SVG kiểu YouTube                  */
+/* Bánh xe Chuyển Pháp Luân 8 cánh QUAY — biểu tượng Pháp thoại         */
 /* ------------------------------------------------------------------ */
 
-function PlayLogo({ className }: { className?: string }) {
+export function DharmaWheel({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center justify-center rounded-[22%] bg-[#ff0000] shadow-lg",
+        "inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg",
         className,
       )}
       aria-hidden
     >
-      <svg viewBox="0 0 24 24" className="h-1/2 w-1/2 fill-white">
-        <path d="M8 5.5v13l11-6.5-11-6.5z" />
+      <svg
+        viewBox="0 0 48 48"
+        className="dharma-wheel h-[72%] w-[72%]"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.4"
+      >
+        {/* Vành xe */}
+        <circle cx="24" cy="24" r="19" />
+        <circle cx="24" cy="24" r="15" strokeWidth="1.4" />
+        {/* 8 nan hoa — 8 nhánh Bát Chánh Đạo */}
+        {Array.from({ length: 8 }).map((_, i) => {
+          const a = (i * Math.PI) / 4;
+          const x1 = 24 + 4 * Math.cos(a);
+          const y1 = 24 + 4 * Math.sin(a);
+          const x2 = 24 + 15 * Math.cos(a);
+          const y2 = 24 + 15 * Math.sin(a);
+          return (
+            <line
+              key={i}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              strokeWidth="2.2"
+            />
+          );
+        })}
+        {/* Lõi xe */}
+        <circle cx="24" cy="24" r="3.4" fill="currentColor" stroke="none" />
       </svg>
     </span>
   );
@@ -238,9 +266,9 @@ function SearchRow({
 
   return (
     <div className="flex items-center gap-2.5" role="search">
-      {/* Nút tròn trái — logo play nhỏ */}
+      {/* Nút tròn trái — bánh xe Chuyển Pháp Luân nhỏ */}
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent">
-        <PlayLogo className="h-4.5 w-6" />
+        <DharmaWheel className="h-8 w-8" />
       </span>
 
       {/* Pill nhập */}

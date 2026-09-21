@@ -3,7 +3,6 @@ import { api } from "@/convex/_generated/api";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 import { cn } from "@/lib/utils";
-import { useSettings } from "@/lib/settings";
 import { useAction } from "convex/react";
 import {
   ArrowLeft,
@@ -97,7 +96,6 @@ function saveLocalChat(msgs: Msg[]) {
 
 export default function Assistant() {
   const navigate = useNavigate();
-  const { settings } = useSettings();
   const ask = useAction(api.aiChat.ask);
 
   const [history, setHistory] = useState<Msg[]>(loadLocalChat);
@@ -512,9 +510,7 @@ export default function Assistant() {
         {isEmpty ? (
           <div className="flex h-full flex-col items-center justify-center px-4 text-center">
             <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              {settings.displayName
-                ? `Xin chào ${settings.displayName} 🙏`
-                : "Xin chào 🙏"}
+              Xin chào 🙏
             </h2>
             <p className="mt-2 max-w-md text-[15px] leading-relaxed text-muted-foreground">
               Hôm nay tôi có thể giúp gì cho bạn trên con đường Phật pháp?

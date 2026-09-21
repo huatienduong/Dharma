@@ -50,6 +50,19 @@ function listProviders(needVision: boolean): ProviderChoice[] {
   const vlyKey = process.env.VLY_INTEGRATION_KEY;
 
   if (needVision) {
+    // Gateway VLY hỗ trợ đa mô hình (vision) — dùng khi không có khóa riêng
+    if (vlyKey) {
+      out.push({
+        label: "Cổng AI tích hợp",
+        make: () =>
+          createOpenAICompatible({
+            name: "vly-gateway",
+            baseURL: "https://integrations.vly.ai/v1/llm",
+            headers: { Authorization: `Bearer ${vlyKey}` },
+          }),
+        model: "gpt-5", // gateway mặc định — model cũ gpt-4.1-mini không tồn tại trên gateway
+      });
+    }
     if (geminiKey) {
       out.push({
         label: "Gemini",
@@ -123,7 +136,7 @@ function listProviders(needVision: boolean): ProviderChoice[] {
           baseURL: "https://integrations.vly.ai/v1/llm",
           headers: { Authorization: `Bearer ${vlyKey}` },
         }),
-      model: "gpt-4.1-mini",
+      model: "gpt-5", // gateway mặc định — model cũ gpt-4.1-mini không tồn tại trên gateway
     });
   }
   return out;
@@ -220,7 +233,10 @@ export const ask = action({
     }
     throw new Error(
       `Không kết nối được Trợ lý Phật học. Chi tiết: ${errors.join(" | ")}` +
-        (imageBase64 && !process.env.GEMINI_API_KEY
+        (imageBase64 &&
+        !process.env.GEMINI_API_KEY &&
+        !process.env.OPENAI_API_KEY &&
+        !process.env.VLY_INTEGRATION_KEY
           ? " — Gửi ảnh cần khóa GEMINI_API_KEY (miễn phí tại aistudio.google.com), dán vào tab Keys/API keys."
           : ""),
     );

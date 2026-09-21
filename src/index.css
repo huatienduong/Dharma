@@ -44,89 +44,89 @@
   --color-gold-soft: var(--gold-soft);
 }
 
-/* CHANGE VALUES FOR THEME — chủ đề kiểu YouTube: trắng/tối than + đỏ YouTube */
+/* CHANGE VALUES FOR THEME — màu áo y cà sa theo truyền thống Theravāda */
 :root {
   --radius: 0.625rem;
-  --background: #ffffff;
-  --foreground: #0f0f0f;
+  --background: #faf6ef;
+  --foreground: #2b1d12;
   --card: #ffffff;
-  --card-foreground: #0f0f0f;
-  --popover: #ffffff;
-  --popover-foreground: #0f0f0f;
-  --primary: #0f0f0f;
-  --primary-foreground: #ffffff;
-  --secondary: #f2f2f2;
-  --secondary-foreground: #0f0f0f;
-  --muted: #f2f2f2;
-  --muted-foreground: #606060;
-  --accent: #f2f2f2;
-  --accent-foreground: #0f0f0f;
-  --destructive: #cc0000;
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #0f0f0f;
-  --chart-1: #cc0000;
-  --chart-2: #065fd4;
-  --chart-3: #2ba040;
-  --chart-4: #f5a623;
-  --chart-5: #9147ff;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #0f0f0f;
-  --sidebar-primary: #0f0f0f;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f2f2f2;
-  --sidebar-accent-foreground: #0f0f0f;
-  --sidebar-border: #e5e5e5;
-  --sidebar-ring: #0f0f0f;
+  --card-foreground: #2b1d12;
+  --popover: #fffdf8;
+  --popover-foreground: #2b1d12;
+  --primary: #b45309; /* cam đất y cà sa sẫm */
+  --primary-foreground: #fff8ec;
+  --secondary: #f3e5c8; /* vàng saffron nhạt */
+  --secondary-foreground: #5f4630;
+  --muted: #f1e8d8;
+  --muted-foreground: #7a6a55;
+  --accent: #f3e5c8;
+  --accent-foreground: #5f4630;
+  --destructive: #b91c1c;
+  --border: #e5d9c3;
+  --input: #e5d9c3;
+  --ring: #b45309;
+  --chart-1: #b45309;
+  --chart-2: #92400e;
+  --chart-3: #ca8a04;
+  --chart-4: #854d0e;
+  --chart-5: #d97706;
+  --sidebar: #f6efe1;
+  --sidebar-foreground: #2b1d12;
+  --sidebar-primary: #b45309;
+  --sidebar-primary-foreground: #fff8ec;
+  --sidebar-accent: #efe2c9;
+  --sidebar-accent-foreground: #5f4630;
+  --sidebar-border: #e5d9c3;
+  --sidebar-ring: #b45309;
 
-  /* Token cũ giữ tương thích — đã trung tính theo phong cách YouTube */
-  --brown-deep: #0f0f0f;
-  --brown-mid: #272727;
-  --gold: #cc0000; /* đỏ YouTube */
-  --gold-soft: #ff3b30;
-  --lotus: #f2f2f2;
+  /* Token phụ trợ — vàng saffron dùng cho điểm nhấn phụ */
+  --brown-deep: #2b1d12;
+  --brown-mid: #5f4630;
+  --gold: #b45309; /* cam y cà sa chủ đạo */
+  --gold-soft: #d97706;
+  --lotus: #f3e5c8;
 
   --font-size-scale: 1;
 }
 
 .dark {
-  --background: #0f0f0f;
-  --foreground: #f1f1f1;
-  --card: #212121;
-  --card-foreground: #f1f1f1;
-  --popover: #282828;
-  --popover-foreground: #f1f1f1;
-  --primary: #f1f1f1;
-  --primary-foreground: #0f0f0f;
-  --secondary: #272727;
-  --secondary-foreground: #f1f1f1;
-  --muted: #272727;
-  --muted-foreground: #aaaaaa;
-  --accent: #272727;
-  --accent-foreground: #f1f1f1;
-  --destructive: #ff5c5c;
-  --border: #303030;
-  --input: #303030;
-  --ring: #f1f1f1;
-  --chart-1: #ff5c5c;
-  --chart-2: #3ea6ff;
-  --chart-3: #2ba040;
-  --chart-4: #f5a623;
-  --chart-5: #9147ff;
-  --sidebar: #0f0f0f;
-  --sidebar-foreground: #f1f1f1;
-  --sidebar-primary: #f1f1f1;
-  --sidebar-primary-foreground: #0f0f0f;
-  --sidebar-accent: #272727;
-  --sidebar-accent-foreground: #f1f1f1;
-  --sidebar-border: #303030;
-  --sidebar-ring: #f1f1f1;
+  --background: #17100a;
+  --foreground: #f3e9d8;
+  --card: #241a10;
+  --card-foreground: #f3e9d8;
+  --popover: #2b2015;
+  --popover-foreground: #f3e9d8;
+  --primary: #e0852a; /* y cà sa sáng trên nền tối */
+  --primary-foreground: #1a1108;
+  --secondary: #2f2314;
+  --secondary-foreground: #ecd9b5;
+  --muted: #2f2314;
+  --muted-foreground: #b3a184;
+  --accent: #2f2314;
+  --accent-foreground: #ecd9b5;
+  --destructive: #ef6a5a;
+  --border: #3a2c1c;
+  --input: #3a2c1c;
+  --ring: #e0852a;
+  --chart-1: #e0852a;
+  --chart-2: #c2711c;
+  --chart-3: #d4a72c;
+  --chart-4: #9a5b13;
+  --chart-5: #f0a04b;
+  --sidebar: #17100a;
+  --sidebar-foreground: #f3e9d8;
+  --sidebar-primary: #e0852a;
+  --sidebar-primary-foreground: #1a1108;
+  --sidebar-accent: #2f2314;
+  --sidebar-accent-foreground: #ecd9b5;
+  --sidebar-border: #3a2c1c;
+  --sidebar-ring: #e0852a;
 
-  --brown-deep: #0f0f0f;
-  --brown-mid: #272727;
-  --gold: #ff5050;
-  --gold-soft: #ff7a7a;
-  --lotus: #272727;
+  --brown-deep: #17100a;
+  --brown-mid: #2f2314;
+  --gold: #e0852a;
+  --gold-soft: #f0a04b;
+  --lotus: #2f2314;
 }
 
 @layer base {
@@ -306,3 +306,25 @@ body.ds-protect {
 }
 
 
+
+/* ---------- Bánh xe Chuyển Pháp Luân 8 cánh quay (Pháp thoại) ---------- */
+
+@keyframes dharma-wheel-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dharma-wheel {
+  animation: dharma-wheel-spin 14s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dharma-wheel {
+    animation: none;
+  }
+}

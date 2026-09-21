@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 
-export type ThemeMode = "light" | "dark" | "system";
+export type ThemeMode = "light" | "dark";
 export type Language = "vi" | "en";
 
 export type AppSettings = {
@@ -16,7 +16,6 @@ export type AppSettings = {
   fontScale: number; // 0.9 | 1 | 1.15 | 1.3
   language: Language;
   notifications: boolean;
-  displayName: string;
 };
 
 export const FONT_SCALES = [
@@ -27,11 +26,10 @@ export const FONT_SCALES = [
 ] as const;
 
 const DEFAULTS: AppSettings = {
-  theme: "system",
+  theme: "light",
   fontScale: 1,
   language: "vi",
   notifications: true,
-  displayName: "",
 };
 
 const LS_KEY = "dhamma-stream-settings";
@@ -131,8 +129,6 @@ const VI = {
   guestNotice:
     "Toàn bộ dữ liệu của bạn (lịch sử xem, tiến trình đọc, phiên thiền) được lưu ngay trên thiết bị này.",
   loginRegister: "Đăng nhập / Đăng ký",
-  displayNameLabel: "Tên hiển thị",
-  displayNameHint: "Dùng để chào bạn trong Trợ lý Phật học",
   // Trang con
   suttasSubtitle: "Sutta Piṭaka — học Kinh, luận giải và chú giải theo truyền thống Theravāda",
   dictTitle: "Từ điển Phật học",
@@ -217,8 +213,6 @@ const EN: Partial<Record<keyof typeof VI, string>> = {
   guestNotice:
     "All your data (watch history, reading progress, meditation sessions) is stored locally on this device.",
   loginRegister: "Sign in / Sign up",
-  displayNameLabel: "Display name",
-  displayNameHint: "Used to greet you in the Dharma Assistant",
   // Pages
   suttasSubtitle:
     "Sutta Piṭaka — study, commentary and exposition in the Theravāda tradition",
@@ -247,7 +241,6 @@ type SettingsContextValue = {
   setFontScale: (v: number) => void;
   setLanguage: (l: Language) => void;
   setNotifications: (v: boolean) => void;
-  setDisplayName: (name: string) => void;
 };
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
@@ -258,11 +251,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   // Áp dụng chủ đề + cỡ chữ lên <html>
   useEffect(() => {
     const root = document.documentElement;
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const dark =
-      settings.theme === "dark" ||
-      (settings.theme === "system" && prefersDark);
-    root.classList.toggle("dark", dark);
+    root.classList.toggle("dark", settings.theme === "dark");
     root.style.setProperty("--font-size-scale", String(settings.fontScale));
     root.lang = settings.language === "en" ? "en" : "vi";
     saveLocal(settings);
@@ -291,18 +280,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SettingsContextValue>(
     () => ({
       settings,
-      resolvedTheme:
-        settings.theme === "system"
-          ? window.matchMedia("(prefers-color-scheme: dark)").matches
-            ? "dark"
-            : "light"
-          : settings.theme,
+      resolvedTheme: settings.theme,
       t,
       setTheme: (mode) => persist({ theme: mode }),
       setFontScale: (v) => persist({ fontScale: v }),
       setLanguage: (l) => persist({ language: l }),
       setNotifications: (v) => persist({ notifications: v }),
-      setDisplayName: (name) => persist({ displayName: name.trim().slice(0, 60) }),
     }),
     [settings, persist, t],
   );
@@ -326,6 +309,5 @@ export function useSettings() {
     setFontScale: () => {},
     setLanguage: () => {},
     setNotifications: () => {},
-    setDisplayName: () => {},
   };
 }
