@@ -3,7 +3,7 @@
 /*   • DockPlayer: nằm TRONG trang (Dashboard/Lịch sử xem), ngay dưới   */
 /*     thanh tìm kiếm → logo & tìm kiếm luôn ở trên, không bị đẩy xuống */
 /*   • MiniPlayer: thẻ nhỏ fixed góc phải khi thu nhỏ hoặc ở trang khác  */
-/* Bàn tay交接: khi chuyển surface, video tự nạp tiếp đúng giây đang xem. */
+/* Bàn giao: khi chuyển surface, video tự nạp tiếp đúng giây đang xem. */
 /* YouTube UI tắt toàn bộ (controls/logo/info) + lớp chặn click.        */
 /* ------------------------------------------------------------------ */
 import {
@@ -156,7 +156,8 @@ type SurfaceHandle = {
 type SurfaceEntry = { sid: number; handle: SurfaceHandle };
 
 type RegistryApi = {
-  register(kind: SurfaceKind, handle: SurfaceHandle): void;
+  /** Đăng ký surface, trả về sid để unregister đúng */
+  register(kind: SurfaceKind, handle: SurfaceHandle): number;
   unregister(kind: SurfaceKind, sid: number): void;
 };
 
@@ -273,8 +274,7 @@ function useYtSurface(
   /* Đăng ký surface vào registry của provider */
   useEffect(() => {
     if (!ready || !registry || !handleRef.current) return;
-    const sid = ++surfaceSidCounter;
-    registry.register(kind, handleRef.current);
+    const sid = registry.register(kind, handleRef.current);
     return () => registry.unregister(kind, sid);
   }, [ready, kind, registry]);
 
@@ -298,6 +298,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [isExpanded, setExpanded] = useState(true);
   const [isFullscreen, setFullscreen] = useState(false);
   const [surfaceVersion, setSurfaceVersion] = useState(0);
+  const [dockRegistered, setDockRegistered] = useState(false);
 
   /* -------- refs -------- */
   const surfacesRef = useRef<Partial<Record<SurfaceKind, SurfaceEntry>>>({});
@@ -334,14 +335,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             if (document.fullscreenElement) void document.exitFullscreen();
           }
         };
-        surfacesRef.current[kind] = { sid: ++surfaceSidCounter, handle };
+        const sid = ++surfaceSidCounter;
+        surfacesRef.current[kind] = { sid, handle };
+        if (kind === "dock") setDockRegistered(true);
         setSurfaceVersion((v) => v + 1);
+        return sid;
       },
       unregister: (kind, sid) => {
         const e = surfacesRef.current[kind];
         if (e && e.sid === sid) {
           if (ownerSidRef.current === sid) ownerSidRef.current = 0;
           delete surfacesRef.current[kind];
+          if (kind === "dock") setDockRegistered(false);
           setSurfaceVersion((v) => v + 1);
         }
       },
@@ -365,10 +370,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setExpanded(!pathIsMini);
   }, [pathIsMini, current]);
 
-  /* -------- BÀN TAY交接: nạp video vào surface mong muốn -------- */
+  /* -------- Bàn giao surface: nạp video vào surface mong muốn -------- */
   useEffect(() => {
     if (!current || !desiredKind) return;
-    const reg = surfacesRef.current[desiredKind];
+    let reg = surfacesRef.current[desiredKind];
+    // Trang không render DockPlayer (vd Lịch sử xem) → phát trong mini
+    if (!reg && desiredKind === "dock") reg = surfacesRef.current.mini;
     if (!reg || ownerSidRef.current === reg.sid) return;
     const resumeAt = lastPosRef.current;
     for (const k of ["dock", "mini"] as const) {
@@ -377,6 +384,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     ownerSidRef.current = reg.sid;
     setPlaying(false);
     reg.handle.load(current.youtubeId);
+    // Đảm bảo phát: surface mới có thể chưa “visible” lúc load
+    window.setTimeout(() => reg.handle.play(), 700);
     if (resumeAt > 5) {
       window.setTimeout(() => reg.handle.seek(resumeAt), 900);
     }
@@ -499,7 +508,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     <RegistryContext.Provider value={registryApi}>
       <PlayerContext.Provider value={value}>
         {children}
-        <MiniPlayer active={desiredKind === "mini"} />
+        <MiniPlayer
+          active={
+            Boolean(current) &&
+            (desiredKind === "mini" || !dockRegistered)
+          }
+        />
       </PlayerContext.Provider>
     </RegistryContext.Provider>
   );
@@ -635,7 +649,7 @@ export function DockPlayer({ className }: { className?: string }) {
 /* ------------------------------------------------------------------ */
 
 function MiniPlayer({ active }: { active: boolean }) {
-  const { isPlaying, position, duration, toggle, close, setExpanded, isFullscreen, toggleFullscreen } =
+  const { isPlaying, position, duration, toggle, seek, close, setExpanded, isFullscreen, toggleFullscreen } =
     usePlayer();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const hostRef = useYtSurface("mini", containerRef);
@@ -704,10 +718,7 @@ function MiniPlayer({ active }: { active: boolean }) {
           <FullscreenControls
             position={position}
             duration={duration}
-            onSeek={(sec) => {
-              const h = hostRef.current;
-              void h;
-            }}
+            onSeek={seek}
             isPlaying={isPlaying}
             onToggle={toggle}
             onExit={toggleFullscreen}

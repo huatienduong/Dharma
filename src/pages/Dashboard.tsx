@@ -2,7 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import { SearchToolbar } from "@/components/SearchToolbar";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
-import { formatCount, formatTime, usePlayer } from "@/lib/player";
+import { DockPlayer, formatCount, formatTime, usePlayer } from "@/lib/player";
 import { useSettings } from "@/lib/settings";
 import { APP_VERSION } from "@/lib/version";
 import { Badge } from "@/components/ui/badge";
@@ -109,6 +109,12 @@ export default function Dashboard() {
           onChange={setSearch}
           placeholder={t("searchPlaceholder")}
         />
+      </div>
+
+      {/* ---------- Trình phát video: nằm NGAY DƯỚI thanh tìm kiếm.
+          Logo & tìm kiếm luôn ở trên — không bao giờ bị đẩy xuống. ---------- */}
+      <div className="mb-6">
+        <DockPlayer />
       </div>
 
       {/* ---------- Hero (ẩn khi đang phát — chỉ còn video + liên quan) ---------- */}

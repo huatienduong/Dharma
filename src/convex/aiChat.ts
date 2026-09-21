@@ -30,6 +30,7 @@ type ChatMessage = { role: "user" | "assistant"; content: string };
 
 const HISTORY_LIMIT = 6; // giảm bớt context để AI trả lời nhanh hơn
 const MAX_TOKENS = 700; // giảm lượng output để tránh chậm và dài dòng
+const AI_TIMEOUT_MS = 45_000; // phòng trường hợp provider treo — lỗi sau 45s thay vì treo vĩnh viễn
 
 /* ------------------------------------------------------------------ */
 /* Danh sách nhà cung cấp AI — ưu tiên tốc độ, fallback chỉ khi cần     */
@@ -98,7 +99,7 @@ function listProviders(needVision: boolean): ProviderChoice[] {
           baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
           apiKey: geminiKey,
         }),
-      model: "gemini-2.0-flash",
+      model: "gemini-flash-latest",
     });
   }
   if (groqKey) {
@@ -194,12 +195,21 @@ export const ask = action({
     const errors: string[] = [];
     for (const provider of providers) {
       try {
-        const result = await generateText({
-          model: provider.make()(provider.model),
-          messages: payload as never,
-          temperature: 0.35,
-          maxOutputTokens: MAX_TOKENS,
-        });
+        // Timeout: provider chậm/treo → hủy sau 45s, thử provider kế tiếp
+        const result = await Promise.race([
+          generateText({
+            model: provider.make()(provider.model),
+            messages: payload as never,
+            temperature: 0.35,
+            maxOutputTokens: MAX_TOKENS,
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () => reject(new Error("hết giờ (45s)")),
+              AI_TIMEOUT_MS,
+            ),
+          ),
+        ]);
         const reply = result.text.trim();
         if (reply) return reply;
         errors.push(`${provider.label}: trả lời rỗng`);
