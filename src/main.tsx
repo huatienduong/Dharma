@@ -98,6 +98,13 @@ class RootErrorBoundary extends React.Component<
 const DHARMA_CONVEX_URL = "https://steady-rhinoceros-488.convex.cloud";
 const convex = new ConvexReactClient(DHARMA_CONVEX_URL);
 
+// SỬA LỖI TRẮNG TRANG trên domain riêng: basename phải tự động theo nơi app
+// được phục vụ — nền tảng chạy dưới /dharma, còn dharma.freebuff.app phục vụ
+// ở gốc /. Baseline sai → không route nào khớp → trang render rỗng.
+const ROUTER_BASENAME = window.location.pathname.startsWith("/dharma")
+  ? "/dharma"
+  : "/";
+
 // Lazy load các named export (trang đọc chi tiết)
 const SuttaReader = lazy(() =>
   import("./pages/Suttas.tsx").then((m) => ({ default: m.SuttaReader })),
@@ -115,7 +122,7 @@ const MeditationDetail = lazy(() =>
 
 function RouteSyncer() {
   const location = useLocation();
-  console.log("[Dharma Router]", location.pathname, "basename=/dharma");
+  console.log("[Dharma Router]", location.pathname, "basename=" + ROUTER_BASENAME);
   useEffect(() => {
     window.parent.postMessage(
       { type: "iframe-route-change", path: location.pathname },
@@ -148,7 +155,7 @@ createRoot(document.getElementById("root")!).render(
         <SettingsProvider>
           <ScreenshotGuard />
           <UpdateChecker />
-          <BrowserRouter basename="/dharma">
+          <BrowserRouter basename={ROUTER_BASENAME}>
             <PlayerProvider>
             <RouteSyncer />
             <Suspense fallback={<RouteLoading />}>
