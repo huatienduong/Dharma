@@ -1,28 +1,23 @@
 import { AppShell } from "@/components/AppShell";
-import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import { DockPlayer, formatCount, formatTime, usePlayer } from "@/lib/player";
+import {
+  clearAllLocalProgress,
+  loadLocalWatch,
+  type LocalWatchRow,
+} from "@/lib/localProgress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSettings } from "@/lib/settings";
-import { useQuery } from "convex/react";
-import { Eye, History, Play } from "lucide-react";
-import { useMemo } from "react";
+import { Eye, History, Play, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
-type ProgressRow = {
-  talkId: Id<"dhammaTalks">;
-  youtubeId: string;
-  title: string;
-  teacher: string;
-  channelName: string;
-  publishedAt: string;
-  positionSec: number;
-  durationSec: number;
-  completed: boolean;
-  updatedAt: number;
-};
+/* ------------------------------------------------------------------ */
+/* Hàng video NGANG kiểu kết quả tìm kiếm YouTube:                     */
+/* thumbnail TRÁI — tiêu đề + lượt xem PHẢI                            */
+/* ------------------------------------------------------------------ */
 
-function TalkRow({
+function TalkRowHorizontal({
   title,
   youtubeId,
   durationSec,
@@ -51,11 +46,12 @@ function TalkRow({
       type="button"
       onClick={onClick}
       className={cn(
-        "group flex w-full flex-col text-left transition",
-        active && "rounded-xl bg-accent/60 p-1.5 -m-1.5 ring-1 ring-primary/40",
+        "group flex w-full items-start gap-3 rounded-xl p-1.5 text-left transition hover:bg-accent/60 sm:gap-4",
+        active && "bg-accent ring-1 ring-destructive/40",
       )}
     >
-      <span className="relative block w-full overflow-hidden rounded-xl bg-muted">
+      {/* Thumbnail trái */}
+      <span className="relative block w-40 shrink-0 overflow-hidden rounded-lg bg-muted sm:w-60">
         <span className="block aspect-video w-full">
           <img
             src={`https://i.ytimg.com/vi/${youtubeId}/mqdefault.jpg`}
@@ -68,35 +64,40 @@ function TalkRow({
           {formatTime(durationSec)}
         </span>
         {completed && (
-          <span className="absolute left-1.5 top-1.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
+          <span className="absolute left-1.5 top-1.5 rounded bg-foreground px-1.5 py-0.5 text-[10px] font-medium text-background">
             Đã xem
           </span>
         )}
         {active && (
-          <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-gold">
+          <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-destructive">
             Đang phát
           </span>
         )}
         {pct !== undefined && (
           <span className="absolute inset-x-0 bottom-0 h-1 bg-black/40">
-            <span className="block h-full bg-gold" style={{ width: `${pct}%` }} />
+            <span className="block h-full bg-destructive" style={{ width: `${pct}%` }} />
           </span>
         )}
       </span>
-      <span className="mt-2.5 min-w-0 flex-1">
-        <span className="line-clamp-2 block text-[15px] font-medium leading-snug text-foreground group-hover:text-primary">
+
+      {/* Thông tin phải: tiêu đề + lượt xem */}
+      <span className="flex min-w-0 flex-1 flex-col pt-0.5">
+        <span className="line-clamp-2 text-[15px] font-medium leading-snug text-foreground group-hover:text-destructive sm:text-base">
           {title}
         </span>
-        <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-muted-foreground">
+        <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
-            <Play className="h-3.5 w-3.5" />
-            <span className="tabular-nums">{formatTime(progressSec ?? 0)}</span>
-            <span className="text-muted-foreground/60">/ {formatTime(durationSec)}</span>
+            <Eye className="h-3.5 w-3.5" />
+            <span className="tabular-nums">
+              {formatCount(viewCount ?? 0)} lượt xem
+            </span>
           </span>
-          {typeof viewCount === "number" && (
+          {progressSec !== undefined && (
             <span className="inline-flex items-center gap-1">
-              <Eye className="h-3.5 w-3.5" />
-              <span className="tabular-nums">{formatCount(viewCount)} lượt xem</span>
+              <Play className="h-3.5 w-3.5" />
+              <span className="tabular-nums">
+                {formatTime(progressSec)} / {formatTime(durationSec)}
+              </span>
             </span>
           )}
         </span>
@@ -108,56 +109,65 @@ function TalkRow({
 export default function Watched() {
   const { play, current } = usePlayer();
   const { t } = useSettings();
-  // Lịch sử xem lấy từ tiến trình server (không còn bản lưu cục bộ)
-  const progress = useQuery(api.dhamma.myProgress, {});
-  // Kho pháp thoại để lấy lượt xem đồng bộ với trang chủ
-  const talks = useQuery(api.dhamma.list, { limit: 2000 });
-  const viewCountBy = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const t of talks ?? []) m.set(t.youtubeId, t.viewCount ?? 0);
-    return m;
-  }, [talks]);
+  const [rows, setRows] = useState<LocalWatchRow[]>(() => loadLocalWatch());
+
+  // Đọc lại lịch sử khi quay lại trang (đã lưu thêm ở phiên trước)
+  useEffect(() => {
+    setRows(loadLocalWatch());
+  }, []);
+
+  useEffect(() => {
+    const onFocus = () => setRows(loadLocalWatch());
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
+  const handleClearAll = () => {
+    clearAllLocalProgress();
+    setRows([]);
+    toast.success("Đã xóa lịch sử xem trên thiết bị này.");
+  };
 
   return (
-    <AppShell
-      title={t("watched")}
-      subtitle={t("watchedSubtitle")}
-    >
-      {/* Video đang phát: dock ngay dưới tiêu đề (trang này không có tìm kiếm) */}
+    <AppShell title={t("watched")} subtitle={t("watchedSubtitle")}>
+      {/* Video đang phát: dock ngay dưới tiêu đề */}
       <DockPlayer className="mb-6" />
-      {progress === undefined ? (
-        <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i}>
-              <Skeleton className="aspect-video w-full rounded-xl" />
-              <Skeleton className="mt-2.5 h-4 w-4/5" />
-              <Skeleton className="mt-1.5 h-3 w-2/5" />
-            </div>
-          ))}
+
+      {list.length > 0 && (
+        <div className="mb-3 flex justify-end">
+          <button
+            type="button"
+            onClick={handleClearAll}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Xóa toàn bộ lịch sử
+          </button>
         </div>
-      ) : progress.length === 0 ? (
+      )}
+
+      {list.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-12 text-center">
           <History className="mx-auto h-10 w-10 text-muted-foreground/40" />
           <p className="mt-4 text-sm font-medium">Chưa có lịch sử xem</p>
           <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
-            Những pháp thoại bạn xem sẽ xuất hiện tại đây.
+            Những pháp thoại bạn xem sẽ được lưu ngay trên thiết bị này.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
-          {progress.map((p) => (
-            <TalkRow
+        <div className="space-y-1">
+          {list.map((p) => (
+            <TalkRowHorizontal
               key={p.youtubeId}
               title={p.title}
               youtubeId={p.youtubeId}
               durationSec={p.durationSec}
-              viewCount={viewCountBy.get(p.youtubeId)}
-              progressSec={p.positionSec}
+              progressSec={p.completed ? undefined : p.positionSec}
               completed={p.completed}
               active={current?.youtubeId === p.youtubeId}
               onClick={() =>
                 play({
-                  _id: p.talkId,
+                  _id: p.youtubeId,
                   youtubeId: p.youtubeId,
                   title: p.title,
                   teacher: p.teacher,
@@ -171,5 +181,22 @@ export default function Watched() {
         </div>
       )}
     </AppShell>
+  );
+}
+
+/* Skeleton giữ tương thích nếu cần tải lại */
+export function WatchedSkeleton() {
+  return (
+    <div className="space-y-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex gap-4">
+          <Skeleton className="aspect-video w-60 shrink-0 rounded-lg" />
+          <div className="flex-1 space-y-2 pt-1">
+            <Skeleton className="h-4 w-4/5" />
+            <Skeleton className="h-3 w-2/5" />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

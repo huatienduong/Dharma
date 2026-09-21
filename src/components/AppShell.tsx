@@ -1,5 +1,6 @@
 import { useSettings, type TranslateKey } from "@/lib/settings";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   BookOpen,
   BookMarked,
@@ -9,42 +10,39 @@ import {
   History,
   LayoutDashboard,
   Menu,
-  MonitorPlay,
   Scale,
   Settings,
-  UserRound,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
 
-/** Tab chính — Lịch Phật giáo ngay cạnh Trợ lý Phật học. */
-const NAV: { to: string; tKey: TranslateKey; icon: typeof LayoutDashboard }[] = [
+/** Nhóm trái: nội dung học liệu. */
+const NAV_LEFT: { to: string; tKey: TranslateKey; icon: typeof LayoutDashboard }[] = [
   { to: "/dashboard", tKey: "navTalks", icon: LayoutDashboard },
   { to: "/suttas", tKey: "navSuttas", icon: BookOpen },
-  { to: "/watch", tKey: "room", icon: MonitorPlay },
-  { to: "/assistant", tKey: "navAssistant", icon: Bot },
-  { to: "/calendar", tKey: "navCalendar", icon: Calendar },
+  { to: "/vinaya", tKey: "navVinaya", icon: Scale },
+  { to: "/dictionary", tKey: "navDictionary", icon: BookMarked },
   { to: "/meditation", tKey: "navMeditation", icon: Heart },
 ];
 
-/** Nhóm học liệu mở rộng (dưới nhóm chính). */
-const NAV_LIB: { to: string; tKey: TranslateKey; icon: typeof Scale }[] = [
-  { to: "/vinaya", tKey: "navVinaya", icon: Scale },
-  { to: "/dictionary", tKey: "navDictionary", icon: BookMarked },
-  { to: "/watched", tKey: "watched", icon: History },
+/** Nhóm phải: Lịch Phật giáo ở cuối, cạnh Trợ lý Phật học. */
+const NAV_RIGHT: { to: string; tKey: TranslateKey; icon: typeof Bot }[] = [
+  { to: "/assistant", tKey: "navAssistant", icon: Bot },
+  { to: "/calendar", tKey: "navCalendar", icon: Calendar },
 ];
 
-/** Cài đặt/Hồ sơ — chỉ dùng cho icon góc phải (header), không có trong sidebar. */
 const SETTINGS_ITEM = {
   to: "/settings",
   tKey: "navSettings" as TranslateKey,
   icon: Settings,
 };
 
-const PROFILE_ITEM = { to: "/profile", label: "Hồ sơ", icon: UserRound };
+const ALL_ITEMS = [...NAV_LEFT, ...NAV_RIGHT];
 
-/** Danh sách đầy đủ để tra cứu an toàn cho drawer mobile. */
-const ALL_ITEMS = [...NAV, ...NAV_LIB];
+/** Viết in hoa nhãn tab sidebar kiểu YouTube (VI/EN đều ổn). */
+function upperLabel(s: string) {
+  return s.toUpperCase();
+}
 
 export function AppShell({
   title,
@@ -89,7 +87,7 @@ export function AppShell({
 
   /* ---------------------------------------------------------------- */
   /* Sidebar nội dung (dùng chung cho desktop + drawer mobile)         */
-  /* Kiểu YouTube: mục dọc, icon trái, nhãn nhóm PHẦN TRÊN.            */
+  /* Kiểu YouTube: mục dọc, icon trái, nhãn VIẾT IN HOA.               */
   /* ---------------------------------------------------------------- */
 
   const NavItem = ({ item }: { item: (typeof ALL_ITEMS)[number] }) => {
@@ -110,16 +108,16 @@ export function AppShell({
         <Icon
           className={cn(
             "h-5 w-5 shrink-0",
-            active ? "text-primary" : "text-foreground/70",
+            active ? "text-destructive" : "text-foreground/70",
           )}
         />
-        <span className="truncate">{t(item.tKey)}</span>
+        <span className="truncate tracking-wide">{upperLabel(t(item.tKey))}</span>
       </button>
     );
   };
 
   const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-    <p className="px-3 pb-1 pt-4 text-[15px] font-semibold tracking-tight text-foreground">
+    <p className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
       {children}
     </p>
   );
@@ -128,15 +126,15 @@ export function AppShell({
     <>
       <nav className="flex-1 overflow-y-auto px-3 pb-6 pt-1">
         <div className="space-y-0.5">
-          {NAV.map((item) => (
+          {NAV_LEFT.map((item) => (
             <NavItem key={item.to} item={item} />
           ))}
         </div>
 
         <div className="mt-3 border-t border-border/60 pt-1">
-          <SectionLabel>Học liệu</SectionLabel>
+          <SectionLabel>Khác</SectionLabel>
           <div className="space-y-0.5">
-            {NAV_LIB.map((item) => (
+            {NAV_RIGHT.map((item) => (
               <NavItem key={item.to} item={item} />
             ))}
           </div>
@@ -150,9 +148,9 @@ export function AppShell({
   return (
     <div className="fb-bg min-h-screen">
       {/* ============================================================ */}
-      {/* HEADER — kiểu YouTube: cố định trên cùng, tìm kiếm ở giữa      */}
+      {/* HEADER — kiểu YouTube: cố định trên cùng                        */}
       {/* ============================================================ */}
-      <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center gap-2 bg-background px-3 sm:px-4">
+      <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center gap-2 border-b border-border/60 bg-background px-3 sm:px-4">
         {/* Trái: hamburger + wordmark (KHÔNG logo) */}
         <div className="flex min-w-0 shrink-0 items-center gap-1">
           <button
@@ -175,37 +173,19 @@ export function AppShell({
           <button
             type="button"
             onClick={() => go("/dashboard")}
-            className="flex min-w-0 items-center gap-0 rounded-full px-1.5 py-1 transition hover:bg-accent"
+            className="flex min-w-0 items-center rounded-full px-1.5 py-1 transition hover:bg-accent"
           >
             <span className="truncate text-[19px] font-bold uppercase tracking-tight text-foreground">
               Dharma
             </span>
-            <span className="ml-1 hidden text-[10px] font-medium uppercase tracking-widest text-gold sm:inline">
-              Theravāda
-            </span>
           </button>
         </div>
 
-        {/* Giữa: wordmark cân đối (ô tìm kiếm nằm trong từng trang, đồng bộ) */}
+        {/* Giữa: chừa chỗ — ô tìm kiếm nằm trong từng trang, đồng bộ */}
         <div className="flex min-w-0 flex-1 justify-center" />
 
-        {/* Phải: Hồ sơ + Cài đặt */}
+        {/* Phải: chỉ còn Cài đặt (Hồ sơ đã bỏ) */}
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => go(PROFILE_ITEM.to)}
-            aria-current={isActive(PROFILE_ITEM.to) ? "page" : undefined}
-            title={PROFILE_ITEM.label}
-            aria-label={PROFILE_ITEM.label}
-            className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-full transition",
-              isActive(PROFILE_ITEM.to)
-                ? "bg-primary text-primary-foreground"
-                : "text-foreground hover:bg-accent",
-            )}
-          >
-            <UserRound className="h-5 w-5" />
-          </button>
           <button
             type="button"
             onClick={() => go(SETTINGS_ITEM.to)}
@@ -224,9 +204,6 @@ export function AppShell({
         </div>
       </header>
 
-      {/* Thanh mảnh dưới header (đường kẻ kiểu YouTube) */}
-      <div className="fixed inset-x-0 top-14 z-40 h-px bg-border/60" />
-
       {/* ============================================================ */}
       {/* SIDEBAR DESKTOP (≥lg) — danh sách dọc, thu gọn được            */}
       {/* ============================================================ */}
@@ -240,7 +217,7 @@ export function AppShell({
           sidebarContent
         ) : (
           <div className="flex flex-col items-center gap-1">
-            {[...NAV, ...NAV_LIB].map((item) => {
+            {ALL_ITEMS.map((item) => {
               const active = isActive(item.to);
               const Icon = item.icon;
               return (
@@ -261,7 +238,7 @@ export function AppShell({
                   <Icon
                     className={cn(
                       "h-5 w-5",
-                      active ? "text-primary" : "text-foreground/70",
+                      active ? "text-destructive" : "text-foreground/70",
                     )}
                   />
                   <span className="w-full truncate text-center">
@@ -275,7 +252,7 @@ export function AppShell({
       </aside>
 
       {/* ============================================================ */}
-      {/* DRAWER MOBILE (<lg) — bấm nền mờ để đóng                      */}
+      {/* DRAWER MOBILE (<lg) — bấm nền mờ để đóng                       */}
       {/* ============================================================ */}
       {drawerOpen && (
         <div
@@ -309,7 +286,7 @@ export function AppShell({
       </aside>
 
       {/* ============================================================ */}
-      {/* NỘI DUNG — lề trái theo trạng thái sidebar                    */}
+      {/* NỘI DUNG — lề trái theo trạng thái sidebar                     */}
       {/* ============================================================ */}
       <div
         className={cn(
@@ -341,16 +318,11 @@ export function AppShell({
       </div>
 
       {/* ============================================================ */}
-      {/* BOTTOM NAV MOBILE (<lg) — 4 mục chính                         */}
+      {/* BOTTOM NAV MOBILE (<lg)                                        */}
       {/* ============================================================ */}
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background pb-[env(safe-area-inset-bottom)] lg:hidden">
         <div className="mx-auto flex max-w-lg items-stretch justify-between px-2">
-          {[
-            NAV[0],
-            NAV[1],
-            NAV[2],
-            NAV[3],
-          ].map((item) => {
+          {[NAV_LEFT[0], NAV_LEFT[1], NAV_RIGHT[0], NAV_RIGHT[1]].map((item) => {
             if (!item) return null;
             const active = isActive(item.to);
             const Icon = item.icon;
@@ -361,7 +333,7 @@ export function AppShell({
                 onClick={() => go(item.to)}
                 className={cn(
                   "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition",
-                  active ? "text-primary" : "text-muted-foreground",
+                  active ? "text-destructive" : "text-muted-foreground",
                 )}
               >
                 <Icon className="h-5 w-5" />
@@ -376,8 +348,6 @@ export function AppShell({
     </div>
   );
 }
-
-import { Button } from "@/components/ui/button";
 
 export function ShellBackButton() {
   const navigate = useNavigate();

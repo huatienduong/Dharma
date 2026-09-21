@@ -6,6 +6,7 @@
 
 const WATCH_KEY = "ds-progress-watch";
 const READING_KEY = "ds-progress-reading";
+const SUTTA_KEY = "ds-progress-sutta";
 const MEDIT_KEY = "ds-progress-meditation";
 
 function readJSON<T>(key: string): T[] {
@@ -106,6 +107,29 @@ export function loadLocalReadingPercent(docId: string): number {
   return row?.percent ?? 0;
 }
 
+/* ----------------------- Đọc Kinh (cục bộ) ----------------------- */
+
+export type LocalSuttaRow = { docId: string; percent: number; updatedAt: number };
+
+export function loadLocalSuttaProgress(): LocalSuttaRow[] {
+  return readJSON<LocalSuttaRow>(SUTTA_KEY);
+}
+
+export function saveLocalSuttaProgress(docId: string, percent: number) {
+  const rows = loadLocalSuttaProgress().filter((r) => r.docId !== docId);
+  rows.push({
+    docId,
+    percent: Math.max(0, Math.min(100, Math.round(percent))),
+    updatedAt: Date.now(),
+  });
+  writeJSON(SUTTA_KEY, rows);
+}
+
+export function loadLocalSuttaPercent(docId: string): number {
+  const row = loadLocalSuttaProgress().find((r) => r.docId === docId);
+  return row?.percent ?? 0;
+}
+
 /* ----------------------- Phiên thiền ----------------------- */
 
 export type LocalMeditationRow = {
@@ -128,6 +152,7 @@ export function clearAllLocalProgress() {
   try {
     localStorage.removeItem(WATCH_KEY);
     localStorage.removeItem(READING_KEY);
+    localStorage.removeItem(SUTTA_KEY);
     localStorage.removeItem(MEDIT_KEY);
   } catch {
     /* bỏ qua */

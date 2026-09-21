@@ -4,7 +4,7 @@ import { AIIndexList } from "@/components/AIIndexList";
 import { SearchToolbar } from "@/components/SearchToolbar";
 import { api } from "@/convex/_generated/api";
 import { getSutta } from "@/data/suttas";
-import { useAuth } from "@/hooks/use-auth";
+import { loadLocalSuttaProgress, loadLocalSuttaPercent, saveLocalSuttaProgress } from "@/lib/localProgress";
 import { useSettings } from "@/lib/settings";
 import { loadUiState, saveUiState, trackScroll, restoreScroll } from "@/lib/uiState";
 import { useMutation, useQuery } from "convex/react";
@@ -52,17 +52,14 @@ export default function Suttas() {
     restoreScroll("suttas");
   }, []);
 
-  const reading = useQuery(api.library.listReading, {});
-
-  const searchQ = search.trim().toLowerCase();
-
+  // Tiến trình đọc lưu CỤC BỘ trên thiết bị (không cần đăng nhập)
   const progressMap = useMemo(() => {
     const map = new Map<string, number>();
-    for (const r of reading ?? []) {
-      if (r.docId.startsWith("sutta:")) map.set(r.docId, r.percent);
+    for (const r of loadLocalSuttaProgress()) {
+      map.set(r.docId, r.percent);
     }
     return map;
-  }, [reading]);
+  }, []);
 
   return (
     <AppShell
@@ -150,42 +147,33 @@ export function SuttaReader() {
   const [tab, setTab] = useState<"text" | "meaning" | "atthakatha">("text");
 
   const docId = sutta ? `sutta:${sutta.id}` : "";
-  const progress = useQuery(
-    api.library.getReading,
-    docId ? { docId } : "skip",
-  );
-  const saveReading = useMutation(api.library.saveReading);
-  const { isAuthenticated } = useAuth();
   const scrollRef = useRef<HTMLDivElement>(null);
   const restoredRef = useRef(false);
 
-  // Khôi phục vị trí cuộn từ tiến trình SERVER (không còn bản lưu cục bộ —
-  // danh sách Kinh giờ hoàn toàn do Trợ lý Phật học đề xuất)
+  // Khôi phục vị trí cuộn từ tiến trình CỤC BỘ trên thiết bị
   useEffect(() => {
     if (restoredRef.current) return;
-    const pct = progress?.percent ?? 0;
+    const pct = docId ? loadLocalSuttaPercent(docId) : 0;
     if (pct > 2 && scrollRef.current) {
       restoredRef.current = true;
       const el = scrollRef.current;
       const target = (el.scrollHeight - el.clientHeight) * (pct / 100);
       requestAnimationFrame(() => window.scrollTo(0, target));
-    } else if (progress !== undefined) {
-      restoredRef.current = true; // đã có dữ liệu nhưng chưa đọc sâu
+    } else {
+      restoredRef.current = true; // chưa đọc sâu — không cần khôi phục
     }
-  }, [progress, sutta]);
+  }, [docId, sutta]);
 
-  // Lưu tiến trình khi cuộn (debounce nhẹ) — chỉ SERVER khi đăng nhập
+  // Lưu tiến trình khi cuộn (debounce nhẹ) — lưu CỤC BỘ trên thiết bị
   useEffect(() => {
-    if (!sutta || !isAuthenticated) return;
+    if (!sutta) return;
     let t: ReturnType<typeof setTimeout> | undefined;
     const onScroll = () => {
       if (t) clearTimeout(t);
       t = setTimeout(() => {
         const max = document.documentElement.scrollHeight - window.innerHeight;
         const pct = max > 0 ? Math.round((window.scrollY / max) * 100) : 100;
-        void saveReading({ docId: `sutta:${sutta.id}`, percent: pct }).catch(
-          () => {},
-        );
+        saveLocalSuttaProgress(`sutta:${sutta.id}`, pct);
       }, 500);
     };
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -193,7 +181,7 @@ export function SuttaReader() {
       window.removeEventListener("scroll", onScroll);
       if (t) clearTimeout(t);
     };
-  }, [sutta, saveReading, isAuthenticated]);
+  }, [sutta]);
 
   // Kinh do danh sách AI đề xuất (chưa có trong kho cũ) → đọc bản AI đầy đủ
   if (!sutta && id) {

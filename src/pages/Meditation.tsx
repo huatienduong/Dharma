@@ -1,14 +1,11 @@
 import { AppShell } from "@/components/AppShell";
-import { api } from "@/convex/_generated/api";
 import {
   getMeditation,
   MEDITATIONS,
   MEDITATION_QUOTE,
 } from "@/data/meditation";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/hooks/use-auth";
-import { saveLocalMeditation } from "@/lib/localProgress";
-import { useMutation, useQuery } from "convex/react";
+import { loadLocalMeditation, saveLocalMeditation } from "@/lib/localProgress";
 import {
   ChevronLeft,
   Flower2,
@@ -77,8 +74,12 @@ export default function Meditation() {
 
 function MeditationInner() {
   const navigate = useNavigate();
-  const stats = useQuery(api.library.meditationStats, {});
-  const sessions = useQuery(api.library.listMeditations, {});
+  // Thống kê + lịch sử phiên thiền đọc từ dữ liệu CỤC BỘ trên thiết bị
+  const stats = useLocalMeditationStats();
+  const sessions = useMemo(() =>
+    loadLocalMeditation().sort((a, b) => b.completedAt - a.completedAt),
+  [],
+  );
 
   return (
     <div className="space-y-8">
@@ -144,8 +145,8 @@ function MeditationInner() {
         </div>
       </section>
 
-      {/* Lịch sử phiên */}
-      {sessions && sessions.length > 0 && (
+      {/* Lịch sử phiên — dữ liệu cục bộ trên thiết bị */}
+      {sessions.length > 0 && (
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Phiên gần đây
@@ -153,7 +154,7 @@ function MeditationInner() {
           <ul className="space-y-2">
             {sessions.slice(0, 6).map((s) => (
               <li
-                key={s._id}
+                key={`${s.completedAt}-${s.technique}`}
                 className="flex items-center justify-between rounded-lg border border-border/50 bg-card/50 px-3.5 py-2.5 text-xs"
               >
                 <span className="font-medium">
@@ -194,8 +195,7 @@ export function MeditationDetail() {
   const { id } = useParams();
   const tech = id ? getMeditation(id) : undefined;
   const navigate = useNavigate();
-  const saveSession = useMutation(api.library.saveMeditation);
-  const { isAuthenticated } = useAuth();
+
 
   const [plannedMin, setPlannedMin] = useState<number | null>(null);
   const [running, setRunning] = useState(false);
@@ -225,17 +225,11 @@ export function MeditationDetail() {
       chime();
       toast.success("Hoàn thành phiên thiền — hiện đầy đủ bình an.");
       if (plannedMin) {
-        // Local luôn lưu (khách vẫn có thống kê) + server khi đăng nhập
+        // Lưu CỤC BỘ trên thiết bị — không cần đăng nhập
         saveLocalMeditation(tech?.id ?? "custom", elapsed);
-        if (isAuthenticated) {
-          void saveSession({
-            technique: tech?.id ?? "custom",
-            durationSec: elapsed,
-          }).catch(() => {});
-        }
       }
     }
-  }, [done, running, elapsed, plannedMin, saveSession, tech, isAuthenticated]);
+  }, [done, running, elapsed, plannedMin, tech]);
 
   if (!tech) {
     return (
@@ -416,4 +410,24 @@ function chime() {
   } catch {
     /* không làm sao */
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Thống kê thiền từ dữ liệu CỤC BỘ (localStorage)                     */
+/* ------------------------------------------------------------------ */
+
+function useLocalMeditationStats() {
+  return useMemo(() => {
+    const rows = loadLocalMeditation();
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const todayStart = startOfDay.getTime();
+    let todaySec = 0;
+    let totalSec = 0;
+    for (const r of rows) {
+      totalSec += r.durationSec;
+      if (r.completedAt >= todayStart) todaySec += r.durationSec;
+    }
+    return { todaySec, totalSec, totalSessions: rows.length };
+  }, []);
 }

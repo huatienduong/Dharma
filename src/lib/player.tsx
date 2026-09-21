@@ -19,6 +19,7 @@ import {
 } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { useLocation } from "react-router";
+import { saveLocalWatch } from "@/lib/localProgress";
 import { cn } from "@/lib/utils";
 
 export type PlayerTalk = {
@@ -80,7 +81,6 @@ export function formatCount(n: number): string {
 /* player riêng, Trợ lý Phật học full-screen, các trang đọc cần rộng).   */
 
 const MINI_ROUTES = [
-  "/watch",
   "/assistant",
   "/suttas",
   "/vinaya",
@@ -88,7 +88,6 @@ const MINI_ROUTES = [
   "/calendar",
   "/dictionary",
   "/settings",
-  "/profile",
 ];
 
 declare global {
@@ -304,6 +303,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const surfacesRef = useRef<Partial<Record<SurfaceKind, SurfaceEntry>>>({});
   const ownerSidRef = useRef(0); // surface đang giữ video
   const lastPosRef = useRef(0); // giây dừng gần nhất (dùng khi bàn giao)
+  const lastWatchSaveRef = useRef(0); // chống ghi lịch sử cục bộ dồn dập
+  const currentRef = useRef<PlayerTalk | null>(null);
+  const durationRef = useRef(0);
 
   const ownerEntry = useCallback((): SurfaceEntry | undefined => {
     const sid = ownerSidRef.current;
@@ -370,6 +372,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setExpanded(!pathIsMini);
   }, [pathIsMini, current]);
 
+  useEffect(() => {
+    currentRef.current = current;
+  }, [current]);
+
+  useEffect(() => {
+    durationRef.current = duration;
+  }, [duration]);
+
   /* -------- Bàn giao surface: nạp video vào surface mong muốn -------- */
   useEffect(() => {
     if (!current || !desiredKind) return;
@@ -402,6 +412,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         if (t.duration > 0) setDuration(t.duration);
         setPosition(t.position);
         lastPosRef.current = t.position;
+        // Lịch sử xem + tiến trình lưu CỤC BỘ trên thiết bị (mỗi 5s)
+        if (t.duration > 0 && t.position > 3) {
+          const now = Date.now();
+          if (now - lastWatchSaveRef.current > 5000) {
+            lastWatchSaveRef.current = now;
+            saveLocalWatch({
+              youtubeId: current.youtubeId,
+              title: current.title,
+              teacher: current.teacher,
+              channelName: current.channelName,
+              publishedAt: current.publishedAt,
+              positionSec: t.position,
+              durationSec: t.duration,
+            });
+          }
+        }
       } catch {
         /* bỏ qua tick */
       }
@@ -460,6 +486,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [ownerEntry]);
 
   const close = useCallback(() => {
+    // Lưu lần cuối vị trí dừng vào lịch sử cục bộ trước khi đóng
+    const talk = currentRef.current;
+    if (talk && lastPosRef.current > 3) {
+      saveLocalWatch({
+        youtubeId: talk.youtubeId,
+        title: talk.title,
+        teacher: talk.teacher,
+        channelName: talk.channelName,
+        publishedAt: talk.publishedAt,
+        positionSec: lastPosRef.current,
+        durationSec: durationRef.current || 0,
+      });
+    }
     for (const k of ["dock", "mini"] as const) {
       surfacesRef.current[k]?.handle.pause();
     }

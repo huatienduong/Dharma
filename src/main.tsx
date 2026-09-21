@@ -13,7 +13,6 @@ import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import "./index.css";
 
 // Lazy load route components for better code splitting
-const AuthPage = lazy(() => import("./pages/Auth.tsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const Suttas = lazy(() => import("./pages/Suttas.tsx"));
@@ -22,9 +21,7 @@ const Dictionary = lazy(() => import("./pages/Dictionary.tsx"));
 const CalendarPage = lazy(() => import("./pages/Calendar.tsx"));
 const Meditation = lazy(() => import("./pages/Meditation.tsx"));
 const SettingsPage = lazy(() => import("./pages/Settings.tsx"));
-const Profile = lazy(() => import("./pages/Profile.tsx"));
 const Assistant = lazy(() => import("./pages/Assistant.tsx"));
-const WatchTogether = lazy(() => import("./pages/WatchTogether.tsx"));
 const Watched = lazy(() => import("./pages/Watched.tsx"));
 
 // Simple loading fallback for route transitions
@@ -160,10 +157,8 @@ createRoot(document.getElementById("root")!).render(
             <RouteSyncer />
             <Suspense fallback={<RouteLoading />}>
               <Routes>
-                {/* Khách chưa đăng nhập vẫn xem được toàn bộ nội dung;
-                    tiến trình chỉ được lưu khi đã đăng nhập. */}
+                {/* Không còn đăng nhập/đăng ký — toàn bộ dữ liệu lưu cục bộ */}
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/auth" element={<AuthPage />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/suttas" element={<Suttas />} />
                 <Route path="/suttas/:id" element={<SuttaReader />} />
@@ -174,10 +169,8 @@ createRoot(document.getElementById("root")!).render(
                 <Route path="/meditation" element={<Meditation />} />
                 <Route path="/meditation/:id" element={<MeditationDetail />} />
                 <Route path="/assistant" element={<Assistant />} />
-                <Route path="/watch" element={<WatchTogether />} />
                 <Route path="/watched" element={<Watched />} />
                 <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/profile" element={<Profile />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
