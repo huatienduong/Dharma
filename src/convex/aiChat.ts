@@ -59,7 +59,7 @@ function listProviders(needVision: boolean): ProviderChoice[] {
             baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
             apiKey: geminiKey,
           }),
-        model: "gemini-2.0-flash",
+        model: "gemini-flash-latest",
       });
     }
     if (openaiKey) {
@@ -72,6 +72,20 @@ function listProviders(needVision: boolean): ProviderChoice[] {
             apiKey: openaiKey,
           }),
         model: "gpt-4.1-mini",
+      });
+    }
+    // FIX tra cứu ảnh: cổng VLY cũng hỗ trợ vision (gpt-5) — trước đây
+    // khi không có khóa Gemini/OpenAI, gửi ảnh luôn thất bại.
+    if (vlyKey) {
+      out.push({
+        label: "Cổng AI tích hợp",
+        make: () =>
+          createOpenAICompatible({
+            name: "vly-gateway",
+            baseURL: "https://integrations.vly.ai/v1/llm",
+            headers: { Authorization: `Bearer ${vlyKey}` },
+          }),
+        model: "gpt-5",
       });
     }
     return out;
@@ -123,7 +137,9 @@ function listProviders(needVision: boolean): ProviderChoice[] {
           baseURL: "https://integrations.vly.ai/v1/llm",
           headers: { Authorization: `Bearer ${vlyKey}` },
         }),
-      model: "gpt-4.1-mini",
+      // FIX nguyên nhân gốc "Trợ lý không phản hồi": cổng VLY phục vụ
+      // mô hình gpt-5 — gọi gpt-4.1-mini luôn trả 400 model_not_found.
+      model: "gpt-5",
     });
   }
   return out;
@@ -156,7 +172,7 @@ export const ask = action({
     const providers = listProviders(Boolean(imageBase64));
     if (providers.length === 0) {
       throw new Error(
-        "Trợ lý Phật học chưa được cấu hình AI. Chủ ứng dụng vui lòng thêm khóa OPENAI_API_KEY hoặc GROQ_API_KEY qua tab Keys/API keys.",
+        "Trợ lý Phật học chưa được cấu hình AI. Chủ ứng dụng vui lòng thêm khóa OPENAI_API_KEY hoặc GEMINI_API_KEY qua tab Keys/API keys.",
       );
     }
 

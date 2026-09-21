@@ -77,7 +77,8 @@ function listProviders(): Provider[] {
           baseURL: "https://integrations.vly.ai/v1/llm",
           headers: { Authorization: `Bearer ${vlyKey}` },
         }),
-      model: "gpt-4.1-mini",
+      // FIX: cổng VLY phục vụ gpt-5 — model cũ gpt-4.1-mini luôn 400.
+      model: "gpt-5",
     });
   }
   return out;

@@ -208,7 +208,6 @@ const EN: Partial<Record<keyof typeof VI, string>> = {
   developer: "Developer",
   version: "Version",
   // Misc
-  loading: "Loading…",
   guestNotice:
     "All your data (watch history, reading progress, meditation sessions) is stored locally on this device.",
   loginRegister: "Sign in / Sign up",
