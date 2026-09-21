@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
+import { Bot } from "lucide-react";
 
 /** Nhóm trái: nội dung học liệu. */
 const NAV_LEFT: { to: string; tKey: TranslateKey; icon: typeof LayoutDashboard }[] = [
@@ -30,6 +31,8 @@ const NAV_RIGHT: { to: string; tKey: TranslateKey; icon: typeof Bot }[] = [
   { to: "/assistant", tKey: "navAssistant", icon: Bot },
   { to: "/calendar", tKey: "navCalendar", icon: Calendar },
 ];
+
+const ASSISTANT_LABEL = "TRỢ LÝ PHẬT HỌC";
 
 const SETTINGS_ITEM = {
   to: "/settings",
@@ -108,10 +111,14 @@ export function AppShell({
         <Icon
           className={cn(
             "h-5 w-5 shrink-0",
-            active ? "text-destructive" : "text-foreground/70",
+            active ? "text-primary" : "text-foreground/70",
           )}
         />
-        <span className="truncate tracking-wide">{upperLabel(t(item.tKey))}</span>
+        <span className="truncate tracking-wide">
+          {item.to === "/assistant"
+            ? ASSISTANT_LABEL
+            : upperLabel(t(item.tKey))}
+        </span>
       </button>
     );
   };
@@ -151,7 +158,7 @@ export function AppShell({
       {/* HEADER — kiểu YouTube: cố định trên cùng                        */}
       {/* ============================================================ */}
       <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center gap-2 border-b border-border/60 bg-background px-3 sm:px-4">
-        {/* Trái: hamburger + wordmark (KHÔNG logo) */}
+        {/* Trái: hamburger */}
         <div className="flex min-w-0 shrink-0 items-center gap-1">
           <button
             type="button"
@@ -170,22 +177,21 @@ export function AppShell({
           >
             <Menu className="h-5 w-5" />
           </button>
-          <button
-            type="button"
-            onClick={() => go("/dashboard")}
-            className="flex min-w-0 items-center rounded-full px-1.5 py-1 transition hover:bg-accent"
-          >
-            <span className="truncate text-[19px] font-bold uppercase tracking-tight text-foreground">
-              Dharma
-            </span>
-          </button>
         </div>
 
-        {/* Giữa: chừa chỗ — ô tìm kiếm nằm trong từng trang, đồng bộ */}
-        <div className="flex min-w-0 flex-1 justify-center" />
+        {/* Giữa: wordmark DHARMA — căn giữa header */}
+        <button
+          type="button"
+          onClick={() => go("/dashboard")}
+          className="mx-auto flex min-w-0 items-center justify-center rounded-full px-2 py-1 transition hover:bg-accent"
+        >
+          <span className="truncate text-[19px] font-bold uppercase tracking-[0.08em] text-foreground">
+            Dharma
+          </span>
+        </button>
 
         {/* Phải: chỉ còn Cài đặt (Hồ sơ đã bỏ) */}
-        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        <div className="flex min-w-0 shrink-0 items-center justify-end gap-1.5">
           <button
             type="button"
             onClick={() => go(SETTINGS_ITEM.to)}
@@ -238,11 +244,13 @@ export function AppShell({
                   <Icon
                     className={cn(
                       "h-5 w-5",
-                      active ? "text-destructive" : "text-foreground/70",
+                      active ? "text-primary" : "text-foreground/70",
                     )}
                   />
                   <span className="w-full truncate text-center">
-                    {t(item.tKey)}
+                    {item.to === "/assistant"
+                      ? ASSISTANT_LABEL
+                      : t(item.tKey)}
                   </span>
                 </button>
               );
@@ -333,12 +341,14 @@ export function AppShell({
                 onClick={() => go(item.to)}
                 className={cn(
                   "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition",
-                  active ? "text-destructive" : "text-muted-foreground",
+                  active ? "text-primary" : "text-muted-foreground",
                 )}
               >
                 <Icon className="h-5 w-5" />
                 <span className="w-full truncate text-center leading-tight">
-                  {t(item.tKey)}
+                  {item.to === "/assistant"
+                    ? ASSISTANT_LABEL
+                    : t(item.tKey)}
                 </span>
               </button>
             );
