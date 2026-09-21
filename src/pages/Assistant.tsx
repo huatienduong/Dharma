@@ -244,8 +244,6 @@ export default function Assistant() {
   /* ----- Đàm thoại: xử lý một câu người dùng vừa nói ----- */
   const handleUtterance = useCallback(
     (text: string) => {
-      // SỬA LỖI kẹt "Đang suy niệm…": nếu trợ lý đang bận (xử lý câu trước
-      // hoặc đang đọc) thì bỏ qua câu này và tiếp tục nghe, KHÔNG khóa mic.
       if (busyRef.current || sendingRef.current) {
         window.setTimeout(() => startListeningRef.current(), 600);
         return;
@@ -296,7 +294,6 @@ export default function Assistant() {
         else setInterim(r[0].transcript);
       }
       const t = finalBuf.trim();
-      // Chỉ nhận khi AI KHÔNG đang nói (chống nghe lại giọng của chính nó)
       if (
         t.length >= 2 &&
         !aiSpeakingRef.current &&
@@ -320,7 +317,6 @@ export default function Assistant() {
         setCallStatus("muted");
         toast.error("Cần cấp quyền micro để đàm thoại bằng giọng nói.");
       }
-      /* no-speech…: onend sẽ tự khởi động lại */
     };
     rec.onend = () => {
       recRef.current = null;
@@ -344,12 +340,10 @@ export default function Assistant() {
     }
   }, [handleUtterance]);
 
-  // Giữ tham chiếu mới nhất cho các callback cũ (tránh closure lỗi thời)
   useEffect(() => {
     startListeningRef.current = startListening;
   }, [startListening]);
 
-  /* ----- Mở / kết thúc cuộc gọi ----- */
   const openCall = useCallback(() => {
     if (!micSupported) {
       toast.error(
@@ -369,7 +363,6 @@ export default function Assistant() {
     setCallStatus("listening");
     setCallOpen(true);
     callActiveRef.current = true;
-    // Đợi overlay render + trình duyệt hỏi quyền micro
     window.setTimeout(() => startListeningRef.current(), 400);
   }, [micSupported, stopSpeaking]);
 
@@ -405,7 +398,6 @@ export default function Assistant() {
     }
   }, []);
 
-  // Kết thúc call khi rời trang
   useEffect(() => {
     return () => {
       callActiveRef.current = false;
@@ -417,7 +409,6 @@ export default function Assistant() {
     };
   }, []);
 
-  /* ----- Nén ảnh đính kèm (tối đa 1024px) ----- */
   const pickImage = useCallback((file: File) => {
     if (!file.type.startsWith("image/")) {
       toast.error("Chỉ hỗ trợ file ảnh.");
@@ -443,7 +434,6 @@ export default function Assistant() {
     reader.readAsDataURL(file);
   }, []);
 
-  // Dừng đọc khi rời trang
   useEffect(() => {
     return () => {
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -463,7 +453,6 @@ export default function Assistant() {
     }
   };
 
-  /* Hỏi bằng giọng nói trong ô chat (nhận 1 câu rồi dừng) */
   const onVoiceChat = useCallback(
     (text: string) => {
       void send(text);
@@ -486,7 +475,6 @@ export default function Assistant() {
   return (
     <AppShell title="Trợ lý Phật học" hideTitle>
       <div className="mx-auto flex h-[calc(100dvh-12rem)] max-w-4xl flex-col sm:h-[calc(100dvh-11rem)] lg:h-[calc(100dvh-8rem)]">
-        {/* ---------- Thanh trên kiểu Gemini ---------- */}
         <div className="flex items-center justify-between px-0.5 pb-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow">
@@ -521,7 +509,6 @@ export default function Assistant() {
           </div>
         </div>
 
-        {/* ---------- Khu hội thoại (nền liền mạch kiểu Gemini) ---------- */}
         <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
           {isEmpty ? (
             <div className="flex h-full flex-col items-center justify-center px-2 text-center">
@@ -539,7 +526,7 @@ export default function Assistant() {
                       key={s.text}
                       type="button"
                       onClick={() => void send(s.text)}
-                      className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card/70 px-4 py-3.5 text-left text-sm leading-snug text-foreground/90 shadow-sm transition hover:-translate-y-0.5 hover:border-gold/50 hover:bg-accent hover:shadow"
+                      className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card/70 px-4 py-3.5 text-left text-sm leading-snug text-foreground/90 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/50"
                     >
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold">
                         <Icon className="h-4 w-4" />
@@ -568,7 +555,6 @@ export default function Assistant() {
           )}
         </div>
 
-        {/* ---------- Ô nhập nổi kiểu Gemini ---------- */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -682,10 +668,8 @@ export default function Assistant() {
         </form>
       </div>
 
-      {/* ================== MÀN HÌNH ĐÀM THOÁI TOÀN MÀN HÌNH ================== */}
       {callOpen && (
         <div className="fixed inset-0 z-[100] flex flex-col items-center overflow-hidden bg-stone-950 text-white">
-          {/* Hào quang nền */}
           <div
             className="pointer-events-none absolute inset-0"
             style={{
@@ -694,7 +678,6 @@ export default function Assistant() {
             }}
           />
 
-          {/* Đỉnh */}
           <div className="relative z-10 flex w-full max-w-2xl items-center justify-between px-5 pt-5">
             <div className="flex items-center gap-2.5">
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-gold to-amber-700">
@@ -719,7 +702,6 @@ export default function Assistant() {
             </button>
           </div>
 
-          {/* Quả cầu trạng thái */}
           <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-8 px-6">
             <div
               className={cn(
@@ -743,22 +725,11 @@ export default function Assistant() {
                     : "Micro đã tắt"}
             </p>
 
-            {/* Phụ đề trực tiếp */}
-            <div className="flex min-h-28 w-full max-w-md flex-col items-center gap-2 text-center">
-              {(interim || userCaption) && callStatus !== "speaking" && (
-                <p className="text-[15px] font-medium text-white">
-                  {interim || userCaption}
-                </p>
-              )}
-              {aiCaption && (
-                <p className="max-h-32 overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-white/65">
-                  {aiCaption}
-                </p>
-              )}
+            <div className="flex min-h-0 w-full max-w-md items-center justify-center">
+              <div className="h-4" />
             </div>
           </div>
 
-          {/* Điều khiển dưới */}
           <div className="relative z-10 flex items-center justify-center gap-8 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4">
             {callStatus !== "muted" ? (
               <button
@@ -795,8 +766,6 @@ export default function Assistant() {
                 <button
                   type="button"
                   onClick={() => {
-                    // SỬA LỖI: dừng đọc phải khôi phục mic ngay — không kẹt
-                    // ở trạng thái "Đang trả lời" vĩnh viễn.
                     stopSpeaking();
                     aiSpeakingRef.current = false;
                     sendingRef.current = false;
@@ -817,7 +786,6 @@ export default function Assistant() {
     </AppShell>
   );
 }
-
 
 /* ------------------------------------------------------------------ */
 
