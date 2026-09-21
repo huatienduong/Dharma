@@ -5,7 +5,6 @@ import {
   useSettings,
   type ThemeMode,
 } from "@/lib/settings";
-import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "convex/react";
@@ -32,8 +31,8 @@ export default function Settings() {
     t,
     setTheme,
     setNotifications,
+    setDisplayName,
   } = useSettings();
-  const { user, isAuthenticated } = useAuth();
   const submitFeedback = useMutation(api.library.submitFeedback);
   const meta = useQuery(api.library.getAppVersion, {});
 
@@ -179,6 +178,27 @@ export default function Settings() {
 
         {/* ---------- Phiên bản ---------- */}
         <Section title={t("appSection")} icon={<Info className="h-4 w-4 text-gold" />}>
+          {/* Tên hiển thị — dùng trong Trợ lý Phật học */}
+          <div className="rounded-xl border border-border/60 bg-card/40 p-4">
+            <label
+              htmlFor="ds-display-name"
+              className="text-sm font-semibold"
+            >
+              {t("displayNameLabel")}
+            </label>
+            <input
+              id="ds-display-name"
+              type="text"
+              value={settings.displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Ví dụ: Minh An"
+              className="mt-2 w-full rounded-lg border border-border/70 bg-background px-3 py-2 text-sm outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
+            />
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {t("displayNameHint")}
+            </p>
+          </div>
+
           <div className="rounded-xl border border-border/60 bg-card/40 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>

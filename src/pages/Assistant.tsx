@@ -70,6 +70,7 @@ function newRecognition(): RecLike | null {
 export default function Assistant() {
   const navigate = useNavigate();
   const ask = useAction(api.aiChat.ask);
+  const clearMessages = useMutation(api.aiChat.clearMessages);
   const saved = useQuery(api.aiChat.listMessages, {});
 
   const [input, setInput] = useState("");
@@ -431,7 +432,7 @@ export default function Assistant() {
   const clearAll = async () => {
     setPending([]);
     try {
-      await clear({});
+      await clearMessages({});
     } catch {
       /* noop */
     }
@@ -444,7 +445,7 @@ export default function Assistant() {
     [send],
   );
 
-  const onVoiceChat = useCallback(
+  const isEmpty = messages.length === 0;
 
   /* ================================================================ */
   /* FULL MÀN HÌNH — không AppShell: cả viewport là Trợ lý Phật học   */
@@ -641,11 +642,6 @@ export default function Assistant() {
             </Button>
           </div>
 
-          {!isAuthenticated && (
-            <div className="mt-1.5 flex justify-center">
-              <MaintenanceNotice variant="compact" feature="lưu hội thoại" />
-            </div>
-          )}
         </form>
 
       {callOpen && (

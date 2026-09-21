@@ -1,5 +1,3 @@
-import { api } from "@/convex/_generated/api";
-import { useAuth } from "@/hooks/use-auth";
 import {
   createContext,
   useCallback,
@@ -9,7 +7,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useMutation, useQuery } from "convex/react";
 
 export type ThemeMode = "light" | "dark" | "system";
 export type Language = "vi" | "en";
@@ -19,6 +16,7 @@ export type AppSettings = {
   fontScale: number; // 0.9 | 1 | 1.15 | 1.3
   language: Language;
   notifications: boolean;
+  displayName: string;
 };
 
 export const FONT_SCALES = [
@@ -33,6 +31,7 @@ const DEFAULTS: AppSettings = {
   fontScale: 1,
   language: "vi",
   notifications: true,
+  displayName: "",
 };
 
 const LS_KEY = "dhamma-stream-settings";
@@ -130,8 +129,10 @@ const VI = {
   // Misc
   loading: "Đang tải…",
   guestNotice:
-    "Bạn đang xem với tư cách khách — tiến trình được lưu trên thiết bị này. Đăng nhập để đồng bộ mọi nơi.",
+    "Toàn bộ dữ liệu của bạn (lịch sử xem, tiến trình đọc, phiên thiền) được lưu ngay trên thiết bị này.",
   loginRegister: "Đăng nhập / Đăng ký",
+  displayNameLabel: "Tên hiển thị",
+  displayNameHint: "Dùng để chào bạn trong Trợ lý Phật học",
   // Trang con
   suttasSubtitle: "Sutta Piṭaka — học Kinh, luận giải và chú giải theo truyền thống Theravāda",
   dictTitle: "Từ điển Phật học",
@@ -214,8 +215,10 @@ const EN: Partial<Record<keyof typeof VI, string>> = {
   // Misc
   loading: "Loading…",
   guestNotice:
-    "You are browsing as a guest — progress is saved on this device. Sign in to sync everywhere.",
+    "All your data (watch history, reading progress, meditation sessions) is stored locally on this device.",
   loginRegister: "Sign in / Sign up",
+  displayNameLabel: "Display name",
+  displayNameHint: "Used to greet you in the Dharma Assistant",
   // Pages
   suttasSubtitle:
     "Sutta Piṭaka — study, commentary and exposition in the Theravāda tradition",
@@ -244,33 +247,13 @@ type SettingsContextValue = {
   setFontScale: (v: number) => void;
   setLanguage: (l: Language) => void;
   setNotifications: (v: boolean) => void;
+  setDisplayName: (name: string) => void;
 };
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
-  const serverSettings = useQuery(
-    api.library.getSettings,
-    isAuthenticated ? {} : "skip",
-  );
-  const updateServer = useMutation(api.library.updateSettings);
-
   const [settings, setSettings] = useState<AppSettings>(loadLocal);
-
-  // Khi server có dữ liệu (lần đầu đăng nhập), ưu tiên server
-  const [syncedOnce, setSyncedOnce] = useState(false);
-  useEffect(() => {
-    if (serverSettings && !syncedOnce) {
-      setSyncedOnce(true);
-      setSettings((prev) => ({
-        theme: (serverSettings.theme as ThemeMode) ?? prev.theme,
-        fontScale: serverSettings.fontScale ?? prev.fontScale,
-        language: (serverSettings.language as Language) ?? prev.language,
-        notifications: serverSettings.notifications ?? prev.notifications,
-      }));
-    }
-  }, [serverSettings, syncedOnce]);
 
   // Áp dụng chủ đề + cỡ chữ lên <html>
   useEffect(() => {
@@ -292,13 +275,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         saveLocal(next);
         return next;
       });
-      if (isAuthenticated) {
-        void updateServer(patch).catch(() => {
-          /* im lặng — sẽ tự sync lần sau */
-        });
-      }
     },
-    [isAuthenticated, updateServer],
+    [],
   );
 
   // Hàm dịch — chọn bảng theo ngôn ngữ hiện tại
@@ -324,6 +302,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setFontScale: (v) => persist({ fontScale: v }),
       setLanguage: (l) => persist({ language: l }),
       setNotifications: (v) => persist({ notifications: v }),
+      setDisplayName: (name) => persist({ displayName: name.trim().slice(0, 60) }),
     }),
     [settings, persist, t],
   );
@@ -347,5 +326,6 @@ export function useSettings() {
     setFontScale: () => {},
     setLanguage: () => {},
     setNotifications: () => {},
+    setDisplayName: () => {},
   };
 }
