@@ -3,6 +3,7 @@ import { api } from "@/convex/_generated/api";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 import { cn } from "@/lib/utils";
+import { useSettings } from "@/lib/settings";
 import { useAction, useMutation, useQuery } from "convex/react";
 import {
   ArrowLeft,
@@ -67,11 +68,39 @@ function newRecognition(): RecLike | null {
   return Ctor ? new Ctor() : null;
 }
 
+/* ------------------------------------------------------------------ */
+/* Lịch sử hội thoại lưu CỤC BỘ trên thiết bị (không cần đăng nhập)     */
+/* ------------------------------------------------------------------ */
+
+const CHAT_KEY = "ds-assistant-history";
+
+function loadLocalChat(): Msg[] {
+  try {
+    const raw = localStorage.getItem(CHAT_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Msg[];
+    return Array.isArray(parsed)
+      ? parsed.filter((m) => m && (m.role === "user" || m.role === "assistant"))
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalChat(msgs: Msg[]) {
+  try {
+    localStorage.setItem(CHAT_KEY, JSON.stringify(msgs.slice(-100)));
+  } catch {
+    /* bộ nhớ đầy — bỏ qua */
+  }
+}
+
 export default function Assistant() {
   const navigate = useNavigate();
+  const { settings } = useSettings();
   const ask = useAction(api.aiChat.ask);
-  const clearMessages = useMutation(api.aiChat.clearMessages);
-  const saved = useQuery(api.aiChat.listMessages, {});
+
+  const [history, setHistory] = useState<Msg[]>(loadLocalChat);
 
   const [input, setInput] = useState("");
   const [pending, setPending] = useState<Msg[]>([]);
@@ -131,25 +160,8 @@ export default function Assistant() {
     };
   }, []);
 
-  /* ----- Gộp lịch sử server + tin nhắn phiên ----- */
-  const messages: Msg[] = [
-    ...(saved ?? []).map((m) => ({
-      role: m.role as Msg["role"],
-      content: m.content,
-    })),
-    ...pending,
-  ];
-
-  /* ----- SỬA LỖI nhấp nháy lịch sử: chỉ xóa tin nhắn phiên khi server
-     đã thực sự lưu được chúng (đối chiếu nội dung) ----- */
-  useEffect(() => {
-    if (!saved) return;
-    setPending((p) =>
-      p.length === 0
-        ? p
-        : p.filter((m) => !saved.some((s) => s.role === m.role && s.content === m.content)),
-    );
-  }, [saved]);
+  /* ----- Gộp lịch sử cục bộ + tin nhắn phiên ----- */
+  const messages: Msg[] = [...history, ...pending];
 
   // Tự cuộn xuống cuối
   useEffect(() => {
@@ -498,8 +510,10 @@ export default function Assistant() {
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
         {isEmpty ? (
           <div className="flex h-full flex-col items-center justify-center px-4 text-center">
-            <h2 className="bg-gradient-to-r from-primary via-gold to-primary bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-4xl">
-              Xin chào 🙏
+            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              {settings.displayName
+                ? `Xin chào ${settings.displayName} 🙏`
+                : "Xin chào 🙏"}
             </h2>
             <p className="mt-2 max-w-md text-[15px] leading-relaxed text-muted-foreground">
               Hôm nay tôi có thể giúp gì cho bạn trên con đường Phật pháp?
