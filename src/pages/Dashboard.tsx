@@ -1,5 +1,4 @@
 import { AppShell } from "@/components/AppShell";
-import { SearchToolbar } from "@/components/SearchToolbar";
 import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { DockPlayer, formatCount, formatTime, usePlayer } from "@/lib/player";
@@ -8,11 +7,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { loadLocalWatch } from "@/lib/localProgress";
 import { loadUiState, saveUiState, trackScroll, restoreScroll } from "@/lib/uiState";
+import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { useAction, useQuery } from "convex/react";
-import {
-  Eye,
-  Search as SearchIcon,
-} from "lucide-react";
+import { Eye, Loader2, Mic, Search as SearchIcon, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 type Talk = Doc<"dhammaTalks">;
@@ -30,7 +27,6 @@ export default function Dashboard() {
   // Lịch sử xem CỤC BỘ: dùng cho tiến trình tiếp diễn + nhãn "Đã xem"
   const [localWatch, setLocalWatch] = useState(() => loadLocalWatch());
   useEffect(() => {
-    // đọc lại khi mở trang và khi video đóng để cập nhật tiến trình mới nhất
     const refresh = () => setLocalWatch(loadLocalWatch());
     refresh();
     const iv = window.setInterval(refresh, 4000);
@@ -58,9 +54,9 @@ export default function Dashboard() {
     if (!current || !talks) return [];
     return talks
       .filter(
-        (t) =>
-          t.youtubeId !== current.youtubeId &&
-          (t.teacher === current.teacher || t.channelName === current.channelName),
+        (tk) =>
+          tk.youtubeId !== current.youtubeId &&
+          (tk.teacher === current.teacher || tk.channelName === current.channelName),
       )
       .slice(0, 8);
   }, [talks, current]);
@@ -70,108 +66,242 @@ export default function Dashboard() {
   const filtered = useMemo(() => {
     if (!searchQ) return [];
     return (talks ?? []).filter(
-      (t) =>
-        t.title.toLowerCase().includes(searchQ) ||
-        t.teacher.toLowerCase().includes(searchQ),
+      (tk) =>
+        tk.title.toLowerCase().includes(searchQ) ||
+        tk.teacher.toLowerCase().includes(searchQ),
     );
   }, [talks, searchQ]);
 
-  // Đang phát video nào đó → trang chủ chỉ hiện video + video liên quan
   const hasActiveVideo = Boolean(current);
-  // Chỉ hiện nội dung khi người dùng tra tìm
-  const showResults = searchQ.length > 0;
+  const isIdle = !hasActiveVideo && searchQ.length === 0;
 
   return (
     <AppShell title={t("talksTitle")} hideTitle>
       {/* Đồng bộ tự động ngầm — ẩn khỏi giao diện */}
       <AutoSync />
 
-      {/* ---------- Trang chủ kiểu YouTube: chỉ còn THANH TÌM KIẾM ---------- */}
-      <div className="mb-6">
-        <SearchToolbar
-          value={search}
-          onChange={setSearch}
-          placeholder={t("searchPlaceholder")}
-        />
-      </div>
+      {/* ================= CHẾ ĐỘ MẶC ĐỊNH — màn tìm kiếm kiểu YouTube ============ */}
+      {isIdle && (
+        <div className="flex flex-col items-center px-2 pb-16 pt-10 sm:pt-16">
+          {/* Logo nút play đỏ kiểu YouTube */}
+          <PlayLogo className="h-20 w-28 sm:h-24 sm:w-32" />
 
-      {/* ---------- Trình phát video: nằm NGAY DƯỚI thanh tìm kiếm ---------- */}
-      <DockPlayer className="mb-6" />
-
-      {/* ---------- Liên quan: khi đang phát → CHỈ hiện video liên quan ---------- */}
-      {related.length > 0 && !searchQ && (
-        <section className="mb-6" aria-label="Pháp thoại liên quan">
-          <h2 className="mb-3 text-lg font-semibold tracking-tight">
-            Pháp thoại liên quan
-          </h2>
-          <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-            {related.map((talk) => (
-              <TalkRow
-                key={talk._id}
-                title={talk.title}
-                youtubeId={talk.youtubeId}
-                durationSec={talk.durationSec}
-                viewCount={talk.viewCount}
-                active={current?.youtubeId === talk.youtubeId}
-                onClick={() => play(talk)}
-              />
-            ))}
+          {/* Hàng tìm kiếm: nút tròn trái · pill · mic tròn phải */}
+          <div className="mt-8 w-full max-w-xl">
+            <SearchRow value={search} onChange={setSearch} />
           </div>
-        </section>
+
+          {/* Thẻ trống kiểu YouTube: "Thử tìm kiếm để bắt đầu" */}
+          <div className="mt-12 w-full max-w-2xl rounded-3xl border border-border/60 bg-card px-6 py-10 text-center">
+            <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-[28px]">
+              Thử tìm kiếm để bắt đầu
+            </h2>
+            <p className="mx-auto mt-3 max-w-md text-[15px] leading-relaxed text-muted-foreground">
+              Hãy bắt đầu tìm kiếm pháp thoại — chúng tôi sẽ gợi ý những bài giảng
+              phù hợp với bạn.
+            </p>
+          </div>
+        </div>
       )}
 
-      {/* ---------- Kết quả tìm kiếm: chỉ hiện KHI NGƯỜI DÙNG TRA ---------- */}
-      {showResults && !hasActiveVideo && (
-        <section aria-label="Kết quả tìm kiếm">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-lg font-semibold">
-              <SearchIcon className="h-4 w-4 text-destructive" />
-              {t("results")}
-            </h2>
-            <span className="text-xs text-muted-foreground">
-              {loading ? "…" : `${filtered.length} ${t("articles")}`}
-            </span>
+      {/* ============ ĐANG TÌM / ĐANG PHÁT — thanh tìm kiếm trên cùng ============ */}
+      {!isIdle && (
+        <>
+          <div className="mb-6">
+            <SearchRow value={search} onChange={setSearch} />
           </div>
 
-          {loading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex gap-4">
-                  <Skeleton className="aspect-video w-60 shrink-0 rounded-lg" />
-                  <div className="flex-1 space-y-2 pt-1">
-                    <Skeleton className="h-4 w-4/5" />
-                    <Skeleton className="h-3 w-2/5" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-10 text-center">
-              <SearchIcon className="mx-auto h-8 w-8 text-muted-foreground/50" />
-              <p className="mt-3 text-sm text-muted-foreground">
-                {t("noResults")}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {filtered.map((talk) => (
-                <TalkRow
-                  key={talk._id}
-                  title={talk.title}
-                  youtubeId={talk.youtubeId}
-                  durationSec={talk.durationSec}
-                  viewCount={talk.viewCount}
-                  progressSec={localProgressByTalk(localWatch, talk)}
-                  completed={localCompletedByTalk(localWatch, talk)}
-                  active={current?.youtubeId === talk.youtubeId}
-                  onClick={() => play(talk)}
-                />
-              ))}
-            </div>
+          {/* Trình phát video: nằm NGAY DƯỚI thanh tìm kiếm */}
+          <DockPlayer className="mb-6" />
+
+          {/* Liên quan: khi đang phát → CHỈ hiện video liên quan */}
+          {related.length > 0 && !searchQ && (
+            <section className="mb-6" aria-label="Pháp thoại liên quan">
+              <h2 className="mb-3 text-lg font-semibold tracking-tight">
+                Pháp thoại liên quan
+              </h2>
+              <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                {related.map((talk) => (
+                  <TalkRow
+                    key={talk._id}
+                    title={talk.title}
+                    youtubeId={talk.youtubeId}
+                    durationSec={talk.durationSec}
+                    viewCount={talk.viewCount}
+                    active={current?.youtubeId === talk.youtubeId}
+                    onClick={() => play(talk)}
+                  />
+                ))}
+              </div>
+            </section>
           )}
-        </section>
+
+          {/* Kết quả tìm kiếm */}
+          {searchQ.length > 0 && !hasActiveVideo && (
+            <section aria-label="Kết quả tìm kiếm">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-lg font-semibold">
+                  <SearchIcon className="h-4 w-4 text-destructive" />
+                  {t("results")}
+                </h2>
+                <span className="text-xs text-muted-foreground">
+                  {loading ? "…" : `${filtered.length} ${t("articles")}`}
+                </span>
+              </div>
+
+              {loading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="flex gap-4">
+                      <Skeleton className="aspect-video w-60 shrink-0 rounded-lg" />
+                      <div className="flex-1 space-y-2 pt-1">
+                        <Skeleton className="h-4 w-4/5" />
+                        <Skeleton className="h-3 w-2/5" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-10 text-center">
+                  <SearchIcon className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    {t("noResults")}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {filtered.map((talk) => (
+                    <TalkRow
+                      key={talk._id}
+                      title={talk.title}
+                      youtubeId={talk.youtubeId}
+                      durationSec={talk.durationSec}
+                      viewCount={talk.viewCount}
+                      progressSec={localProgressByTalk(localWatch, talk)}
+                      completed={localCompletedByTalk(localWatch, talk)}
+                      active={current?.youtubeId === talk.youtubeId}
+                      onClick={() => play(talk)}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+        </>
       )}
     </AppShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Logo nút play đỏ — dựng thuần CSS/SVG kiểu YouTube                  */
+/* ------------------------------------------------------------------ */
+
+function PlayLogo({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center justify-center rounded-[22%] bg-[#ff0000] shadow-lg",
+        className,
+      )}
+      aria-hidden
+    >
+      <svg viewBox="0 0 24 24" className="h-1/2 w-1/2 fill-white">
+        <path d="M8 5.5v13l11-6.5-11-6.5z" />
+      </svg>
+    </span>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Hàng tìm kiếm kiểu YouTube: nút tròn trái · pill · mic tròn phải     */
+/* ------------------------------------------------------------------ */
+
+function SearchRow({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (text: string) => void;
+}) {
+  const { supported: micSupported, listening, start, stop } = useVoiceSearch();
+  const hasText = value.trim().length > 0;
+
+  useEffect(() => {
+    if (!listening) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") stop();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [listening, stop]);
+
+  return (
+    <div className="flex items-center gap-2.5" role="search">
+      {/* Nút tròn trái — logo play nhỏ */}
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent">
+        <PlayLogo className="h-4.5 w-6" />
+      </span>
+
+      {/* Pill nhập */}
+      <div
+        className={cn(
+          "flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full bg-muted px-4 transition",
+          (listening || hasText) && "ring-2 ring-destructive/25",
+        )}
+      >
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") onChange("");
+          }}
+          placeholder="Tìm trên Dharma"
+          aria-label="Tìm pháp thoại"
+          className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
+        />
+        {hasText && (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            aria-label="Xóa từ khóa"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+        <SearchIcon className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
+      </div>
+
+      {/* Nút tròn phải — mic */}
+      {micSupported ? (
+        <button
+          type="button"
+          onClick={() => (listening ? stop() : start((text) => onChange(text)))}
+          aria-label={listening ? "Đang nghe — bấm để dừng" : "Tìm bằng giọng nói"}
+          title={listening ? "Đang nghe…" : "Tìm bằng giọng nói"}
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition",
+            listening
+              ? "bg-destructive/15 text-destructive"
+              : "bg-accent text-foreground hover:bg-border",
+          )}
+        >
+          {listening ? (
+            <span className="relative flex h-5 w-5 items-center justify-center">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-50" />
+              <Mic className="relative h-5 w-5" />
+            </span>
+          ) : (
+            <Mic className="h-5 w-5" />
+          )}
+        </button>
+      ) : (
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent text-muted-foreground/50">
+          <Loader2 className="h-5 w-5" />
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -188,7 +318,6 @@ function localCompletedByTalk(rows: ReturnType<typeof loadLocalWatch>, t: Talk) 
 
 /* ------------------------------------------------------------------ */
 /* Hàng kết quả NGANG kiểu YouTube: thumbnail TRÁI — thông tin PHẢI    */
-/* (tiêu đề video + lượt xem)                                          */
 /* ------------------------------------------------------------------ */
 
 export function TalkRow({

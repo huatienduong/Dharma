@@ -4,7 +4,7 @@ import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/lib/settings";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useAction } from "convex/react";
 import {
   ArrowLeft,
   AudioLines,
@@ -177,13 +177,7 @@ export default function Assistant() {
       const q = text.trim();
       if (!q || busy) return;
 
-      const history: Msg[] = [
-        ...(saved ?? []).map((m) => ({
-          role: m.role as Msg["role"],
-          content: m.content,
-        })),
-        ...pending,
-      ];
+      const base: Msg[] = [...history, ...pending];
       const userMsg: Msg = { role: "user", content: q };
 
       if (!opts?.fromCall) {
@@ -196,11 +190,17 @@ export default function Assistant() {
 
       try {
         const reply = await ask({
-          messages: [...history, { role: "user", content: q }],
+          messages: [...base, { role: "user", content: q }],
           imageBase64: opts?.fromCall ? undefined : image?.base64,
           imageMime: opts?.fromCall ? undefined : image?.mime,
         });
-        setPending((p) => [...p, { role: "assistant", content: reply }]);
+        const replyMsg: Msg = { role: "assistant", content: reply };
+        setPending((p) => p.filter((m) => m !== userMsg));
+        setHistory((h) => {
+          const next = [...h, userMsg, replyMsg];
+          saveLocalChat(next);
+          return next;
+        });
         if (opts?.fromCall) {
           // Trong cuộc gọi: đọc to xong rồi tự nghe tiếp (rảnh tay).
           // Dùng Web Speech trực tiếp (speakBrowser) — KHÔNG chờ server tổng
@@ -240,7 +240,7 @@ export default function Assistant() {
         setBusy(false);
       }
     },
-    [ask, busy, image, pending, saved, speakVI],
+    [ask, busy, history, image, pending, speakVI],
   );
 
   /* ----- Đàm thoại: xử lý một câu người dùng vừa nói ----- */
@@ -443,8 +443,9 @@ export default function Assistant() {
 
   const clearAll = async () => {
     setPending([]);
+    setHistory([]);
     try {
-      await clearMessages({});
+      localStorage.removeItem(CHAT_KEY);
     } catch {
       /* noop */
     }

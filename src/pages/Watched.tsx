@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { api } from "@/convex/_generated/api";
 import { DockPlayer, formatCount, formatTime, usePlayer } from "@/lib/player";
 import {
   clearAllLocalProgress,
@@ -8,7 +9,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSettings } from "@/lib/settings";
 import { Eye, History, Play, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "convex/react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -111,6 +113,14 @@ export default function Watched() {
   const { t } = useSettings();
   const [rows, setRows] = useState<LocalWatchRow[]>(() => loadLocalWatch());
 
+  // Kho pháp thoại để ghép lượt xem đồng bộ với trang chủ
+  const talks = useQuery(api.dhamma.list, { limit: 2000 });
+  const viewCountBy = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of talks ?? []) m.set(t.youtubeId, t.viewCount ?? 0);
+    return m;
+  }, [talks]);
+
   // Đọc lại lịch sử khi quay lại trang (đã lưu thêm ở phiên trước)
   useEffect(() => {
     setRows(loadLocalWatch());
@@ -165,6 +175,7 @@ export default function Watched() {
               title={p.title}
               youtubeId={p.youtubeId}
               durationSec={p.durationSec}
+              viewCount={viewCountBy.get(p.youtubeId)}
               progressSec={p.completed ? undefined : p.positionSec}
               completed={p.completed}
               active={current?.youtubeId === p.youtubeId}
