@@ -217,5 +217,5 @@ export function useVietnameseTTS() {
     [speakAction, webSpeak],
   );
 
-  return { speak, stop, speaking, engine };
+  return { speak, speakBrowser: webSpeak, stop, speaking, engine };
 }

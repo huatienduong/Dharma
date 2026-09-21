@@ -82,7 +82,8 @@ export default function Assistant() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { supported: micSupported, listening, start, stop } = useVoiceSearch();
-  const { speak: speakVI, stop: stopSpeaking } = useVietnameseTTS();
+  const { speak: speakVI, speakBrowser: speakDirect, stop: stopSpeaking } =
+    useVietnameseTTS();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   /* ================= CHẾ ĐỘ ĐÀM THOÁI (kiểu Gemini Live) ============== */
@@ -617,11 +618,7 @@ export default function Assistant() {
                 }
               }}
               rows={1}
-              placeholder={
-                listening
-                  ? "Đang nghe…"
-                  : "Hỏi về giáo lý, kinh điển, thiền định…"
-              }
+              placeholder=""
               className="max-h-36 min-h-11 flex-1 resize-none bg-transparent py-2.5 text-[15px] outline-none placeholder:text-muted-foreground/60"
             />
 
@@ -724,12 +721,7 @@ export default function Assistant() {
                       : "Micro đã tắt"}
               </p>
 
-              <div className="mt-4 flex min-h-8 items-center justify-center text-center text-sm text-white/60 sm:text-base">
-                {callStatus === "listening" && "Cứ nói tự nhiên — tôi đang lắng nghe"}
-                {callStatus === "thinking" && "Tôi đang cân nhắc câu trả lời cho bạn"}
-                {callStatus === "speaking" && "Tôi đang trả lời bằng giọng nói"}
-                {callStatus === "muted" && "Bạn đã tắt micro. Bật lại để tiếp tục"}
-              </div>
+              {/* Chỉ hiển thị trạng thái ngắn — không còn văn bản trả lời/caption */}
             </div>
 
             <div className="relative z-10 flex items-center justify-center gap-6 pb-[max(1.6rem,env(safe-area-inset-bottom))] pt-2">
