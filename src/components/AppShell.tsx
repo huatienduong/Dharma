@@ -36,17 +36,11 @@ const NAV_LIB: { to: string; tKey: TranslateKey; icon: typeof Scale }[] = [
   { to: "/watched", tKey: "watched", icon: History },
 ];
 
-/** Cài đặt — một nơi duy nhất (đỉnh sidebar); Hồ sơ đã loại bỏ khỏi nav. */
+/** Cài đặt — dùng cho icon góc phải (mobile + desktop); KHÔNG còn ở sidebar. */
 const SETTINGS_ITEM = { to: "/settings", tKey: "navSettings" as TranslateKey, icon: Settings };
 
 /** Danh sách đầy đủ để tra cứu an toàn cho bottom-nav. */
-const ALL_ITEMS = [...NAV, ...NAV_LIB, SETTINGS_ITEM];
-
-/** Nhóm quản lý tài khoản (cuối sidebar — thay cho icon trùng lặp trên đầu). */
-const NAV_ACCOUNT: { to: string; tKey: TranslateKey; icon: typeof Scale }[] = [
-  { to: "/profile", tKey: "navProfile", icon: UserRound },
-  { to: "/settings", tKey: "navSettings", icon: Settings },
-];
+const ALL_ITEMS = [...NAV, ...NAV_LIB];
 
 /** Bottom-nav mobile: 4 mục chính (Cài đặt/Hồ sơ đã về sidebar — không lặp). */
 const BOTTOM_NAV_PATHS = [
@@ -63,15 +57,12 @@ export function AppShell({
   title,
   subtitle,
   actions,
-  hideTitle,
   children,
 }: {
   title: string;
   subtitle?: string;
   /** Ngừng dùng: khu vực nút cũ — các nút chính đã vào sidebar */
   actions?: React.ReactNode;
-  /** Ẩn tiêu đề trang (trang tự vẽ tiêu đề riêng, vd Trợ lý Phật học) */
-  hideTitle?: boolean;
   children: React.ReactNode;
 }) {
   const navigate = useNavigate();
@@ -182,44 +173,49 @@ export function AppShell({
           })}
         </div>
 
-        {/* Nhóm tài khoản: Hồ sơ · Cài đặt (một chỗ duy nhất — không lặp) */}
-        <div className="mt-2 border-t border-border/60 pt-2">
-          {NAV_ACCOUNT.map((item) => {
-            const active = isActive(item.to);
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.to}
-                type="button"
-                onClick={() => go(item.to)}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-medium transition",
-                  active
-                    ? "bg-primary/10 text-primary"
-                    : "text-foreground/85 hover:bg-accent",
-                )}
-              >
-                <Icon
-                  className={cn(
-                    "h-5 w-5 shrink-0",
-                    active ? "text-primary" : "text-gold",
-                  )}
-                />
-                <span className="truncate">{t(item.tKey)}</span>
-              </button>
-            );
-          })}
-        </div>
       </nav>
 
-      {/* Đáy sidebar: giữ đơn giản — không còn khối thông tin liên hệ */}
-      <div className="border-t border-border/60 p-3" />
+      {/* Đáy sidebar: giữ đơn giản — Hồ sơ/Cài đặt đã về cụm icon góc phải */}
+      <div className="mt-auto border-t border-border/60 p-3" />
     </>
   );
 
   return (
     <div className="fb-bg min-h-screen">
+      {/* ---------- Desktop: cụm Hồ sơ + Cài đặt góc phải trên (giống mobile) ---------- */}
+      <div className="fixed right-5 top-4 z-40 hidden items-center gap-2 lg:flex">
+        <button
+          type="button"
+          onClick={() => go(PROFILE_ITEM.to)}
+          aria-current={isActive(PROFILE_ITEM.to) ? "page" : undefined}
+          title={PROFILE_ITEM.label}
+          aria-label={PROFILE_ITEM.label}
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-full shadow-sm ring-1 ring-border/60 transition",
+            isActive(PROFILE_ITEM.to)
+              ? "bg-primary text-primary-foreground"
+              : "bg-card text-foreground hover:bg-accent",
+          )}
+        >
+          <UserRound className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => go(SETTINGS_ITEM.to)}
+          aria-current={isActive(SETTINGS_ITEM.to) ? "page" : undefined}
+          title={t("navSettings")}
+          aria-label={t("navSettings")}
+          className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-full shadow-sm ring-1 ring-border/60 transition",
+            isActive(SETTINGS_ITEM.to)
+              ? "bg-primary text-primary-foreground"
+              : "bg-card text-foreground hover:bg-accent",
+          )}
+        >
+          <Settings className="h-4 w-4" />
+        </button>
+      </div>
+
       {/* ---------- Sidebar desktop (≥lg) — nền trắng giống Facebook ---------- */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-border/70 bg-card lg:flex">
         {sidebarContent}
@@ -303,22 +299,20 @@ export function AppShell({
 
       {/* ---------- Nội dung ---------- */}
       <div className="lg:pl-60">
-        <main className="mx-auto w-full max-w-5xl px-3 pb-24 pt-[3.75rem] sm:px-5 lg:pb-16 lg:pt-6">
+        <main className="mx-auto w-full max-w-5xl px-3 pb-24 pt-[3.75rem] sm:px-5 lg:pb-16 lg:pr-32 lg:pt-6">
           {/* Tiêu đề trang desktop (mobile đã có trong header) */}
-          {!hideTitle && (
-            <div className="mb-5 hidden items-end justify-between gap-3 lg:flex">
-              <div className="min-w-0">
-                <h1 className="truncate text-2xl font-bold tracking-tight">
-                  {title}
-                </h1>
-                {subtitle && (
-                  <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>
-                )}
-              </div>
-              {/* Khu actions desktop giữ chỗ trống (Cài đặt/Hồ sơ đã ở sidebar) */}
-              {actions && <div className="flex items-center gap-2">{actions}</div>}
+          <div className="mb-5 hidden items-end justify-between gap-3 lg:flex">
+            <div className="min-w-0">
+              <h1 className="truncate text-2xl font-bold tracking-tight">
+                {title}
+              </h1>
+              {subtitle && (
+                <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>
+              )}
             </div>
-          )}
+            {/* Khu actions desktop (Cài đặt/Hồ sơ đã về cụm icon góc phải) */}
+            {actions && <div className="flex items-center gap-2">{actions}</div>}
+          </div>
           {children}
         </main>
       </div>

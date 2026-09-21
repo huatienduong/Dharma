@@ -94,8 +94,6 @@ export default function Assistant() {
   const [callStatus, setCallStatus] = useState<
     "listening" | "thinking" | "speaking" | "muted"
   >("listening");
-  const [userCaption, setUserCaption] = useState("");
-  const [aiCaption, setAiCaption] = useState("");
   const [interim, setInterim] = useState("");
 
   const callActiveRef = useRef(false);
@@ -202,14 +200,15 @@ export default function Assistant() {
           });
         }
         if (opts?.fromCall) {
-          // Trong cuộc gọi: đọc to xong rồi tự nghe tiếp (rảnh tay)
+          // Trong cuộc gọi: đọc to xong rồi tự nghe tiếp (rảnh tay).
+          // Dùng Web Speech trực tiếp (speakBrowser) — KHÔNG chờ server tổng
+          // hợp audio nên phản hồi gần như tức thì, không còn chậm trễ.
           if (!callActiveRef.current) return;
-          setAiCaption(reply);
           aiSpeakingRef.current = true;
           sendingRef.current = false;
           setInterim("");
           setCallStatus("speaking");
-          speakVI(reply, () => {
+          speakDirect(reply, () => {
             aiSpeakingRef.current = false;
             lastAiWordAtRef.current = Date.now();
             if (!callActiveRef.current) return;
@@ -217,8 +216,8 @@ export default function Assistant() {
             startListeningRef.current();
           });
         } else {
-          // SỬA LỖI: KHÔNG await TTS — nút gửi không bị khóa suốt lúc đọc
-          void speakVI(reply);
+          // CHAT: ĐÃ LOẠI BỎ tự động đọc âm thanh — chỉ trả lời văn bản;
+          // muốn nghe thì bấm nút loa ở từng câu trả lời.
         }
       } catch (err) {
         if (!opts?.fromCall) {
@@ -249,7 +248,6 @@ export default function Assistant() {
         window.setTimeout(() => startListeningRef.current(), 600);
         return;
       }
-      setUserCaption(text);
       setInterim("");
       sendingRef.current = true;
       setCallStatus("thinking");
@@ -358,8 +356,6 @@ export default function Assistant() {
     sendingRef.current = false;
     aiSpeakingRef.current = false;
     busyRef.current = false;
-    setUserCaption("");
-    setAiCaption("");
     setInterim("");
     setCallStatus("listening");
     setCallOpen(true);
