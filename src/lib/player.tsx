@@ -397,11 +397,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           >
             <div
               className={cn(
-                "relative w-full",
-                mode === "docked" && "aspect-video",
-                mode === "mini" && "aspect-video",
-                isFullscreen &&
-                  "h-full w-full max-w-none [&>div>iframe]:h-full [&>div>iframe]:w-full",
+                "yt-frame relative w-full",
+                (mode === "docked" || mode === "mini") && "aspect-video",
+                isFullscreen && "h-full w-full max-w-none",
               )}
             >
               {/* Node iframe luôn mounted — mọi chế độ dùng chung một iframe */}

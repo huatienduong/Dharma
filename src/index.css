@@ -360,4 +360,16 @@ body.ds-protect {
   -webkit-touch-callout: none;
 }
 
+/* Trình phát video: YouTube API thay node host bằng iframe trực tiếp,
+   nên ép iframe luôn lấp đầy khung trong mọi chế độ (dock/mini/full). */
+.yt-frame iframe,
+.yt-frame > div > iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  pointer-events: none;
+}
+
 
