@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { formatCount, formatTime, usePlayer } from "@/lib/player";
+import { DockPlayer, formatCount, formatTime, usePlayer } from "@/lib/player";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSettings } from "@/lib/settings";
 import { useQuery } from "convex/react";
@@ -124,6 +124,8 @@ export default function Watched() {
       title={t("watched")}
       subtitle={t("watchedSubtitle")}
     >
+      {/* Video đang phát: dock ngay dưới tiêu đề (trang này không có tìm kiếm) */}
+      <DockPlayer className="mb-6" />
       {progress === undefined ? (
         <div className="space-y-1">
           {Array.from({ length: 8 }).map((_, i) => (

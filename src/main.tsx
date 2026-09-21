@@ -182,3 +182,6 @@ createRoot(document.getElementById("root")!).render(
     </RootErrorBoundary>
   </StrictMode>,
 );
+
+// Gỡ màn boot tĩnh trong index.html — React đã render xong
+(window as unknown as { __dsBootDone?: () => void }).__dsBootDone?.();

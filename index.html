@@ -80,10 +80,14 @@
         sessionStorage.setItem("ds-chunk-retry", "1");
         window.location.reload();
       });
-      window.addEventListener("load", function () {
+      // Gỡ màn boot khi React đã render nội dung thật (main.tsx gọi
+      // window.__dsBootDone()) hoặc sau 4s tối đa — không dựa vào sự kiện
+      // load vì script YouTube có thể trì hoãn nó.
+      window.__dsBootDone = function () {
         var boot = document.getElementById("boot");
         if (boot) boot.remove();
-      });
+      };
+      setTimeout(window.__dsBootDone, 4000);
     </script>
   </body>
 </html>

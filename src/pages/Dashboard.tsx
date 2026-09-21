@@ -112,10 +112,9 @@ export default function Dashboard() {
       </div>
 
       {/* ---------- Trình phát video: nằm NGAY DƯỚI thanh tìm kiếm.
-          Logo & tìm kiếm luôn ở trên — không bao giờ bị đẩy xuống. ---------- */}
-      <div className="mb-6">
-        <DockPlayer />
-      </div>
+          Logo & tìm kiếm luôn ở trên — không bao giờ bị đẩy xuống.
+          (Ẩn khi không phát — không chiếm khoảng trắng) ---------- */}
+      <DockPlayer className="mb-6" />
 
       {/* ---------- Hero (ẩn khi đang phát — chỉ còn video + liên quan) ---------- */}
       {!searchQ && !hasActiveVideo && (

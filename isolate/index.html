@@ -5,17 +5,90 @@
     <link rel="icon" type="image/svg+xml" href="./logo.svg" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <title>Dharma</title>
-    <script type="module" crossorigin src="./assets/index-mNE9U0Z7.js"></script>
+    <style>
+      /* Chống zoom: giữ khung ứng dụng ổn định (pinch / double-tap / ctrl+wheel) */
+      html,
+      body {
+        overscroll-behavior: none;
+        touch-action: pan-x pan-y;
+      }
+      #root {
+        min-height: 100dvh;
+      }
+    </style>
+    <script>
+      // Chặn mọi thao tác zoom của người dùng (pinch, ctrl+wheel, phím tắt)
+      (function () {
+        var stop = function (e) {
+          e.preventDefault();
+        };
+        document.addEventListener("gesturestart", stop, { passive: false });
+        document.addEventListener("gesturechange", stop, { passive: false });
+        document.addEventListener("gestureend", stop, { passive: false });
+        document.addEventListener(
+          "wheel",
+          function (e) {
+            if (e.ctrlKey || e.metaKey) e.preventDefault();
+          },
+          { passive: false },
+        );
+        document.addEventListener(
+          "touchmove",
+          function (e) {
+            if (e.touches.length > 1) e.preventDefault();
+          },
+          { passive: false },
+        );
+        document.addEventListener(
+          "dblclick",
+          function (e) {
+            if (e.target.closest("input, textarea")) return;
+            e.preventDefault();
+          },
+          { passive: false },
+        );
+      })();
+    </script>
+    <script type="module" crossorigin src="./assets/index-V4EUe2CJ.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/react-vendor-h22K4l7J.js">
     <link rel="modulepreload" crossorigin href="./assets/framer-motion-DCqQklih.js">
     <link rel="modulepreload" crossorigin href="./assets/radix-ui-D__aDGDf.js">
     <link rel="modulepreload" crossorigin href="./assets/charts-PmEA1gN7.js">
-    <link rel="stylesheet" crossorigin href="./assets/index-4AHIF7kM.css">
+    <link rel="stylesheet" crossorigin href="./assets/index-CSi9s3ix.css">
   </head>
   <body>
+    <!-- Màn chờ tĩnh: hiển thị ngay lập tức, che trắng trang khi chunk JS tải lỗi/chậm -->
+    <div id="boot" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#faf9f7;z-index:9999">
+      <div style="text-align:center;font-family:system-ui,sans-serif;color:#8a7a5c">
+        <div style="font-size:22px;font-weight:700;letter-spacing:2px;color:#4a3b22">DHARMA</div>
+        <div style="margin-top:10px;font-size:13px">Giới · Định · Tuệ</div>
+      </div>
+    </div>
     <div id="root"></div>
+    <script>
+      // Nếu chunk JS cũ bị 404 sau khi phiên bản mới phát hành → tự tải lại
+      // trang một lần để nhận bundle mới (khắc phục trắng trang).
+      window.addEventListener("error", function (e) {
+        var src = e && e.target && (e.target.src || e.target.href);
+        if (!src || !/\.js(\?|$)/.test(src)) return;
+        if (sessionStorage.getItem("ds-chunk-retry")) return;
+        sessionStorage.setItem("ds-chunk-retry", "1");
+        window.location.reload();
+      }, true);
+      window.addEventListener("unhandledrejection", function (e) {
+        var msg = String((e && e.reason && e.reason.message) || "");
+        if (!/Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported/i.test(msg)) return;
+        if (sessionStorage.getItem("ds-chunk-retry")) return;
+        sessionStorage.setItem("ds-chunk-retry", "1");
+        window.location.reload();
+      });
+      window.addEventListener("load", function () {
+        var boot = document.getElementById("boot");
+        if (boot) boot.remove();
+      });
+    </script>
   </body>
 </html>
