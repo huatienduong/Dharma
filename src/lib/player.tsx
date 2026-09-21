@@ -1,8 +1,10 @@
 /* ------------------------------------------------------------------ */
-/* Trình phát video TOÀN CỤC — dock trong luồng trang (không nổi đè),  */
-/* thẻ mini khi thu nhỏ, toàn màn hình qua Fullscreen API.             */
-/* Trình phát YouTube đã tắt toàn bộ UI (controls/logo/info) và có     */
-/* lớp chặn click → chỉ còn hình ảnh video thuần.                      */
+/* Trình phát video TOÀN CỤC — kiến trúc 2 surface:                     */
+/*   • DockPlayer: nằm TRONG trang (Dashboard/Lịch sử xem), ngay dưới   */
+/*     thanh tìm kiếm → logo & tìm kiếm luôn ở trên, không bị đẩy xuống */
+/*   • MiniPlayer: thẻ nhỏ fixed góc phải khi thu nhỏ hoặc ở trang khác  */
+/* Bàn tay交接: khi chuyển surface, video tự nạp tiếp đúng giây đang xem. */
+/* YouTube UI tắt toàn bộ (controls/logo/info) + lớp chặn click.        */
 /* ------------------------------------------------------------------ */
 import {
   createContext,
@@ -13,6 +15,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { useLocation } from "react-router";
@@ -73,9 +76,8 @@ export function formatCount(n: number): string {
 }
 
 /* -------------------- các trang có giao diện riêng ------------------ */
-/* Trình phát tự thu thành thẻ mini trên các trang này để không đè lên  */
-/* bố cục riêng của chúng (phòng xem cùng có player riêng, trợ lý       */
-/* Phật học full-screen, các trang đọc cần không gian tối đa).          */
+/* Ở các trang này video tự thu thành thẻ mini (trang Phòng xem cùng có  */
+/* player riêng, Trợ lý Phật học full-screen, các trang đọc cần rộng).   */
 
 const MINI_ROUTES = [
   "/watch",
@@ -108,7 +110,6 @@ type YTPlayer = {
   seekTo(sec: number, allowSeekAhead: boolean): void;
   getCurrentTime(): number;
   getDuration(): number;
-  getPlayerState(): number;
   loadVideoById(id: string): void;
   destroy(): void;
   unMute(): void;
@@ -133,29 +134,97 @@ function loadYouTubeApi(): Promise<void> {
   return apiPromise;
 }
 
-export function PlayerProvider({ children }: { children: ReactNode }) {
-  const location = useLocation();
-  const path = location.pathname;
+/* ------------------------------------------------------------------ */
+/* Surface: một trình phát YouTube độc lập (dock hoặc mini).            */
+/* Mỗi surface giữ iframe luôn mounted trong chính vùng DOM của nó —    */
+/* iframe KHÔNG bao giờ bị di chuyển (di chuyển = video tự tải lại).    */
+/* ------------------------------------------------------------------ */
 
-  /* -------- trạng thái -------- */
-  const [current, setCurrent] = useState<PlayerTalk | null>(null);
-  const [isPlaying, setPlaying] = useState(false);
-  const [isBuffering, setBuffering] = useState(false);
-  const [position, setPosition] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [isExpanded, setExpanded] = useState(true);
-  const [isFullscreen, setFullscreen] = useState(false);
+type SurfaceKind = "dock" | "mini";
+
+type SurfaceHandle = {
+  load(videoId: string): void;
+  play(): void;
+  pause(): void;
+  seek(sec: number): void;
+  time(): { position: number; duration: number };
+  unloadCaptions(): void;
+  containerEl(): HTMLElement | null;
+  onState?: (state: number) => void;
+};
+
+type SurfaceEntry = { sid: number; handle: SurfaceHandle };
+
+type RegistryApi = {
+  register(kind: SurfaceKind, handle: SurfaceHandle): void;
+  unregister(kind: SurfaceKind, sid: number): void;
+};
+
+const RegistryContext = createContext<RegistryApi | null>(null);
+
+let surfaceSidCounter = 0;
+
+function useYtSurface(
+  kind: SurfaceKind,
+  containerRef: RefObject<HTMLDivElement | null>,
+) {
+  const registry = useContext(RegistryContext);
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const playerRef = useRef<YTPlayer | null>(null);
+  const handleRef = useRef<SurfaceHandle | null>(null);
   const [ready, setReady] = useState(false);
 
-  /* -------- ref -------- */
-  const hostRef = useRef<HTMLDivElement | null>(null); // node iframe luôn mounted
-  const shellRef = useRef<HTMLDivElement | null>(null); // khung bọc ngoài (fullscreen)
-  const playerRef = useRef<YTPlayer | null>(null);
-  const pollRef = useRef<number | null>(null);
-  const captionsRef = useRef<number | null>(null);
-  const pendingRef = useRef<PlayerTalk | null>(null);
+  if (!handleRef.current) {
+    handleRef.current = {
+      load: (id) => {
+        try {
+          playerRef.current?.loadVideoById(id);
+        } catch {
+          /* chưa sẵn sàng */
+        }
+      },
+      play: () => {
+        try {
+          playerRef.current?.playVideo();
+        } catch {
+          /* bỏ qua */
+        }
+      },
+      pause: () => {
+        try {
+          playerRef.current?.pauseVideo();
+        } catch {
+          /* bỏ qua */
+        }
+      },
+      seek: (sec) => {
+        try {
+          playerRef.current?.seekTo(Math.max(0, sec), true);
+        } catch {
+          /* bỏ qua */
+        }
+      },
+      time: () => {
+        try {
+          const p = playerRef.current;
+          if (!p) return { position: 0, duration: 0 };
+          return { position: p.getCurrentTime() ?? 0, duration: p.getDuration() ?? 0 };
+        } catch {
+          return { position: 0, duration: 0 };
+        }
+      },
+      unloadCaptions: () => {
+        try {
+          playerRef.current?.unloadModule("captions");
+        } catch {
+          /* bỏ qua */
+        }
+      },
+      containerEl: () => containerRef.current,
+    };
+  }
 
-  /* ------------------- khởi tạo iframe MỘT LẦN ------------------- */
+  /* Khởi tạo player MỘT LẦN cho surface này */
   useEffect(() => {
     let disposed = false;
     void loadYouTubeApi().then(() => {
@@ -180,143 +249,213 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
               e.target.unMute();
               e.target.setVolume(100);
               setReady(true);
-              const pending = pendingRef.current;
-              if (pending) {
-                pendingRef.current = null;
-                playerRef.current?.loadVideoById(pending.youtubeId);
-              }
             },
             onStateChange: (e: { data: number }) => {
-              const S = window.YT!.PlayerState;
-              if (e.data === S.PLAYING) {
-                setPlaying(true);
-                setBuffering(false);
-              } else if (e.data === S.PAUSED) {
-                setPlaying(false);
-              } else if (e.data === S.BUFFERING) {
-                setBuffering(true);
-              } else if (e.data === S.ENDED) {
-                setPlaying(false);
-                if (document.fullscreenElement) void document.exitFullscreen();
-              }
+              handleRef.current?.onState?.(e.data);
             },
           },
         });
       } catch {
-        /* YouTube API chưa sẵn sàng — thử lại ở lần phát tiếp theo */
+        /* API chưa sẵn sàng — thử lại ở lần mount sau */
       }
     });
     return () => {
       disposed = true;
-    };
-  }, []);
-
-  /* -------- polling tiến trình 1s -------- */
-  useEffect(() => {
-    if (!current || !ready) return;
-    pollRef.current = window.setInterval(() => {
-      const p = playerRef.current;
-      if (!p) return;
       try {
-        setPosition(p.getCurrentTime() ?? 0);
-        setDuration(p.getDuration() ?? 0);
-      } catch {
-        /* iframe chưa phản hồi — bỏ qua tick */
-      }
-    }, 1000);
-    return () => {
-      if (pollRef.current !== null) window.clearInterval(pollRef.current);
-      pollRef.current = null;
-    };
-  }, [current, ready]);
-
-  /* -------- tắt phụ đề định kỳ (YouTube có thể tự bật lại) -------- */
-  useEffect(() => {
-    if (!current) return;
-    captionsRef.current = window.setInterval(() => {
-      try {
-        playerRef.current?.unloadModule("captions");
+        playerRef.current?.destroy();
       } catch {
         /* bỏ qua */
       }
-    }, 4000);
-    return () => {
-      if (captionsRef.current !== null) window.clearInterval(captionsRef.current);
-      captionsRef.current = null;
+      playerRef.current = null;
     };
-  }, [current]);
+  }, []);
 
-  /* -------- đồng bộ trạng thái fullscreen -------- */
+  /* Đăng ký surface vào registry của provider */
+  useEffect(() => {
+    if (!ready || !registry || !handleRef.current) return;
+    const sid = ++surfaceSidCounter;
+    registry.register(kind, handleRef.current);
+    return () => registry.unregister(kind, sid);
+  }, [ready, kind, registry]);
+
+  return hostRef;
+}
+
+/* ------------------------------------------------------------------ */
+/* Provider — điều phối playback giữa các surface                       */
+/* ------------------------------------------------------------------ */
+
+export function PlayerProvider({ children }: { children: ReactNode }) {
+  const location = useLocation();
+  const path = location.pathname;
+
+  /* -------- trạng thái -------- */
+  const [current, setCurrent] = useState<PlayerTalk | null>(null);
+  const [isPlaying, setPlaying] = useState(false);
+  const [isBuffering, setBuffering] = useState(false);
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isExpanded, setExpanded] = useState(true);
+  const [isFullscreen, setFullscreen] = useState(false);
+  const [surfaceVersion, setSurfaceVersion] = useState(0);
+
+  /* -------- refs -------- */
+  const surfacesRef = useRef<Partial<Record<SurfaceKind, SurfaceEntry>>>({});
+  const ownerSidRef = useRef(0); // surface đang giữ video
+  const lastPosRef = useRef(0); // giây dừng gần nhất (dùng khi bàn giao)
+
+  const ownerEntry = useCallback((): SurfaceEntry | undefined => {
+    const sid = ownerSidRef.current;
+    if (!sid) return undefined;
+    for (const k of ["dock", "mini"] as const) {
+      const e = surfacesRef.current[k];
+      if (e && e.sid === sid) return e;
+    }
+    return undefined;
+  }, []);
+
+  /* -------- registry API -------- */
+  const registryApi = useMemo<RegistryApi>(
+    () => ({
+      register: (kind, handle) => {
+        handle.onState = (state) => {
+          const S = window.YT?.PlayerState;
+          if (!S) return;
+          if (ownerEntry()?.handle !== handle) return;
+          if (state === S.PLAYING) {
+            setPlaying(true);
+            setBuffering(false);
+          } else if (state === S.PAUSED) {
+            setPlaying(false);
+          } else if (state === S.BUFFERING) {
+            setBuffering(true);
+          } else if (state === S.ENDED) {
+            setPlaying(false);
+            if (document.fullscreenElement) void document.exitFullscreen();
+          }
+        };
+        surfacesRef.current[kind] = { sid: ++surfaceSidCounter, handle };
+        setSurfaceVersion((v) => v + 1);
+      },
+      unregister: (kind, sid) => {
+        const e = surfacesRef.current[kind];
+        if (e && e.sid === sid) {
+          if (ownerSidRef.current === sid) ownerSidRef.current = 0;
+          delete surfacesRef.current[kind];
+          setSurfaceVersion((v) => v + 1);
+        }
+      },
+    }),
+    [ownerEntry],
+  );
+
+  /* -------- chế độ mong muốn -------- */
+  const pathIsMini = MINI_ROUTES.some(
+    (r) => path === r || path.startsWith(`${r}/`),
+  );
+  const desiredKind: SurfaceKind | null = !current
+    ? null
+    : pathIsMini || !isExpanded
+      ? "mini"
+      : "dock";
+
+  /* Tự mở dock trên trang thường, tự thu mini trên trang có giao diện riêng */
+  useEffect(() => {
+    if (!current) return;
+    setExpanded(!pathIsMini);
+  }, [pathIsMini, current]);
+
+  /* -------- BÀN TAY交接: nạp video vào surface mong muốn -------- */
+  useEffect(() => {
+    if (!current || !desiredKind) return;
+    const reg = surfacesRef.current[desiredKind];
+    if (!reg || ownerSidRef.current === reg.sid) return;
+    const resumeAt = lastPosRef.current;
+    for (const k of ["dock", "mini"] as const) {
+      if (k !== desiredKind) surfacesRef.current[k]?.handle.pause();
+    }
+    ownerSidRef.current = reg.sid;
+    setPlaying(false);
+    reg.handle.load(current.youtubeId);
+    if (resumeAt > 5) {
+      window.setTimeout(() => reg.handle.seek(resumeAt), 900);
+    }
+  }, [current, desiredKind, surfaceVersion]);
+
+  /* -------- polling tiến trình 1s -------- */
+  useEffect(() => {
+    if (!current) return;
+    const id = window.setInterval(() => {
+      const e = ownerEntry();
+      if (!e) return;
+      try {
+        const t = e.handle.time();
+        if (t.duration > 0) setDuration(t.duration);
+        setPosition(t.position);
+        lastPosRef.current = t.position;
+      } catch {
+        /* bỏ qua tick */
+      }
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [current, ownerEntry]);
+
+  /* -------- tắt phụ đề định kỳ -------- */
+  useEffect(() => {
+    if (!current) return;
+    const id = window.setInterval(() => {
+      ownerEntry()?.handle.unloadCaptions();
+    }, 4000);
+    return () => window.clearInterval(id);
+  }, [current, ownerEntry]);
+
+  /* -------- đồng bộ fullscreen -------- */
   useEffect(() => {
     const onFs = () => setFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener("fullscreenchange", onFs);
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
-  /* -------- auto mini trên trang có giao diện riêng -------- */
-  useEffect(() => {
-    if (!current) return;
-    if (MINI_ROUTES.some((r) => path === r || path.startsWith(`${r}/`))) {
-      setExpanded(false);
-    } else {
-      setExpanded(true);
-    }
-  }, [path, current]);
-
   /* --------------------------- actions --------------------------- */
   const play = useCallback((talk: PlayerTalk) => {
-    setCurrent(talk);
+    lastPosRef.current = 0;
     setPosition(0);
     setDuration(Math.max(0, talk.durationSec ?? 0));
-    const p = playerRef.current;
-    if (p) {
-      try {
-        p.loadVideoById(talk.youtubeId);
-        p.playVideo();
-      } catch {
-        pendingRef.current = talk;
-      }
-    } else {
-      pendingRef.current = talk;
-    }
+    setPlaying(false);
+    setCurrent(talk); // attach effect sẽ nạp video vào surface phù hợp
   }, []);
 
   const toggle = useCallback(() => {
-    const p = playerRef.current;
-    if (!p) return;
-    try {
-      if (isPlaying) p.pauseVideo();
-      else p.playVideo();
-    } catch {
-      /* bỏ qua */
-    }
-  }, [isPlaying]);
+    const h = ownerEntry()?.handle;
+    if (!h) return;
+    if (isPlaying) h.pause();
+    else h.play();
+  }, [isPlaying, ownerEntry]);
 
-  const seek = useCallback((sec: number) => {
-    try {
-      playerRef.current?.seekTo(Math.max(0, sec), true);
+  const seek = useCallback(
+    (sec: number) => {
+      ownerEntry()?.handle.seek(sec);
       setPosition(sec);
-    } catch {
-      /* bỏ qua */
-    }
-  }, []);
+      lastPosRef.current = sec;
+    },
+    [ownerEntry],
+  );
 
   const replay = useCallback(() => {
-    try {
-      playerRef.current?.seekTo(0, true);
-      playerRef.current?.playVideo();
-      setPosition(0);
-    } catch {
-      /* bỏ qua */
-    }
-  }, []);
+    const h = ownerEntry()?.handle;
+    if (!h) return;
+    h.seek(0);
+    h.play();
+    setPosition(0);
+    lastPosRef.current = 0;
+  }, [ownerEntry]);
 
   const close = useCallback(() => {
-    try {
-      playerRef.current?.pauseVideo();
-    } catch {
-      /* bỏ qua */
+    for (const k of ["dock", "mini"] as const) {
+      surfacesRef.current[k]?.handle.pause();
     }
+    ownerSidRef.current = 0;
+    lastPosRef.current = 0;
     setCurrent(null);
     setPosition(0);
     setDuration(0);
@@ -329,12 +468,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       void document.exitFullscreen();
       return;
     }
-    const el = shellRef.current;
+    const el = ownerEntry()?.handle.containerEl();
     if (!el) return;
     void el.requestFullscreen?.().catch(() => {
       /* trình duyệt chặn — bỏ qua */
     });
-  }, []);
+  }, [ownerEntry]);
 
   const value = useMemo<PlayerContextValue>(
     () => ({
@@ -356,150 +495,283 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     [current, isPlaying, isBuffering, position, duration, play, toggle, seek, replay, close, isExpanded, isFullscreen, toggleFullscreen],
   );
 
-  /* -------- ẩn player (không unmount — giữ iframe sống) -------- */
-  const mode: "docked" | "mini" | "hidden" = !current
-    ? "hidden"
-    : isExpanded
-      ? "docked"
-      : "mini";
+  return (
+    <RegistryContext.Provider value={registryApi}>
+      <PlayerContext.Provider value={value}>
+        {children}
+        <MiniPlayer active={desiredKind === "mini"} />
+      </PlayerContext.Provider>
+    </RegistryContext.Provider>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* DockPlayer — đặt TRONG trang (Dashboard/Lịch sử xem) ngay dưới       */
+/* thanh tìm kiếm. Logo & tìm kiếm luôn nằm trên video.                 */
+/* ------------------------------------------------------------------ */
+
+export function DockPlayer({ className }: { className?: string }) {
+  const location = useLocation();
+  const {
+    current,
+    isExpanded,
+    isPlaying,
+    position,
+    duration,
+    seek,
+    toggle,
+    replay,
+    close,
+    setExpanded,
+    isFullscreen,
+    toggleFullscreen,
+  } = usePlayer();
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const hostRef = useYtSurface("dock", containerRef);
+
+  const pathIsMini = MINI_ROUTES.some(
+    (r) => location.pathname === r || location.pathname.startsWith(`${r}/`),
+  );
+  const active = Boolean(current) && isExpanded && !pathIsMini;
 
   return (
-    <PlayerContext.Provider value={value}>
-      {/* Shell render TRƯỚC children: ở chế độ dock, video nổi ở đầu trang
-          (trên thanh tìm kiếm + danh sách) thay vì đáy trang. */}
+    <div
+      ref={containerRef}
+      className={cn("relative w-full", className, !active && "hidden")}
+    >
       <div
-        ref={shellRef}
         className={cn(
-          "z-30",
-          mode === "docked" && "relative w-full lg:pl-60",
-          mode === "mini" &&
-            "fixed bottom-[4.6rem] right-4 z-[95] w-[min(20rem,calc(100vw-2rem))] lg:bottom-4",
-          mode === "hidden" &&
-            "pointer-events-none fixed left-[-9999px] top-[-9999px] w-72 opacity-0",
+          "overflow-hidden bg-black shadow-2xl",
+          !isFullscreen && "rounded-2xl ring-1 ring-black/20",
+          isFullscreen &&
+            "flex h-screen w-screen items-center justify-center rounded-none",
         )}
       >
-        {/* Container căn giữa — chỉ có tác dụng bố cục ở chế độ dock.
-            Chế độ khác dùng display:contents để node vẫn tồn tại. */}
         <div
           className={cn(
-            mode === "docked"
-              ? "mx-auto w-full max-w-5xl px-3 pt-[3.75rem] sm:px-5 lg:pt-2"
-              : "contents",
+            "yt-frame relative aspect-video w-full",
+            isFullscreen && "h-full w-full max-w-none",
           )}
         >
-          <div
-            className={cn(
-              "overflow-hidden bg-black shadow-2xl",
-              mode === "docked" && "rounded-2xl ring-1 ring-black/20",
-              mode === "mini" && "rounded-xl ring-1 ring-black/30",
-              isFullscreen && "flex h-screen w-screen items-center justify-center rounded-none",
-            )}
-          >
-            <div
-              className={cn(
-                "yt-frame relative w-full",
-                (mode === "docked" || mode === "mini") && "aspect-video",
-                isFullscreen && "h-full w-full max-w-none",
-              )}
-            >
-              {/* Node iframe luôn mounted — mọi chế độ dùng chung một iframe */}
-              <div ref={hostRef} className="absolute inset-0" />
-              {/* Lớp chặn click: YouTube logo / watermark / thông tin không thể thao tác */}
-              <div className="absolute inset-0 z-10" />
-            </div>
-
-            {/* ---------- Bảng điều khiển riêng của app ---------- */}
-            {mode !== "hidden" && !isFullscreen && (
-              <div className="flex items-center gap-1 border-t border-white/10 bg-zinc-950 px-2 py-1.5">
-                <span className="px-1.5 text-[11px] tabular-nums text-white/70">
-                  {formatTime(position)}
-                </span>
-                <input
-                  type="range"
-                  min={0}
-                  max={Math.max(1, Math.floor(duration))}
-                  value={Math.min(position, Math.floor(duration) || 0)}
-                  onChange={(e) => seek(Number(e.target.value))}
-                  aria-label="Tua video"
-                  className="h-1 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-white/20 accent-amber-400 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-amber-400"
-                  style={{
-                    background: `linear-gradient(to right, rgb(251 191 36) ${
-                      duration > 0 ? (position / Math.max(1, duration)) * 100 : 0
-                    }%, rgba(255,255,255,0.2) ${
-                      duration > 0 ? (position / Math.max(1, duration)) * 100 : 0
-                    }%)`,
-                  }}
-                />
-                <span className="px-1.5 text-[11px] tabular-nums text-white/70">
-                  {formatTime(duration)}
-                </span>
-                <CtlButton onClick={replay} title="Xem lại từ đầu">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-                    <path d="M12 5V1L7 6l5 5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z" />
-                  </svg>
-                </CtlButton>
-                <CtlButton onClick={toggle} title={isPlaying ? "Tạm dừng" : "Phát"}>
-                  {isPlaying ? (
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-                      <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
-                    </svg>
-                  ) : (
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  )}
-                </CtlButton>
-                <CtlButton
-                  onClick={() => setExpanded(false)}
-                  title="Thu nhỏ"
-                >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-                    <path d="M19 11h-6V5h-2v6H5v2h6v6h2v-6h6z" />
-                  </svg>
-                </CtlButton>
-                <CtlButton onClick={toggleFullscreen} title="Toàn màn hình">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-                    <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
-                  </svg>
-                </CtlButton>
-                <CtlButton onClick={close} title="Đóng trình phát">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-                    <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                  </svg>
-                </CtlButton>
-              </div>
-            )}
-
-            {/* Điều khiển tối giản khi toàn màn hình */}
-            {isFullscreen && (
-              <div className="absolute inset-x-0 bottom-0 z-20 flex items-center gap-2 bg-gradient-to-t from-black/80 to-transparent px-4 pb-3 pt-8">
-                <CtlButton onClick={toggle} title={isPlaying ? "Tạm dừng" : "Phát"} big>
-                  {isPlaying ? (
-                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-                      <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
-                    </svg>
-                  ) : (
-                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  )}
-                </CtlButton>
-                <span className="text-xs tabular-nums text-white/80">
-                  {formatTime(position)} / {formatTime(duration)}
-                </span>
-                <span className="flex-1" />
-                <CtlButton onClick={toggleFullscreen} title="Thoát toàn màn hình" big>
-                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
-                    <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
-                  </svg>
-                </CtlButton>
-              </div>
-            )}
-          </div>
+          <div ref={hostRef} className="absolute inset-0" />
+          {/* Lớp chặn click: logo/watermark/thông tin YouTube không thể thao tác */}
+          <div className="absolute inset-0 z-10" />
         </div>
+
+        {!isFullscreen ? (
+          <div className="flex items-center gap-1 border-t border-white/10 bg-zinc-950 px-2 py-1.5">
+            <span className="px-1.5 text-[11px] tabular-nums text-white/70">
+              {formatTime(position)}
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={Math.max(1, Math.floor(duration))}
+              value={Math.min(position, Math.floor(duration) || 0)}
+              onChange={(e) => seek(Number(e.target.value))}
+              aria-label="Tua video"
+              className="h-1 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-white/20 accent-amber-400 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-amber-400"
+              style={{
+                background: `linear-gradient(to right, rgb(251 191 36) ${
+                  duration > 0 ? (position / Math.max(1, duration)) * 100 : 0
+                }%, rgba(255,255,255,0.2) ${
+                  duration > 0 ? (position / Math.max(1, duration)) * 100 : 0
+                }%)`,
+              }}
+            />
+            <span className="px-1.5 text-[11px] tabular-nums text-white/70">
+              {formatTime(duration)}
+            </span>
+            <CtlButton onClick={replay} title="Xem lại từ đầu">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                <path d="M12 5V1L7 6l5 5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z" />
+              </svg>
+            </CtlButton>
+            <CtlButton onClick={toggle} title={isPlaying ? "Tạm dừng" : "Phát"}>
+              {isPlaying ? (
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                  <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+            </CtlButton>
+            <CtlButton onClick={() => setExpanded(false)} title="Thu nhỏ">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                <path d="M19 11h-6V5h-2v6H5v2h6v6h2v-6h6z" />
+              </svg>
+            </CtlButton>
+            <CtlButton onClick={toggleFullscreen} title="Toàn màn hình">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+              </svg>
+            </CtlButton>
+            <CtlButton onClick={close} title="Đóng trình phát">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+              </svg>
+            </CtlButton>
+          </div>
+        ) : (
+          <FullscreenControls
+            position={position}
+            duration={duration}
+            onSeek={seek}
+            isPlaying={isPlaying}
+            onToggle={toggle}
+            onExit={toggleFullscreen}
+          />
+        )}
       </div>
-      {children}
-    </PlayerContext.Provider>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* MiniPlayer — thẻ nhỏ fixed (provider tự render)                      */
+/* ------------------------------------------------------------------ */
+
+function MiniPlayer({ active }: { active: boolean }) {
+  const { isPlaying, position, duration, toggle, close, setExpanded, isFullscreen, toggleFullscreen } =
+    usePlayer();
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const hostRef = useYtSurface("mini", containerRef);
+
+  return (
+    <div
+      ref={containerRef}
+      className={cn(
+        isFullscreen
+          ? "fixed inset-0 z-[300] flex h-screen w-screen items-center justify-center bg-black"
+          : "fixed bottom-[4.6rem] right-4 z-[95] w-[min(20rem,calc(100vw-2rem))] lg:bottom-4",
+        !active && "hidden",
+      )}
+    >
+      <div
+        className={cn(
+          "overflow-hidden bg-black shadow-2xl",
+          !isFullscreen && "rounded-xl ring-1 ring-black/30",
+          isFullscreen && "flex h-full w-full items-center justify-center",
+        )}
+      >
+        <div
+          className={cn(
+            "yt-frame relative aspect-video w-full",
+            isFullscreen && "h-full w-full max-w-none",
+          )}
+        >
+          <div ref={hostRef} className="absolute inset-0" />
+          <div className="absolute inset-0 z-10" />
+        </div>
+
+        {!isFullscreen ? (
+          <div className="flex items-center gap-0.5 border-t border-white/10 bg-zinc-950 px-1.5 py-1">
+            <span className="px-1 text-[10px] tabular-nums text-white/60">
+              {formatTime(position)} / {formatTime(duration)}
+            </span>
+            <span className="min-w-0 flex-1" />
+            <CtlButton onClick={toggle} title={isPlaying ? "Tạm dừng" : "Phát"}>
+              {isPlaying ? (
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                  <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+            </CtlButton>
+            <CtlButton onClick={() => setExpanded(true)} title="Mở rộng">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                <path d="M3 5h8v2H5v6H3V5zm18 14h-8v-2h6v-6h2v8z" />
+              </svg>
+            </CtlButton>
+            <CtlButton onClick={toggleFullscreen} title="Toàn màn hình">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+              </svg>
+            </CtlButton>
+            <CtlButton onClick={close} title="Đóng">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                <path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+              </svg>
+            </CtlButton>
+          </div>
+        ) : (
+          <FullscreenControls
+            position={position}
+            duration={duration}
+            onSeek={(sec) => {
+              const h = hostRef.current;
+              void h;
+            }}
+            isPlaying={isPlaying}
+            onToggle={toggle}
+            onExit={toggleFullscreen}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Điều khiển chung khi toàn màn hình                                   */
+/* ------------------------------------------------------------------ */
+
+function FullscreenControls({
+  position,
+  duration,
+  onSeek,
+  isPlaying,
+  onToggle,
+  onExit,
+}: {
+  position: number;
+  duration: number;
+  onSeek: (sec: number) => void;
+  isPlaying: boolean;
+  onToggle: () => void;
+  onExit: () => void;
+}) {
+  return (
+    <div className="absolute inset-x-0 bottom-0 z-20 flex items-center gap-2 bg-gradient-to-t from-black/80 to-transparent px-4 pb-3 pt-8">
+      <CtlButton
+        big
+        onClick={onToggle}
+        title={isPlaying ? "Tạm dừng" : "Phát"}
+      >
+        {isPlaying ? (
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+            <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        )}
+      </CtlButton>
+      <input
+        type="range"
+        min={0}
+        max={Math.max(1, Math.floor(duration))}
+        value={Math.min(position, Math.floor(duration) || 0)}
+        onChange={(e) => onSeek(Number(e.target.value))}
+        aria-label="Tua video"
+        className="h-1 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-white/20 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-amber-400"
+      />
+      <span className="text-xs tabular-nums text-white/80">
+        {formatTime(position)} / {formatTime(duration)}
+      </span>
+      <CtlButton big onClick={onExit} title="Thoát toàn màn hình">
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+          <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
+        </svg>
+      </CtlButton>
+    </div>
   );
 }
 
