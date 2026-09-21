@@ -13,7 +13,7 @@
         <div
           className={cn(
             mode === "docked"
-              ? "mx-auto w-full max-w-5xl"
+              ? "mx-auto w-full max-w-5xl overflow-hidden"
               : "contents",
           )}
         >
