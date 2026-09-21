@@ -244,8 +244,10 @@ export function AppShell({
         {sidebarContent}
       </aside>
 
-      {/* ---------- Header mobile (<lg) — thanh trắng giống Facebook ---------- */}
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-card/95 backdrop-blur lg:hidden">
+      {/* ---------- Header mobile (<lg) — thanh trắng giống Facebook ----------
+          FIXED top-0: luôn nổi trên cùng (z-40 > video dock z-30), kể cả khi
+          trình phát video đang dock ở đầu trang. */}
+      <header className="fixed inset-x-0 top-0 z-40 border-b border-border/70 bg-card/95 backdrop-blur lg:hidden">
         <div className="flex h-14 items-center gap-2 px-3">
           <button
             type="button"
@@ -301,7 +303,7 @@ export function AppShell({
 
       {/* ---------- Nội dung ---------- */}
       <div className="lg:pl-60">
-        <main className="mx-auto w-full max-w-5xl px-3 pb-24 pt-3 sm:px-5 lg:pb-16 lg:pt-6">
+        <main className="mx-auto w-full max-w-5xl px-3 pb-24 pt-[3.75rem] sm:px-5 lg:pb-16 lg:pt-6">
           {/* Tiêu đề trang desktop (mobile đã có trong header) */}
           {!hideTitle && (
             <div className="mb-5 hidden items-end justify-between gap-3 lg:flex">

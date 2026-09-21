@@ -383,7 +383,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         <div
           className={cn(
             mode === "docked"
-              ? "mx-auto w-full max-w-5xl px-3 pt-2 sm:px-5"
+              ? "mx-auto w-full max-w-5xl px-3 pt-[3.75rem] sm:px-5 lg:pt-2"
               : "contents",
           )}
         >
