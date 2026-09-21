@@ -211,13 +211,29 @@ export const ask = action({
     const errors: string[] = [];
     for (const provider of providers) {
       try {
+        // FIX lỗi "trợ lý không phản hồi": gpt-5 là reasoning model —
+        // KHÔNG nhận temperature/max_tokens (400 Unsupported value).
+        // Phải dùng max_completion_tokens + reasoning_effort mức thấp,
+        // nếu không toàn bộ ngân sách token bị tiêu cho suy luận → rỗng.
+        const isGpt5 = provider.model.startsWith("gpt-5");
         // Timeout: provider chậm/treo → hủy sau 45s, thử provider kế tiếp
         const result = await Promise.race([
           generateText({
             model: provider.make()(provider.model),
             messages: payload as never,
-            temperature: 0.35,
-            maxOutputTokens: MAX_TOKENS,
+            ...(isGpt5
+              ? {
+                  providerOptions: {
+                    "vly-gateway": {
+                      max_completion_tokens: 900,
+                      reasoningEffort: "low",
+                    },
+                  },
+                }
+              : {
+                  temperature: 0.35,
+                  maxOutputTokens: MAX_TOKENS,
+                }),
           }),
           new Promise<never>((_, reject) =>
             setTimeout(

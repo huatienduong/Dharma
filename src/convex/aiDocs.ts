@@ -117,14 +117,28 @@ async function generateWithFallback(
   const errors: string[] = [];
   for (const p of providers) {
     try {
+      // FIX: gpt-5 (cổng VLY) là reasoning model — KHÔNG nhận
+      // temperature/max_tokens; dùng max_completion_tokens thay thế.
+      const isGpt5 = p.model.startsWith("gpt-5");
       const result = await generateText({
         model: p.make()(p.model),
         messages: [
           { role: "system" as const, content: SYSTEM },
           { role: "user" as const, content: prompt },
         ],
-        temperature: 0.4,
-        maxOutputTokens: maxTokens,
+        ...(isGpt5
+          ? {
+              providerOptions: {
+                "vly-gateway": {
+                  max_completion_tokens: maxTokens + 1500, // dự phòng cho suy luận
+                  reasoningEffort: "low",
+                },
+              },
+            }
+          : {
+              temperature: 0.4,
+              maxOutputTokens: maxTokens,
+            }),
       });
       const text = result.text.trim();
       if (text.length > 200) return { text, errors };
