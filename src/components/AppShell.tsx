@@ -1,7 +1,5 @@
-import { DhammaWheel } from "@/components/DhammaWheel";
 import { useSettings, type TranslateKey } from "@/lib/settings";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   BookOpen,
   BookMarked,
@@ -19,7 +17,7 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
 
-/** Tab chính — Lịch Phật giáo NGAY CẠNH Trợ lý Phật học. */
+/** Tab chính — Lịch Phật giáo ngay cạnh Trợ lý Phật học. */
 const NAV: { to: string; tKey: TranslateKey; icon: typeof LayoutDashboard }[] = [
   { to: "/dashboard", tKey: "navTalks", icon: LayoutDashboard },
   { to: "/suttas", tKey: "navSuttas", icon: BookOpen },
@@ -36,41 +34,37 @@ const NAV_LIB: { to: string; tKey: TranslateKey; icon: typeof Scale }[] = [
   { to: "/watched", tKey: "watched", icon: History },
 ];
 
-/** Cài đặt — dùng cho icon góc phải (mobile + desktop); KHÔNG còn ở sidebar. */
-const SETTINGS_ITEM = { to: "/settings", tKey: "navSettings" as TranslateKey, icon: Settings };
+/** Cài đặt/Hồ sơ — chỉ dùng cho icon góc phải (header), không có trong sidebar. */
+const SETTINGS_ITEM = {
+  to: "/settings",
+  tKey: "navSettings" as TranslateKey,
+  icon: Settings,
+};
 
-/** Danh sách đầy đủ để tra cứu an toàn cho bottom-nav. */
+const PROFILE_ITEM = { to: "/profile", label: "Hồ sơ", icon: UserRound };
+
+/** Danh sách đầy đủ để tra cứu an toàn cho drawer mobile. */
 const ALL_ITEMS = [...NAV, ...NAV_LIB];
-
-/** Bottom-nav mobile: 4 mục chính (Cài đặt/Hồ sơ đã về sidebar — không lặp). */
-const BOTTOM_NAV_PATHS = [
-  "/dashboard",
-  "/suttas",
-  "/watch",
-  "/assistant",
-];
-const BOTTOM_NAV = BOTTOM_NAV_PATHS.map((to) =>
-  ALL_ITEMS.find((n) => n.to === to),
-).filter((n): n is (typeof ALL_ITEMS)[number] => Boolean(n));
 
 export function AppShell({
   title,
   subtitle,
   actions,
+  hideTitle,
   children,
 }: {
   title: string;
   subtitle?: string;
-  /** Ngừng dùng: khu vực nút cũ — các nút chính đã vào sidebar */
   actions?: React.ReactNode;
+  /** Ẩn tiêu đề trang (trang tự vẽ khu vực đầu riêng, vd Trợ lý Phật học) */
+  hideTitle?: boolean;
   children: React.ReactNode;
 }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useSettings();
   const [drawerOpen, setDrawerOpen] = useState(false);
-
-  const PROFILE_ITEM = { to: "/profile", icon: UserRound, label: "Hồ sơ" };
+  const [railOpen, setRailOpen] = useState(true); // sidebar desktop thu gọn
 
   const isActive = (to: string) =>
     to === "/dashboard"
@@ -82,7 +76,7 @@ export function AppShell({
     setDrawerOpen(false);
   }, [location.pathname]);
 
-  // Khóa cuộn nền khi drawer mở — bấm nền mờ để đóng (không còn nút X)
+  // Khóa cuộn nền khi drawer mở — bấm nền mờ để đóng
   useEffect(() => {
     if (!drawerOpen) return;
     document.body.style.overflow = "hidden";
@@ -95,175 +89,108 @@ export function AppShell({
 
   /* ---------------------------------------------------------------- */
   /* Sidebar nội dung (dùng chung cho desktop + drawer mobile)         */
+  /* Kiểu YouTube: mục dọc, icon trái, nhãn nhóm PHẦN TRÊN.            */
   /* ---------------------------------------------------------------- */
+
+  const NavItem = ({ item }: { item: (typeof ALL_ITEMS)[number] }) => {
+    const active = isActive(item.to);
+    const Icon = item.icon;
+    return (
+      <button
+        type="button"
+        onClick={() => go(item.to)}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "flex w-full items-center gap-6 rounded-[10px] px-3 py-2.5 text-sm transition",
+          active
+            ? "bg-accent font-medium text-foreground"
+            : "text-foreground/85 hover:bg-accent/70",
+        )}
+      >
+        <Icon
+          className={cn(
+            "h-5 w-5 shrink-0",
+            active ? "text-primary" : "text-foreground/70",
+          )}
+        />
+        <span className="truncate">{t(item.tKey)}</span>
+      </button>
+    );
+  };
+
+  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+    <p className="px-3 pb-1 pt-4 text-[15px] font-semibold tracking-tight text-foreground">
+      {children}
+    </p>
+  );
 
   const sidebarContent = (
     <>
-      <div className="flex items-center px-3 pt-3 pb-2">
-        <button
-          type="button"
-          onClick={() => go("/dashboard")}
-          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-full p-1.5 text-left transition hover:bg-accent"
-        >
-          <DhammaWheel size={40} />
-          <span className="min-w-0 truncate text-lg font-bold tracking-tight text-foreground">
-            DHARMA
-          </span>
-        </button>
-      </div>
-
-      <nav className="flex-1 overflow-y-auto px-2 pb-4">
-        {/* Nhóm chính: Pháp thoại · Học Kinh · Phòng · Trợ lý Phật học · Thiền */}
+      <nav className="flex-1 overflow-y-auto px-3 pb-6 pt-1">
         <div className="space-y-0.5">
-          {NAV.map((item) => {
-            const active = isActive(item.to);
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.to}
-                type="button"
-                onClick={() => go(item.to)}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-medium transition",
-                  active
-                    ? "bg-primary/10 text-primary"
-                    : "text-foreground/85 hover:bg-accent",
-                )}
-              >
-                <Icon
-                  className={cn(
-                    "h-5 w-5 shrink-0",
-                    active ? "text-primary" : "text-gold",
-                  )}
-                />
-                <span className="truncate">{t(item.tKey)}</span>
-              </button>
-            );
-          })}
+          {NAV.map((item) => (
+            <NavItem key={item.to} item={item} />
+          ))}
         </div>
 
-        {/* Nhóm học liệu: Luật tạng · Từ điển · Đã xem */}
-        <div className="mt-2 border-t border-border/60 pt-2">
-          {NAV_LIB.map((item) => {
-            const active = isActive(item.to);
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.to}
-                type="button"
-                onClick={() => go(item.to)}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] font-medium transition",
-                  active
-                    ? "bg-primary/10 text-primary"
-                    : "text-foreground/85 hover:bg-accent",
-                )}
-              >
-                <Icon
-                  className={cn(
-                    "h-5 w-5 shrink-0",
-                    active ? "text-primary" : "text-gold",
-                  )}
-                />
-                <span className="truncate">{t(item.tKey)}</span>
-              </button>
-            );
-          })}
+        <div className="mt-3 border-t border-border/60 pt-1">
+          <SectionLabel>Học liệu</SectionLabel>
+          <div className="space-y-0.5">
+            {NAV_LIB.map((item) => (
+              <NavItem key={item.to} item={item} />
+            ))}
+          </div>
         </div>
-
       </nav>
 
-      {/* Đáy sidebar: giữ đơn giản — Hồ sơ/Cài đặt đã về cụm icon góc phải */}
       <div className="mt-auto border-t border-border/60 p-3" />
     </>
   );
 
   return (
     <div className="fb-bg min-h-screen">
-      {/* ---------- Desktop: cụm Hồ sơ + Cài đặt góc phải trên (giống mobile) ---------- */}
-      <div className="fixed right-5 top-4 z-40 hidden items-center gap-2 lg:flex">
-        <button
-          type="button"
-          onClick={() => go(PROFILE_ITEM.to)}
-          aria-current={isActive(PROFILE_ITEM.to) ? "page" : undefined}
-          title={PROFILE_ITEM.label}
-          aria-label={PROFILE_ITEM.label}
-          className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-full shadow-sm ring-1 ring-border/60 transition",
-            isActive(PROFILE_ITEM.to)
-              ? "bg-primary text-primary-foreground"
-              : "bg-card text-foreground hover:bg-accent",
-          )}
-        >
-          <UserRound className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => go(SETTINGS_ITEM.to)}
-          aria-current={isActive(SETTINGS_ITEM.to) ? "page" : undefined}
-          title={t("navSettings")}
-          aria-label={t("navSettings")}
-          className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-full shadow-sm ring-1 ring-border/60 transition",
-            isActive(SETTINGS_ITEM.to)
-              ? "bg-primary text-primary-foreground"
-              : "bg-card text-foreground hover:bg-accent",
-          )}
-        >
-          <Settings className="h-4 w-4" />
-        </button>
-      </div>
-
-      {/* ---------- Sidebar desktop (≥lg) — nền trắng giống Facebook ---------- */}
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-border/70 bg-card lg:flex">
-        {sidebarContent}
-      </aside>
-
-      {/* ---------- Drawer mobile (<lg) — bấm nền mờ để đóng ---------- */}
-      {drawerOpen && (
-        <div
-          className="fixed inset-0 z-[60] bg-black/40 lg:hidden"
-          onClick={() => setDrawerOpen(false)}
-          aria-hidden
-        />
-      )}
-      {/* Panel trượt — KHÔNG còn nút X (đóng bằng chạm nền mờ) */}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-[61] flex w-72 max-w-[85vw] flex-col border-r border-border/70 bg-card shadow-2xl transition-transform duration-300 lg:hidden",
-          drawerOpen ? "translate-x-0" : "-translate-x-full",
-        )}
-        aria-hidden={!drawerOpen}
-      >
-        {sidebarContent}
-      </aside>
-
-      {/* ---------- Header mobile (<lg) — thanh trắng giống Facebook ----------
-          FIXED top-0: luôn nổi trên cùng (z-40 > video dock z-30), kể cả khi
-          trình phát video đang dock ở đầu trang. */}
-      <header className="fixed inset-x-0 top-0 z-40 border-b border-border/70 bg-card/95 backdrop-blur lg:hidden">
-        <div className="flex h-14 items-center gap-2 px-3">
+      {/* ============================================================ */}
+      {/* HEADER — kiểu YouTube: cố định trên cùng, tìm kiếm ở giữa      */}
+      {/* ============================================================ */}
+      <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center gap-2 bg-background px-3 sm:px-4">
+        {/* Trái: hamburger + wordmark (KHÔNG logo) */}
+        <div className="flex min-w-0 shrink-0 items-center gap-1">
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-accent"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-foreground transition hover:bg-accent lg:hidden"
             aria-label={t("openMenu")}
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          {/* Hamburger desktop: thu gọn/mở rộng sidebar */}
+          <button
+            type="button"
+            onClick={() => setRailOpen((v) => !v)}
+            className="hidden h-10 w-10 items-center justify-center rounded-full text-foreground transition hover:bg-accent lg:flex"
+            aria-label="Thu gọn menu"
           >
             <Menu className="h-5 w-5" />
           </button>
           <button
             type="button"
             onClick={() => go("/dashboard")}
-            className="flex min-w-0 flex-1 items-center gap-2 rounded-full p-1 text-left transition hover:bg-accent"
+            className="flex min-w-0 items-center gap-0 rounded-full px-1.5 py-1 transition hover:bg-accent"
           >
-            <DhammaWheel size={32} />
-            <span className="min-w-0 truncate text-lg font-bold tracking-tight">
-              DHARMA
+            <span className="truncate text-[19px] font-bold uppercase tracking-tight text-foreground">
+              Dharma
+            </span>
+            <span className="ml-1 hidden text-[10px] font-medium uppercase tracking-widest text-gold sm:inline">
+              Theravāda
             </span>
           </button>
-          {/* Mobile header: Hồ sơ + Cài đặt — ICON BÊN PHẢI */}
+        </div>
+
+        {/* Giữa: wordmark cân đối (ô tìm kiếm nằm trong từng trang, đồng bộ) */}
+        <div className="flex min-w-0 flex-1 justify-center" />
+
+        {/* Phải: Hồ sơ + Cài đặt */}
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
           <button
             type="button"
             onClick={() => go(PROFILE_ITEM.to)}
@@ -271,13 +198,13 @@ export function AppShell({
             title={PROFILE_ITEM.label}
             aria-label={PROFILE_ITEM.label}
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
+              "flex h-9 w-9 items-center justify-center rounded-full transition",
               isActive(PROFILE_ITEM.to)
                 ? "bg-primary text-primary-foreground"
-                : "bg-muted text-foreground hover:bg-accent",
+                : "text-foreground hover:bg-accent",
             )}
           >
-            <UserRound className="h-4 w-4" />
+            <UserRound className="h-5 w-5" />
           </button>
           <button
             type="button"
@@ -286,41 +213,146 @@ export function AppShell({
             title={t("navSettings")}
             aria-label={t("navSettings")}
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
+              "flex h-9 w-9 items-center justify-center rounded-full transition",
               isActive(SETTINGS_ITEM.to)
                 ? "bg-primary text-primary-foreground"
-                : "bg-muted text-foreground hover:bg-accent",
+                : "text-foreground hover:bg-accent",
             )}
           >
-            <Settings className="h-4 w-4" />
+            <Settings className="h-5 w-5" />
           </button>
         </div>
       </header>
 
-      {/* ---------- Nội dung ---------- */}
-      <div className="lg:pl-60">
-        <main className="mx-auto w-full max-w-5xl px-3 pb-24 pt-[3.75rem] sm:px-5 lg:pb-16 lg:pr-32 lg:pt-6">
-          {/* Tiêu đề trang desktop (mobile đã có trong header) */}
-          <div className="mb-5 hidden items-end justify-between gap-3 lg:flex">
-            <div className="min-w-0">
-              <h1 className="truncate text-2xl font-bold tracking-tight">
-                {title}
-              </h1>
-              {subtitle && (
-                <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>
+      {/* Thanh mảnh dưới header (đường kẻ kiểu YouTube) */}
+      <div className="fixed inset-x-0 top-14 z-40 h-px bg-border/60" />
+
+      {/* ============================================================ */}
+      {/* SIDEBAR DESKTOP (≥lg) — danh sách dọc, thu gọn được            */}
+      {/* ============================================================ */}
+      <aside
+        className={cn(
+          "fixed bottom-0 left-0 top-14 z-30 hidden flex-col overflow-y-auto border-r border-border/60 bg-background pb-4 pt-2 transition-[width] duration-200 lg:flex",
+          railOpen ? "w-60 px-3" : "w-[4.5rem] items-center px-1.5",
+        )}
+      >
+        {railOpen ? (
+          sidebarContent
+        ) : (
+          <div className="flex flex-col items-center gap-1">
+            {[...NAV, ...NAV_LIB].map((item) => {
+              const active = isActive(item.to);
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.to}
+                  type="button"
+                  onClick={() => go(item.to)}
+                  title={t(item.tKey)}
+                  aria-label={t(item.tKey)}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex w-16 flex-col items-center gap-1 rounded-[10px] px-1 py-4 text-[10px] leading-tight transition",
+                    active
+                      ? "bg-accent font-medium text-foreground"
+                      : "text-foreground/80 hover:bg-accent/70",
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      "h-5 w-5",
+                      active ? "text-primary" : "text-foreground/70",
+                    )}
+                  />
+                  <span className="w-full truncate text-center">
+                    {t(item.tKey)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </aside>
+
+      {/* ============================================================ */}
+      {/* DRAWER MOBILE (<lg) — bấm nền mờ để đóng                      */}
+      {/* ============================================================ */}
+      {drawerOpen && (
+        <div
+          className="fixed inset-0 z-[60] bg-black/40 lg:hidden"
+          onClick={() => setDrawerOpen(false)}
+          aria-hidden
+        />
+      )}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-[61] flex w-72 max-w-[85vw] flex-col border-r border-border/70 bg-background shadow-2xl transition-transform duration-300 lg:hidden",
+          drawerOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+        aria-hidden={!drawerOpen}
+      >
+        {/* Đầu drawer: wordmark + đóng */}
+        <div className="flex h-14 shrink-0 items-center gap-2 px-3">
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(false)}
+            className="flex h-10 w-10 items-center justify-center rounded-full text-foreground transition hover:bg-accent"
+            aria-label="Đóng menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <span className="text-[19px] font-bold uppercase tracking-tight">
+            Dharma
+          </span>
+        </div>
+        <div className="px-2 pb-2" />
+        {sidebarContent}
+      </aside>
+
+      {/* ============================================================ */}
+      {/* NỘI DUNG — lề trái theo trạng thái sidebar                    */}
+      {/* ============================================================ */}
+      <div
+        className={cn(
+          "pt-14 transition-[padding] duration-200",
+          railOpen ? "lg:pl-60" : "lg:pl-[4.5rem]",
+        )}
+      >
+        <main className="mx-auto w-full max-w-6xl px-3 pb-24 pt-3 sm:px-5 lg:pb-16 lg:pt-5">
+          {/* Tiêu đề trang — ẩn khi trang tự vẽ khu vực đầu riêng */}
+          {!hideTitle && (
+            <div className="mb-4 hidden items-end justify-between gap-3 lg:flex">
+              <div className="min-w-0">
+                <h1 className="truncate text-2xl font-bold tracking-tight">
+                  {title}
+                </h1>
+                {subtitle && (
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    {subtitle}
+                  </p>
+                )}
+              </div>
+              {actions && (
+                <div className="flex items-center gap-2">{actions}</div>
               )}
             </div>
-            {/* Khu actions desktop (Cài đặt/Hồ sơ đã về cụm icon góc phải) */}
-            {actions && <div className="flex items-center gap-2">{actions}</div>}
-          </div>
+          )}
           {children}
         </main>
       </div>
 
-      {/* ---------- Bottom nav mobile (<lg) — thanh trắng ---------- */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+      {/* ============================================================ */}
+      {/* BOTTOM NAV MOBILE (<lg) — 4 mục chính                         */}
+      {/* ============================================================ */}
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background pb-[env(safe-area-inset-bottom)] lg:hidden">
         <div className="mx-auto flex max-w-lg items-stretch justify-between px-2">
-          {BOTTOM_NAV.map((item) => {
+          {[
+            NAV[0],
+            NAV[1],
+            NAV[2],
+            NAV[3],
+          ].map((item) => {
+            if (!item) return null;
             const active = isActive(item.to);
             const Icon = item.icon;
             return (
@@ -345,6 +377,8 @@ export function AppShell({
     </div>
   );
 }
+
+import { Button } from "@/components/ui/button";
 
 export function ShellBackButton() {
   const navigate = useNavigate();
