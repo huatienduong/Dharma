@@ -31,7 +31,7 @@ const Watched = lazy(() => import("./pages/Watched.tsx"));
 function RouteLoading() {
   return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-pulse text-muted-foreground">Loading...</div>
+      <div className="animate-pulse text-sm text-muted-foreground">Đang tải…</div>
     </div>
   );
 }

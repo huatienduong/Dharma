@@ -459,7 +459,7 @@ export default function Assistant() {
 
   if (isLoading) {
     return (
-      <AppShell title="Trợ lý Phật học" hideTitle>
+      <AppShell title="Trợ lý Phật học">
         <div className="flex min-h-[50dvh] items-center justify-center">
           <div className="animate-pulse text-sm text-muted-foreground">Đang tải…</div>
         </div>
@@ -470,18 +470,15 @@ export default function Assistant() {
   const isEmpty = messages.length === 0;
 
   return (
-    <AppShell title="Trợ lý Phật học" hideTitle>
-      <div className="mx-auto flex h-[calc(100dvh-12rem)] max-w-4xl flex-col sm:h-[calc(100dvh-11rem)] lg:h-[calc(100dvh-8rem)]">
+    <AppShell title="Trợ lý Phật học">
+      <div className="mx-auto flex h-[calc(100dvh-13rem)] max-w-4xl flex-col sm:h-[calc(100dvh-12rem)] lg:h-[calc(100dvh-9rem)]">
         <div className="flex items-center justify-between px-0.5 pb-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow">
               <Sparkles className="h-5 w-5" />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-[15px] font-semibold leading-tight">
-                Trợ lý Phật học
-              </p>
-              <p className="truncate text-[11px] leading-tight text-muted-foreground">
+              <p className="truncate text-[13px] font-medium leading-tight text-muted-foreground">
                 Theravāda · Kinh điển · Thiền định
               </p>
             </div>
