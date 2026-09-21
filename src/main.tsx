@@ -115,6 +115,7 @@ const MeditationDetail = lazy(() =>
 
 function RouteSyncer() {
   const location = useLocation();
+  console.log("[Dharma Router]", location.pathname, "basename=/dharma");
   useEffect(() => {
     window.parent.postMessage(
       { type: "iframe-route-change", path: location.pathname },
