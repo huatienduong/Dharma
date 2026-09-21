@@ -76,19 +76,7 @@ function listProviders(needVision: boolean): ProviderChoice[] {
     return out;
   }
 
-  // Ưu tiên mô hình nhanh hơn cho văn bản
-  if (openaiKey) {
-    out.push({
-      label: "OpenAI",
-      make: () =>
-        createOpenAICompatible({
-          name: "openai",
-          baseURL: "https://api.openai.com/v1",
-          apiKey: openaiKey,
-        }),
-      model: "gpt-4.1-mini",
-    });
-  }
+  // Ưu tiên mô hình cực nhanh nhất: Gemini -> OpenAI -> Groq -> VLY
   if (geminiKey) {
     out.push({
       label: "Gemini",
@@ -99,6 +87,18 @@ function listProviders(needVision: boolean): ProviderChoice[] {
           apiKey: geminiKey,
         }),
       model: "gemini-2.0-flash",
+    });
+  }
+  if (openaiKey) {
+    out.push({
+      label: "OpenAI",
+      make: () =>
+        createOpenAICompatible({
+          name: "openai",
+          baseURL: "https://api.openai.com/v1",
+          apiKey: openaiKey,
+        }),
+      model: "gpt-4.1-mini",
     });
   }
   if (groqKey) {
@@ -219,7 +219,7 @@ export const ask = action({
 
 /**
  * TTS tiếng Việt chất lượng cao — server tổng hợp âm thanh rồi trả về base64.
- * Thứ tự: Gemini TTS (free tier, giọng vi tự nhiên) → OpenAI TTS.
+ * Th�� tự: Gemini TTS (free tier, giọng vi tự nhiên) → OpenAI TTS.
  * Trả về null khi không có khóa TTS → client dùng Web Speech dự phòng.
  */
 export const speak = action({
