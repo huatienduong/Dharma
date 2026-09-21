@@ -518,53 +518,52 @@ export default function Assistant() {
 
       {/* ---------- Khu hội thoại: chiếm toàn bộ phần còn lại ---------- */}
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
-
-          {isEmpty ? (
-            <div className="flex h-full flex-col items-center justify-center px-2 text-center">
-              <h2 className="bg-gradient-to-r from-primary via-gold to-primary bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-4xl">
-                Xin chào 🙏
-              </h2>
-              <p className="mt-2 max-w-md text-[15px] leading-relaxed text-muted-foreground">
-                Hôm nay tôi có thể giúp gì cho bạn trên con đường Phật pháp?
-              </p>
-              <div className="mt-7 grid w-full max-w-lg grid-cols-1 gap-2.5 sm:grid-cols-2">
-                {SUGGESTIONS.map((s) => {
-                  const Icon = s.icon;
-                  return (
-                    <button
-                      key={s.text}
-                      type="button"
-                      onClick={() => void send(s.text)}
-                      className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card/70 px-4 py-3.5 text-left text-sm leading-snug text-foreground/90 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/50"
-                    >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold">
-                        <Icon className="h-4 w-4" />
-                      </span>
-                      <span className="min-w-0">{s.text}</span>
-                    </button>
-                  );
-                })}
-              </div>
+        {isEmpty ? (
+          <div className="flex h-full flex-col items-center justify-center px-4 text-center">
+            <h2 className="bg-gradient-to-r from-primary via-gold to-primary bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-4xl">
+              Xin chào 🙏
+            </h2>
+            <p className="mt-2 max-w-md text-[15px] leading-relaxed text-muted-foreground">
+              Hôm nay tôi có thể giúp gì cho bạn trên con đường Phật pháp?
+            </p>
+            <div className="mt-7 grid w-full max-w-lg grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {SUGGESTIONS.map((s) => {
+                const Icon = s.icon;
+                return (
+                  <button
+                    key={s.text}
+                    type="button"
+                    onClick={() => void send(s.text)}
+                    className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3.5 text-left text-sm leading-snug text-foreground/90 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/50"
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0">{s.text}</span>
+                  </button>
+                );
+              })}
             </div>
-          ) : (
-            <div className="mx-auto w-full max-w-3xl space-y-7 px-3 py-3 sm:px-4">
-              {messages.map((m, i) =>
-                m.role === "user" ? (
-                  <UserMessage key={i} content={m.content} />
-                ) : (
-                  <AssistantMessage
-                    key={i}
-                    content={m.content}
-                    onSpeak={() => void speakVI(m.content)}
-                  />
-                ),
-              )}
-              {busy && <AssistantThinking />}
-            </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="mx-auto w-full max-w-3xl space-y-7 px-3 pb-8 pt-3 sm:px-4">
+            {messages.map((m, i) =>
+              m.role === "user" ? (
+                <UserMessage key={i} content={m.content} />
+              ) : (
+                <AssistantMessage
+                  key={i}
+                  content={m.content}
+                  onSpeak={() => void speakVI(m.content)}
+                />
+              ),
+            )}
+            {busy && <AssistantThinking />}
+          </div>
+        )}
+      </div>
 
-        <form
+      <form
           onSubmit={(e) => {
             e.preventDefault();
             void send(input);
@@ -627,7 +626,7 @@ export default function Assistant() {
               }}
               rows={1}
               placeholder=""
-              className="max-h-36 min-h-11 flex-1 resize-none bg-transparent py-2.5 text-[15px] outline-none placeholder:text-muted-foreground/60"
+              className="max-h-36 min-h-10 flex-1 resize-none self-center bg-transparent py-2 text-[15px] outline-none placeholder:text-muted-foreground/60"
             />
 
             {micSupported && (
