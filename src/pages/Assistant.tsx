@@ -191,7 +191,12 @@ export default function Assistant() {
           imageBase64: opts?.fromCall ? undefined : image?.base64,
           imageMime: opts?.fromCall ? undefined : image?.mime,
         });
-        setPending((p) => [...p, { role: "assistant", content: reply }]);
+
+        // Chỉ hiển thị câu trả lời trong chat thường; trong đàm thoại chỉ dùng overlay trạng thái
+        if (!opts?.fromCall) {
+          setPending((p) => [...p, { role: "assistant", content: reply }]);
+        }
+
         if (isAuthenticated) {
           void append({
             items: [
@@ -200,6 +205,7 @@ export default function Assistant() {
             ],
           });
         }
+
         if (opts?.fromCall) {
           // Trong cuộc gọi: đọc to xong rồi tự nghe tiếp (rảnh tay)
           if (!callActiveRef.current) return;
@@ -526,7 +532,7 @@ export default function Assistant() {
                       key={s.text}
                       type="button"
                       onClick={() => void send(s.text)}
-                      className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card/70 px-4 py-3.5 text-left text-sm leading-snug text-foreground/90 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/50"
+                      className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card/70 px-4 py-3.5 text-left text-sm leading-snug text-foreground/90 shadow-sm transition hover:-translate-y-0.5 hover:bg-accent/60"
                     >
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold">
                         <Icon className="h-4 w-4" />
