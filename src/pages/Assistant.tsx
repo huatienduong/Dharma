@@ -669,116 +669,121 @@ export default function Assistant() {
       </div>
 
       {callOpen && (
-        <div className="fixed inset-0 z-[100] flex flex-col items-center overflow-hidden bg-stone-950 text-white">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#09090b] text-white">
           <div
             className="pointer-events-none absolute inset-0"
             style={{
               background:
-                "radial-gradient(36rem 26rem at 50% 38%, rgba(245,158,11,0.14), transparent 70%)",
+                "radial-gradient(55rem 38rem at 50% 42%, rgba(245,158,11,0.15), transparent 62%), linear-gradient(180deg, rgba(17,17,17,0.96), rgba(9,9,11,1))",
             }}
           />
 
-          <div className="relative z-10 flex w-full max-w-2xl items-center justify-between px-5 pt-5">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-gold to-amber-700">
-                <Sparkles className="h-4 w-4 text-white" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold leading-tight">
-                  Đàm thoại với Trợ lý Phật học
-                </p>
-                <p className="text-[11px] leading-tight text-white/50">
-                  Nói tự nhiên — không cần bấm micro
-                </p>
+          <div className="relative z-10 flex h-full w-full max-w-[1800px] flex-col">
+            <div className="flex w-full items-center justify-between px-5 pt-5 sm:px-8">
+              <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-sm">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-gold to-amber-700">
+                  <Sparkles className="h-4 w-4 text-white" />
+                </span>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/50">
+                    Dharma Voice
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={endCall}
+                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 transition hover:bg-white/10"
+                aria-label="Đóng"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex flex-1 flex-col items-center justify-center px-6 pb-10 pt-6">
+              <div
+                className={cn(
+                  "orb-shell h-52 w-52 sm:h-64 sm:w-64 lg:h-80 lg:w-80",
+                  callStatus === "listening" && "orb-listening",
+                  callStatus === "speaking" && "orb-speaking",
+                  callStatus === "thinking" && "orb-thinking",
+                  callStatus === "muted" && "opacity-50",
+                )}
+              >
+                <div className="orb-core" />
+              </div>
+
+              <p className="mt-8 text-center text-xl font-medium tracking-wide text-white/90 sm:text-2xl">
+                {callStatus === "listening"
+                  ? "Đang nghe"
+                  : callStatus === "thinking"
+                    ? "Đang suy niệm"
+                    : callStatus === "speaking"
+                      ? "Đang trả lời"
+                      : "Micro đã tắt"}
+              </p>
+
+              <div className="mt-4 flex min-h-8 items-center justify-center text-center text-sm text-white/60 sm:text-base">
+                {callStatus === "listening" && "Cứ nói tự nhiên — tôi đang lắng nghe"}
+                {callStatus === "thinking" && "Tôi đang cân nhắc câu trả lời cho bạn"}
+                {callStatus === "speaking" && "Tôi đang trả lời bằng giọng nói"}
+                {callStatus === "muted" && "Bạn đã tắt micro. Bật lại để tiếp tục"}
               </div>
             </div>
-            <button
-              type="button"
-              onClick={endCall}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 transition hover:bg-white/20"
-              aria-label="Đóng"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
 
-          <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-8 px-6">
-            <div
-              className={cn(
-                "orb-shell h-44 w-44 sm:h-56 sm:w-56",
-                callStatus === "listening" && "orb-listening",
-                callStatus === "speaking" && "orb-speaking",
-                callStatus === "thinking" && "orb-thinking",
-                callStatus === "muted" && "opacity-50",
-              )}
-            >
-              <div className="orb-core" />
-            </div>
-
-            <p className="text-center text-base font-medium text-white/90 sm:text-lg">
-              {callStatus === "listening"
-                ? "Đang nghe — cứ nói tự nhiên"
-                : callStatus === "thinking"
-                  ? "Đang suy niệm…"
-                  : callStatus === "speaking"
-                    ? "Đang trả lời"
-                    : "Micro đã tắt"}
-            </p>
-
-            <div className="flex min-h-0 w-full max-w-md items-center justify-center">
-              <div className="h-4" />
-            </div>
-          </div>
-
-          <div className="relative z-10 flex items-center justify-center gap-8 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4">
-            {callStatus !== "muted" ? (
-              <button
-                type="button"
-                onClick={toggleMute}
-                className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10 backdrop-blur transition hover:bg-white/20"
-                aria-label="Tắt micro"
-                title="Tắt micro"
-              >
-                <Mic className="h-6 w-6" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={toggleMute}
-                className="flex h-14 w-14 items-center justify-center rounded-full bg-white/25 backdrop-blur transition hover:bg-white/30"
-                aria-label="Bật micro"
-                title="Bật micro"
-              >
-                <MicOff className="h-6 w-6" />
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={endCall}
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500 shadow-lg shadow-red-500/30 transition hover:bg-red-400 active:scale-95"
-              aria-label="Kết thúc đàm thoại"
-              title="Kết thúc"
-            >
-              <PhoneOff className="h-7 w-7" />
-            </button>
-            <div className="flex h-14 w-14 items-center justify-center">
-              {callStatus === "speaking" && (
+            <div className="relative z-10 flex items-center justify-center gap-6 pb-[max(1.6rem,env(safe-area-inset-bottom))] pt-2">
+              {callStatus !== "muted" ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    stopSpeaking();
-                    aiSpeakingRef.current = false;
-                    sendingRef.current = false;
-                    setCallStatus("listening");
-                    startListeningRef.current();
-                  }}
-                  className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10 backdrop-blur transition hover:bg-white/20"
-                  aria-label="Ngừng đọc"
-                  title="Ngừng đọc"
+                  onClick={toggleMute}
+                  className="flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-white/5 backdrop-blur transition hover:bg-white/10"
+                  aria-label="Tắt micro"
+                  title="Tắt micro"
                 >
-                  <Square className="h-5 w-5" />
+                  <Mic className="h-7 w-7" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={toggleMute}
+                  className="flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-amber-500/20 backdrop-blur transition hover:bg-amber-500/30"
+                  aria-label="Bật micro"
+                  title="Bật micro"
+                >
+                  <MicOff className="h-7 w-7" />
                 </button>
               )}
+
+              <button
+                type="button"
+                onClick={endCall}
+                className="flex h-20 w-20 items-center justify-center rounded-full bg-red-500 shadow-[0_0_30px_rgba(239,68,68,0.5)] transition hover:bg-red-400 active:scale-95"
+                aria-label="Kết thúc đàm thoại"
+                title="Kết thúc"
+              >
+                <PhoneOff className="h-8 w-8" />
+              </button>
+
+              <div className="flex h-16 w-16 items-center justify-center">
+                {callStatus === "speaking" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stopSpeaking();
+                      aiSpeakingRef.current = false;
+                      sendingRef.current = false;
+                      setCallStatus("listening");
+                      startListeningRef.current();
+                    }}
+                    className="flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-white/5 backdrop-blur transition hover:bg-white/10"
+                    aria-label="Ngừng đọc"
+                    title="Ngừng đọc"
+                  >
+                    <Square className="h-6 w-6" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
