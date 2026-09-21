@@ -613,8 +613,8 @@ export function DockPlayer({ className }: { className?: string }) {
         </div>
 
         {!isFullscreen ? (
-          <div className="flex items-center gap-1 border-t border-white/10 bg-zinc-950 px-2 py-1.5">
-            <span className="px-1.5 text-[11px] tabular-nums text-white/70">
+          <div className="flex items-center gap-1 border-t border-border/60 bg-card px-2 py-1.5">
+            <span className="px-1.5 text-[11px] tabular-nums text-muted-foreground">
               {formatTime(position)}
             </span>
             <input
@@ -624,16 +624,16 @@ export function DockPlayer({ className }: { className?: string }) {
               value={Math.min(position, Math.floor(duration) || 0)}
               onChange={(e) => seek(Number(e.target.value))}
               aria-label="Tua video"
-              className="h-1 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-white/20 accent-amber-400 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-amber-400"
+              className="h-1 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-white/20 accent-[var(--gold)] [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--gold)]"
               style={{
-                background: `linear-gradient(to right, rgb(251 191 36) ${
+                background: `linear-gradient(to right, var(--gold) ${
                   duration > 0 ? (position / Math.max(1, duration)) * 100 : 0
                 }%, rgba(255,255,255,0.2) ${
                   duration > 0 ? (position / Math.max(1, duration)) * 100 : 0
                 }%)`,
               }}
             />
-            <span className="px-1.5 text-[11px] tabular-nums text-white/70">
+            <span className="px-1.5 text-[11px] tabular-nums text-muted-foreground">
               {formatTime(duration)}
             </span>
             <CtlButton onClick={replay} title="Xem lại từ đầu">
@@ -721,8 +721,8 @@ function MiniPlayer({ active }: { active: boolean }) {
         </div>
 
         {!isFullscreen ? (
-          <div className="flex items-center gap-0.5 border-t border-white/10 bg-zinc-950 px-1.5 py-1">
-            <span className="px-1 text-[10px] tabular-nums text-white/60">
+          <div className="flex items-center gap-0.5 border-t border-border/60 bg-card px-1.5 py-1">
+            <span className="px-1 text-[10px] tabular-nums text-muted-foreground">
               {formatTime(position)} / {formatTime(duration)}
             </span>
             <span className="min-w-0 flex-1" />
@@ -811,7 +811,7 @@ function FullscreenControls({
         value={Math.min(position, Math.floor(duration) || 0)}
         onChange={(e) => onSeek(Number(e.target.value))}
         aria-label="Tua video"
-        className="h-1 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-white/20 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-amber-400"
+        className="h-1 min-w-0 flex-1 cursor-pointer appearance-none rounded-full bg-white/20 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--gold)]"
       />
       <span className="text-xs tabular-nums text-white/80">
         {formatTime(position)} / {formatTime(duration)}
@@ -841,11 +841,12 @@ function CtlButton({
       type="button"
       onClick={onClick}
       title={title}
-      aria-label={title}
-      className={cn(
-        "flex shrink-0 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white active:scale-95",
-        big ? "h-9 w-9" : "h-7 w-7",
-      )}
+      aria-label={title}        className={cn(
+          "flex shrink-0 items-center justify-center rounded-full transition hover:bg-accent active:scale-95",
+          big
+            ? "h-9 w-9 text-foreground"
+            : "h-7 w-7 text-foreground/80 hover:text-foreground",
+        )}
     >
       {children}
     </button>

@@ -125,7 +125,6 @@ const VI = {
   developer: "Nhà phát triển",
   version: "Phiên bản",
   // Misc
-  loading: "Đang tải…",
   guestNotice:
     "Toàn bộ dữ liệu của bạn (lịch sử xem, tiến trình đọc, phiên thiền) được lưu ngay trên thiết bị này.",
   loginRegister: "Đăng nhập / Đăng ký",

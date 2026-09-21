@@ -200,6 +200,22 @@ export function MeditationDetail() {
   const [plannedMin, setPlannedMin] = useState<number | null>(null);
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  // Chế độ chuông báo khi kết thúc phiên — lưu trên thiết bị
+  const [bellMode, setBellMode] = useState<"off" | "chime" | "bell">(() => {
+    try {
+      const v = localStorage.getItem("ds-meditation-bell");
+      return v === "off" || v === "bell" ? v : "chime";
+    } catch {
+      return "chime";
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("ds-meditation-bell", bellMode);
+    } catch {
+      /* bỏ qua */
+    }
+  }, [bellMode]);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -222,14 +238,14 @@ export function MeditationDetail() {
   useEffect(() => {
     if (done && running) {
       setRunning(false);
-      chime();
+      if (bellMode !== "off") chime(bellMode);
       toast.success("Hoàn thành phiên thiền — hiện đầy đủ bình an.");
       if (plannedMin) {
         // Lưu CỤC BỘ trên thiết bị — không cần đăng nhập
         saveLocalMeditation(tech?.id ?? "custom", elapsed);
       }
     }
-  }, [done, running, elapsed, plannedMin, tech]);
+  }, [done, running, elapsed, plannedMin, tech, bellMode]);
 
   if (!tech) {
     return (
@@ -352,6 +368,37 @@ export function MeditationDetail() {
               </div>
             </div>
 
+            {/* Chọn chuông báo kết thúc */}
+            <div className="mt-4">
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Chuông báo khi thiền xong
+              </p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {(
+                  [
+                    { key: "off", label: "Tắt" },
+                    { key: "chime", label: "Chuông nhẹ" },
+                    { key: "bell", label: "Ngân vang" },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setBellMode(opt.key)}
+                    aria-pressed={bellMode === opt.key}
+                    className={cn(
+                      "rounded-full border px-2 py-1.5 text-[11px] font-medium transition",
+                      bellMode === opt.key
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border/70 text-muted-foreground hover:bg-accent",
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Nút điều khiển */}
             <div className="mt-5 flex justify-center gap-2">
               <Button
@@ -390,23 +437,47 @@ export function MeditationDetail() {
   );
 }
 
-// Chuông kết thúc bằng Web Audio (không cần file)
-function chime() {
+// Chuông kết thúc bằng Web Audio (không cần file) — 2 chế độ
+function chime(mode: "chime" | "bell") {
   try {
     const ctx = new AudioContext();
-    const notes = [523.25, 659.25, 783.99];
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.0001, ctx.currentTime + i * 0.15);
-      gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + i * 0.15 + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + i * 0.15 + 1.2);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(ctx.currentTime + i * 0.15);
-      osc.stop(ctx.currentTime + i * 0.15 + 1.3);
-    });
+    if (mode === "chime") {
+      // Chuông nhẹ: 3 nốt ngân lẫn nhau
+      const notes = [523.25, 659.25, 783.99];
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime + i * 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + i * 0.15 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + i * 0.15 + 1.2);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(ctx.currentTime + i * 0.15);
+        osc.stop(ctx.currentTime + i * 0.15 + 1.3);
+      });
+    } else {
+      // Chuông ngân vang: âm chuông chùa trầm, dư âm dài ~6 giây
+      const t0 = ctx.currentTime;
+      const parts = [
+        { freq: 196, gain: 0.32, decay: 6 },
+        { freq: 294, gain: 0.18, decay: 5 },
+        { freq: 392, gain: 0.12, decay: 4 },
+        { freq: 588, gain: 0.06, decay: 3 },
+      ];
+      parts.forEach(({ freq, gain: g, decay }) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(g, t0 + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + decay);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t0);
+        osc.stop(t0 + decay + 0.2);
+      });
+    }
   } catch {
     /* không làm sao */
   }

@@ -107,12 +107,16 @@ export default function Dashboard() {
       {/* ============ ĐANG TÌM / ĐANG PHÁT — thanh tìm kiếm trên cùng ============ */}
       {!isIdle && (
         <>
-          <div className="mb-6">
+          {/* Khi có video: thanh tìm kiếm + trình phát DÍNH CỐ ĐỊNH khi cuộn */}
+          <div
+            className={cn(
+              "-mx-3 bg-background px-3 pb-3 sm:-mx-5 sm:px-5",
+              hasActiveVideo && "sticky top-14 z-30 pt-1 shadow-sm",
+            )}
+          >
             <SearchRow value={search} onChange={setSearch} />
+            <DockPlayer className="mt-4" />
           </div>
-
-          {/* Trình phát video: nằm NGAY DƯỚI thanh tìm kiếm */}
-          <DockPlayer className="mb-6" />
 
           {/* Liên quan: khi đang phát → CHỈ hiện video liên quan */}
           {related.length > 0 && !searchQ && (

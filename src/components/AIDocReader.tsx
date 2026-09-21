@@ -207,7 +207,9 @@ function RelatedDocs({ kind, refId, title }: { kind: AIDocKind; refId: string; t
             onClick={() => navigate(r.kind === "sutta" ? `/suttas/${r.refId}` : r.kind === "vinaya" ? `/vinaya/${r.refId}` : `/dictionary`)}
             className="group flex items-start gap-2.5 rounded-xl border border-border/60 bg-card/60 p-3 text-left transition hover:border-primary/40 hover:bg-accent/40"
           >
-            <DocThumb kind={r.kind} refId={r.refId} title={r.title} size="h-12 w-12" />
+            {r.kind !== "dictionary" && (
+              <DocThumb kind={r.kind} refId={r.refId} title={r.title} size="h-12 w-12" />
+            )}
             <span className="min-w-0">
               <span className="block truncate text-xs font-semibold group-hover:text-primary">
                 {r.title}
@@ -320,27 +322,12 @@ export function AIDocArticle({
   const cacheDoc = useMutation(api.aiDocs.cacheDoc);
 
   const [pendingBody, setPendingBody] = useState<string | null>(null);
-  const [pendingSource, setPendingSource] = useState<string>("");
   const [generating, setGenerating] = useState(false);
 
   const genAction = useAction(actionFor(kind));
 
   const body = cached?.body ?? pendingBody;
-  const source = cached?.source ?? pendingSource;
   const docTitle = cached?.title || title || refId;
-
-  // Tách nguồn thành 2 dòng: Nguồn kinh điển + Phiên dịch (nếu AI ghi "Phiên dịch:")
-  const { sourceMain, sourceTrans } = useMemo(() => {
-    if (!source) return { sourceMain: "", sourceTrans: "" };
-    const m = source.match(/^(.*?)\s*\|\s*Phiên dịch:\s*(.+)$/i) ??
-      source.match(/^(.*?)\s*—\s*Phiên dịch:\s*(.+)$/i);
-    if (m) return { sourceMain: m[1].trim(), sourceTrans: m[2].trim() };
-    const m2 = source.match(/Phiên dịch:\s*(.+)$/i);
-    if (m2) {
-      return { sourceMain: source.slice(0, m2.index ?? 0).trim(), sourceTrans: m2[1].trim() };
-    }
-    return { sourceMain: source, sourceTrans: "" };
-  }, [source]);
 
   // Tự sinh AI khi chưa có cache — AI tự nạp dữ liệu mỗi lần tra cứu mới
   // (không yêu cầu đăng nhập: hành vi AI cho cả khách + thành viên)
@@ -353,12 +340,10 @@ export function AIDocArticle({
         const src = m ? m[1].trim() : "Kinh điển Pāli — truyền thống Theravāda | Phiên dịch: Trợ lý Phật học biên soạn theo truyền thống Mahāvihāra";
         const clean = text.replace(/^Nguồn:\s*.+$/im, "").trim();
         setPendingBody(clean);
-        setPendingSource(src);
         void cacheDoc({ kind, refId, title: title ?? docTitle, body: clean, source: src }).catch(() => undefined);
       })
-      .catch((err: Error) => {
+      .catch(() => {
         setPendingBody("");
-        setPendingSource("");
       })
       .finally(() => setGenerating(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -399,22 +384,6 @@ export function AIDocArticle({
         ) : body ? (
           <>
             <MarkdownView body={body} />
-            {(sourceMain || sourceTrans) && (
-              <div className="mt-5 space-y-1.5 rounded-lg border border-border/70 bg-muted/40 px-3.5 py-3 text-xs leading-relaxed">
-                {sourceMain && (
-                  <p>
-                    <strong className="text-foreground">Nguồn:</strong>{" "}
-                    <span className="text-foreground/85">{sourceMain}</span>
-                  </p>
-                )}
-                {sourceTrans && (
-                  <p>
-                    <strong className="text-foreground">Phiên dịch:</strong>{" "}
-                    <span className="text-foreground/85">{sourceTrans}</span>
-                  </p>
-                )}
-              </div>
-            )}
           </>
         ) : (
           <div className="py-8 text-center">

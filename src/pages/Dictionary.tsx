@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import { SearchToolbar } from "@/components/SearchToolbar";
-import { AIDocArticle, DocThumb } from "@/components/AIDocReader";
+import { AIDocArticle } from "@/components/AIDocReader";
 import { AIIndexList } from "@/components/AIIndexList";
 import { useSettings } from "@/lib/settings";
 import { loadUiState, saveUiState, trackScroll, restoreScroll } from "@/lib/uiState";
@@ -118,6 +118,7 @@ export default function Dictionary() {
             refId={q.trim()}
             title={q.trim()}
             extra={`Tra cứu thuật ngữ Phật học "${q}" (Pāli hoặc tiếng Việt) theo truyền thống Theravāda.`}
+            showThumb={false}
           />
         </section>
       ) : list.length === 0 ? (
@@ -166,8 +167,6 @@ function DictEntryCard({ entry }: { entry: DictEntry }) {
         onClick={() => setOpen((o) => !o)}
         className="flex w-full gap-3 p-4 text-left"
       >
-        {/* Thumbnail tự nạp hình minh họa theo thuật ngữ */}
-        <DocThumb kind="dictionary" refId={entry.pali || entry.term} title={entry.term} size="h-14 w-14" />
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="text-sm font-semibold">{entry.term}</h3>
@@ -201,6 +200,7 @@ function DictEntryCard({ entry }: { entry: DictEntry }) {
             refId={entry.pali || entry.term}
             title={entry.term}
             extra={`Thuật ngữ ${entry.term} (${entry.pali}) — nhóm ${entry.category}.`}
+            showThumb={false}
           />
         </div>
       )}
