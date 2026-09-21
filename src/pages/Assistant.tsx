@@ -1,7 +1,5 @@
-import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
-import { useAuth } from "@/hooks/use-auth";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 import { cn } from "@/lib/utils";
@@ -70,11 +68,8 @@ function newRecognition(): RecLike | null {
 }
 
 export default function Assistant() {
-  const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   const ask = useAction(api.aiChat.ask);
-  const append = useMutation(api.aiChat.appendMessages);
-  const clear = useMutation(api.aiChat.clearMessages);
   const saved = useQuery(api.aiChat.listMessages, {});
 
   const [input, setInput] = useState("");
@@ -193,14 +188,6 @@ export default function Assistant() {
           imageMime: opts?.fromCall ? undefined : image?.mime,
         });
         setPending((p) => [...p, { role: "assistant", content: reply }]);
-        if (isAuthenticated) {
-          void append({
-            items: [
-              { role: "user", content: q },
-              { role: "assistant", content: reply },
-            ],
-          });
-        }
         if (opts?.fromCall) {
           // Trong cuộc gọi: đọc to xong rồi tự nghe tiếp (rảnh tay).
           // Dùng Web Speech trực tiếp (speakBrowser) — KHÔNG chờ server tổng
@@ -240,7 +227,7 @@ export default function Assistant() {
         setBusy(false);
       }
     },
-    [ask, append, busy, image, isAuthenticated, pending, saved, speakVI],
+    [ask, busy, image, pending, saved, speakVI],
   );
 
   /* ----- Đàm thoại: xử lý một câu người dùng vừa nói ----- */
@@ -443,12 +430,10 @@ export default function Assistant() {
 
   const clearAll = async () => {
     setPending([]);
-    if (isAuthenticated) {
-      try {
-        await clear({});
-      } catch {
-        /* noop */
-      }
+    try {
+      await clear({});
+    } catch {
+      /* noop */
     }
   };
 
@@ -459,15 +444,7 @@ export default function Assistant() {
     [send],
   );
 
-  if (isLoading) {
-    return (
-      <div className="fb-bg flex h-[100dvh] items-center justify-center">
-        <div className="animate-pulse text-sm text-muted-foreground">Đang tải…</div>
-      </div>
-    );
-  }
-
-  const isEmpty = messages.length === 0;
+  const onVoiceChat = useCallback(
 
   /* ================================================================ */
   /* FULL MÀN HÌNH — không AppShell: cả viewport là Trợ lý Phật học   */

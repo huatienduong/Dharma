@@ -38,6 +38,7 @@ export default function Suttas() {
   const navigate = useNavigate();
   // Từ khóa tìm kiếm giữ nguyên khi rời trang rồi quay lại
   const [search, setSearch] = useState(() => loadUiState<string>("suttas-search", ""));
+  const searchQ = search.trim().toLowerCase();
   useEffect(() => {
     saveUiState("suttas-search", search);
   }, [search]);

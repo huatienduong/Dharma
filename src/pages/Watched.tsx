@@ -128,6 +128,9 @@ export default function Watched() {
     toast.success("Đã xóa lịch sử xem trên thiết bị này.");
   };
 
+  // Danh sách hiển thị — đọc trực tiếp từ state cục bộ
+  const list = rows;
+
   return (
     <AppShell title={t("watched")} subtitle={t("watchedSubtitle")}>
       {/* Video đang phát: dock ngay dưới tiêu đề */}
@@ -158,7 +161,7 @@ export default function Watched() {
         <div className="space-y-1">
           {list.map((p) => (
             <TalkRowHorizontal
-              key={p.youtubeId}
+              key={`${p.youtubeId}-${p.updatedAt}`}
               title={p.title}
               youtubeId={p.youtubeId}
               durationSec={p.durationSec}
