@@ -80,19 +80,25 @@ export default function Dashboard() {
       {/* Đồng bộ tự động ngầm — ẩn khỏi giao diện */}
       <AutoSync />
 
+      {/* ===== THANH TÌM KIẾM DUY NHẤT — dính cố định dưới header =====
+          Một instance duy nhất để ô nhập không mất focus khi chuyển màn. */}
+      <div
+        className={cn(
+          "sticky top-14 z-30 -mx-3 bg-background px-3 py-3 shadow-sm sm:-mx-5 sm:px-5",
+        )}
+      >
+        <SearchRow value={search} onChange={setSearch} />
+        <DockPlayer className={cn(hasActiveVideo && "mt-4")} />
+      </div>
+
       {/* ================= CHẾ ĐỘ MẶC ĐỊNH — màn tìm kiếm kiểu YouTube ============ */}
       {isIdle && (
-        <div className="flex flex-col items-center px-2 pb-16 pt-10 sm:pt-16">
+        <div className="flex flex-col items-center px-2 pb-16 pt-6 sm:pt-10">
           {/* Bánh xe Chuyển Pháp Luân 8 cánh đang quay */}
           <DharmaWheel className="h-24 w-24 sm:h-28 sm:w-28" />
 
-          {/* Hàng tìm kiếm: nút tròn trái · pill · mic tròn phải */}
-          <div className="mt-8 w-full max-w-xl">
-            <SearchRow value={search} onChange={setSearch} />
-          </div>
-
           {/* Thẻ trống kiểu YouTube: "Thử tìm kiếm để bắt đầu" */}
-          <div className="mt-12 w-full max-w-2xl rounded-3xl border border-border/60 bg-card px-6 py-10 text-center">
+          <div className="mt-10 w-full max-w-2xl rounded-3xl border border-border/60 bg-card px-6 py-10 text-center">
             <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-[28px]">
               Thử tìm kiếm để bắt đầu
             </h2>
@@ -104,20 +110,9 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ============ ĐANG TÌM / ĐANG PHÁT — thanh tìm kiếm trên cùng ============ */}
+      {/* ============ ĐANG TÌM / ĐANG PHÁT ============ */}
       {!isIdle && (
         <>
-          {/* Khi có video: thanh tìm kiếm + trình phát DÍNH CỐ ĐỊNH khi cuộn */}
-          <div
-            className={cn(
-              "-mx-3 bg-background px-3 pb-3 sm:-mx-5 sm:px-5",
-              hasActiveVideo && "sticky top-14 z-30 pt-1 shadow-sm",
-            )}
-          >
-            <SearchRow value={search} onChange={setSearch} />
-            <DockPlayer className="mt-4" />
-          </div>
-
           {/* Liên quan: khi đang phát → CHỈ hiện video liên quan */}
           {related.length > 0 && !searchQ && (
             <section className="mb-6" aria-label="Pháp thoại liên quan">
@@ -141,7 +136,7 @@ export default function Dashboard() {
           )}
 
           {/* Kết quả tìm kiếm */}
-          {searchQ.length > 0 && !hasActiveVideo && (
+          {searchQ.length > 0 && (
             <section aria-label="Kết quả tìm kiếm">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="flex items-center gap-2 text-lg font-semibold">
@@ -246,7 +241,7 @@ export function DharmaWheel({ className }: { className?: string }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Hàng tìm kiếm kiểu YouTube: nút tròn trái · pill · mic tròn phải     */
+/* Hàng tìm kiếm kiểu YouTube: logo app · pill · mic tròn phải          */
 /* ------------------------------------------------------------------ */
 
 function SearchRow({
@@ -270,12 +265,7 @@ function SearchRow({
 
   return (
     <div className="flex items-center gap-2.5" role="search">
-      {/* Nút tròn trái — bánh xe Chuyển Pháp Luân nhỏ */}
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent">
-        <DharmaWheel className="h-8 w-8" />
-      </span>
-
-      {/* Pill nhập */}
+      {/* Pill nhập (đã xóa logo con bên trái theo yêu cầu) */}
       <div
         className={cn(
           "flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full bg-muted px-4 transition",

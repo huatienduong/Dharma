@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
+import { useQuery } from "convex/react";
+import { anyApi } from "convex/server";
 
 /** Nhóm trái: nội dung học liệu. */
 const NAV_LEFT: { to: string; tKey: TranslateKey; icon: typeof LayoutDashboard }[] = [
@@ -65,6 +67,9 @@ export function AppShell({
   const { t } = useSettings();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [railOpen, setRailOpen] = useState(true); // sidebar desktop thu gọn
+
+  // Logo ứng dụng chính thức — ảnh chủ app tải lên Convex Storage
+  const logo = useQuery(anyApi.appLogo.get);
 
   const isActive = (to: string) =>
     to === "/dashboard"
@@ -178,15 +183,24 @@ export function AppShell({
           </button>
         </div>
 
-        {/* Giữa: wordmark DHARMA — căn giữa header */}
+        {/* Giữa: LOGO ỨNG DỤNG chính thức (ảnh từ Convex Storage) */}
         <button
           type="button"
           onClick={() => go("/dashboard")}
+          aria-label="Trang chủ Dharma"
           className="mx-auto flex min-w-0 items-center justify-center rounded-full px-2 py-1 transition hover:bg-accent"
         >
-          <span className="truncate text-[19px] font-bold uppercase tracking-[0.08em] text-foreground">
-            Dharma
-          </span>
+          {logo?.url ? (
+            <img
+              src={logo.url}
+              alt="Dharma"
+              className="h-9 w-auto max-w-[10rem] object-contain"
+            />
+          ) : (
+            <span className="truncate text-[19px] font-bold uppercase tracking-[0.08em] text-foreground">
+              Dharma
+            </span>
+          )}
         </button>
 
         {/* Phải: chỉ còn Cài đặt (Hồ sơ đã bỏ) */}
@@ -275,7 +289,7 @@ export function AppShell({
         )}
         aria-hidden={!drawerOpen}
       >
-        {/* Đầu drawer: wordmark + đóng */}
+        {/* Đầu drawer: logo + đóng */}
         <div className="flex h-14 shrink-0 items-center gap-2 px-3">
           <button
             type="button"
@@ -285,9 +299,17 @@ export function AppShell({
           >
             <Menu className="h-5 w-5" />
           </button>
-          <span className="text-[19px] font-bold uppercase tracking-tight">
-            Dharma
-          </span>
+          {logo?.url ? (
+            <img
+              src={logo.url}
+              alt="Dharma"
+              className="h-9 w-auto max-w-[10rem] object-contain"
+            />
+          ) : (
+            <span className="text-[19px] font-bold uppercase tracking-tight">
+              Dharma
+            </span>
+          )}
         </div>
         {sidebarContent}
       </aside>

@@ -409,9 +409,6 @@ export default function Settings() {
                   />
                 </label>
               </div>
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Thiết bị phát hiện tự động: {detectedDevice}
-              </p>
             </>
           )}
 

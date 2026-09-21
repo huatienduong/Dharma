@@ -480,9 +480,6 @@ export default function Assistant() {
           <p className="truncate text-[15px] font-semibold leading-tight">
             Trợ lý Phật học
           </p>
-          <p className="truncate text-[11px] leading-tight text-muted-foreground">
-            Theravāda · Kinh điển · Thiền định
-          </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button
