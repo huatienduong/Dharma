@@ -1,5 +1,4 @@
 import { AppShell } from "@/components/AppShell";
-import { DhammaWheel } from "@/components/DhammaWheel";
 import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
@@ -98,9 +97,6 @@ export default function Profile() {
               <div className="flex h-20 w-20 items-center justify-center rounded-full border-2 border-gold/60 bg-gradient-to-br from-gold/25 to-primary/10 text-3xl font-bold text-primary">
                 {initial}
               </div>
-              <span className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-card bg-background">
-                <DhammaWheel size={26} />
-              </span>
             </div>
 
             <div className="min-w-0 flex-1">

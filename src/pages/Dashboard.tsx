@@ -5,16 +5,13 @@ import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { DockPlayer, formatCount, formatTime, usePlayer } from "@/lib/player";
 import { useSettings } from "@/lib/settings";
 import { APP_VERSION } from "@/lib/version";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { loadUiState, saveUiState, trackScroll, restoreScroll } from "@/lib/uiState";
 import { useAction, useQuery } from "convex/react";
 import {
   Eye,
-  Play,
   Search as SearchIcon,
-  Sparkles,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -87,9 +84,8 @@ export default function Dashboard() {
     );
   }, [talks, searchQ]);
 
-  // Hero: bài mới nhất (chỉ khi không tìm kiếm)
-  const hero = !searchQ ? filtered[0] : undefined;
-  const rest = searchQ ? filtered : filtered.slice(1);
+  // Hero đã bỏ — feed đồng nhất kiểu YouTube, bài mới nhất nằm đầu lưới
+  const rest = filtered;
   // Đang phát video nào đó → trang chủ chỉ hiện video + video liên quan
   const hasActiveVideo = Boolean(current);
 
@@ -116,67 +112,15 @@ export default function Dashboard() {
           (Ẩn khi không phát — không chiếm khoảng trắng) ---------- */}
       <DockPlayer className="mb-6" />
 
-      {/* ---------- Hero (ẩn khi đang phát — chỉ còn video + liên quan) ---------- */}
-      {!searchQ && !hasActiveVideo && (
-        <section className="mb-6">
-          {hero ? (
-            <button
-              type="button"
-              onClick={() => play(hero)}
-              className="group relative overflow-hidden rounded-2xl border border-border/60 text-left shadow-md transition hover:shadow-lg"
-            >
-              <div className="relative aspect-video w-full overflow-hidden bg-muted sm:aspect-[21/9]">
-                <img
-                  src={`https://i.ytimg.com/vi/${hero.youtubeId}/maxresdefault.jpg`}
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = `https://i.ytimg.com/vi/${hero.youtubeId}/hqdefault.jpg`;
-                  }}
-                  alt=""
-                  className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6">
-                  <Badge className="mb-2 border border-gold/60 bg-black/40 text-gold">
-                    <Sparkles className="mr-1 h-3 w-3" /> {t("todayPick")}
-                  </Badge>
-                  <h1 className="line-clamp-2 text-lg font-bold leading-snug text-white sm:text-2xl">
-                    {hero.title}
-                  </h1>
-                  <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-white/80 sm:text-sm">
-                    <span className="inline-flex items-center gap-1">
-                      <Eye className="h-3.5 w-3.5" />
-                      {formatCount(hero.viewCount ?? 0)} lượt xem
-                    </span>
-                  </p>
-                </div>
-                <span className="absolute bottom-2 right-2 rounded bg-black/80 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white">
-                  {formatTime(hero.durationSec)}
-                </span>
-                <span className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/50 backdrop-blur transition group-hover:scale-110 group-hover:bg-primary/90">
-                  <Play className="ml-1 h-7 w-7 fill-white text-white" />
-                </span>
-              </div>
-            </button>
-          ) : (
-            <div className="space-y-3 rounded-2xl border border-border/60 bg-card/40 p-6">
-              <Skeleton className="aspect-video w-full rounded-xl" />
-              <Skeleton className="h-6 w-3/4" />
-              <Skeleton className="h-4 w-1/3" />
-            </div>
-          )}
-
-        </section>
-      )}
-
       {/* ---------- Liên quan: khi đang phát → CHỈ hiện video liên quan ---------- */}
       {related.length > 0 && !searchQ && (
         <section className="mb-6" aria-label="Pháp thoại liên quan">
-          <div className="grid grid-cols-1 gap-x-5 gap-y-1 md:grid-cols-2">
+          <h2 className="mb-3 text-lg font-semibold tracking-tight">Pháp thoại liên quan</h2>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
             {related.map((t) => (
               <TalkRow
                 key={t._id}
                 title={t.title}
-                teacher={t.teacher}
                 youtubeId={t.youtubeId}
                 durationSec={t.durationSec}
                 viewCount={t.viewCount}
@@ -204,9 +148,13 @@ export default function Dashboard() {
         )}
 
         {loading ? (
-          <div className="space-y-1">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-[5.25rem] w-full rounded-xl" />
+              <div key={i}>
+                <Skeleton className="aspect-video w-full rounded-xl" />
+                <Skeleton className="mt-2.5 h-4 w-4/5" />
+                <Skeleton className="mt-1.5 h-3 w-2/5" />
+              </div>
             ))}
           </div>
         ) : filtered.length === 0 ? (
@@ -217,7 +165,7 @@ export default function Dashboard() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-x-5 gap-y-1 md:grid-cols-2">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
             {rest.map((t) => (
               <TalkRow
                 key={t._id}
@@ -270,7 +218,7 @@ function completedByTalk(
 }
 
 /* ------------------------------------------------------------------ */
-/* Hàng pháp thoại: thumbnail TRÁI — tiêu đề/thời lượng/lượt xem PHẢI  */
+/* Thẻ pháp thoại kiểu YouTube: thumbnail TRÊN — tiêu đề/lượt xem DƯỚI  */
 /* ------------------------------------------------------------------ */
 
 export function TalkRow({
@@ -307,12 +255,12 @@ export function TalkRow({
       type="button"
       onClick={onClick}
       className={cn(
-        "group flex w-full items-stretch gap-3 rounded-xl border border-transparent p-2 text-left transition hover:border-border/60 hover:bg-accent/40",
-        active && "border-primary/50 bg-primary/5",
+        "group flex w-full flex-col text-left transition",
+        active && "rounded-xl bg-accent/60 p-1.5 -m-1.5 ring-1 ring-primary/40",
       )}
     >
-      {/* Thumbnail bên trái */}
-      <span className="relative block w-36 shrink-0 overflow-hidden rounded-lg bg-muted sm:w-44">
+      {/* Thumbnail trên */}
+      <span className="relative block w-full overflow-hidden rounded-xl bg-muted">
         <span className="block aspect-video w-full">
           <img
             src={`https://i.ytimg.com/vi/${youtubeId}/mqdefault.jpg`}
@@ -322,17 +270,17 @@ export function TalkRow({
           />
         </span>
         {showDuration && (
-          <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1 py-0.5 text-[10px] font-medium tabular-nums text-white">
+          <span className="absolute bottom-1.5 right-1.5 rounded bg-black/80 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white">
             {formatTime(durationSec)}
           </span>
         )}
         {completed && (
-          <span className="absolute left-1 top-1 rounded bg-primary px-1 py-0.5 text-[9px] font-medium text-primary-foreground">
+          <span className="absolute left-1.5 top-1.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
             Đã xem
           </span>
         )}
         {active && (
-          <span className="absolute left-1 top-1 rounded bg-black/70 px-1 py-0.5 text-[9px] font-medium text-gold">
+          <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-gold">
             Đang phát
           </span>
         )}
@@ -343,13 +291,13 @@ export function TalkRow({
         )}
       </span>
 
-      {/* ---------- Thông tin video: tiêu đề + lượt xem (không người đăng/mô tả) ---------- */}
-      <span className="min-w-0 flex-1 py-0.5">
-        <span className="line-clamp-2 block text-sm font-medium leading-snug group-hover:text-primary">
+      {/* Thông tin dưới — kiểu YouTube: tiêu đề 2 dòng + lượt xem */}
+      <span className="mt-2.5 min-w-0 flex-1">
+        <span className="line-clamp-2 block text-[15px] font-medium leading-snug text-foreground group-hover:text-primary">
           {title}
         </span>
-        <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-          <Eye className="h-3 w-3" />
+        <span className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground">
+          <Eye className="h-3.5 w-3.5" />
           <span className="tabular-nums">{formatCount(viewCount ?? 0)} lượt xem</span>
         </span>
       </span>

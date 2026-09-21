@@ -39,7 +39,7 @@ export function SearchToolbar({
   return (
     <div
       className={cn(
-        "flex h-11 w-full items-center gap-1 rounded-full border border-border/70 bg-card/80 pl-2 pr-3 shadow-sm transition",
+        "flex h-11 w-full items-center gap-1 rounded-full border border-border/70 bg-muted/50 pl-2 pr-3 transition focus-within:border-primary/40 focus-within:bg-background",
         (listening || hasText) && "border-primary/45",
         listening && "ring-2 ring-primary/20",
         className,

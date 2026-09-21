@@ -1,10 +1,10 @@
-import { DhammaWheel } from "@/components/DhammaWheel";
 import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 import { useNavigate } from "react-router";
 
 /**
  * TÍNH NĂNG ĐĂNG NHẬP / ĐĂNG KÝ TẠM THỜI BỊ KHÓA.
  * Dùng MaintenanceNotice chung — đồng bộ văn bản/giao diện toàn ứng dụng.
+ * Không còn logo ứng dụng — chỉ wordmark chữ.
  */
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -14,11 +14,12 @@ export default function AuthPage() {
       <button
         type="button"
         onClick={() => navigate("/")}
-        className="flex flex-col items-center gap-2"
+        className="flex flex-col items-center gap-1"
         aria-label="Về trang chủ"
       >
-        <DhammaWheel size={64} />
-        <span className="text-sm font-semibold">Dharma</span>
+        <span className="text-2xl font-bold uppercase tracking-tight">
+          Dharma
+        </span>
         <span className="text-xs text-muted-foreground">Giới - Định - Tuệ</span>
       </button>
 

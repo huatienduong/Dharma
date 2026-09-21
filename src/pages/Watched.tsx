@@ -51,11 +51,11 @@ function TalkRow({
       type="button"
       onClick={onClick}
       className={cn(
-        "group flex w-full items-stretch gap-3 rounded-xl border border-transparent p-2 text-left transition hover:border-border/60 hover:bg-accent/40",
-        active && "border-primary/50 bg-primary/5",
+        "group flex w-full flex-col text-left transition",
+        active && "rounded-xl bg-accent/60 p-1.5 -m-1.5 ring-1 ring-primary/40",
       )}
     >
-      <span className="relative block w-36 shrink-0 overflow-hidden rounded-lg bg-muted sm:w-44">
+      <span className="relative block w-full overflow-hidden rounded-xl bg-muted">
         <span className="block aspect-video w-full">
           <img
             src={`https://i.ytimg.com/vi/${youtubeId}/mqdefault.jpg`}
@@ -64,17 +64,16 @@ function TalkRow({
             loading="lazy"
           />
         </span>
-        <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1 py-0.5 text-[10px] font-medium tabular-nums text-white">
+        <span className="absolute bottom-1.5 right-1.5 rounded bg-black/80 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-white">
           {formatTime(durationSec)}
         </span>
-        {/* Lượt xem (đồng bộ với trang chủ) */}
         {completed && (
-          <span className="absolute left-1 top-1 rounded bg-primary px-1 py-0.5 text-[9px] font-medium text-primary-foreground">
+          <span className="absolute left-1.5 top-1.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
             Đã xem
           </span>
         )}
         {active && (
-          <span className="absolute left-1 top-1 rounded bg-black/70 px-1 py-0.5 text-[9px] font-medium text-gold">
+          <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-gold">
             Đang phát
           </span>
         )}
@@ -84,19 +83,19 @@ function TalkRow({
           </span>
         )}
       </span>
-      <span className="min-w-0 flex-1 py-0.5">
-        <span className="line-clamp-2 block text-sm font-medium leading-snug group-hover:text-primary">
+      <span className="mt-2.5 min-w-0 flex-1">
+        <span className="line-clamp-2 block text-[15px] font-medium leading-snug text-foreground group-hover:text-primary">
           {title}
         </span>
-        <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+        <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
-            <Play className="h-3 w-3" />
+            <Play className="h-3.5 w-3.5" />
             <span className="tabular-nums">{formatTime(progressSec ?? 0)}</span>
             <span className="text-muted-foreground/60">/ {formatTime(durationSec)}</span>
           </span>
           {typeof viewCount === "number" && (
             <span className="inline-flex items-center gap-1">
-              <Eye className="h-3 w-3" />
+              <Eye className="h-3.5 w-3.5" />
               <span className="tabular-nums">{formatCount(viewCount)} lượt xem</span>
             </span>
           )}
@@ -127,9 +126,13 @@ export default function Watched() {
       {/* Video đang phát: dock ngay dưới tiêu đề (trang này không có tìm kiếm) */}
       <DockPlayer className="mb-6" />
       {progress === undefined ? (
-        <div className="space-y-1">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-[5.25rem] w-full rounded-xl" />
+            <div key={i}>
+              <Skeleton className="aspect-video w-full rounded-xl" />
+              <Skeleton className="mt-2.5 h-4 w-4/5" />
+              <Skeleton className="mt-1.5 h-3 w-2/5" />
+            </div>
           ))}
         </div>
       ) : progress.length === 0 ? (
@@ -141,7 +144,7 @@ export default function Watched() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-x-5 gap-y-1 md:grid-cols-2">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
           {progress.map((p) => (
             <TalkRow
               key={p.youtubeId}
