@@ -13,7 +13,7 @@
         <div
           className={cn(
             mode === "docked"
-              ? "mx-auto w-full max-w-5xl px-3 pt-2 sm:px-5"
+              ? "mx-auto w-full max-w-5xl"
               : "contents",
           )}
         >
