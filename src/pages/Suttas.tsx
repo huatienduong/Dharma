@@ -67,14 +67,13 @@ export default function Suttas() {
       title={t("navSuttas")}
       subtitle={t("suttasSubtitle")}
     >
-      {/* Tìm kiếm dùng chung — mic trái, kính lúp phải trong pill */}
-      <div className="mb-4">
-        <SearchToolbar
-          value={search}
-          onChange={setSearch}
-          placeholder={t("suttaSearchPlaceholder")}
-        />
-      </div>
+      {/* Tìm kiếm dùng chung — dính cố định dưới header khi cuộn */}
+      <SearchToolbar
+        value={search}
+        onChange={setSearch}
+        placeholder={t("suttaSearchPlaceholder")}
+        sticky
+      />
 
       {/* Danh sách đề xuất do Trợ lý Phật học TỰ NẠP TOÀN BỘ — thay dữ liệu cũ */}
       <AIIndexList

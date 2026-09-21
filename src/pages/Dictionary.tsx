@@ -66,14 +66,13 @@ export default function Dictionary() {
       title={t("dictTitle")}
       subtitle={t("dictSubtitle")}
     >
-      {/* Ô tìm kiếm dùng chung — mic trái, kính lúp phải trong pill */}
-      <div className="mb-4">
-        <SearchToolbar
-          value={q}
-          onChange={setQ}
-          placeholder={t("dictSearchPlaceholder")}
-        />
-      </div>
+      {/* Ô tìm kiếm dùng chung — dính cố định dưới header khi cuộn */}
+      <SearchToolbar
+        value={q}
+        onChange={setQ}
+        placeholder={t("dictSearchPlaceholder")}
+        sticky
+      />
 
       {/* Bộ lọc nhóm */}
       <div className="mb-6 flex flex-wrap gap-2">

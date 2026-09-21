@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 /**
  * THANH CÔNG CỤ TÌM KIẾM DÙNG CHUNG — đồng bộ toàn ứng dụng.
  * Bố cục: [mic] [ô nhập] [X khi có chữ] [kính lúp] — tất cả trong 1 pill tròn.
+ * Bật `sticky` để thanh tìm kiếm DÍNH CỐ ĐỊNH dưới header khi cuộn kết quả.
  */
 export function SearchToolbar({
   value,
@@ -14,6 +15,7 @@ export function SearchToolbar({
   placeholder,
   className,
   ariaLabel = "Tìm kiếm",
+  sticky = false,
 }: {
   value: string;
   onChange: (text: string) => void;
@@ -21,6 +23,8 @@ export function SearchToolbar({
   placeholder?: string;
   className?: string;
   ariaLabel?: string;
+  /** Dính cố định dưới header (top-14) khi người dùng cuộn xuống */
+  sticky?: boolean;
 }) {
   const { supported: micSupported, listening, start, stop } = useVoiceSearch();
 
@@ -36,7 +40,7 @@ export function SearchToolbar({
 
   const hasText = value.trim().length > 0;
 
-  return (
+  const bar = (
     <div
       className={cn(
         "flex h-11 w-full items-center gap-1 rounded-full border border-border/70 bg-muted/50 pl-2 pr-3 transition focus-within:border-primary/40 focus-within:bg-background",
@@ -124,4 +128,15 @@ export function SearchToolbar({
       </button>
     </div>
   );
+
+  if (sticky) {
+    return (
+      <div
+        className="sticky top-14 z-30 -mx-3 bg-background px-3 py-2.5 shadow-sm sm:-mx-5 sm:px-5"
+      >
+        {bar}
+      </div>
+    );
+  }
+  return bar;
 }

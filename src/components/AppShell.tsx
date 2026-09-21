@@ -31,7 +31,7 @@ const NAV_RIGHT: { to: string; tKey: TranslateKey; icon: typeof Bot }[] = [
   { to: "/calendar", tKey: "navCalendar", icon: Calendar },
 ];
 
-const ASSISTANT_LABEL = "TRỢ LÝ PHẬT HỌC";
+const ASSISTANT_LABEL = "Trợ lý Phật học";
 
 const SETTINGS_ITEM = {
   to: "/settings",
