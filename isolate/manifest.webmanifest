@@ -4,14 +4,7 @@
   "description": "Ứng dụng Phật giáo Theravāda — Giới - Định - Tuệ",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#140d05",
-  "theme_color": "#140d05",
-  "icons": [
-    {
-      "src": "/logo.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
-  ]
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": []
 }

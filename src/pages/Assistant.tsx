@@ -1,4 +1,3 @@
-import { AppShell } from "@/components/AppShell";
 import { MaintenanceNotice } from "@/components/MaintenanceNotice";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
@@ -8,6 +7,7 @@ import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 import { cn } from "@/lib/utils";
 import { useAction, useMutation, useQuery } from "convex/react";
 import {
+  ArrowLeft,
   AudioLines,
   BookOpen,
   Eraser,
@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import { toast } from "sonner";
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -70,6 +71,7 @@ function newRecognition(): RecLike | null {
 
 export default function Assistant() {
   const { isAuthenticated, isLoading } = useAuth();
+  const navigate = useNavigate();
   const ask = useAction(api.aiChat.ask);
   const append = useMutation(api.aiChat.appendMessages);
   const clear = useMutation(api.aiChat.clearMessages);
@@ -459,51 +461,64 @@ export default function Assistant() {
 
   if (isLoading) {
     return (
-      <AppShell title="Trợ lý Phật học">
-        <div className="flex min-h-[50dvh] items-center justify-center">
-          <div className="animate-pulse text-sm text-muted-foreground">Đang tải…</div>
-        </div>
-      </AppShell>
+      <div className="fb-bg flex h-[100dvh] items-center justify-center">
+        <div className="animate-pulse text-sm text-muted-foreground">Đang tải…</div>
+      </div>
     );
   }
 
   const isEmpty = messages.length === 0;
 
+  /* ================================================================ */
+  /* FULL MÀN HÌNH — không AppShell: cả viewport là Trợ lý Phật học   */
+  /* ================================================================ */
   return (
-    <AppShell title="Trợ lý Phật học">
-      <div className="mx-auto flex h-[calc(100dvh-13rem)] max-w-4xl flex-col sm:h-[calc(100dvh-12rem)] lg:h-[calc(100dvh-9rem)]">
-        <div className="flex items-center justify-between px-0.5 pb-3">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow">
-              <Sparkles className="h-5 w-5" />
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-[13px] font-medium leading-tight text-muted-foreground">
-                Theravāda · Kinh điển · Thiền định
-              </p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <Button
-              onClick={openCall}
-              className="h-9 gap-2 rounded-full px-3.5 shadow-sm sm:px-4"
-            >
-              <Phone className="h-4 w-4" />
-              <span className="hidden sm:inline">Đàm thoại</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => void clearAll()}
-              title="Xóa hội thoại"
-              className="h-9 w-9 rounded-full"
-            >
-              <Eraser className="h-4 w-4" />
-            </Button>
-          </div>
+    <div className="fb-bg flex h-[100dvh] flex-col overflow-hidden">
+      {/* ---------- Header mảnh, cân đối ---------- */}
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border/60 bg-background px-2 sm:px-4">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-accent"
+          aria-label="Quay lại"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow">
+          <Sparkles className="h-4.5 w-4.5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-semibold leading-tight">
+            Trợ lý Phật học
+          </p>
+          <p className="truncate text-[11px] leading-tight text-muted-foreground">
+            Theravāda · Kinh điển · Thiền định
+          </p>
         </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            onClick={openCall}
+            className="h-9 gap-1.5 rounded-full px-3 shadow-sm sm:px-4"
+          >
+            <Phone className="h-4 w-4" />
+            <span className="hidden sm:inline">Đàm thoại</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => void clearAll()}
+            title="Xóa hội thoại"
+            aria-label="Xóa hội thoại"
+            className="h-9 w-9 rounded-full"
+          >
+            <Eraser className="h-4 w-4" />
+          </Button>
+        </div>
+      </header>
 
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+      {/* ---------- Khu hội thoại: chiếm toàn bộ phần còn lại ---------- */}
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+
           {isEmpty ? (
             <div className="flex h-full flex-col items-center justify-center px-2 text-center">
               <h2 className="bg-gradient-to-r from-primary via-gold to-primary bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-4xl">
@@ -532,7 +547,7 @@ export default function Assistant() {
               </div>
             </div>
           ) : (
-            <div className="mx-auto w-full max-w-3xl space-y-7 px-0.5 py-3">
+            <div className="mx-auto w-full max-w-3xl space-y-7 px-3 py-3 sm:px-4">
               {messages.map((m, i) =>
                 m.role === "user" ? (
                   <UserMessage key={i} content={m.content} />
@@ -554,7 +569,7 @@ export default function Assistant() {
             e.preventDefault();
             void send(input);
           }}
-          className="pt-2"
+          className="mx-auto w-full max-w-3xl shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-4"
         >
           {image && (
             <div className="mb-2 flex items-center gap-2 pl-1">
@@ -656,7 +671,6 @@ export default function Assistant() {
             </div>
           )}
         </form>
-      </div>
 
       {callOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#09090b] text-white">
@@ -773,7 +787,7 @@ export default function Assistant() {
           </div>
         </div>
       )}
-    </AppShell>
+    </div>
   );
 }
 
