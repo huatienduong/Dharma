@@ -8,24 +8,31 @@ import { action, mutation, query } from "./_generated/server";
 /* Hướng dẫn nhân cách của trợ lý Phật pháp (Theravāda)                */
 /* ------------------------------------------------------------------ */
 
-const SYSTEM_PROMPT = `Bạn là "Trợ lý Phật học" — trợ lý Phật pháp chuyên ngành của ứng dụng Dharma, trả lời câu hỏi về Phật giáo theo truyền thống Theravāda (Nguyên thủy / Pāli Canon).
+const SYSTEM_PROMPT = `Bạn là "Trợ lý Phật học" — trợ lý Phật pháp chuyên ngành của ứng dụng Dharma, trả lời câu hỏi về Phật giáo theo truyền thống Theravāda, đặc biệt là Kinh tạng Pāli và các học thuyết căn bản như: Tứ Diệu Đế, Bát Chánh Đạo, Vô Thường, Khổ, Vô Ngã, Thiền, Tâm và Từ tâm, Luật tạng, Kinh, và Phương pháp tu tập thực tế.
 
 Nguyên tắc trả lời:
-1. CHỈ trả lời trong phạm vi Phật học: giáo lý (Tứ Diệu Đế, Thánh Đạo 8 nhánh, Vô Thường - Khổ - Vô Ngã), kinh điển Pāli (Nikāya), Abhidhamma, Luật tạng, thiền định (samatha, vipassanā, anapanasati, mettā...), Pāli thuật ngữ, lịch sử Phật giáo nguyên thủy, thực hành đời sống bậc tu.
-2. Nếu câu hỏi nằm ngoài chủ đề Phật học (ví dụ: code, tin tức, giải toán, giải trí...), từ chối lịch sự bằng một câu và gợi ý quay lại chủ đề Phật pháp.
+1. CHỈ trả lời trong phạm vi Phật học: giáo lý (Tứ Diệu Đế, Thánh Đạo 8 nhánh, Vô Thường - Khổ - Vô Ngã), kinh điển Pāli (Nikāya), Abhidhamma, Luật tạng, Thiền và thực hành đạo đức.
+2. Nếu câu hỏi nằm ngoài chủ đề Phật học (ví dụ: code, tin tức, giải toán, giải trí...), từ chối lịch sự bằng một câu và gợi ý quay lại chủ đề Phật học.
 3. Không mâu thuẫn với Kinh tạng Pāli; khi có thể nêu nguồn (ví dụ: Kinh Chuyển Pháp Luân SN 56.11, Kinh Niệm Hơi Thở MN 118, Dhammapada...).
-4. Không hành xử như một bậc đạo hạnh thực thụ: không ban giới, không "chứng đắc" hộ ai, không thay thế thầy giảng. Với câu hỏi thực hành sâu, khuyến khích hỏi trực tiếp vị giáo thọ/trạng sư.
+4. Không hành xử như một bậc đạo hạnh thực thụ: không ban giới, không "chứng đắc" hộ ai, không thay thế thầy giảng. Với câu hỏi thực hành sâu, khuyến nghị tìm người hướng dẫn có kinh nghiệm.
 5. Tôn trọng và không bình luận tiêu cực về các truyền thống Phật giáo khác; nhưng luôn trả lời theo góc nhìn Theravāda khi được hỏi.
-6. Trả lời bằng TIẾNG VIỆT, rõ ràng, súc tích, đúng câu chữ Buddhist học thuật; giữ nguyên thuật ngữ Pāli (viết diacritics: dukkha, anicca, anattā, mettā...). Dùng gạch đầu dòng cho câu trả lời dài.
+6. Trả lời bằng TIẾNG VIỆT, rõ ràng, súc tích, đúng câu chữ Buddhist học thuật; giữ nguyên thuật ngữ Pāli (viết diacritics: dukkha, anicca, anattā, mettā...).
 7. Không bịa tên kinh; nếu không chắc nguồn, nói chung "theo Kinh tạng Pāli" thay vì bịa số hiệu.
-8. Không đưa ra chẩn đoán y khoa/tâm lý; nếu người dùng mô tả khủng hoảng, khuyên tìm hỗ trợ chuyên môn và thầy hướng dẫn thiền.`;
+8. Không đưa ra chẩn đoán y khoa/tâm lý; nếu người dùng mô tả khủng hoảng, khuyên tìm hỗ trợ chuyên môn và thầy hướng dẫn thiền.
+
+Khi trả lời, ưu tiên:
+- bật tông rõ ràng, ngắn gọn, có cấu trúc
+- nêu định nghĩa, ví dụ và cách ứng dụng thực tiễn
+- nếu là câu hỏi ngắn, trả lời tối đa 3-5 đoạn ngắn, không lan man
+- nếu người hỏi đang cần thực hành, chỉ đưa hướng dẫn cơ bản và an toàn`;
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-const HISTORY_LIMIT = 12; // số tin nhắn gửi kèm làm ngữ cảnh
+const HISTORY_LIMIT = 6; // giảm bớt context để AI trả lời nhanh hơn
+const MAX_TOKENS = 700; // giảm lượng output để tránh chậm và dài dòng
 
 /* ------------------------------------------------------------------ */
-/* Danh sách nhà cung cấp AI — thử lần lượt khi nhà cung cấp trước lỗi */
+/* Danh sách nhà cung cấp AI — ưu tiên tốc độ, fallback chỉ khi cần     */
 /* ------------------------------------------------------------------ */
 
 type ProviderChoice = {
@@ -34,12 +41,6 @@ type ProviderChoice = {
   model: string;
 };
 
-/**
- * Danh sách nhà cung cấp theo khóa khả dụng (ưu tiên từ trên xuống).
- * `needVision=true` khi có ảnh → chỉ trả về nhà cung cấp hỗ trợ ảnh
- * (Gemini qua REST, OpenAI); khi không có khóa vision, trả về mảng rỗng
- * để báo lỗi rõ ràng thay vì gửi ảnh cho model văn bản.
- */
 function listProviders(needVision: boolean): ProviderChoice[] {
   const out: ProviderChoice[] = [];
   const openaiKey = process.env.OPENAI_API_KEY;
@@ -48,7 +49,6 @@ function listProviders(needVision: boolean): ProviderChoice[] {
   const vlyKey = process.env.VLY_INTEGRATION_KEY;
 
   if (needVision) {
-    // Ảnh: Groq không hỗ trợ — dùng Gemini (free tier) hoặc OpenAI
     if (geminiKey) {
       out.push({
         label: "Gemini",
@@ -58,8 +58,7 @@ function listProviders(needVision: boolean): ProviderChoice[] {
             baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
             apiKey: geminiKey,
           }),
-        // FIX: gemini-2.0-flash đã bị Google ngừng (404) → dùng alias mới nhất
-        model: "gemini-flash-latest",
+        model: "gemini-2.0-flash",
       });
     }
     if (openaiKey) {
@@ -77,17 +76,17 @@ function listProviders(needVision: boolean): ProviderChoice[] {
     return out;
   }
 
-  // Văn bản: Groq ưu tiên đầu (nhanh, miễn phí, ổn định)
-  if (groqKey) {
+  // Ưu tiên mô hình nhanh hơn cho văn bản
+  if (openaiKey) {
     out.push({
-      label: "Groq",
+      label: "OpenAI",
       make: () =>
         createOpenAICompatible({
-          name: "groq",
-          baseURL: "https://api.groq.com/openai/v1",
-          apiKey: groqKey,
+          name: "openai",
+          baseURL: "https://api.openai.com/v1",
+          apiKey: openaiKey,
         }),
-      model: "openai/gpt-oss-120b",
+      model: "gpt-4.1-mini",
     });
   }
   if (geminiKey) {
@@ -99,19 +98,19 @@ function listProviders(needVision: boolean): ProviderChoice[] {
           baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
           apiKey: geminiKey,
         }),
-      model: "gemini-flash-latest",
+      model: "gemini-2.0-flash",
     });
   }
-  if (openaiKey) {
+  if (groqKey) {
     out.push({
-      label: "OpenAI",
+      label: "Groq",
       make: () =>
         createOpenAICompatible({
-          name: "openai",
-          baseURL: "https://api.openai.com/v1",
-          apiKey: openaiKey,
+          name: "groq",
+          baseURL: "https://api.groq.com/openai/v1",
+          apiKey: groqKey,
         }),
-      model: "gpt-4.1-mini",
+      model: "llama-3.3-70b-versatile",
     });
   }
   if (vlyKey) {
@@ -153,7 +152,7 @@ export const ask = action({
       throw new Error("Câu hỏi trống.");
     }
 
-    const providers = listProviders(imageBase64 ? true : false);
+    const providers = listProviders(Boolean(imageBase64));
     if (providers.length === 0) {
       throw new Error(
         "Trợ lý Phật học chưa được cấu hình AI. Chủ ứng dụng vui lòng thêm khóa OPENAI_API_KEY hoặc GROQ_API_KEY qua tab Keys/API keys.",
@@ -161,7 +160,6 @@ export const ask = action({
     }
 
     const recent: ChatMessage[] = messages.slice(-HISTORY_LIMIT);
-    // Gắn ảnh vào tin nhắn user cuối (đa phương thức, chuẩn OpenAI)
     type ContentPart =
       | { type: "text"; text: string }
       | { type: "image_url"; image_url: { url: string } };
@@ -169,17 +167,20 @@ export const ask = action({
       role: "user" | "assistant";
       content: string | ContentPart[];
     }> = recent.map((m, i) => {
-      if (
-        imageBase64 &&
-        i === recent.length - 1 &&
-        m.role === "user"
-      ) {
+      if (imageBase64 && i === recent.length - 1 && m.role === "user") {
         const parts: ContentPart[] = [
-          { type: "text", text: m.content || "Hãy mô tả và giải thích về hình ảnh này trong phạm vi Phật học." },
+          {
+            type: "text",
+            text:
+              m.content ||
+              "Hãy mô tả và giải thích về hình ảnh này trong phạm vi Phật học.",
+          },
         ];
         parts.push({
           type: "image_url",
-          image_url: { url: `data:${imageMime ?? "image/jpeg"};base64,${imageBase64}` },
+          image_url: {
+            url: `data:${imageMime ?? "image/jpeg"};base64,${imageBase64}`,
+          },
         });
         return { ...m, content: parts };
       }
@@ -190,16 +191,14 @@ export const ask = action({
       ...(withImage as ChatMessage[]),
     ];
 
-    // Thử lần lượt từng nhà cung cấp — nhà sau tự thay khi nhà trước lỗi
-    // (hết credits, khóa bị từ chối, giới hạn tần suất...)
     const errors: string[] = [];
     for (const provider of providers) {
       try {
         const result = await generateText({
           model: provider.make()(provider.model),
           messages: payload as never,
-          temperature: 0.6,
-          maxOutputTokens: 1200,
+          temperature: 0.35,
+          maxOutputTokens: MAX_TOKENS,
         });
         const reply = result.text.trim();
         if (reply) return reply;
@@ -233,7 +232,6 @@ export const speak = action({
     const geminiKey = process.env.GEMINI_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
 
-    // --- Gemini TTS (gemini-2.5-flash-preview-tts, giọng Kore chuẩn) ---
     if (geminiKey) {
       try {
         const res = await fetch(
@@ -248,7 +246,9 @@ export const speak = action({
               contents: [
                 {
                   parts: [
-                    { text: `Đọc bằng tiếng Việt, giọng nữ nhẹ nhàng, chậm rãi trang nghiêm: ${clean}` },
+                    {
+                      text: `Đọc bằng tiếng Việt, giọng nữ nhẹ nhàng, chậm rãi trang nghiêm: ${clean}`,
+                    },
                   ],
                 },
               ],
@@ -271,7 +271,10 @@ export const speak = action({
           };
           const part = json.candidates?.[0]?.content?.parts?.[0]?.inlineData;
           if (part?.data) {
-            return { audioBase64: part.data, mime: part.mimeType ?? "audio/L16;rate=24000" };
+            return {
+              audioBase64: part.data,
+              mime: part.mimeType ?? "audio/L16;rate=24000",
+            };
           }
         }
       } catch {
@@ -279,7 +282,6 @@ export const speak = action({
       }
     }
 
-    // --- OpenAI TTS (gpt-4o-mini-tts) ---
     if (openaiKey) {
       try {
         const res = await fetch("https://api.openai.com/v1/audio/speech", {
