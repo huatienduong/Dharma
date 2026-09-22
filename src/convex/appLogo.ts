@@ -5,8 +5,6 @@ import { query } from "./_generated/server";
  * dashboard (vào thư mục Storage). Module này trả về URL của ảnh mới nhất
  * (theo thời gian tải lên) để toàn ứng dụng dùng làm logo thống nhất.
  */
-
-/** Query trả về URL logo mới nhất trong Convex Storage. */
 export const get = query({
   args: {},
   handler: async (ctx) => {
@@ -24,18 +22,3 @@ export const get = query({
     return { url };
   },
 });
-
-/** Ghi URL logo vào cache phía client: màn boot tĩnh + favicon + route fallback. */
-export function cacheLogoClientSide(url: string) {
-  try {
-    if (typeof localStorage !== "undefined") {
-      if (localStorage.getItem("dharma-logo-url") !== url) {
-        localStorage.setItem("dharma-logo-url", url);
-      }
-      const fav = document.getElementById("app-favicon");
-      if (fav) fav.setAttribute("href", url);
-    }
-  } catch {
-    /* môi trường không có localStorage — bỏ qua */
-  }
-}

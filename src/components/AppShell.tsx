@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { useQuery } from "convex/react";
 import { anyApi } from "convex/server";
+import { cacheLogoClientSide } from "@/lib/appLogoCache";
 
 /** Nhóm trái: nội dung học liệu. */
 const NAV_LEFT: { to: string; tKey: TranslateKey; icon: typeof LayoutDashboard }[] = [
@@ -68,8 +69,12 @@ export function AppShell({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [railOpen, setRailOpen] = useState(true); // sidebar desktop thu gọn
 
-  // Ảnh app chính thức — chủ app tải lên Convex Storage
+  // Ảnh app chính thức — chủ app tải lên Convex Storage.
+  // Ghi cache localStorage + favicon để màn boot tĩnh & favicon dùng logo.
   const logo = useQuery(anyApi.appLogo.get);
+  useEffect(() => {
+    if (logo?.url) cacheLogoClientSide(logo.url);
+  }, [logo?.url]);
 
   const isActive = (to: string) =>
     to === "/dashboard"
