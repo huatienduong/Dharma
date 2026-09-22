@@ -77,7 +77,6 @@ export default function Dashboard() {
       </div>
       {isIdle && (
         <div className="flex flex-col items-center px-2 pb-16 pt-10 sm:pt-16">
-          {/* Logo lớn hơn nhẹ để nổi bật hơn trên màn hình chính */}
           {logo?.url ? <img src={logo.url} alt="Dharma" className="h-32 w-32 rounded-full object-cover shadow-lg sm:h-36 sm:w-36" /> : <span className="flex h-32 w-32 items-center justify-center rounded-full bg-primary text-3xl font-bold text-primary-foreground shadow-lg sm:h-36 sm:w-36">D</span>}
           <div className="mt-10 w-full max-w-2xl rounded-3xl border border-border/60 bg-card px-6 py-10 text-center">
             <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-[28px]">Thử tìm kiếm để bắt đầu</h2>
@@ -97,15 +96,82 @@ function SearchRow({ value, onChange }: { value: string; onChange: (text: string
   const { supported: micSupported, listening, start, stop } = useVoiceSearch();
   const hasText = value.trim().length > 0;
   const inputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => { if (!listening) return; const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") stop(); }; window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey); }, [listening, stop]);
-  return <div className="flex items-center justify-center gap-2.5" role="search">
-    <div className={cn("flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full bg-muted px-4 transition sm:max-w-xl", (listening || hasText) && "ring-2 ring-destructive/25")} onClick={() => inputRef.current?.focus()}>
-      <input ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") onChange(""); }} placeholder="Tìm trên Dharma" aria-label="Tìm pháp thoại" className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground" />
-      {hasText && <button type="button" onClick={() => onChange("")} aria-label="Xóa từ khóa" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground"><X className="h-4 w-4" /></button>}
-      <SearchIcon className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
+
+  useEffect(() => {
+    if (!listening) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") stop();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [listening, stop]);
+
+  return (
+    <div className="flex w-full items-center justify-center" role="search">
+      <div className="flex w-full max-w-2xl items-center gap-2.5">
+        <div
+          className={cn(
+            "group flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-full border border-border/70 bg-muted/80 px-3.5 shadow-sm transition-all duration-200",
+            listening || hasText
+              ? "border-destructive/30 bg-muted ring-2 ring-destructive/10"
+              : "hover:border-border/80",
+          )}
+          onClick={() => inputRef.current?.focus()}
+        >
+          <SearchIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <input
+            ref={inputRef}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") onChange("");
+            }}
+            placeholder="Tìm trên Dharma"
+            aria-label="Tìm pháp thoại"
+            className="h-full min-w-0 flex-1 border-0 bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
+          />
+          {hasText && (
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              aria-label="Xóa từ khóa"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {micSupported ? (
+          <button
+            type="button"
+            onClick={() => (listening ? stop() : start((text) => onChange(text)))}
+            aria-label={listening ? "Đang nghe — bấm để dừng" : "Tìm bằng giọng nói"}
+            title={listening ? "Đang nghe…" : "Tìm bằng giọng nói"}
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background text-foreground shadow-sm transition-all duration-200",
+              listening
+                ? "border-destructive/30 bg-destructive/10 text-destructive shadow-md ring-2 ring-destructive/10"
+                : "hover:bg-accent",
+            )}
+          >
+            {listening ? (
+              <span className="relative flex h-5 w-5 items-center justify-center">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-50" />
+                <Mic className="relative h-5 w-5" />
+              </span>
+            ) : (
+              <Mic className="h-5 w-5" />
+            )}
+          </button>
+        ) : (
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background text-muted-foreground/50 shadow-sm">
+            <Loader2 className="h-5 w-5" />
+          </span>
+        )}
+      </div>
     </div>
-    {micSupported ? <button type="button" onClick={() => listening ? stop() : start((text) => onChange(text))} aria-label={listening ? "Đang nghe — bấm để dừng" : "Tìm bằng giọng nói"} title={listening ? "Đang nghe…" : "Tìm bằng giọng nói"} className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/70 bg-muted text-foreground shadow-sm transition", listening ? "bg-destructive/12 text-destructive ring-2 ring-destructive/20" : "hover:bg-border")}>{listening ? <span className="relative flex h-5 w-5 items-center justify-center"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-50" /><Mic className="relative h-5 w-5" /></span> : <Mic className="h-5 w-5" />}</button> : <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/70 bg-muted text-muted-foreground/50 shadow-sm"><Loader2 className="h-5 w-5" /></span>}
-  </div>;
+  );
 }
 
 function localProgressByTalk(rows: ReturnType<typeof loadLocalWatch>, youtubeId: string, durationSec: number) { const row = rows.find((p) => p.youtubeId === youtubeId); return row && !row.completed && row.positionSec > 5 && durationSec > 0 ? row.positionSec : undefined; }
