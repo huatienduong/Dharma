@@ -1,18 +1,18 @@
 import { useVoiceSearch } from "@/hooks/use-voice-search";
-import { Search, Mic, X, Loader2 } from "lucide-react";
+import { Search, Mic, X } from "lucide-react";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 /**
  * THANH CÔNG CỤ TÌM KIẾM DÙNG CHUNG — đồng bộ toàn ứng dụng.
- * Bố cục: [mic] [ô nhập] [X khi có chữ] [kính lúp] — tất cả trong 1 pill tròn.
+ * Bố cục: [ô nhập — KHÔNG placeholder] ......... [mic][kính lúp]
+ * Hai nút tròn nhỏ nằm cạnh nhau ở PHẢI, viền tròn đồng bộ.
  * Bật `sticky` để thanh tìm kiếm DÍNH CỐ ĐỊNH dưới header khi cuộn kết quả.
  */
 export function SearchToolbar({
   value,
   onChange,
   onSubmit,
-  placeholder,
   className,
   ariaLabel = "Tìm kiếm",
   sticky = false,
@@ -20,7 +20,6 @@ export function SearchToolbar({
   value: string;
   onChange: (text: string) => void;
   onSubmit?: (text: string) => void;
-  placeholder?: string;
   className?: string;
   ariaLabel?: string;
   /** Dính cố định dưới header (top-14) khi người dùng cuộn xuống */
@@ -28,7 +27,7 @@ export function SearchToolbar({
 }) {
   const { supported: micSupported, listening, start, stop } = useVoiceSearch();
 
-  // Esc để dừng nghe
+  // Esc để dừng nghe / xóa từ khóa
   useEffect(() => {
     if (!listening) return;
     const onKey = (e: KeyboardEvent) => {
@@ -43,43 +42,14 @@ export function SearchToolbar({
   const bar = (
     <div
       className={cn(
-        "flex h-11 w-full items-center gap-1 rounded-full border border-border/70 bg-muted/50 pl-2 pr-3 transition focus-within:border-primary/40 focus-within:bg-background",
+        "flex h-11 w-full items-center gap-2 rounded-full border border-border/70 bg-muted/50 pl-4 pr-2 transition focus-within:border-primary/40 focus-within:bg-background",
         (listening || hasText) && "border-primary/45",
         listening && "ring-2 ring-primary/20",
         className,
       )}
       role="search"
     >
-      {/* Mic — bên trái trong pill */}
-      {micSupported ? (
-        <button
-          type="button"
-          onClick={() => (listening ? stop() : start((text) => onChange(text)))}
-          aria-label={listening ? "Đang nghe — bấm để dừng" : "Tìm bằng giọng nói"}
-          title={listening ? "Đang nghe…" : "Tìm bằng giọng nói"}
-          className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition",
-            listening
-              ? "bg-destructive/10 text-destructive"
-              : "text-muted-foreground hover:bg-accent hover:text-foreground",
-          )}
-        >
-          {listening ? (
-            <span className="relative flex h-4 w-4 items-center justify-center">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-60" />
-              <Mic className="relative h-4 w-4" />
-            </span>
-          ) : (
-            <Mic className="h-4 w-4" />
-          )}
-        </button>
-      ) : (
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground/40">
-          <Mic className="h-4 w-4" />
-        </span>
-      )}
-
-      {/* Ô nhập */}
+      {/* Ô nhập — KHÔNG có văn bản gợi ý */}
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -88,15 +58,54 @@ export function SearchToolbar({
             e.preventDefault();
             onSubmit(value);
           }
+          if (e.key === "Escape" && hasText) onChange("");
         }}
-        placeholder={
-          listening ? "Đang nghe…" : (placeholder ?? "Tìm kiếm…")
-        }
         aria-label={ariaLabel}
-        className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/60"
+        className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none"
       />
 
-      {/* Xóa từ khóa — hiện khi có chữ */}
+      {/* Cụm nút tròn PHẢI: [mic] [kính lúp] nằm cạnh nhau trong vòng tròn */}
+      <div className="flex shrink-0 items-center gap-1.5">
+        {micSupported ? (
+          <button
+            type="button"
+            onClick={() => (listening ? stop() : start((text) => onChange(text)))}
+            aria-label={listening ? "Đang nghe — bấm để dừng" : "Tìm bằng giọng nói"}
+            title={listening ? "Đang nghe…" : "Tìm bằng giọng nói"}
+            className={cn(
+              "flex h-7 w-7 items-center justify-center rounded-full border transition",
+              listening
+                ? "border-destructive/60 bg-destructive/10 text-destructive"
+                : "border-border/70 bg-background text-muted-foreground hover:bg-accent hover:text-foreground",
+            )}
+          >
+            {listening ? (
+              <span className="relative flex h-4 w-4 items-center justify-center">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-60" />
+                <Mic className="relative h-3.5 w-3.5" />
+              </span>
+            ) : (
+              <Mic className="h-3.5 w-3.5" />
+            )}
+          </button>
+        ) : null}
+
+        <button
+          type={onSubmit ? "button" : "submit"}
+          onClick={onSubmit ? () => onSubmit(value) : undefined}
+          aria-label="Tìm"
+          className={cn(
+            "flex h-7 w-7 items-center justify-center rounded-full border transition",
+            onSubmit
+              ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground"
+              : "border-border/70 bg-background text-muted-foreground hover:bg-accent hover:text-foreground",
+          )}
+        >
+          <Search className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* Xóa từ khóa — hiện khi có chữ, đứng trước cụm nút */}
       {hasText && (
         <button
           type="button"
@@ -107,25 +116,6 @@ export function SearchToolbar({
           <X className="h-4 w-4" />
         </button>
       )}
-
-      {/* Kính lúp — bên phải trong pill */}
-      <button
-        type={onSubmit ? "button" : "submit"}
-        onClick={onSubmit ? () => onSubmit(value) : undefined}
-        aria-label="Tìm"
-        className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition",
-          onSubmit
-            ? "bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground"
-            : "text-muted-foreground hover:text-foreground",
-        )}
-      >
-        {listening ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Search className="h-4 w-4" />
-        )}
-      </button>
     </div>
   );
 

@@ -302,6 +302,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   /* -------- refs -------- */
   const surfacesRef = useRef<Partial<Record<SurfaceKind, SurfaceEntry>>>({});
   const ownerSidRef = useRef(0); // surface đang giữ video
+  const lastLoadedIdRef = useRef<string | null>(null); // video id đã nạp vào surface chủ
   const lastPosRef = useRef(0); // giây dừng gần nhất (dùng khi bàn giao)
   const lastWatchSaveRef = useRef(0); // chống ghi lịch sử cục bộ dồn dập
   const currentRef = useRef<PlayerTalk | null>(null);
@@ -386,19 +387,29 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     let reg = surfacesRef.current[desiredKind];
     // Trang không render DockPlayer (vd Lịch sử xem) → phát trong mini
     if (!reg && desiredKind === "dock") reg = surfacesRef.current.mini;
-    if (!reg || ownerSidRef.current === reg.sid) return;
+    if (!reg) return;
     const resumeAt = lastPosRef.current;
     for (const k of ["dock", "mini"] as const) {
       if (k !== desiredKind) surfacesRef.current[k]?.handle.pause();
     }
-    ownerSidRef.current = reg.sid;
-    setPlaying(false);
-    reg.handle.load(current.youtubeId);
-    // Đảm bảo phát: surface mới có thể chưa “visible” lúc load
-    window.setTimeout(() => reg.handle.play(), 700);
-    if (resumeAt > 5) {
-      window.setTimeout(() => reg.handle.seek(resumeAt), 900);
+    const freshAttach = ownerSidRef.current !== reg.sid;
+    if (freshAttach) {
+      ownerSidRef.current = reg.sid;
+      setPlaying(false);
+      reg.handle.load(current.youtubeId);
+      // Đảm bảo phát: surface mới có thể chưa “visible” lúc load
+      window.setTimeout(() => reg.handle.play(), 700);
+      if (resumeAt > 5) {
+        window.setTimeout(() => reg.handle.seek(resumeAt), 900);
+      }
+    } else if (lastLoadedIdRef.current !== current.youtubeId) {
+      // CÙNG surface nhưng video KHÁC (vd bấm video liên quan): nạp đè và
+      // phát ngay — sửa lỗi “bấm video liên quan không chạy”.
+      reg.handle.load(current.youtubeId);
+      reg.handle.play();
+      window.setTimeout(() => reg.handle.play(), 700);
     }
+    lastLoadedIdRef.current = current.youtubeId;
   }, [current, desiredKind, surfaceVersion]);
 
   /* -------- polling tiến trình 1s -------- */
@@ -503,6 +514,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       surfacesRef.current[k]?.handle.pause();
     }
     ownerSidRef.current = 0;
+    lastLoadedIdRef.current = null;
     lastPosRef.current = 0;
     setCurrent(null);
     setPosition(0);
@@ -641,6 +653,11 @@ export function DockPlayer({ className }: { className?: string }) {
                 <path d="M12 5V1L7 6l5 5V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7z" />
               </svg>
             </CtlButton>
+            <CtlButton onClick={() => seek(Math.max(0, position - 10))} title="Tua lại 10 giây">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                <path d="M11 7 6 12l5 5v-3.1c2.6 0 4.6.9 6 2.9-.5-3.1-2.4-5.9-6-6.5V7z" />
+              </svg>
+            </CtlButton>
             <CtlButton onClick={toggle} title={isPlaying ? "Tạm dừng" : "Phát"}>
               {isPlaying ? (
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
@@ -651,6 +668,11 @@ export function DockPlayer({ className }: { className?: string }) {
                   <path d="M8 5v14l11-7z" />
                 </svg>
               )}
+            </CtlButton>
+            <CtlButton onClick={() => seek(position + 10)} title="Tua tới 10 giây">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                <path d="M13 7v3.3c-3.6.6-5.5 3.4-6 6.5 1.4-2 3.4-2.9 6-2.9V17l5-5-5-5z" />
+              </svg>
             </CtlButton>
             <CtlButton onClick={() => setExpanded(false)} title="Thu nhỏ">
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
@@ -841,12 +863,13 @@ function CtlButton({
       type="button"
       onClick={onClick}
       title={title}
-      aria-label={title}        className={cn(
-          "flex shrink-0 items-center justify-center rounded-full transition hover:bg-accent active:scale-95",
-          big
-            ? "h-9 w-9 text-foreground"
-            : "h-7 w-7 text-foreground/80 hover:text-foreground",
-        )}
+      aria-label={title}
+      className={cn(
+        "flex shrink-0 cursor-pointer items-center justify-center rounded-full transition hover:bg-accent active:scale-95",
+        big
+          ? "h-9 w-9 text-foreground"
+          : "h-7 w-7 text-foreground/80 hover:text-foreground",
+      )}
     >
       {children}
     </button>

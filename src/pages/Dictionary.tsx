@@ -70,7 +70,6 @@ export default function Dictionary() {
       <SearchToolbar
         value={q}
         onChange={setQ}
-        placeholder={t("dictSearchPlaceholder")}
         sticky
       />
 

@@ -179,23 +179,27 @@ export function AppShell({
           </button>
         </div>
 
-        {/* Giữa: TÊN ỨNG DỤNG DHARMA + ảnh app chính thức */}
+        {/* Giữa: LOGO ỨNG DỤNG CHÍNH THỨC (ảnh chủ app tải lên) */}
         <button
           type="button"
           onClick={() => go("/dashboard")}
           aria-label="Trang chủ Dharma"
-          className="mx-auto flex min-w-0 items-center justify-center gap-2 rounded-full px-2 py-1 transition hover:bg-accent"
+          className="mx-auto flex min-w-0 items-center justify-center rounded-full px-2 py-1 transition hover:bg-accent"
         >
-          {logo?.url && (
+          {logo?.url ? (
             <img
               src={logo.url}
-              alt=""
-              className="h-7 w-7 shrink-0 rounded-full object-cover"
+              alt="Dharma"
+              className="h-9 w-9 shrink-0 rounded-full object-cover"
             />
+          ) : (
+            <span
+              aria-hidden
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
+            >
+              ☸
+            </span>
           )}
-          <span className="truncate text-[19px] font-bold uppercase tracking-[0.08em] text-foreground">
-            DHARMA
-          </span>
         </button>
 
         {/* Phải: chỉ còn Cài đặt (Hồ sơ đã bỏ) */}
@@ -282,7 +286,7 @@ export function AppShell({
         )}
         aria-hidden={!drawerOpen}
       >
-        {/* Đầu drawer: tên app + đóng */}
+        {/* Đầu drawer: logo ứng dụng + đóng */}
         <div className="flex h-14 shrink-0 items-center gap-2 px-3">
           <button
             type="button"
@@ -295,13 +299,10 @@ export function AppShell({
           {logo?.url && (
             <img
               src={logo.url}
-              alt=""
-              className="h-7 w-7 rounded-full object-cover"
+              alt="Dharma"
+              className="h-9 w-9 rounded-full object-cover"
             />
           )}
-          <span className="text-[19px] font-bold uppercase tracking-tight">
-            DHARMA
-          </span>
         </div>
         {sidebarContent}
       </aside>

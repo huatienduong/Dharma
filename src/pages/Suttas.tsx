@@ -71,7 +71,6 @@ export default function Suttas() {
       <SearchToolbar
         value={search}
         onChange={setSearch}
-        placeholder={t("suttaSearchPlaceholder")}
         sticky
       />
 
