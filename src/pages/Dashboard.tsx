@@ -118,7 +118,6 @@ function SearchRow({ value, onChange }: { value: string; onChange: (text: string
           )}
           onClick={() => inputRef.current?.focus()}
         >
-          <SearchIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
           <input
             ref={inputRef}
             value={value}
@@ -140,6 +139,15 @@ function SearchRow({ value, onChange }: { value: string; onChange: (text: string
               <X className="h-4 w-4" />
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={() => inputRef.current?.focus()}
+            aria-label="Tìm kiếm"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm transition hover:bg-accent hover:text-foreground"
+          >
+            <SearchIcon className="h-4 w-4" />
+          </button>
         </div>
 
         {micSupported ? (
