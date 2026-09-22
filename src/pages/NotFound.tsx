@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router";
 
 export default function NotFound() {
   return (
@@ -6,17 +7,23 @@ export default function NotFound() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
-      className="min-h-screen flex flex-col"
+      className="flex min-h-screen flex-col bg-background"
     >
-
-      
       {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center">
-        <div className="max-w-5xl mx-auto relative px-4">
-          <div className="flex items-center justify-center min-h-[200px]">
+      <div className="flex flex-1 flex-col items-center justify-center">
+        <div className="relative mx-auto max-w-5xl px-4">
+          <div className="flex min-h-[200px] items-center justify-center">
             <div className="text-center">
-              <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
-              <p className="text-lg text-gray-600">Page Not Found</p>
+              <h1 className="mb-4 text-4xl font-bold text-foreground">404</h1>
+              <p className="text-lg text-muted-foreground">
+                Không tìm thấy trang
+              </p>
+              <Link
+                to="/dashboard"
+                className="mt-6 inline-flex items-center rounded-full border border-border/60 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-accent"
+              >
+                Về trang chủ
+              </Link>
             </div>
           </div>
         </div>

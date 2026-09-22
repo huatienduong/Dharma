@@ -2,7 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import { api } from "@/convex/_generated/api";
 import { DockPlayer, formatCount, formatTime, usePlayer } from "@/lib/player";
 import {
-  clearAllLocalProgress,
+  clearLocalWatch,
   loadLocalWatch,
   type LocalWatchRow,
 } from "@/lib/localProgress";
@@ -133,7 +133,8 @@ export default function Watched() {
   }, []);
 
   const handleClearAll = () => {
-    clearAllLocalProgress();
+    // Chỉ xóa LỊCH SỬ XEM — giữ nguyên tiến trình đọc + phiên thiền
+    clearLocalWatch();
     setRows([]);
     toast.success("Đã xóa lịch sử xem trên thiết bị này.");
   };

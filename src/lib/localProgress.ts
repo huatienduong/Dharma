@@ -148,6 +148,14 @@ export function saveLocalMeditation(technique: string, durationSec: number) {
   writeJSON(MEDIT_KEY, rows);
 }
 
+export function clearLocalWatch() {
+  try {
+    localStorage.removeItem(WATCH_KEY);
+  } catch {
+    /* bỏ qua */
+  }
+}
+
 export function clearAllLocalProgress() {
   try {
     localStorage.removeItem(WATCH_KEY);
