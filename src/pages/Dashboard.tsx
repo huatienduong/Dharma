@@ -165,7 +165,6 @@ export default function Dashboard() {
           <SearchRow
             value={search}
             onChange={setSearch}
-            logoUrl={logo?.url ?? null}
           />
         )}
         <DockPlayer className={cn(hasActiveVideo && "mt-1")} />
@@ -297,17 +296,15 @@ export default function Dashboard() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Hàng tìm kiếm kiểu YouTube: Ảnh app · pill GIỮA · mic tròn phải      */
+/* Hàng tìm kiếm kiểu YouTube: pill GIỮA · mic tròn phải                */
 /* ------------------------------------------------------------------ */
 
 function SearchRow({
   value,
   onChange,
-  logoUrl,
 }: {
   value: string;
   onChange: (text: string) => void;
-  logoUrl: string | null;
 }) {
   const { supported: micSupported, listening, start, stop } = useVoiceSearch();
   const hasText = value.trim().length > 0;
@@ -324,19 +321,6 @@ function SearchRow({
 
   return (
     <div className="flex items-center justify-center gap-2.5" role="search">
-      {/* Ảnh app chính thức bên trái pill */}
-      {logoUrl ? (
-        <img
-          src={logoUrl}
-          alt=""
-          className="h-9 w-9 shrink-0 rounded-full object-cover"
-        />
-      ) : (
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-          D
-        </span>
-      )}
-
       {/* Pill nhập — GIỮA, giống YouTube */}
       <div
         className={cn(
