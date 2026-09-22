@@ -361,10 +361,10 @@ function SearchRow({
           aria-label={listening ? "Đang nghe — bấm để dừng" : "Tìm bằng giọng nói"}
           title={listening ? "Đang nghe…" : "Tìm bằng giọng nói"}
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/70 bg-muted text-foreground shadow-sm transition",
             listening
-              ? "bg-destructive/15 text-destructive"
-              : "bg-accent text-foreground hover:bg-border",
+              ? "bg-destructive/12 text-destructive ring-2 ring-destructive/20"
+              : "hover:bg-border",
           )}
         >
           {listening ? (
@@ -377,7 +377,7 @@ function SearchRow({
           )}
         </button>
       ) : (
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-muted-foreground/50">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/70 bg-muted text-muted-foreground/50 shadow-sm">
           <Loader2 className="h-5 w-5" />
         </span>
       )}
