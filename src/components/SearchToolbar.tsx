@@ -64,6 +64,18 @@ export function SearchToolbar({
         className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none"
       />
 
+      {/* Xóa từ khóa — hiện khi có chữ, đứng trước cụm nút */}
+      {hasText && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          aria-label="Xóa từ khóa"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 transition hover:bg-accent hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+
       {/* Cụm nút tròn PHẢI: [mic] [kính lúp] nằm cạnh nhau trong vòng tròn */}
       <div className="flex shrink-0 items-center gap-1.5">
         {micSupported ? (
@@ -104,18 +116,6 @@ export function SearchToolbar({
           <Search className="h-3.5 w-3.5" />
         </button>
       </div>
-
-      {/* Xóa từ khóa — hiện khi có chữ, đứng trước cụm nút */}
-      {hasText && (
-        <button
-          type="button"
-          onClick={() => onChange("")}
-          aria-label="Xóa từ khóa"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 transition hover:bg-accent hover:text-foreground"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      )}
     </div>
   );
 

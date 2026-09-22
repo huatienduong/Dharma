@@ -462,6 +462,45 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
+  /* -------- MediaSession: chạy nền khi tắt màn hình + điều khiển từ khóa -------- */
+  useEffect(() => {
+    const ms = typeof navigator !== "undefined" ? navigator.mediaSession : undefined;
+    if (!ms) return;
+    if (!current) {
+      ms.playbackState = "none";
+      return;
+    }
+    ms.playbackState = isPlaying ? "playing" : "paused";
+    ms.metadata = new MediaMetadata({
+      title: current.title,
+      artist: current.teacher || current.channelName || "Dharma",
+      album: "Dharma — Pháp thoại Theravada",
+      artwork: current.youtubeId
+        ? [
+            { src: `https://i.ytimg.com/vi/${current.youtubeId}/mqdefault.jpg`, sizes: "320x180", type: "image/jpeg" },
+            { src: `https://i.ytimg.com/vi/${current.youtubeId}/hqdefault.jpg`, sizes: "480x360", type: "image/jpeg" },
+          ]
+        : [],
+    });
+    try {
+      ms.setActionHandler("play", () => ownerEntry()?.handle.play());
+      ms.setActionHandler("pause", () => ownerEntry()?.handle.pause());
+      ms.setActionHandler("seekbackward", () => {
+        const t = ownerEntry()?.handle.time();
+        ownerEntry()?.handle.seek(Math.max(0, (t?.position ?? 0) - 10));
+      });
+      ms.setActionHandler("seekforward", () => {
+        const t = ownerEntry()?.handle.time();
+        ownerEntry()?.handle.seek((t?.position ?? 0) + 10);
+      });
+      ms.setActionHandler("seekto", (d) => {
+        if (d.seekTime != null) ownerEntry()?.handle.seek(d.seekTime);
+      });
+    } catch {
+      /* trình duyệt không hỗ trợ — bỏ qua */
+    }
+  }, [current, isPlaying, ownerEntry]);
+
   /* --------------------------- actions --------------------------- */
   const play = useCallback((talk: PlayerTalk) => {
     lastPosRef.current = 0;
