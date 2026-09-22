@@ -88,7 +88,7 @@ export default function Dashboard() {
   const hasActiveVideo = Boolean(current);
 
   return (
-    <AppShell title={t("talksTitle")} hideTitle>
+    <AppShell title={"VIDEO"} hideTitle>
       <AutoSync />
       <div className="sticky top-14 z-30 -mx-3 bg-background px-3 py-3 shadow-sm sm:-mx-5 sm:px-5">
         {!hasActiveVideo && <SearchRow value={search} onChange={setSearch} />}
@@ -98,8 +98,8 @@ export default function Dashboard() {
       {!searchQ && related.length > 0 && (
         <section className="mb-6" aria-label="Đề xuất pháp thoại Phật giáo Theravada">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold tracking-tight">Đề xuất pháp thoại Theravada</h2>
-            <span className="text-xs text-muted-foreground">Video chọn lọc</span>
+            <h2 className="text-lg font-semibold tracking-tight">Đề xuất Theravada</h2>
+            <span className="text-xs text-muted-foreground">Video</span>
           </div>
           <div className="space-y-1">
             {related.map((row) => <TalkRow key={row.youtubeId} title={row.title} youtubeId={row.youtubeId} durationSec={row.durationSec} viewCount={row.viewCount} active={current?.youtubeId === row.youtubeId} onClick={() => play(rowToTalk(row))} />)}
