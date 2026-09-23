@@ -83,12 +83,25 @@ function getApiKey(): string {
   return (import.meta.env?.VITE_YOUTUBE_API_KEY as string | undefined) ?? "";
 }
 
-/** Tìm kiếm trực tiếp qua proxy — dùng khi action Convex lỗi. */
+/** Tìm kiếm trực tiếp qua proxy — dùng khi action Convex lỗi.
+ *  Nguồn 1: YouTube Data API (cần VITE_YOUTUBE_API_KEY).
+ *  Nguồn 2: Piped API công cộng (KHÔNG cần khóa) — luôn khả dụng. */
 export async function searchDirect(q: string, pageToken?: string): Promise<{ items: DirectYtRow[]; nextPageToken?: string }> {
-  const key = getApiKey();
-  if (!key) throw new Error("Chưa có khóa YouTube phía client.");
   const query = q.trim();
   if (!query) return { items: [] };
+  const key = getApiKey();
+  if (key) {
+    try {
+      return await dataApiSearch(query, pageToken, key);
+    } catch {
+      /* rơi xuống Piped */
+    }
+  }
+  const items = await pipedSearch(query);
+  return { items };
+}
+
+async function dataApiSearch(query: string, pageToken: string | undefined, key: string): Promise<{ items: DirectYtRow[]; nextPageToken?: string }> {
 
   const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
   for (const [k, v] of Object.entries({
@@ -129,10 +142,13 @@ export async function searchDirect(q: string, pageToken?: string): Promise<{ ite
   return { items, nextPageToken: search.nextPageToken };
 }
 
-/** 50 video đề xuất trực tiếp — nhiều truy vấn lấp đủ như backend. */
+/** 50 video đề xuất trực tiếp — nhiều truy vấn lấp đủ như backend.
+ *  Nguồn 1: YouTube Data API (nếu có khóa). Nguồn 2: Piped (không cần khóa). */
 export async function relatedDirect(excludeId: string, _titleHint: string, targetCount = 50): Promise<{ items: DirectYtRow[] }> {
   const key = getApiKey();
-  if (!key) throw new Error("Chưa có khóa YouTube phía client.");
+  if (!key) {
+    return { items: await pipedRelated(excludeId, targetCount) };
+  }
   const queries = [
     "pháp thoại Phật giáo Theravada nguyên thủy",
     "giáo lý phật pháp kinh điển theravada",
@@ -182,4 +198,89 @@ export async function relatedDirect(excludeId: string, _titleHint: string, targe
     }
   }
   return { items: collected };
+}
+
+/* ==================================================================== */
+/* PIPED API — nguồn công cộng KHÔNG CẦN KHÓA (CORS mở sẵn)              */
+/* ==================================================================== */
+
+const PIPED_HOSTS = [
+  "https://pipedapi.kavin.rocks",
+  "https://pipedapi.adminforge.de",
+  "https://api.piped.private.coffee",
+  "https://pipedapi.leptons.xyz",
+];
+
+const PIPED_QUERIES = [
+  "phật pháp pháp thoại theravada",
+  "pháp thoại theravada nguyên thủy",
+  "giáo lý phật pháp kinh điển",
+  "thiền định pháp thoại",
+  "kinh phật theravada",
+];
+
+type PipedItem = {
+  url?: string; // "/watch?v=VIDEO_ID"
+  title?: string;
+  uploaderName?: string;
+  duration?: number; // giây
+  views?: number;
+  uploadedDate?: string;
+  thumbnail?: string;
+};
+
+function pipedItemToRow(it: PipedItem): DirectYtRow | null {
+  const vid = it.url?.split("v=")[1] ?? "";
+  if (!vid) return null;
+  return {
+    _id: vid,
+    youtubeId: vid,
+    title: it.title ?? "",
+    teacher: it.uploaderName ?? "",
+    channelName: it.uploaderName ?? "",
+    publishedAt: it.uploadedDate ?? "",
+    durationSec: typeof it.duration === "number" ? it.duration : 0,
+    viewCount: typeof it.views === "number" ? it.views : undefined,
+  };
+}
+
+/** Tìm kiếm qua Piped — thử lần lượt từng host công cộng. */
+async function pipedSearch(query: string): Promise<DirectYtRow[]> {
+  for (const host of PIPED_HOSTS) {
+    try {
+      const url = `${host}/search?q=${encodeURIComponent(query)}&filter=videos`;
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout?.(10_000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { items?: PipedItem[] };
+      const rows = (data.items ?? [])
+        .map(pipedItemToRow)
+        .filter((r): r is DirectYtRow => !!r && isDhammaRelated(r.title, r.channelName));
+      if (rows.length > 0) return rows;
+    } catch {
+      /* host lỗi — thử host kế tiếp */
+    }
+  }
+  throw new Error("Không truy cập được nguồn video công cộng.");
+}
+
+/** Nhiều truy vấn Piped lấp đủ số video đề xuất. */
+async function pipedRelated(excludeId: string, targetCount: number): Promise<DirectYtRow[]> {
+  const seen = new Set<string>([excludeId]);
+  const collected: DirectYtRow[] = [];
+  for (const q of PIPED_QUERIES) {
+    if (collected.length >= targetCount) break;
+    try {
+      for (const r of await pipedSearch(q)) {
+        if (!seen.has(r.youtubeId)) {
+          seen.add(r.youtubeId);
+          collected.push(r);
+        }
+      }
+    } catch {
+      /* truy vấn lỗi — thử tiếp */
+    }
+  }
+  return collected;
 }

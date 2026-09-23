@@ -145,9 +145,6 @@ export default function Dictionary() {
         />
       </section>
 
-      <p className="mt-6 text-center text-[11px] text-muted-foreground">
-        {list.length} / {DICTIONARY.length} thuật ngữ trong kho cục bộ
-      </p>
     </AppShell>
   );
 }

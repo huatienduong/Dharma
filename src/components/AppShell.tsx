@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import {
   BookOpen,
   BookMarked,
-  Bot,
-  Calendar,
-  Heart,
+  CalendarDays,
+  Flower2,
   History,
-  LayoutDashboard,
   Menu,
+  MessagesSquare,
+  MonitorPlay,
   Scale,
+  ScrollText,
   Settings,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -20,18 +21,18 @@ import { anyApi } from "convex/server";
 import { cacheLogoClientSide } from "@/lib/appLogoCache";
 
 /** Nhóm trái: nội dung học liệu. */
-const NAV_LEFT: { to: string; tKey: TranslateKey; icon: typeof LayoutDashboard }[] = [
-  { to: "/dashboard", tKey: "navTalks", icon: LayoutDashboard },
+const NAV_LEFT: { to: string; tKey: TranslateKey; icon: typeof MonitorPlay }[] = [
+  { to: "/dashboard", tKey: "navTalks", icon: MonitorPlay },
   { to: "/suttas", tKey: "navSuttas", icon: BookOpen },
   { to: "/vinaya", tKey: "navVinaya", icon: Scale },
   { to: "/dictionary", tKey: "navDictionary", icon: BookMarked },
-  { to: "/meditation", tKey: "navMeditation", icon: Heart },
+  { to: "/meditation", tKey: "navMeditation", icon: Flower2 },
 ];
 
 /** Nhóm phải: Lịch Phật giáo ở cuối, cạnh Trợ lý Phật học. */
-const NAV_RIGHT: { to: string; tKey: TranslateKey; icon: typeof Bot }[] = [
-  { to: "/assistant", tKey: "navAssistant", icon: Bot },
-  { to: "/calendar", tKey: "navCalendar", icon: Calendar },
+const NAV_RIGHT: { to: string; tKey: TranslateKey; icon: typeof MessagesSquare }[] = [
+  { to: "/assistant", tKey: "navAssistant", icon: MessagesSquare },
+  { to: "/calendar", tKey: "navCalendar", icon: CalendarDays },
 ];
 
 const ASSISTANT_LABEL = "Trợ lý Phật học";
@@ -352,7 +353,7 @@ export function AppShell({
       {/* ============================================================ */}
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background pb-[env(safe-area-inset-bottom)] lg:hidden">
         <div className="mx-auto flex max-w-lg items-stretch justify-between px-2">
-          {[NAV_LEFT[0], NAV_LEFT[1], NAV_RIGHT[0], NAV_RIGHT[1]].map((item) => {
+          {[NAV_LEFT[0], NAV_LEFT[1], NAV_LEFT[4], NAV_RIGHT[0], NAV_RIGHT[1]].map((item) => {
             if (!item) return null;
             const active = isActive(item.to);
             const Icon = item.icon;
