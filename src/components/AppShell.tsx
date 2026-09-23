@@ -8,9 +8,11 @@ import {
   Flower2,
   Globe2,
   History,
+  Landmark,
   Menu,
   MessagesSquare,
   MonitorPlay,
+  Newspaper,
   Scale,
   ScrollText,
   Settings,
@@ -30,9 +32,11 @@ const NAV_LEFT: { to: string; tKey: TranslateKey; icon: typeof MonitorPlay }[] =
   { to: "/meditation", tKey: "navMeditation", icon: Flower2 },
 ];
 
-/** Nhóm phải: Tra cứu — Lịch Phật giáo — Trợ lý Phật học. */
+/** Nhóm phải: Tra cứu — Tin tức — Lịch sử — Lịch Phật giáo — Trợ lý Phật học. */
 const NAV_RIGHT: { to: string; tKey: TranslateKey; icon: typeof MessagesSquare }[] = [
   { to: "/lookup", tKey: "navLookup", icon: Globe2 },
+  { to: "/news", tKey: "navNews", icon: Newspaper },
+  { to: "/history", tKey: "navBuddhistHistory", icon: Landmark },
   { to: "/calendar", tKey: "navCalendar", icon: CalendarDays },
   { to: "/assistant", tKey: "navAssistant", icon: MessagesSquare },
 ];
