@@ -10,7 +10,6 @@
 
 import type * as aiChat from "../aiChat.js";
 import type * as aiDocs from "../aiDocs.js";
-import type * as appLogo from "../appLogo.js";
 import type * as auth from "../auth.js";
 import type * as auth_emailOtp from "../auth/emailOtp.js";
 import type * as dhamma from "../dhamma.js";
@@ -31,7 +30,6 @@ import type {
 declare const fullApi: ApiFromModules<{
   aiChat: typeof aiChat;
   aiDocs: typeof aiDocs;
-  appLogo: typeof appLogo;
   auth: typeof auth;
   "auth/emailOtp": typeof auth_emailOtp;
   dhamma: typeof dhamma;
