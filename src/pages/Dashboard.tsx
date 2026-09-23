@@ -1,5 +1,4 @@
 import { AppShell } from "@/components/AppShell";
-import { api } from "@/convex/_generated/api";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { DockPlayer, formatCount, formatTime, usePlayer } from "@/lib/player";
 import { useSettings } from "@/lib/settings";
@@ -73,7 +72,7 @@ export default function Dashboard() {
 
   return (
     <AppShell title="VIDEO" hideTitle>
-      <AutoSync />
+      {/* Video 100% trực tiếp từ YouTube API — không dùng kho cục bộ */}
       <div className="sticky top-14 z-30 -mx-3 bg-background px-3 py-3 shadow-sm sm:-mx-5 sm:px-5">
         {!hasVideo && <SearchRow value={search} onChange={setSearch} />}
         <DockPlayer className={cn(hasVideo && "mt-1")} />
@@ -112,4 +111,4 @@ export function TalkRow({ title, youtubeId, durationSec, viewCount, progressSec,
   return <button type="button" onClick={onClick} className={cn("group flex w-full items-start gap-3 rounded-xl p-1.5 text-left transition hover:bg-accent/60 sm:gap-4", active && "bg-accent ring-1 ring-destructive/40")}><span className="relative block w-40 shrink-0 overflow-hidden rounded-lg bg-muted sm:w-60"><span className="block aspect-video w-full"><img src={`https://i.ytimg.com/vi/${youtubeId}/mqdefault.jpg`} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.04]" loading="lazy" /></span><span className="absolute bottom-1.5 right-1.5 rounded bg-black/80 px-1.5 py-0.5 text-[11px] font-medium text-white">{formatTime(durationSec)}</span>{completed && <span className="absolute left-1.5 top-1.5 rounded bg-foreground px-1.5 py-0.5 text-[10px] text-background">Đã xem</span>}{active && <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-destructive">Đang phát</span>}{percent !== undefined && <span className="absolute inset-x-0 bottom-0 h-1 bg-black/40"><span className="block h-full bg-destructive" style={{ width: `${percent}%` }} /></span>}</span><span className="flex min-w-0 flex-1 flex-col pt-0.5"><span className="line-clamp-2 text-[15px] font-medium leading-snug text-foreground group-hover:text-destructive sm:text-base">{title}</span><span className="mt-1.5 inline-flex items-center gap-1 text-[13px] text-muted-foreground"><Eye className="h-3.5 w-3.5" /><span className="tabular-nums">{formatCount(viewCount ?? 0)} lượt xem</span></span></span></button>;
 }
 
-function AutoSync() { const sync = useAction(api.youtubeSync.syncLatest); useEffect(() => { const key = "dhamma-last-autosync"; const run = () => { const last = Number(localStorage.getItem(key) ?? 0); if (Date.now() - last < 30 * 60 * 1000) return; sync({ pages: 2 }).then(() => localStorage.setItem(key, String(Date.now()))).catch(() => undefined); }; run(); const timer = window.setInterval(run, 30 * 60 * 1000); return () => window.clearInterval(timer); }, [sync]); return null; }
+
