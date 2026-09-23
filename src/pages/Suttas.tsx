@@ -4,7 +4,7 @@ import { AIIndexList } from "@/components/AIIndexList";
 import { SearchToolbar } from "@/components/SearchToolbar";
 import { api } from "@/convex/_generated/api";
 import { getSutta } from "@/data/suttas";
-import { loadLocalSuttaProgress, loadLocalSuttaPercent, saveLocalSuttaProgress } from "@/lib/localProgress";
+import { loadLocalSuttaProgress, loadLocalSuttaPercent, onAppHide, saveLocalSuttaProgress } from "@/lib/localProgress";
 import { useSettings } from "@/lib/settings";
 import { loadUiState, saveUiState, trackScroll, restoreScroll } from "@/lib/uiState";
 import { useMutation, useQuery } from "convex/react";
@@ -167,17 +167,21 @@ export function SuttaReader() {
   useEffect(() => {
     if (!sutta) return;
     let t: ReturnType<typeof setTimeout> | undefined;
+    const saveNow = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = max > 0 ? Math.round((window.scrollY / max) * 100) : 100;
+      saveLocalSuttaProgress(`sutta:${sutta.id}`, pct);
+    };
     const onScroll = () => {
       if (t) clearTimeout(t);
-      t = setTimeout(() => {
-        const max = document.documentElement.scrollHeight - window.innerHeight;
-        const pct = max > 0 ? Math.round((window.scrollY / max) * 100) : 100;
-        saveLocalSuttaProgress(`sutta:${sutta.id}`, pct);
-      }, 500);
+      t = setTimeout(saveNow, 500);
     };
     window.addEventListener("scroll", onScroll, { passive: true });
+    // Ghi ngay khi rời ứng dụng — không mất tiến trình đọc dù chưa hết debounce
+    const stopHide = onAppHide(saveNow);
     return () => {
       window.removeEventListener("scroll", onScroll);
+      stopHide();
       if (t) clearTimeout(t);
     };
   }, [sutta]);

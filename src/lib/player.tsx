@@ -19,7 +19,13 @@ import {
 } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { useLocation } from "react-router";
-import { saveLocalWatch } from "@/lib/localProgress";
+import {
+  loadLocalSession,
+  loadLocalWatchPos,
+  onAppHide,
+  saveLocalSession,
+  saveLocalWatch,
+} from "@/lib/localProgress";
 import { cn } from "@/lib/utils";
 
 export type PlayerTalk = {
@@ -404,7 +410,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       // Đảm bảo phát: surface mới có thể chưa “visible” lúc load
       window.setTimeout(() => reg.handle.play(), 700);
       if (resumeAt > 5) {
+        // Tua 2 lần: lần đầu ngay khi player sẵn sàng, lần hai phòng khi
+        // video chưa kịp nhận lệnh seek (mạng chậm).
         window.setTimeout(() => reg.handle.seek(resumeAt), 900);
+        window.setTimeout(() => reg.handle.seek(resumeAt), 1800);
       }
     } else if (lastLoadedIdRef.current !== current.youtubeId) {
       // CÙNG surface nhưng video KHÁC (vd bấm video liên quan): nạp đè và
@@ -427,11 +436,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         if (t.duration > 0) setDuration(t.duration);
         setPosition(t.position);
         lastPosRef.current = t.position;
-        // Lịch sử xem + tiến trình lưu CỤC BỘ trên thiết bị (mỗi 5s)
-        if (t.duration > 0 && t.position > 3) {
-          const now = Date.now();
-          if (now - lastWatchSaveRef.current > 5000) {
-            lastWatchSaveRef.current = now;
+        // Lịch sử xem + PHIÊN XEM DỞ lưu CỤC BỘ trên thiết bị (mỗi 3s)
+        const now = Date.now();
+        if (now - lastWatchSaveRef.current > 3000) {
+          lastWatchSaveRef.current = now;
+          const duration = t.duration > 0 ? t.duration : (current.durationSec ?? 0);
+          // Phiên: lưu NGAY cả khi mới xem vài giây → mở lại app vào đúng video
+          saveLocalSession({
+            youtubeId: current.youtubeId,
+            title: current.title,
+            teacher: current.teacher ?? "",
+            channelName: current.channelName ?? "",
+            publishedAt: current.publishedAt ?? "",
+            positionSec: t.position,
+            durationSec: duration,
+          });
+          if (t.duration > 0 && t.position > 3) {
             saveLocalWatch({
               youtubeId: current.youtubeId,
               title: current.title,
@@ -449,6 +469,38 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }, 1000);
     return () => window.clearInterval(id);
   }, [current, ownerEntry]);
+
+  /* -------- GHI NGAY khi rời ứng dụng (đóng tab / tắt màn hình) -------- */
+  /* Sửa lỗi "thoát app là mất tiến trình": không chờ debounce 3s nữa.    */
+  useEffect(() => {
+    if (!current) return;
+    return onAppHide(() => {
+      const talk = currentRef.current;
+      if (!talk) return;
+      const pos = lastPosRef.current;
+      const dur = durationRef.current || talk.durationSec || 0;
+      saveLocalSession({
+        youtubeId: talk.youtubeId,
+        title: talk.title,
+        teacher: talk.teacher ?? "",
+        channelName: talk.channelName ?? "",
+        publishedAt: talk.publishedAt ?? "",
+        positionSec: pos,
+        durationSec: dur,
+      });
+      if (pos > 3) {
+        saveLocalWatch({
+          youtubeId: talk.youtubeId,
+          title: talk.title,
+          teacher: talk.teacher,
+          channelName: talk.channelName,
+          publishedAt: talk.publishedAt,
+          positionSec: pos,
+          durationSec: dur,
+        });
+      }
+    });
+  }, [current]);
 
   /* -------- tắt phụ đề định kỳ -------- */
   useEffect(() => {
@@ -505,13 +557,46 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [current, isPlaying, ownerEntry]);
 
+  /* -------- KHÔI PHỤC PHIÊN XEM DỞ khi mở lại ứng dụng -------- */
+  /* Trước đây chỉ lưu vị trí vào lịch sử mà KHÔNG lưu video đang xem →    */
+  /* thoát app rồi mở lại là mất tiến trình. Nay lưu cả phiên và tự nạp   */
+  /* lại đúng video + tua đúng đoạn dừng.                                  */
+  useEffect(() => {
+    const s = loadLocalSession();
+    if (!s || currentRef.current) return;
+    lastPosRef.current = s.positionSec;
+    setPosition(s.positionSec);
+    setDuration(s.durationSec);
+    setCurrent({
+      _id: s.youtubeId,
+      youtubeId: s.youtubeId,
+      title: s.title,
+      teacher: s.teacher,
+      channelName: s.channelName,
+      publishedAt: s.publishedAt,
+      durationSec: s.durationSec,
+    } as unknown as PlayerTalk);
+  }, []);
+
   /* --------------------------- actions --------------------------- */
   const play = useCallback((talk: PlayerTalk) => {
-    lastPosRef.current = 0;
-    setPosition(0);
+    // TIẾP TỤC XEM: nếu video này từng xem dở → tua đúng vị trí đã dừng
+    // thay vì phát lại từ đầu.
+    const resume = loadLocalWatchPos(talk.youtubeId);
+    lastPosRef.current = resume;
+    setPosition(resume);
     setDuration(Math.max(0, talk.durationSec ?? 0));
     setPlaying(false);
     setCurrent(talk); // attach effect sẽ nạp video vào surface phù hợp
+    saveLocalSession({
+      youtubeId: talk.youtubeId,
+      title: talk.title,
+      teacher: talk.teacher ?? "",
+      channelName: talk.channelName ?? "",
+      publishedAt: talk.publishedAt ?? "",
+      positionSec: resume,
+      durationSec: talk.durationSec ?? 0,
+    });
   }, []);
 
   const toggle = useCallback(() => {
@@ -543,6 +628,15 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     // Lưu lần cuối vị trí dừng vào lịch sử cục bộ trước khi đóng
     const talk = currentRef.current;
     if (talk && lastPosRef.current > 3) {
+      saveLocalSession({
+        youtubeId: talk.youtubeId,
+        title: talk.title,
+        teacher: talk.teacher ?? "",
+        channelName: talk.channelName ?? "",
+        publishedAt: talk.publishedAt ?? "",
+        positionSec: lastPosRef.current,
+        durationSec: durationRef.current || 0,
+      });
       saveLocalWatch({
         youtubeId: talk.youtubeId,
         title: talk.title,
