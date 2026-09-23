@@ -8,6 +8,31 @@ const WATCH_KEY = "ds-progress-watch";
 const READING_KEY = "ds-progress-reading";
 const SUTTA_KEY = "ds-progress-sutta";
 const MEDIT_KEY = "ds-progress-meditation";
+const SESSION_KEY = "ds-player-session";
+
+/* ------------------------------------------------------------------ */
+/* GHI NGAY KHI RỜI ỨNG DỤNG                                            */
+/* Trình duyệt không đảm bảo chạy hết debounce khi người dùng đóng tab/ */
+/* tắt màn hình → đăng ký sẵn hai sự kiện "sắp rời" để ghi tiến trình  */
+/* ngay lập tức. Gọi một lần trong effect của trang đọc/trình phát.     */
+/* ------------------------------------------------------------------ */
+export function onAppHide(flush: () => void): () => void {
+  if (typeof document === "undefined") return () => {};
+  const handler = () => flush();
+  const onVisibility = () => {
+    if (document.visibilityState === "hidden") flush();
+  };
+  window.addEventListener("pagehide", handler);
+  window.addEventListener("beforeunload", handler);
+  window.addEventListener("blur", handler);
+  document.addEventListener("visibilitychange", onVisibility);
+  return () => {
+    window.removeEventListener("pagehide", handler);
+    window.removeEventListener("beforeunload", handler);
+    window.removeEventListener("blur", handler);
+    document.removeEventListener("visibilitychange", onVisibility);
+  };
+}
 
 function readJSON<T>(key: string): T[] {
   try {
@@ -148,9 +173,57 @@ export function saveLocalMeditation(technique: string, durationSec: number) {
   writeJSON(MEDIT_KEY, rows);
 }
 
+/* ------------- Phiên xem dở — mở lại app vào đúng nội dung ------------- */
+
+export type LocalSession = {
+  youtubeId: string;
+  title: string;
+  teacher: string;
+  channelName: string;
+  publishedAt: string;
+  positionSec: number;
+  durationSec: number;
+  updatedAt: number;
+};
+
+/** Lưu video đang xem dở + vị trí, để lần sau mở app là vào đúng đoạn đó. */
+export function saveLocalSession(row: Omit<LocalSession, "updatedAt">) {
+  if (!row.youtubeId) return;
+  try {
+    const next: LocalSession = { ...row, updatedAt: Date.now() };
+    localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+  } catch {
+    /* bộ nhớ đầy — bỏ qua */
+  }
+}
+
+/** Đọc phiên xem dở gần nhất (null nếu chưa có). */
+export function loadLocalSession(): LocalSession | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as LocalSession;
+    if (!parsed?.youtubeId) return null;
+    // Phiên quá cũ (hơn 30 ngày) coi như không còn
+    if (Date.now() - (parsed.updatedAt ?? 0) > 30 * 24 * 60 * 60 * 1000) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function clearLocalSession() {
+  try {
+    localStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* bỏ qua */
+  }
+}
+
 export function clearLocalWatch() {
   try {
     localStorage.removeItem(WATCH_KEY);
+    localStorage.removeItem(SESSION_KEY);
   } catch {
     /* bỏ qua */
   }
@@ -162,6 +235,7 @@ export function clearAllLocalProgress() {
     localStorage.removeItem(READING_KEY);
     localStorage.removeItem(SUTTA_KEY);
     localStorage.removeItem(MEDIT_KEY);
+    localStorage.removeItem(SESSION_KEY);
   } catch {
     /* bỏ qua */
   }
