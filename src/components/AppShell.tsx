@@ -304,7 +304,7 @@ export function AppShell({
           </span>
           <button
             type="button"
-            onClick={() => setMoreOpen(false)}
+            onClick={() => setMenuOpen(false)}
             className="ml-auto flex h-10 w-10 items-center justify-center rounded-full text-foreground transition hover:bg-accent"
             aria-label="Đóng menu"
           >
