@@ -14,22 +14,25 @@ import {
   Bell,
   Bug,
   CheckCircle2,
+  ChevronRight,
   Download,
-  Info,
   KeyRound,
   Lightbulb,
   Loader2,
   Moon,
+  Paperclip,
   RefreshCw,
   Send,
-  Sparkles,
   Sun,
+  X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Paperclip, X } from "lucide-react";
+import { useNavigate } from "react-router";
+import { clearAllLocalProgress } from "@/lib/localProgress";
 
 export default function Settings() {
+  const navigate = useNavigate();
   const {
     settings,
     t,
@@ -39,6 +42,13 @@ export default function Settings() {
   const submitFeedback = useMutation(api.library.submitFeedback);
   const meta = useQuery(api.library.getAppVersion, {});
   const checkAiProviders = useAction(api.aiChat.providerStatus);
+
+  // Mục đang mở rộng (accordion) — mỗi mục một thẻ trắng như app hệ thống
+  const [openCard, setOpenCard] = useState<
+    null | "appearance" | "about" | "ai" | "feedback"
+  >(null);
+  const toggle = (key: typeof openCard) =>
+    setOpenCard((cur) => (cur === key ? null : key));
 
   // Trạng thái kết nối AI — kiểm tra theo yêu cầu, cảnh báo khóa còn thiếu
   const [aiChecking, setAiChecking] = useState(false);
@@ -55,12 +65,8 @@ export default function Settings() {
     try {
       const res = await checkAiProviders({});
       setAiStatus(res);
-    } catch (err) {
-      setAiError(
-        err instanceof Error
-          ? "Không kiểm tra được — máy chủ chưa sẵn sàng. Hãy thử lại sau ít phút."
-          : "Không kiểm tra được kết nối AI.",
-      );
+    } catch {
+      setAiError("Không kiểm tra được — máy chủ chưa sẵn sàng. Hãy thử lại sau ít phút.");
       setAiStatus(null);
     } finally {
       setAiChecking(false);
@@ -90,7 +96,7 @@ export default function Settings() {
   const handleCheckUpdate = async () => {
     setChecking(true);
     setCheckResult(null);
-    // Mô phỏng thao tác kiểm tra — so sánh với phiên bản mới nhất trên server
+    // So sánh với phiên bản mới nhất trên server
     await new Promise((r) => setTimeout(r, 600));
     const up = compareVersions(latest, APP_VERSION) > 0;
     setCheckResult({
@@ -174,117 +180,114 @@ export default function Settings() {
     }
   };
 
-  return (
-    <AppShell
-      title="Cài đặt"
-    >
-      <div className="space-y-6">
-        {/* ---------- Giao diện ---------- */}
-        <Section title={t("sectionAppearance")} icon={<Sun className="h-4 w-4 text-gold" />}>
-          {/* Chế độ sáng/tối: chỉ Sáng và Tối (đã bỏ Theo hệ thống) */}
-          <ChoiceRow label={t("modeLabel")}>
-            <div className="grid grid-cols-2 gap-2">
-              {(
-                [
-                  {
-                    key: "light",
-                    label: t("themeLight"),
-                    desc: t("lightDesc"),
-                    icon: <Sun className="h-5 w-5" />,
-                  },
-                  {
-                    key: "dark",
-                    label: t("themeDark"),
-                    desc: t("darkDesc"),
-                    icon: <Moon className="h-5 w-5" />,
-                  },
-                ] as { key: ThemeMode; label: string; desc: string; icon: React.ReactNode }[]
-              ).map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setTheme(opt.key)}
-                  aria-pressed={settings.theme === opt.key}
-                  className={cn(
-                    "group flex flex-col items-center gap-1 rounded-xl border p-3 text-center transition",
-                    settings.theme === opt.key
-                      ? "border-gold/70 bg-gold/10 shadow-sm"
-                      : "border-border/60 bg-card/40 hover:border-border hover:bg-accent/40",
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-full transition",
-                      settings.theme === opt.key
-                        ? "bg-gold/20 text-gold"
-                        : "bg-muted text-muted-foreground group-hover:text-foreground",
-                    )}
-                  >
-                    {opt.icon}
-                    </span>
-                  <span className="text-xs font-semibold">{opt.label}</span>
-                  <span className="text-[10px] leading-tight text-muted-foreground">
-                    {opt.desc}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </ChoiceRow>
+  const handleReset = () => {
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm("Xóa toàn bộ tiến trình xem/đọc đã lưu trên thiết bị này?")
+    ) {
+      return;
+    }
+    clearAllLocalProgress();
+    toast.success("Đã đặt lại dữ liệu cục bộ.");
+    window.setTimeout(() => window.location.reload(), 600);
+  };
 
-          {/* Thông báo */}
-          <div className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-card/40 p-3.5">
-            <div className="flex items-start gap-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                <Bell className="h-4 w-4" />
-              </span>
-              <div>
-                <p className="text-sm font-medium">{t("notifications")}</p>
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  {t("notifDesc")}.
-                </p>
-              </div>
-            </div>
+  return (
+    <AppShell title="Cài đặt" hideTitle>
+      {/* ---------- Đầu trang: nút quay lại + tiêu đề đậm ---------- */}
+      <div className="mb-5 flex items-center gap-2.5">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="-ml-1 flex h-10 w-10 items-center justify-center rounded-full text-foreground transition hover:bg-accent"
+          aria-label="Quay lại"
+        >
+          <ArrowLeft />
+        </button>
+        <h1 className="text-2xl font-extrabold tracking-tight">Cài đặt</h1>
+      </div>
+
+      <div className="space-y-3.5">
+        {/* ---------- Giao diện ---------- */}
+        <RowCard
+          label={t("sectionAppearance")}
+          open={openCard === "appearance"}
+          onClick={() => toggle("appearance")}
+        >
+          <div className="grid grid-cols-2 gap-2.5 pt-1">
+            {(
+              [
+                {
+                  key: "light",
+                  label: t("themeLight"),
+                  icon: <Sun className="h-5 w-5" />,
+                },
+                {
+                  key: "dark",
+                  label: t("themeDark"),
+                  icon: <Moon className="h-5 w-5" />,
+                },
+              ] as { key: ThemeMode; label: string; icon: React.ReactNode }[]
+            ).map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setTheme(opt.key)}
+                aria-pressed={settings.theme === opt.key}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-semibold transition",
+                  settings.theme === opt.key
+                    ? "border-primary/60 bg-primary/10 text-primary"
+                    : "border-border/60 bg-muted/50 text-foreground/80 hover:bg-accent",
+                )}
+              >
+                {opt.icon}
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </RowCard>
+
+        {/* ---------- Thông báo (toggle ngay trên hàng) ---------- */}
+        <div>
+          <div className="ds-card flex items-center justify-between gap-4 px-5 py-5">
+            <p className="text-[16px] font-semibold">{t("notifications")}</p>
             <Switch
               checked={settings.notifications}
               onChange={(v) => setNotifications(v)}
               label="Thông báo"
             />
           </div>
-        </Section>
+          <p className="px-1 pt-2 text-[13px] leading-relaxed text-muted-foreground">
+            {t("notifDesc")}.
+          </p>
+        </div>
 
-        {/* ---------- Phiên bản ---------- */}
-        <Section title={t("appSection")} icon={<Info className="h-4 w-4 text-gold" />}>
-          <div className="rounded-xl border border-border/60 bg-card/40 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* ---------- Giới thiệu / Phiên bản ---------- */}
+        <RowCard
+          label="Giới thiệu"
+          open={openCard === "about"}
+          onClick={() => toggle("about")}
+        >
+          <div className="space-y-3 pt-1">
+            <div className="flex items-center justify-between rounded-2xl bg-muted/50 px-4 py-3">
               <div>
                 <p className="text-sm font-semibold">
-                  {t("version")} {APP_VERSION}
+                  Dharma {APP_VERSION}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {t("developer")}: Hứa Tiến Dương
                 </p>
-                <a
-                  href="https://facebook.com/huatienduong.official"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-2 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/70 px-3 py-1 text-[11px] font-medium text-foreground/85 transition hover:border-primary/40 hover:bg-accent"
-                  aria-label="Liên hệ nhà phát triển qua Facebook"
-                >
-                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-[#1877F2]" aria-hidden>
-                    <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.66c0-3.025 1.792-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.971H15.83c-1.491 0-1.956.93-1.956 1.886v2.264h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
-                  </svg>
-                  Liên hệ Facebook
-                </a>
               </div>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={handleCheckUpdate}
                 disabled={checking}
-                className="gap-1.5"
+                className="gap-1.5 rounded-full"
               >
                 <RefreshCw className={cn("h-3.5 w-3.5", checking && "animate-spin")} />
-                {checking ? "Đang kiểm tra…" : "Kiểm tra cập nhật"}
+                {checking ? "Đang kiểm tra…" : "Cập nhật"}
               </Button>
             </div>
 
@@ -292,10 +295,10 @@ export default function Settings() {
             {checkResult && (
               <div
                 className={cn(
-                  "mt-3 flex items-start gap-2.5 rounded-lg border p-3",
+                  "flex items-start gap-2.5 rounded-2xl p-3",
                   hasUpdate
-                    ? "border-gold/50 bg-gold/10"
-                    : "border-green-500/40 bg-green-500/10",
+                    ? "bg-gold/10"
+                    : "bg-green-500/10",
                 )}
               >
                 {hasUpdate ? (
@@ -313,39 +316,46 @@ export default function Settings() {
                     </p>
                   )}
                   {hasUpdate && (
-                    <Button size="sm" className="mt-2 gap-1.5" onClick={() => window.location.reload()}>
+                    <Button
+                      size="sm"
+                      className="mt-2 gap-1.5 rounded-full"
+                      onClick={() => window.location.reload()}
+                    >
                       <Download className="h-3.5 w-3.5" /> Tải bản mới
                     </Button>
-                    )}
+                  )}
                 </div>
               </div>
             )}
 
-            {!checkResult && !checking && meta?.releaseNotes && (
-              <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-                Bản mới nhất trên máy chủ: {latest}
-              </p>
-            )}
+            <a
+              href="https://facebook.com/huatienduong.official"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2.5 rounded-2xl bg-muted/50 px-4 py-3 text-sm font-medium text-foreground/85 transition hover:bg-accent"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-[#1877F2]" aria-hidden>
+                <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.66c0-3.025 1.792-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.971H15.83c-1.491 0-1.956.93-1.956 1.886v2.264h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
+              </svg>
+              Liên hệ nhà phát triển
+              <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
+            </a>
           </div>
-        </Section>
+        </RowCard>
 
-        {/* ---------- Trợ lý Phật học — kiểm tra kết nối AI ---------- */}
-        <Section
-          title="Trợ lý Phật học — kết nối AI"
-          icon={<Sparkles className="h-4 w-4 text-gold" />}
+        {/* ---------- Trợ lý Phật học — kết nối AI ---------- */}
+        <RowCard
+          label="Trợ lý Phật học — kết nối AI"
+          open={openCard === "ai"}
+          onClick={() => toggle("ai")}
         >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="min-w-0 flex-1 text-xs leading-relaxed text-muted-foreground">
-              Kiểm tra các khóa API đang kết nối. Nếu thiếu khóa bắt buộc, hãy bổ
-              sung ngay trong mục <strong>Keys / API keys</strong> của dự án để
-              Trợ lý Phật học không bị gián đoạn.
-            </p>
+          <div className="space-y-3 pt-1">
             <Button
               size="sm"
               variant="outline"
               onClick={() => void handleCheckAi()}
               disabled={aiChecking}
-              className="gap-1.5"
+              className="gap-1.5 rounded-full"
             >
               {aiChecking ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -354,128 +364,116 @@ export default function Settings() {
               )}
               {aiChecking ? "Đang kiểm tra…" : "Kiểm tra kết nối"}
             </Button>
+
+            {aiError && (
+              <div className="flex items-start gap-2.5 rounded-2xl bg-destructive/10 p-3">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                <p className="text-xs leading-relaxed">{aiError}</p>
+              </div>
+            )}
+
+            {aiStatus && (
+              <div className="space-y-2">
+                <div
+                  className={cn(
+                    "flex items-start gap-2.5 rounded-2xl p-3",
+                    aiStatus.ready
+                      ? "bg-green-500/10"
+                      : "bg-destructive/10",
+                  )}
+                >
+                  {aiStatus.ready ? (
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                  ) : (
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                  )}
+                  <p className="text-xs font-medium leading-relaxed">
+                    {aiStatus.ready
+                      ? "Trợ lý Phật học đã kết nối đầy đủ."
+                      : `Thiếu khóa bắt buộc: ${aiStatus.missingRequired.join(", ")}.`}
+                  </p>
+                </div>
+                <ul className="space-y-1.5">
+                  {aiStatus.checks.map((c) => (
+                    <li
+                      key={c.key}
+                      className="flex items-center gap-2.5 rounded-2xl bg-muted/50 px-3 py-2.5"
+                    >
+                      <KeyRound
+                        className={cn(
+                          "h-3.5 w-3.5 shrink-0",
+                          c.ready ? "text-green-600" : "text-muted-foreground/50",
+                        )}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                        {c.label}
+                      </span>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                          c.ready
+                            ? "bg-green-500/15 text-green-700 dark:text-green-400"
+                            : "bg-border/60 text-muted-foreground",
+                        )}
+                      >
+                        {c.ready ? "Sẵn sàng" : "Chưa có"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
+        </RowCard>
 
-          {aiError && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-destructive/40 bg-destructive/10 p-3">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-              <p className="text-xs leading-relaxed">{aiError}</p>
-            </div>
-          )}
-
-          {aiStatus && (
-            <div className="space-y-2">
-              <div
+        {/* ---------- Góp ý & Báo lỗi ---------- */}
+        <RowCard
+          label="Góp ý & Báo lỗi"
+          open={openCard === "feedback"}
+          onClick={() => toggle("feedback")}
+        >
+          <div className="space-y-3 pt-1">
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setFbType("idea")}
+                aria-pressed={fbType === "idea"}
                 className={cn(
-                  "flex items-start gap-2.5 rounded-lg border p-3",
-                  aiStatus.ready
-                    ? "border-green-500/40 bg-green-500/10"
-                    : "border-destructive/40 bg-destructive/10",
+                  "flex items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-semibold transition",
+                  fbType === "idea"
+                    ? "bg-primary/10 text-primary"
+                    : "bg-muted/50 text-muted-foreground hover:bg-accent",
                 )}
               >
-                {aiStatus.ready ? (
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-                ) : (
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                <Lightbulb className="h-3.5 w-3.5" /> Đề xuất
+              </button>
+              <button
+                type="button"
+                onClick={() => setFbType("bug")}
+                aria-pressed={fbType === "bug"}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-semibold transition",
+                  fbType === "bug"
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-muted/50 text-muted-foreground hover:bg-accent",
                 )}
-                <p className="text-xs font-medium leading-relaxed">
-                  {aiStatus.ready
-                    ? "Trợ lý Phật học đã kết nối đầy đủ."
-                    : `Thiếu khóa bắt buộc: ${aiStatus.missingRequired.join(", ")} — hãy thêm ngay trong mục Keys / API keys.`}
-                </p>
-              </div>
-              <ul className="space-y-1.5">
-                {aiStatus.checks.map((c) => (
-                  <li
-                    key={c.key}
-                    className="flex items-start gap-2.5 rounded-lg border border-border/60 bg-card/40 p-2.5"
-                  >
-                    <KeyRound
-                      className={cn(
-                        "mt-0.5 h-3.5 w-3.5 shrink-0",
-                        c.ready ? "text-green-600" : "text-muted-foreground/60",
-                      )}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-xs font-semibold">
-                        {c.label}
-                        {c.required && (
-                          <span className="ml-1.5 rounded-full bg-gold/15 px-1.5 py-0.5 text-[10px] font-medium text-gold">
-                            bắt buộc
-                          </span>
-                        )}
-                      </span>
-                      <span className="block text-[11px] leading-relaxed text-muted-foreground">
-                        {c.purpose}
-                      </span>
-                      <span className="mt-0.5 block font-mono text-[10px] text-muted-foreground/80">
-                        {c.key}
-                      </span>
-                    </span>
-                    <span
-                      className={cn(
-                        "shrink-0 self-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                        c.ready
-                          ? "bg-green-500/15 text-green-700 dark:text-green-400"
-                          : "bg-muted text-muted-foreground",
-                      )}
-                    >
-                      {c.ready ? "Sẵn sàng" : "Chưa có"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              >
+                <Bug className="h-3.5 w-3.5" /> Báo lỗi
+              </button>
             </div>
-          )}
-        </Section>
+            <textarea
+              value={fbMessage}
+              onChange={(e) => setFbMessage(e.target.value)}
+              rows={4}
+              placeholder=""
+              aria-label="Nội dung góp ý hoặc báo lỗi"
+              className="w-full rounded-2xl border border-border/60 bg-muted/40 p-3 text-sm outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+            />
 
-        {/* ---------- Góp ý / báo lỗi ---------- */}
-        <Section
-          title="Góp ý & Báo lỗi"
-          icon={<Lightbulb className="h-4 w-4 text-gold" />}
-        >
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setFbType("idea")}
-              aria-pressed={fbType === "idea"}
-              className={cn(
-                "flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-medium transition",
-                fbType === "idea"
-                  ? "border-gold/70 bg-gold/10 text-gold"
-                  : "border-border/60 bg-card/40 text-muted-foreground hover:bg-accent/40",
-              )}
-            >
-              <Lightbulb className="h-3.5 w-3.5" /> Đề xuất tính năng
-            </button>
-            <button
-              type="button"
-              onClick={() => setFbType("bug")}
-              aria-pressed={fbType === "bug"}
-              className={cn(
-                "flex items-center justify-center gap-1.5 rounded-xl border py-2.5 text-xs font-medium transition",
-                fbType === "bug"
-                  ? "border-destructive/60 bg-destructive/10 text-destructive"
-                  : "border-border/60 bg-card/40 text-muted-foreground hover:bg-accent/40",
-              )}
-            >
-              <Bug className="h-3.5 w-3.5" /> Báo cáo lỗi
-            </button>
-          </div>
-          <textarea
-            value={fbMessage}
-            onChange={(e) => setFbMessage(e.target.value)}
-            rows={4}
-            placeholder=""
-            aria-label="Nội dung góp ý hoặc báo lỗi"
-            className="w-full rounded-xl border border-border/70 bg-card/80 p-3 text-sm outline-none transition placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-          />
-
-          {/* BÁO LỖI: đính kèm ảnh/video + thông tin phiên bản & thiết bị */}
-          {fbType === "bug" && (
-            <>
-              <div>
-                <div className="flex items-center gap-2">
+            {/* BÁO LỖI: đính kèm ảnh/video + thông tin phiên bản & thiết bị */}
+            {fbType === "bug" && (
+              <>
+                <div className="flex flex-wrap items-center gap-2">
                   <input
                     ref={fbFileRef}
                     type="file"
@@ -490,7 +488,7 @@ export default function Settings() {
                   <button
                     type="button"
                     onClick={() => fbFileRef.current?.click()}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card/60 px-3 py-1.5 text-xs font-medium text-foreground/85 transition hover:bg-accent"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-muted/60 px-3 py-1.5 text-xs font-medium text-foreground/85 transition hover:bg-accent"
                   >
                     <Paperclip className="h-3.5 w-3.5" />
                     Đính kèm ảnh / video
@@ -508,84 +506,92 @@ export default function Settings() {
                     </button>
                   )}
                 </div>
-                {fbFile && (
-                  <p className="mt-1.5 text-[11px] text-muted-foreground">
-                    Tệp đã sẵn sàng — dung lượng tối đa khuyến nghị 10MB.
-                  </p>
-                )}
-              </div>
 
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <label className="rounded-xl border border-border/70 bg-card/60 p-3">
-                  <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Số phiên bản ứng dụng
-                  </span>
-                  <input
-                    value={fbAppVersion}
-                    onChange={(e) => setFbAppVersion(e.target.value)}
-                    placeholder=""
-                    className="mt-1 w-full bg-transparent text-sm outline-none"
-                  />
-                </label>
-                <label className="rounded-xl border border-border/70 bg-card/60 p-3">
-                  <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Thiết bị / hệ điều hành
-                  </span>
-                  <input
-                    value={fbDevice}
-                    onChange={(e) => setFbDevice(e.target.value)}
-                    placeholder=""
-                    className="mt-1 w-full bg-transparent text-sm outline-none"
-                  />
-                </label>
-              </div>
-            </>
-          )}
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <label className="rounded-2xl bg-muted/40 px-3 py-2.5">
+                    <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Phiên bản ứng dụng
+                    </span>
+                    <input
+                      value={fbAppVersion}
+                      onChange={(e) => setFbAppVersion(e.target.value)}
+                      placeholder=""
+                      className="mt-0.5 w-full bg-transparent text-sm outline-none"
+                    />
+                  </label>
+                  <label className="rounded-2xl bg-muted/40 px-3 py-2.5">
+                    <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Thiết bị / hệ điều hành
+                    </span>
+                    <input
+                      value={fbDevice}
+                      onChange={(e) => setFbDevice(e.target.value)}
+                      placeholder=""
+                      className="mt-0.5 w-full bg-transparent text-sm outline-none"
+                    />
+                  </label>
+                </div>
+              </>
+            )}
 
-          <Button
-            onClick={handleSend}
-            disabled={sending}
-            className="gap-2 w-full sm:w-auto"
-          >
-            <Send className="h-4 w-4" />
-            {sending ? "Đang gửi…" : fbType === "bug" ? "Gửi báo lỗi" : "Gửi góp ý"}
-          </Button>
-        </Section>
+            <Button
+              onClick={handleSend}
+              disabled={sending}
+              className="w-full gap-2 rounded-full"
+            >
+              <Send className="h-4 w-4" />
+              {sending ? "Đang gửi…" : fbType === "bug" ? "Gửi báo lỗi" : "Gửi góp ý"}
+            </Button>
+          </div>
+        </RowCard>
+      </div>
+
+      {/* ---------- Nút pill lớn cuối trang (kiểu "Đăng xuất") ---------- */}
+      <div className="mt-10 flex justify-center pb-4">
+        <Button
+          onClick={handleReset}
+          className="h-13 w-full max-w-sm rounded-full text-[15px] font-bold shadow-[0_6px_18px_rgba(180,83,9,0.35)]"
+        >
+          Đặt lại ứng dụng
+        </Button>
       </div>
     </AppShell>
   );
 }
 
 /* ------------------------------------------------------------------ */
+/* Hàng mục: thẻ trắng riêng — nhãn trái, mũi tên phải, mở rộng tại chỗ */
+/* ------------------------------------------------------------------ */
 
-function ChoiceRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      {children}
-    </div>
-  );
-}
-
-function Section({
-  title,
-  icon,
+function RowCard({
+  label,
+  open,
+  onClick,
   children,
 }: {
-  title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
+  label: string;
+  open: boolean;
+  onClick: () => void;
+  children?: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
-      <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold">
-        {icon}
-        {title}
-      </h2>
-      <div className="space-y-4">{children}</div>
-    </section>
+    <div className="ds-card overflow-hidden">
+      <button
+        type="button"
+        onClick={onClick}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-4 px-5 py-5 text-left"
+      >
+        <span className="text-[16px] font-semibold leading-snug">{label}</span>
+        <ChevronRight
+          className={cn(
+            "h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200",
+            open && "rotate-90",
+          )}
+        />
+      </button>
+      {open && <div className="px-5 pb-5">{children}</div>}
+    </div>
   );
 }
 
@@ -606,17 +612,35 @@ function Switch({
       aria-label={label}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative h-6 w-11 shrink-0 rounded-full transition",
-        checked ? "bg-gold" : "bg-border",
+        "relative h-7 w-12 shrink-0 rounded-full transition",
+        checked ? "bg-primary" : "bg-border",
       )}
     >
       <span
         className={cn(
-          "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all",
+          "absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all",
           checked ? "left-[1.375rem]" : "left-0.5",
         )}
       />
     </button>
+  );
+}
+
+function ArrowLeft() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-6 w-6"
+      aria-hidden
+    >
+      <path d="M19 12H5" />
+      <path d="M12 19l-7-7 7-7" />
+    </svg>
   );
 }
 
