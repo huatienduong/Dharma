@@ -144,7 +144,7 @@ export default function Assistant() {
       setStalled(false);
       return;
     }
-    const id = window.setTimeout(() => setStalled(true), 60_000);
+    const id = window.setTimeout(() => setStalled(true), 30_000);
     return () => window.clearTimeout(id);
   }, [busy]);
 

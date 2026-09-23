@@ -7,19 +7,22 @@ import {
 } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useMemo } from "react";
 import {
+  AlertTriangle,
   Bell,
   Bug,
-  Check,
   CheckCircle2,
   Download,
   Info,
+  KeyRound,
   Lightbulb,
+  Loader2,
   Moon,
   RefreshCw,
   Send,
+  Sparkles,
   Sun,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -35,6 +38,34 @@ export default function Settings() {
   } = useSettings();
   const submitFeedback = useMutation(api.library.submitFeedback);
   const meta = useQuery(api.library.getAppVersion, {});
+  const checkAiProviders = useAction(api.aiChat.providerStatus);
+
+  // Trạng thái kết nối AI — kiểm tra theo yêu cầu, cảnh báo khóa còn thiếu
+  const [aiChecking, setAiChecking] = useState(false);
+  const [aiStatus, setAiStatus] = useState<{
+    checks: { key: string; label: string; purpose: string; ready: boolean; required: boolean }[];
+    missingRequired: string[];
+    ready: boolean;
+  } | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const handleCheckAi = async () => {
+    setAiChecking(true);
+    setAiError(null);
+    try {
+      const res = await checkAiProviders({});
+      setAiStatus(res);
+    } catch (err) {
+      setAiError(
+        err instanceof Error
+          ? "Không kiểm tra được — máy chủ chưa sẵn sàng. Hãy thử lại sau ít phút."
+          : "Không kiểm tra được kết nối AI.",
+      );
+      setAiStatus(null);
+    } finally {
+      setAiChecking(false);
+    }
+  };
 
   const [fbType, setFbType] = useState<"idea" | "bug">("idea");
   const [fbMessage, setFbMessage] = useState("");
@@ -297,6 +328,106 @@ export default function Settings() {
               </p>
             )}
           </div>
+        </Section>
+
+        {/* ---------- Trợ lý Phật học — kiểm tra kết nối AI ---------- */}
+        <Section
+          title="Trợ lý Phật học — kết nối AI"
+          icon={<Sparkles className="h-4 w-4 text-gold" />}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="min-w-0 flex-1 text-xs leading-relaxed text-muted-foreground">
+              Kiểm tra các khóa API đang kết nối. Nếu thiếu khóa bắt buộc, hãy bổ
+              sung ngay trong mục <strong>Keys / API keys</strong> của dự án để
+              Trợ lý Phật học không bị gián đoạn.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void handleCheckAi()}
+              disabled={aiChecking}
+              className="gap-1.5"
+            >
+              {aiChecking ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              {aiChecking ? "Đang kiểm tra…" : "Kiểm tra kết nối"}
+            </Button>
+          </div>
+
+          {aiError && (
+            <div className="flex items-start gap-2.5 rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              <p className="text-xs leading-relaxed">{aiError}</p>
+            </div>
+          )}
+
+          {aiStatus && (
+            <div className="space-y-2">
+              <div
+                className={cn(
+                  "flex items-start gap-2.5 rounded-lg border p-3",
+                  aiStatus.ready
+                    ? "border-green-500/40 bg-green-500/10"
+                    : "border-destructive/40 bg-destructive/10",
+                )}
+              >
+                {aiStatus.ready ? (
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+                ) : (
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                )}
+                <p className="text-xs font-medium leading-relaxed">
+                  {aiStatus.ready
+                    ? "Trợ lý Phật học đã kết nối đầy đủ."
+                    : `Thiếu khóa bắt buộc: ${aiStatus.missingRequired.join(", ")} — hãy thêm ngay trong mục Keys / API keys.`}
+                </p>
+              </div>
+              <ul className="space-y-1.5">
+                {aiStatus.checks.map((c) => (
+                  <li
+                    key={c.key}
+                    className="flex items-start gap-2.5 rounded-lg border border-border/60 bg-card/40 p-2.5"
+                  >
+                    <KeyRound
+                      className={cn(
+                        "mt-0.5 h-3.5 w-3.5 shrink-0",
+                        c.ready ? "text-green-600" : "text-muted-foreground/60",
+                      )}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs font-semibold">
+                        {c.label}
+                        {c.required && (
+                          <span className="ml-1.5 rounded-full bg-gold/15 px-1.5 py-0.5 text-[10px] font-medium text-gold">
+                            bắt buộc
+                          </span>
+                        )}
+                      </span>
+                      <span className="block text-[11px] leading-relaxed text-muted-foreground">
+                        {c.purpose}
+                      </span>
+                      <span className="mt-0.5 block font-mono text-[10px] text-muted-foreground/80">
+                        {c.key}
+                      </span>
+                    </span>
+                    <span
+                      className={cn(
+                        "shrink-0 self-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                        c.ready
+                          ? "bg-green-500/15 text-green-700 dark:text-green-400"
+                          : "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {c.ready ? "Sẵn sàng" : "Chưa có"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </Section>
 
         {/* ---------- Góp ý / báo lỗi ---------- */}

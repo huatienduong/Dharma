@@ -163,20 +163,23 @@ function listProviders(needVision: boolean): ProviderChoice[] {
     return out;
   }
 
-  if (openaiKey) {
-    out.push({
-      label: "OpenAI",
+  /* TỐC ĐỘ: nếu có khóa ngoài nhanh (Groq/Gemini), dùng TRƯỚC — phản hồi
+   * chỉ vài trăm ms thay vì chờ model suy luận; cổng AI nền tảng luôn nằm
+   * trong danh sách nên nếu các khóa ngoài lỗi/hết hạn vẫn tự chuyển về. */
+  if (groqKey) {
+    out.unshift({
+      label: "Groq",
       make: () =>
         createOpenAICompatible({
-          name: "openai",
-          baseURL: "https://api.openai.com/v1",
-          apiKey: openaiKey,
+          name: "groq",
+          baseURL: "https://api.groq.com/openai/v1",
+          apiKey: groqKey,
         }),
-      model: "gpt-4.1-mini",
+      model: "llama-3.3-70b-versatile",
     });
   }
   if (geminiKey) {
-    out.push({
+    out.unshift({
       label: "Gemini",
       make: () =>
         createOpenAICompatible({
@@ -187,16 +190,16 @@ function listProviders(needVision: boolean): ProviderChoice[] {
       model: "gemini-flash-latest",
     });
   }
-  if (groqKey) {
+  if (openaiKey) {
     out.push({
-      label: "Groq",
+      label: "OpenAI",
       make: () =>
         createOpenAICompatible({
-          name: "groq",
-          baseURL: "https://api.groq.com/openai/v1",
-          apiKey: groqKey,
+          name: "openai",
+          baseURL: "https://api.openai.com/v1",
+          apiKey: openaiKey,
         }),
-      model: "llama-3.3-70b-versatile",
+      model: "gpt-4.1-mini",
     });
   }
   return out;
