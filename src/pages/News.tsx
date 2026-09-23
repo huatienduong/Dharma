@@ -56,7 +56,7 @@ export default function News() {
       )}
 
       {!loading && error && items.length === 0 && (
-        <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-10 text-center">
+        <div className="ds-card p-10 text-center">
           <Newspaper className="mx-auto h-8 w-8 text-muted-foreground/50" />
           <p className="mt-3 text-sm text-muted-foreground">
             Chưa nạp được tin tức — kiểm tra kết nối rồi thử lại.
@@ -64,7 +64,7 @@ export default function News() {
           <button
             type="button"
             onClick={reload}
-            className="mt-4 rounded-full border border-border/60 px-5 py-2 text-sm font-medium transition hover:bg-accent"
+            className="mt-4 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
           >
             Thử lại
           </button>
@@ -84,7 +84,7 @@ export default function News() {
           <button
             type="button"
             onClick={() => setVisible((v) => v + PAGE_SIZE)}
-            className="rounded-full border border-border/60 px-6 py-2 text-sm font-medium transition hover:bg-accent"
+            className="rounded-full bg-primary px-7 py-2.5 text-sm font-semibold text-primary-foreground shadow-[0_4px_14px_rgba(180,83,9,0.3)] transition hover:bg-primary/90 active:scale-[0.98]"
           >
             Xem thêm
           </button>

@@ -251,10 +251,10 @@ export default function BuddhistHistory() {
           onClick={() => setPeriod("")}
           aria-pressed={period === ""}
           className={cn(
-            "rounded-full border px-3.5 py-1.5 text-xs font-medium transition",
+            "rounded-full px-3.5 py-1.5 text-xs font-semibold transition",
             period === ""
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border/70 bg-card/60 text-muted-foreground hover:bg-accent",
+              ? "bg-primary text-primary-foreground shadow-[0_2px_8px_rgba(180,83,9,0.3)]"
+              : "bg-card text-muted-foreground shadow-[0_1px_3px_rgba(43,29,18,0.08)] hover:bg-accent",
           )}
         >
           Tất cả thời đại
@@ -266,10 +266,10 @@ export default function BuddhistHistory() {
             onClick={() => setPeriod(period === p ? "" : p)}
             aria-pressed={period === p}
             className={cn(
-              "rounded-full border px-3.5 py-1.5 text-xs font-medium transition",
+              "rounded-full px-3.5 py-1.5 text-xs font-semibold transition",
               period === p
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border/70 bg-card/60 text-muted-foreground hover:bg-accent",
+                ? "bg-primary text-primary-foreground shadow-[0_2px_8px_rgba(180,83,9,0.3)]"
+                : "bg-card text-muted-foreground shadow-[0_1px_3px_rgba(43,29,18,0.08)] hover:bg-accent",
             )}
           >
             {p}
@@ -304,7 +304,7 @@ export default function BuddhistHistory() {
                 <button
                   type="button"
                   onClick={() => void openEntry(entry)}
-                  className="group block w-full overflow-hidden rounded-2xl border border-border/60 bg-card/70 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+                  className="group block w-full overflow-hidden rounded-3xl bg-card text-left shadow-[0_1px_2px_rgba(43,29,18,0.05),0_4px_14px_rgba(43,29,18,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(43,29,18,0.12)]"
                 >
                   <div className="flex gap-3 p-3.5">
                     {/* Ảnh nhỏ (nếu đã nạp) */}
@@ -343,7 +343,7 @@ export default function BuddhistHistory() {
           </ol>
         </div>
       ) : (
-        <div className="mt-6 rounded-2xl border border-dashed border-border/70 bg-card/40 p-10 text-center">
+        <div className="ds-card mt-6 p-10 text-center">
           <HistoryIcon className="mx-auto h-8 w-8 text-muted-foreground/50" />
           <p className="mt-3 text-sm text-muted-foreground">
             Không có mục lịch sử nào khớp tìm kiếm của bạn.
@@ -357,7 +357,7 @@ export default function BuddhistHistory() {
           <button
             type="button"
             onClick={() => setVisible((v) => v + 6)}
-            className="rounded-full border border-border/60 px-6 py-2 text-sm font-medium transition hover:bg-accent"
+            className="rounded-full bg-primary px-7 py-2.5 text-sm font-semibold text-primary-foreground shadow-[0_4px_14px_rgba(180,83,9,0.3)] transition hover:bg-primary/90 active:scale-[0.98]"
           >
             Xem thêm thời đại sau
           </button>
