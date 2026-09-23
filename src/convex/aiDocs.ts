@@ -335,3 +335,58 @@ Cấu trúc:
     return text;
   },
 });
+
+/**
+ * BÀI THIỀN CHI TIẾT AI TỰ BIÊN SOẠN — bổ sung cho mục Thiền.
+ * Trả về JSON: tên, pāli, mô tả, các bước, lợi ích, lời khuyên, kinh nguồn.
+ * Dùng để đề xuất thêm kỹ thuật thiền mới ngoài 4 kỹ thuật cốt lõi.
+ */
+export const generateMeditationLesson = action({
+  args: { topic: v.string() },
+  handler: async (_ctx, { topic }) => {
+    const prompt = `Hãy biên soạn MỘT BÀI HƯỚNG DẪN THIỀN chi tiết theo truyền thống Theravāda cho chủ đề:
+"${topic}"
+
+Yêu cầu: trả về DUY NHẤT một JSON hợp lệ (không bọc markdown, không thêm chữ ngoài JSON) với cấu trúc:
+{
+  "name": "tên kỹ thuật tiếng Việt (ngắn gọn)",
+  "pali": "tên Pāli",
+  "tagline": "mô tả 1 câu ngắn",
+  "source": "kinh nguồn gốc (nikāya + số hiệu nếu rõ)",
+  "suggestedMin": 15,
+  "difficulty": "Cơ bản" | "Trung cấp" | "Nâng cao",
+  "benefits": ["lợi ích 1", "lợi ích 2", "lợi ích 3"],
+  "steps": [{"title": "1. Tên bước", "text": "hướng dẫn chi tiết 2-4 câu để thực hành NGAY"}],
+  "tips": ["lời khuyên thực hành 1", "lời khuyên 2", "lời khuyên 3"],
+  "body": "giải thích sâu về nền tảng giáo lý của kỹ thuật này (3-4 đoạn, có thể dùng '## ' cho tiêu đề con)"
+}
+
+Số bước: 5-7. Văn phong trang nghiêm, rõ ràng, người mới đọc cũng thực hành được ngay. Nếu chủ đề chung chung (vd "thiền cho người mới"), hãy chọn kỹ thuật phù hợp nhất tự biên soạn.`;
+    const { text } = await generateWithFallback(prompt, 3000);
+    // Trích JSON từ phản hồi (AI có thể bọc ```json)
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start === -1 || end === -1 || end <= start) {
+      throw new Error("Bài thiền trả về không hợp lệ, thử lại.");
+    }
+    return text.slice(start, end + 1);
+  },
+});
+
+/** Danh sách chủ đề thiền AI gợi ý (dùng cho nút "Khám phá thêm"). */
+export const generateMeditationTopics = action({
+  args: {},
+  handler: async (_ctx) => {
+    const prompt = `Liệt kê 8 chủ đề thiền Theravāda HAY NHẤT để người Phật tử tại gia khám phá tiếp (ngoài 4 kỹ thuật cốt lõi: niệm hơi thở, Mettā, Maranasati, thiền hành).
+
+Trả về DUY NHẤT mảng JSON (không thêm chữ ngoài JSON), mỗi phần tử:
+{"id":"chu-de-ky-tu-latin","title":"tên tiếng Việt ngắn gọn","desc":"mô tả 1 câu"}`;
+    const { text } = await generateWithFallback(prompt, 1200);
+    const start = text.indexOf("[");
+    const end = text.lastIndexOf("]");
+    if (start === -1 || end === -1 || end <= start) {
+      throw new Error("Danh sách chủ đề không hợp lệ, thử lại.");
+    }
+    return text.slice(start, end + 1);
+  },
+});

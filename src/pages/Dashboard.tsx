@@ -28,6 +28,8 @@ export default function Dashboard() {
   const [nextPage, setNextPage] = useState<string>();
   const [loadingMore, setLoadingMore] = useState(false);
   const [related, setRelated] = useState<YtRow[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState(true);
+  const [relatedError, setRelatedError] = useState(false);
   const query = search.trim();
   const searchVideos = useAction(anyApi.youtubeSync.search);
   const relatedVideos = useAction(anyApi.youtubeSync.related);
@@ -74,13 +76,16 @@ export default function Dashboard() {
   }, [query, searchWithRetry]);
 
   // Danh sách 50 video đề xuất giáo lý Theravada — luôn hiển thị ở mục VIDEO
-  // (khi không có từ khóa tìm kiếm).
+  // (khi không có từ khóa tìm kiếm). Skeleton khi nạp, thông báo khi lỗi.
   useEffect(() => {
     let cancelled = false;
     if (query) return;
+    setRelatedLoading(true);
+    setRelatedError(false);
     relatedWithRetry({ youtubeId: current?.youtubeId ?? "", title: current?.title ?? HOME_QUERY })
       .then((r: SearchResponse) => { if (!cancelled) setRelated(r.items.slice(0, SUGGESTED_COUNT)); })
-      .catch(() => { if (!cancelled) setRelated([]); });
+      .catch(() => { if (!cancelled) { setRelated([]); setRelatedError(true); } })
+      .finally(() => { if (!cancelled) setRelatedLoading(false); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, current?.youtubeId, current?.title, relatedWithRetry]);
@@ -104,8 +109,44 @@ export default function Dashboard() {
         <DockPlayer className={cn(hasVideo && "mt-1")} />
       </div>
 
-      {/* 50 video đề xuất — KHÔNG tiêu đề, KHÔNG đếm số lượng */}
-      {!query && related.length > 0 && (
+      {/* 50 video đề xuất — KHÔNG tiêu đề, KHÔNG đếm số lượng.
+          Skeleton khi nạp · thông báo lỗi + nút thử lại khi thất bại. */}
+      {!query && relatedLoading && (
+        <div className="space-y-3" aria-label="Đang nạp video đề xuất">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex gap-4">
+              <Skeleton className="aspect-video w-40 shrink-0 rounded-lg sm:w-60" />
+              <div className="flex-1 space-y-2 pt-1">
+                <Skeleton className="h-4 w-4/5" />
+                <Skeleton className="h-3 w-2/5" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {!query && !relatedLoading && relatedError && related.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-10 text-center">
+          <SearchIcon className="mx-auto h-8 w-8 text-muted-foreground/50" />
+          <p className="mt-3 text-sm text-muted-foreground">
+            Không nạp được video đề xuất lần này — kiểm tra kết nối mạng rồi thử lại.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setRelatedError(false);
+              setRelatedLoading(true);
+              relatedWithRetry({ youtubeId: current?.youtubeId ?? "", title: current?.title ?? HOME_QUERY })
+                .then((r: SearchResponse) => setRelated(r.items.slice(0, SUGGESTED_COUNT)))
+                .catch(() => setRelatedError(true))
+                .finally(() => setRelatedLoading(false));
+            }}
+            className="mt-4 rounded-full border border-border/60 px-5 py-2 text-sm font-medium transition hover:bg-accent"
+          >
+            Thử lại
+          </button>
+        </div>
+      )}
+      {!query && !relatedLoading && related.length > 0 && (
         <section className="mb-6" aria-label="Video đề xuất giáo lý Theravada">
           <div className="space-y-1">
             {related.map((row) => <TalkRow key={row.youtubeId} title={row.title} youtubeId={row.youtubeId} durationSec={row.durationSec} viewCount={row.viewCount} active={current?.youtubeId === row.youtubeId} onClick={() => openVideo(row)} />)}
