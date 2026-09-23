@@ -9,15 +9,31 @@ import { loadUiState, saveUiState, trackScroll, restoreScroll } from "@/lib/uiSt
 import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { useAction } from "convex/react";
 import { anyApi } from "convex/server";
-import { Film, Eye, Mic, Search as SearchIcon, X } from "lucide-react";
+import { Eye, Loader2, Mic, Search as SearchIcon, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Talk = Doc<"dhammaTalks">;
 type YtRow = { _id: string; youtubeId: string; title: string; teacher: string; channelName: string; publishedAt: string; durationSec: number; viewCount?: number };
 type SearchResponse = { items: YtRow[]; nextPageToken?: string };
 const HOME_QUERY = "pháp thoại Phật giáo Theravada";
-const SUGGESTED_COUNT = 50; // số video đề xuất giáo lý Theravada hiển thị
+const SUGGESTED_COUNT = 50; // số video đề xuất giáo lý Theravada hiển thị lần đầu
 const SEARCH_DEBOUNCE_MS = 350; // phản hồi tìm kiếm nhanh
+
+/* CUỘN KHÔNG GIỚI HẠN: mỗi lần cuộn tới đáy, nạp thêm một truy vấn Phật
+ * pháp khác (luân phiên) → danh sách đề xuất/video liên quan dài vô tận,
+ * không bao giờ hết mà vẫn giữ đúng chủ đề Phật giáo Theravāda. */
+const FEED_MORE_QUERIES = [
+  "pháp thoại Phật giáo Theravada nguyên thủy",
+  "giáo lý phật pháp kinh điển theravada",
+  "thiền định pháp thoại thiền sư việt nam",
+  "kinh phật ngày thường theravada",
+  "pháp thoại niệm hơi thở anapanasati",
+  "giảng pháp ngũ uẩn vô thường vô ngã",
+  "vi diệu pháp luật tạng theravada",
+  "kinh tụng pāli theravada",
+  "bát chánh đạo tứ diệu đế pháp thoại",
+  "hỏi đáp phật pháp đời sống",
+];
 
 export default function Dashboard() {
   const { play, current } = usePlayer();
@@ -30,6 +46,13 @@ export default function Dashboard() {
   const [related, setRelated] = useState<YtRow[]>([]);
   const [relatedLoading, setRelatedLoading] = useState(true);
   const [relatedError, setRelatedError] = useState(false);
+  // Cuộn không giới hạn: nạp thêm khi chạm đáy danh sách
+  const [moreLoading, setMoreLoading] = useState(false);
+  const [feedDone, setFeedDone] = useState(false);
+  const feedCursor = useRef(0);
+  const seenIds = useRef<Set<string>>(new Set());
+  const moreBusyRef = useRef(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
   const query = search.trim();
   const searchVideos = useAction(anyApi.youtubeSync.search);
   const relatedVideos = useAction(anyApi.youtubeSync.related);
@@ -77,7 +100,14 @@ export default function Dashboard() {
     setRelatedLoading(true);
     setRelatedError(false);
     relatedWithRetry({ youtubeId: current?.youtubeId ?? "", title: current?.title ?? HOME_QUERY })
-      .then((r: SearchResponse) => { if (!cancelled) setRelated(r.items.slice(0, SUGGESTED_COUNT)); })
+      .then((r: SearchResponse) => {
+        if (cancelled) return;
+        const first = r.items.slice(0, SUGGESTED_COUNT);
+        seenIds.current = new Set(first.map((x) => x.youtubeId));
+        feedCursor.current = 0;
+        setFeedDone(false);
+        setRelated(first);
+      })
       .catch(() => { if (!cancelled) { setRelated([]); setRelatedError(true); } })
       .finally(() => { if (!cancelled) setRelatedLoading(false); });
     return () => { cancelled = true; };
@@ -85,6 +115,50 @@ export default function Dashboard() {
   }, [query, current?.youtubeId, current?.title, relatedWithRetry]);
 
   useEffect(() => { if (!loading) restoreScroll("dashboard"); }, [loading]);
+
+  /* Nạp thêm một lượt video khi người dùng cuộn tới gần đáy:
+   * luân phiên các truy vấn Phật pháp, loại trùng, KHÔNG giới hạn số lần. */
+  const loadMoreFeed = useCallback(async () => {
+    if (moreBusyRef.current || feedDone || query) return;
+    moreBusyRef.current = true;
+    setMoreLoading(true);
+    const q = FEED_MORE_QUERIES[feedCursor.current % FEED_MORE_QUERIES.length];
+    feedCursor.current += 1;
+    try {
+      const r = await searchWithRetry({ q });
+      const fresh = r.items.filter(
+        (x) => x.youtubeId && !seenIds.current.has(x.youtubeId),
+      );
+      if (fresh.length === 0) {
+        // Đã đi hết một vòng truy vấn mà không thêm được gì → dừng
+        if (feedCursor.current >= FEED_MORE_QUERIES.length) setFeedDone(true);
+      } else {
+        fresh.forEach((x) => seenIds.current.add(x.youtubeId));
+        setRelated((prev) => [...prev, ...fresh]);
+      }
+    } catch {
+      /* lỗi mạng — lần cuộn kế tiếp sẽ thử lại */
+    } finally {
+      moreBusyRef.current = false;
+      setMoreLoading(false);
+    }
+  }, [feedDone, query, searchWithRetry]);
+
+  const listVisible = !query && !relatedLoading && related.length > 0;
+
+  // Quan sát điểm cuối danh sách — chạm tới là nạp thêm (cuộn vô tận)
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !listVisible || feedDone) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) void loadMoreFeed();
+      },
+      { rootMargin: "700px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [loadMoreFeed, listVisible, feedDone]);
 
   const loadMore = () => {
     if (!nextPage || loadingMore || !query) return;
