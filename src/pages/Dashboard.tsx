@@ -17,6 +17,7 @@ type Talk = Doc<"dhammaTalks">;
 type YtRow = { _id: string; youtubeId: string; title: string; teacher: string; channelName: string; publishedAt: string; durationSec: number; viewCount?: number };
 type SearchResponse = { items: YtRow[]; nextPageToken?: string };
 const HOME_QUERY = "pháp thoại Phật giáo Theravada";
+const SUGGESTED_COUNT = 50; // số video đề xuất giáo lý Theravada hiển thị
 
 export default function Dashboard() {
   const { play, current } = usePlayer();
@@ -47,14 +48,17 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
+  // Danh sách 50 video đề xuất giáo lý Theravada — luôn hiển thị ở mục VIDEO
+  // (khi không có từ khóa tìm kiếm).
   useEffect(() => {
     let cancelled = false;
+    if (query) return;
     relatedVideos({ youtubeId: current?.youtubeId ?? "", title: current?.title ?? HOME_QUERY })
-      .then((r: SearchResponse) => { if (!cancelled) setRelated(r.items); })
+      .then((r: SearchResponse) => { if (!cancelled) setRelated(r.items.slice(0, SUGGESTED_COUNT)); })
       .catch(() => { if (!cancelled) setRelated([]); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.youtubeId, current?.title]);
+  }, [query, current?.youtubeId, current?.title]);
 
   useEffect(() => { if (!loading) restoreScroll("dashboard"); }, [loading]);
 
@@ -75,25 +79,22 @@ export default function Dashboard() {
         <DockPlayer className={cn(hasVideo && "mt-1")} />
       </div>
 
+      {/* 50 video đề xuất — KHÔNG tiêu đề, KHÔNG đếm số lượng */}
       {!query && related.length > 0 && (
-        <section className="mb-6" aria-label={hasVideo ? "Video liên quan" : "Đề xuất video Theravada"}>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold tracking-tight">{hasVideo ? "Video liên quan" : "Đề xuất Theravada"}</h2>
-            <span className="text-xs text-muted-foreground">Video</span>
-          </div>
+        <section className="mb-6" aria-label="Video đề xuất giáo lý Theravada">
           <div className="space-y-1">
             {related.map((row) => <TalkRow key={row.youtubeId} title={row.title} youtubeId={row.youtubeId} durationSec={row.durationSec} viewCount={row.viewCount} active={current?.youtubeId === row.youtubeId} onClick={() => openVideo(row)} />)}
           </div>
         </section>
       )}
 
-      {query && <SearchResults loading={loading} results={results} nextPage={nextPage} loadingMore={loadingMore} loadMore={loadMore} noResults={t("noResults")} articles={t("articles")} onOpen={openVideo} />}
+      {query && <SearchResults loading={loading} results={results} nextPage={nextPage} loadingMore={loadingMore} loadMore={loadMore} noResults={t("noResults")} onOpen={openVideo} />}
     </AppShell>
   );
 }
 
-function SearchResults({ loading, results, nextPage, loadingMore, loadMore, noResults, articles, onOpen }: { loading: boolean; results: YtRow[] | null; nextPage?: string; loadingMore: boolean; loadMore: () => void; noResults: string; articles: string; onOpen: (row: YtRow) => void }) {
-  return <section aria-label="Kết quả tìm kiếm"><div className="mb-3 flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-semibold"><SearchIcon className="h-4 w-4 text-destructive" />Kết quả tìm kiếm</h2><span className="text-xs text-muted-foreground">{loading ? "…" : results ? `${results.length} ${articles}` : ""}</span></div>{loading ? <div className="space-y-3">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="flex gap-4"><Skeleton className="aspect-video w-40 shrink-0 rounded-lg sm:w-60" /><div className="flex-1 space-y-2 pt-1"><Skeleton className="h-4 w-4/5" /><Skeleton className="h-3 w-2/5" /></div></div>)}</div> : !results || results.length === 0 ? <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-10 text-center"><SearchIcon className="mx-auto h-8 w-8 text-muted-foreground/50" /><p className="mt-3 text-sm text-muted-foreground">{noResults}</p></div> : <><div className="space-y-1">{results.map((row) => <TalkRow key={row.youtubeId} title={row.title} youtubeId={row.youtubeId} durationSec={row.durationSec} viewCount={row.viewCount} onClick={() => onOpen(row)} />)}</div>{nextPage && <div className="mt-5 flex justify-center"><button type="button" onClick={loadMore} disabled={loadingMore} className="rounded-full border border-border/60 px-5 py-2 text-sm transition hover:bg-accent disabled:opacity-60">{loadingMore ? "Đang tải…" : "Xem thêm kết quả"}</button></div>}</>}</section>;
+function SearchResults({ loading, results, nextPage, loadingMore, loadMore, noResults, onOpen }: { loading: boolean; results: YtRow[] | null; nextPage?: string; loadingMore: boolean; loadMore: () => void; noResults: string; onOpen: (row: YtRow) => void }) {
+  return <section aria-label="Kết quả tìm kiếm">{loading ? <div className="space-y-3">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="flex gap-4"><Skeleton className="aspect-video w-40 shrink-0 rounded-lg sm:w-60" /><div className="flex-1 space-y-2 pt-1"><Skeleton className="h-4 w-4/5" /><Skeleton className="h-3 w-2/5" /></div></div>)}</div> : !results || results.length === 0 ? <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-10 text-center"><SearchIcon className="mx-auto h-8 w-8 text-muted-foreground/50" /><p className="mt-3 text-sm text-muted-foreground">{noResults}</p></div> : <><div className="space-y-1">{results.map((row) => <TalkRow key={row.youtubeId} title={row.title} youtubeId={row.youtubeId} durationSec={row.durationSec} viewCount={row.viewCount} onClick={() => onOpen(row)} />)}</div>{nextPage && <div className="mt-5 flex justify-center"><button type="button" onClick={loadMore} disabled={loadingMore} className="rounded-full border border-border/60 px-5 py-2 text-sm transition hover:bg-accent disabled:opacity-60">{loadingMore ? "Đang tải…" : "Xem thêm kết quả"}</button></div>}</>}</section>;
 }
 
 function SearchRow({ value, onChange }: { value: string; onChange: (value: string) => void }) {
