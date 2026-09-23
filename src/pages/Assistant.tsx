@@ -809,7 +809,7 @@ export default function Assistant() {
 
             {/* Chọn giọng ngay trong cuộc gọi — đổi là nghe thử luôn */}
             <div className="relative z-10 flex justify-center pb-1">
-              <VoicePicker
+              <VoicePicker dark
                 value={voiceId}
                 onChange={(id) => {
                   setVoiceId(id);
