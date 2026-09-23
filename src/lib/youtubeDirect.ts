@@ -7,6 +7,8 @@
  * nhất thắng. Kết quả lưu cache phiên 10 phút để mở lại trang tức thì.
  */
 
+import { raceFirst } from "@/lib/raceFirst";
+
 const PROXIES = [
   (url: string) => url, // thẳng trước — nhanh nhất khi CORS mở
   (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -84,7 +86,7 @@ export async function searchDirect(q: string, pageToken?: string): Promise<{ ite
   const query = q.trim();
   if (!query) return { items: [] };
   const cached = readCache(`search:${query}:${pageToken ?? ""}`);
-  if (cached) return cached;
+  if (cached) return cached as { items: DirectYtRow[]; nextPageToken?: string };
   let result: { items: DirectYtRow[]; nextPageToken?: string };
   const key = getApiKey();
   if (key) {
@@ -147,7 +149,7 @@ async function dataApiSearch(query: string, pageToken: string | undefined, key: 
 export async function relatedDirect(excludeId: string, _titleHint: string, targetCount = 50): Promise<{ items: DirectYtRow[] }> {
   const cacheKey = `related:${excludeId || "home"}`;
   const cached = readCache(cacheKey);
-  if (cached) return cached;
+  if (cached) return cached as { items: DirectYtRow[] };
   const key = getApiKey();
   let result: { items: DirectYtRow[] };
   if (!key) {
@@ -288,7 +290,7 @@ async function pipedSearch(query: string): Promise<DirectYtRow[]> {
     if (rows.length === 0) throw new Error("Trống");
     return rows;
   });
-  return Promise.any(attempts);
+  return raceFirst(attempts);
 }
 
 /* -------------- Invidious — dự phòng sau Piped -------------- */
@@ -331,14 +333,14 @@ async function invidiousSearch(query: string): Promise<DirectYtRow[]> {
     if (rows.length === 0) throw new Error("Trống");
     return rows;
   });
-  return Promise.any(attempts);
+  return raceFirst(attempts);
 }
 
 /** Tìm kiếm tổng hợp: Piped và Invidious RACE CÙNG LÚC — nguồn nào trả
  *  kết quả hợp lệ đầu tiên thắng. */
 async function openSearch(query: string): Promise<DirectYtRow[]> {
   try {
-    return await Promise.any([pipedSearch(query), invidiousSearch(query)]);
+    return await raceFirst([pipedSearch(query), invidiousSearch(query)]);
   } catch {
     // Lần cuối: thử lại tuần tự từng host Piped (xử lý host chậm nhưng sống)
     for (const host of PIPED_HOSTS) {

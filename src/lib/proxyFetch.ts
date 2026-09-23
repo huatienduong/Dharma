@@ -5,6 +5,8 @@
 /* race không tốn thêm băng thông đáng kể nhưng rút ngắn từ ~30s → <2s. */
 /* ------------------------------------------------------------------ */
 
+import { raceFirst } from "@/lib/raceFirst";
+
 const PROXIES: Array<(url: string) => string> = [
   (url) => url, // thử thẳng trước — nếu môi trường CORS mở thì nhanh nhất
   (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -34,7 +36,7 @@ export async function fetchTextViaProxies(url: string, timeoutMs = TIMEOUT_MS): 
     return text;
   });
   try {
-    return await Promise.any(attempts);
+    return await raceFirst(attempts);
   } catch {
     throw new Error("Không tải được dữ liệu từ mọi nguồn.");
   }
