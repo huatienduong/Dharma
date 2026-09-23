@@ -4,6 +4,68 @@ import { action, internalMutation, internalQuery } from "./_generated/server";
 
 const CHANNEL_HANDLES = ["suhanhtue", "theravadavn", "phapamnguyenthuy2024", "thuvienhoasen"];
 
+/* ------------------------------------------------------------------ */
+/* LỌC CHỈ PHẬT PHÁP — ứng dụng là nơi tìm video PHÁP THOẠI:            */
+/* mọi kết quả tìm kiếm/đề xuất phải thuộc phạm vi Phật pháp; video     */
+/* ngoài chủ đề bị loại, không hiển thị cho người dùng.                 */
+/* ------------------------------------------------------------------ */
+
+// Từ khóa cốt lõi (không dấu để khớp cả "Phap thoai", "Tin phuc"...)
+const DHAMMA_KEYWORDS = [
+  "phap thoai", "pháp thoại", "phat phap", "phật pháp", "dhamma", "dharma",
+  "theravada", "theravāda", "nguyen thuy", "nguyên thủy", "kinh", "kinh dien", "kinh điển",
+  "buddha", "đức phật", "duc phat", "phật", "phat", "ni tich", "ni tịch", "thich", "thích",
+  "su to", "sư tổ", "su co", "sư cô", "ho thuong", "hòa thượng", "hoà thượng", "dai duc", "đại đức",
+  "thien", "thiền", "vipassana", "vipassanā", "samatha", "mindfulness", "niem hien tho", "niệm hơi thở",
+  "tu sie diem", "tứ diệu đế", "tu dieu de", "bat chanh dao", "bát chánh đạo",
+  "an chanh niem", "án chánh niệm", "nieu quan", "niệm quán", "van uan", "ngũ uẩn", "van uan",
+  "nhan duyên", "nhân duyên", "nhan duyen", "luat tang", "luật tạng", "abhidhamma", "vi dieu phap",
+  "dieu phap", "diệu pháp", "chuyen phap lun", "chuyển pháp luân", "pali", "pāli", "nikaya", "nikāya",
+  "an gi roi", "an trí", "an tri", "bodhi", "bồ đề", "bo de", "nirvana", "niết bàn", "niet ban",
+  "an lac", "an lạc", "giac ngo", "giác ngộ", "dao phat", "đạo phật", "karma", "nghiệp",
+  "hoi huong", "hồi hướng", "ba la mat", "ba-la-mật", "parami", "pāramī", "metta", "mettā", "từ bi", "tu bi",
+  "hoi tinh", "hội tinh", "hanh huong", "hành hương", "thu tim", "sūtra", "sutra", "vinaya", "sangha", "tăng đoàn",
+];
+
+// Từ khóa chặn chủ đề ngoài Phật pháp (âm nhạc, phim, game, giải trí...)
+const BLOCKED_KEYWORDS = [
+  "tin lanh", "tin lành", "christ", "jesus", "chúa", "chua", "giáo hội", "giao hoi",
+  "thánh ca", "thanh ca", "nhạc thánh", "nhac thanh", "hallelujah", "kinh thánh", "kinh thanh", "bible",
+  "phim", "movie", "trailer", "game", "esport", "livestream game", "roblox", "minecraft",
+  "nhạc trẻ", "nhac tre", "nhac remix", "nhạc remix", "karaoke", "mv official", "lyric",
+  "hài", "hai ecuador", "vlog", "tiktok", "reaction", "am nhac", "âm nhạc",
+  "bóng đá", "bong da", "champions league", "premier league", "world cup", "seagame", "olympic",
+  "crypto", "chứng khoán", "chung khoan", "bitcoin", "trade forex", "kinh doanh",
+  "nấu ăn", "nau an", "recipe", "makeup", "review điện thoại", "smartphone review",
+];
+
+function toAsciiLower(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+}
+
+/** Kết quả có liên quan Phật pháp không? (nhanh, không gọi API) */
+export function isDhammaRelated(title: string, channelName: string): boolean {
+  const hay = toAsciiLower(`${title} ${channelName}`);
+  if (BLOCKED_KEYWORDS.some((k) => hay.includes(toAsciiLower(k)))) return false;
+  // Kênh Phật giáo rõ ràng → cho qua (kênh chùa/ni viện/giảng sư)
+  const channelHints = ["phat", "phap", "dhamma", "dharma", "theravada", "buddh", "hoasen", "chua", "ni", "su", "thien vien", "tinh xá", "tinh xa", "giac", "ho thuong", "ni tich"];
+  if (channelHints.some((k) => toAsciiLower(channelName).includes(k))) return true;
+  return DHAMMA_KEYWORDS.some((k) => hay.includes(toAsciiLower(k)));
+}
+
+/** Ghép từ khóa người dùng với bối cảnh Phật pháp để chỉ trả kết quả đúng chủ đề. */
+export function buildDhammaQuery(q: string): string {
+  const query = q.trim();
+  if (!query) return "pháp thoại Phật giáo Theravada";
+  if (isDhammaRelated(query, "")) return query;
+  return `${query} phật pháp pháp thoại`;
+}
+
 type ChannelList = { items?: Array<{ contentDetails?: { relatedPlaylists?: { uploads?: string } } }> };
 type PlaylistItems = { items?: Array<{ snippet?: { resourceId?: { videoId?: string }; title?: string; publishedAt?: string; channelTitle?: string } }>; nextPageToken?: string };
 type VideoList = { items?: Array<{ id?: string; contentDetails?: { duration?: string }; statistics?: { viewCount?: string } }> };
@@ -55,10 +117,13 @@ export const search = action({
   args: { q: v.string(), pageToken: v.optional(v.string()) },
   handler: async (ctx, { q, pageToken }): Promise<{ items: TalkRow[]; nextPageToken?: string }> => {
     const key = process.env.YOUTUBE_API_KEY;
-    const query = q.trim();
+    const rawQuery = q.trim();
     if (!key) throw new Error("Chưa cấu hình YOUTUBE_API_KEY. Hãy thêm khóa YouTube Data API v3 trong phần Keys của dự án.");
-    if (!query) return { items: [] };
+    if (!rawQuery) return { items: [] };
 
+    // BẮT BUỘC kết quả về Phật pháp: ghép bối cảnh nếu từ khóa lẻ tẻ,
+    // và luôn lọc kết quả trả về theo isDhammaRelated.
+    const query = buildDhammaQuery(rawQuery);
     const result = (await ytFetch("search", {
       part: "snippet", q: query, type: "video", maxResults: "20", relevanceLanguage: "vi",
       ...(pageToken ? { pageToken } : {}), key,
@@ -67,7 +132,7 @@ export const search = action({
       const videoId = item.id?.videoId ?? "";
       const title = item.snippet?.title ?? "";
       return videoId && title ? [{ videoId, title, publishedAt: item.snippet?.publishedAt ?? "", channelTitle: item.snippet?.channelTitle ?? "" }] : [];
-    });
+    }).filter((e) => isDhammaRelated(e.title, e.channelTitle));
     if (entries.length === 0) return { items: [], nextPageToken: result.nextPageToken };
 
     const details = (await ytFetch("videos", { part: "contentDetails,statistics", id: entries.map((e) => e.videoId).join(","), key })) as VideoList;
@@ -94,7 +159,7 @@ export const related = action({
       const id = item.id?.videoId ?? "";
       const name = item.snippet?.title ?? "";
       return id && name && id !== youtubeId ? [{ videoId: id, title: name, publishedAt: item.snippet?.publishedAt ?? "", channelTitle: item.snippet?.channelTitle ?? "" }] : [];
-    });
+    }).filter((e) => isDhammaRelated(e.title, e.channelTitle));
     if (entries.length === 0) return { items: [], nextPageToken: result.nextPageToken };
     const details = (await ytFetch("videos", { part: "contentDetails,statistics", id: entries.map((e) => e.videoId).join(","), key })) as VideoList;
     const items: TalkRow[] = [];
