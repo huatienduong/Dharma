@@ -12,7 +12,6 @@ import {
   Home as HomeIcon,
   Hourglass,
   Layers,
-  Library,
   Menu,
   MonitorPlay,
   Scale,
@@ -70,6 +69,10 @@ export function AppShell({
   const { t } = useSettings();
   const [menuOpen, setMenuOpen] = useState(false);
   const [railOpen, setRailOpen] = useState(true);
+
+  // Tab dưới chỉ có "Trang chủ" — ẩn luôn trên chính trang chủ
+  const showBottomNav =
+    location.pathname !== "/" && location.pathname !== "/home";
 
   // Ảnh app chính thức — chủ app tải lên Convex Storage.
   const logo = useQuery(anyApi.appLogo.get);
