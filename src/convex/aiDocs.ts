@@ -172,6 +172,8 @@ export const generateIndex = action({
         `Liệt kê 50 thuật ngữ Phật học Pāli CỐT LÕI theo truyền thống Theravāda mà người học cần tra cứu nhiều nhất: Tứ diệu đế, Bát chánh đạo, ngũ uẩn, thập nhị nhân duyên, thiền quán, thiền chỉ, các trạng thái tâm...`,
       commentary:
         `Liệt kê 20 bài chú giải (Aṭṭhakathā) quan trọng nhất cho các kinh nền tảng Theravāda (Chú giải Chuyển pháp luân, chú giải Đại niệm xứ, Dhammapada Aṭṭhakathā...).`,
+      abhidhamma:
+        `Liệt kê 30 văn bản/thành phần quan trọng nhất của LUẬN TẠNG Pāli (Abhidhamma Piṭaka) theo truyền thống Theravāda: 7 bộ luận chính (Dhammasaṅgaṇī, Vibhaṅga, Dhātukathā, Puggalapaññatti, Kathāvatthu, Yamaka, Paṭṭhāna), các luận thư Thượng Tọa Bộ (Abhidhammattha-saṅgaha, Visuddhimagga, Abhidhammāvatāra, Nāmarūpapariccheda...), cùng các phạm trù cốt lõi nên có bài riêng: 4 pháp siêu lý (citta, cetasika, rūpa, nibbāna), 89/121 tâm, 52 tâm sở, 24 duyên (Paṭṭhāna), ngũ uẩn–thập nhị xứ–thập bát giới, tiến trình tâm (citta-vīthi), tái tục (paṭisandhi), nghiệp và 31 cõi. Mỗi mục có mô tả 1 câu nêu rõ vị trí trong Luận tạng Theravāda.`,
     };
     const guide = guides[indexKind];
     if (!guide) throw new Error("Loại danh sách không hợp lệ.");
@@ -288,6 +290,32 @@ Cấu trúc:
 4. "## Liên hệ thực hành" — ý nghĩa với người tu tập.
 5. "Nguồn: ...".`;
     const { text } = await generateWithFallback(prompt, 2500);
+    return text;
+  },
+});
+
+export const generateAbhidhamma = action({
+  args: {
+    refId: v.string(),
+    title: v.optional(v.string()),
+    extra: v.optional(v.string()),
+  },
+  handler: async (_ctx, { refId, title, extra }) => {
+    const prompt = `Hãy biên soạn NỘI DUNG LUẬN TẠNG (Abhidhamma Piṭaka) đầy đủ theo truyền thống Theravāda Mahāvihāra, đọc trực tiếp được:
+- Mã văn bản / phạm trù: ${refId}
+- Tên gợi ý: ${title ?? "(tự xác định theo mã)"}
+${extra ? `- Ghi chú: ${extra}` : ""}
+
+Cấu trúc bắt buộc:
+1. "## Tổng quan" — văn bản/phạm trù này thuộc bộ luận nào trong 7 bộ Abhidhamma (Dhammasaṅgaṇī, Vibhaṅga, Dhātukathā, Puggalapaññatti, Kathāvatthu, Yamaka, Paṭṭhāna), hoặc thuộc luận thư Thượng Tọa Bộ nào; nêu vị trí và phạm vi.
+2. "## Phân tích pháp" — trình bày theo phương pháp siêu lý (paramattha): nêu đúng số lượng pháp (tâm, tâm sở, sắc pháp, Niết-bàn), định nghĩa Pāli chuẩn và phân loại. Dùng liệt kê "• " cho từng pháp/phạm trù.
+3. "## Liên hệ Kinh tạng" — đối chiếu phạm trù luận với các kinh Pāli tương ứng (đúng số hiệu nikāya).
+4. "## Ứng dụng tu tập" — ý nghĩa thực hành: quán danh-sắc, thấy rõ vô thường–khổ–vô ngã ở mức vi tế, hỗ trợ thiền quán.
+5. "## Thuật ngữ then chốt" — liệt kê thuật ngữ Pāli quan trọng kèm nghĩa ngắn.
+6. Kết thúc bằng một dòng riêng "Nguồn: ..." nêu rõ bộ luận + chương/phần + tham chiếu (vd "Abhidhammattha-saṅgaha, ch. I", "Dhammasaṅgaṇī, Cittuppādakaṇḍa").
+
+Tuyệt đối không bịa số hiệu hay trích dẫn; chính xác theo Luận tạng Pāli và luận thư Thượng Tọa Bộ.`;
+    const { text } = await generateWithFallback(prompt, 4500);
     return text;
   },
 });

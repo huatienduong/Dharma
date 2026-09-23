@@ -11,6 +11,7 @@ import { toast } from "sonner";
 export type AIDocKind =
   | "sutta"
   | "vinaya"
+  | "abhidhamma"
   | "dictionary"
   | "commentary"
   | "subcommentary";
@@ -18,6 +19,7 @@ export type AIDocKind =
 type GenerateAction =
   | typeof api.aiDocs.generateSutta
   | typeof api.aiDocs.generateVinaya
+  | typeof api.aiDocs.generateAbhidhamma
   | typeof api.aiDocs.generateDictEntry
   | typeof api.aiDocs.generateCommentary
   | typeof api.aiDocs.generateSubcommentary;
@@ -28,6 +30,8 @@ function actionFor(kind: AIDocKind): GenerateAction {
       return api.aiDocs.generateSutta as GenerateAction;
     case "vinaya":
       return api.aiDocs.generateVinaya as GenerateAction;
+    case "abhidhamma":
+      return api.aiDocs.generateAbhidhamma as GenerateAction;
     case "dictionary":
       return api.aiDocs.generateDictEntry as GenerateAction;
     case "commentary":
@@ -47,6 +51,17 @@ const thumbCache = new Map<string, string | null>();
 function wikiTerm(kind: AIDocKind, refId: string, title?: string): string {
   const t = (title ?? refId).toLowerCase();
   if (kind === "vinaya") return "Vinaya";
+  if (kind === "abhidhamma") {
+    if (/citta.*vithi|tien-trinh|citta-vīthi/.test(t)) return "Citta (Buddhism)";
+    if (/patthana|24 duyen|paccaya/.test(t)) return "Paṭṭhāna";
+    if (/cetasika|tam so/.test(t)) return "Mental factors (Buddhism)";
+    if (/rupa|sac phap|vat chat/.test(t)) return "Rūpa";
+    if (/nibbana|niet ban/.test(t)) return "Nirvana (Buddhism)";
+    if (/kamma|nghiep/.test(t)) return "Karma in Buddhism";
+    if (/visuddhimagga/.test(t)) return "Visuddhimagga";
+    if (/abhidhammattha|vi dieu phap|thang phap/.test(t)) return "Abhidhammattha-saṅgaha";
+    return "Abhidhamma Piṭaka";
+  }
   if (kind === "dictionary") {
     if (/nibb|niet/.test(t)) return "Nirvana (Buddhism)";
     if (/anicca/.test(t)) return "Impermanence";
@@ -178,6 +193,13 @@ function relatedFor(kind: AIDocKind, refId: string, title?: string): RelatedItem
       { kind: "dictionary", refId: "sangha", title: "Sangha — Tăng già", desc: "Cộng đồng xuất gia" },
     ];
   }
+  if (kind === "abhidhamma") {
+    return [
+      { kind: "abhidhamma", refId: "citta", title: "Citta — Tâm", desc: "89/121 tâm theo Vi Diệu Pháp" },
+      { kind: "abhidhamma", refId: "cetasika", title: "Cetasika — Tâm sở", desc: "52 tâm sở đồng sinh với tâm" },
+      { kind: "abhidhamma", refId: "patthana", title: "Paṭṭhāna — 24 duyên", desc: "Bộ luận về nhân duyên" },
+    ];
+  }
   // commentary
   return [
     { kind: "subcommentary", refId, title: `Luận giải: ${title ?? refId}`, desc: "Phân tích giáo lý hiện đại" },
@@ -204,7 +226,7 @@ function RelatedDocs({ kind, refId, title }: { kind: AIDocKind; refId: string; t
           <button
             key={`${r.kind}-${r.refId}-${i}`}
             type="button"
-            onClick={() => navigate(r.kind === "sutta" ? `/suttas/${r.refId}` : r.kind === "vinaya" ? `/vinaya/${r.refId}` : `/dictionary`)}
+            onClick={() => navigate(r.kind === "sutta" ? `/suttas/${r.refId}` : r.kind === "vinaya" ? `/vinaya/${r.refId}` : r.kind === "abhidhamma" ? `/abhidhamma/${r.refId}` : `/dictionary`)}
             className="group flex items-start gap-2.5 rounded-xl border border-border/60 bg-card/60 p-3 text-left transition hover:border-primary/40 hover:bg-accent/40"
           >
             {r.kind !== "dictionary" && (
@@ -361,7 +383,7 @@ export function AIDocArticle({
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 <Sparkles className="h-3 w-3" />
-                {kind === "sutta" ? "Bản kinh đầy đủ" : kind === "vinaya" ? "Luật tạng" : kind === "dictionary" ? "Từ điển Phật học" : kind === "commentary" ? "Chú giải Aṭṭhakathā" : "Luận giải Ṭīkā"}
+                {kind === "sutta" ? "Bản kinh đầy đủ" : kind === "vinaya" ? "Luật tạng" : kind === "abhidhamma" ? "Luận tạng — Abhidhamma" : kind === "dictionary" ? "Từ điển Phật học" : kind === "commentary" ? "Chú giải Aṭṭhakathā" : "Luận giải Ṭīkā"}
               </p>
               <h3 className="mt-1 text-base font-bold leading-snug">{docTitle}</h3>
               <p className="mt-0.5 text-[11px] text-muted-foreground">

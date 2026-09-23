@@ -4,7 +4,12 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { BookMarked, Loader2, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 
-export type AIIndexKind = "suttas" | "vinaya" | "dictionary" | "commentary";
+export type AIIndexKind =
+  | "suttas"
+  | "vinaya"
+  | "abhidhamma"
+  | "dictionary"
+  | "commentary";
 
 type IndexEntry = {
   id: string;
