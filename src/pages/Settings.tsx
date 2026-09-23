@@ -1,6 +1,10 @@
 import { AppShell } from "@/components/AppShell";
 import { api } from "@/convex/_generated/api";
-import { APP_VERSION } from "@/lib/version";
+import {
+  APP_DEVELOPER,
+  APP_NAME,
+  APP_VERSION,
+} from "@/lib/version";
 import {
   useSettings,
   type ThemeMode,
@@ -241,10 +245,10 @@ export default function Settings() {
             {/* Đồng bộ với chân trang Trang chủ: nhà phát triển + phiên bản */}
             <div className="rounded-2xl bg-muted/50 px-4 py-4 text-center">
               <p className="text-[13px] font-semibold text-foreground/90">
-                Nhà phát triển ứng dụng: Hứa Tiến Dương
+                Nhà phát triển ứng dụng: {APP_DEVELOPER}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Dharma · Phiên bản {APP_VERSION}
+                {APP_NAME} · Phiên bản {APP_VERSION}
               </p>
             </div>
             <div className="flex items-center justify-between rounded-2xl bg-muted/50 px-4 py-3">
