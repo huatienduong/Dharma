@@ -89,6 +89,8 @@ const MINI_ROUTES = [
   "/dictionary",
   "/settings",
   "/lookup",
+  "/news",
+  "/history",
 ];
 
 declare global {
