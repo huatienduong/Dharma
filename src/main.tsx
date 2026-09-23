@@ -1,6 +1,7 @@
 import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
 import { ScreenshotGuard } from "@/components/ScreenshotGuard";
+import { ServiceNotice } from "@/components/ServiceNotice";
 import { UpdateChecker } from "@/components/UpdateChecker";
 import { PlayerProvider } from "@/lib/player";
 import { SettingsProvider } from "@/lib/settings";
@@ -14,6 +15,7 @@ import "./index.css";
 
 // Lazy load route components for better code splitting
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
+const Home = lazy(() => import("./pages/Home.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const Suttas = lazy(() => import("./pages/Suttas.tsx"));
 const Vinaya = lazy(() => import("./pages/Vinaya.tsx"));
@@ -80,16 +82,32 @@ class RootErrorBoundary extends React.Component<
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
-          <div className="max-w-lg text-center">
-            <p className="text-sm font-semibold">Preview runtime error</p>
-            <p className="mt-2 text-xs text-muted-foreground break-words">
-              {this.state.message}
+          <div className="max-w-lg rounded-3xl border border-border/60 bg-card/90 p-6 text-center shadow-xl">
+            <h2 className="text-lg font-bold tracking-tight">
+              Dharma đang được nâng cấp
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              Đội ngũ kỹ thuật của chúng tôi đang tiến hành nâng cấp hệ thống hoặc
+              nếu bạn thấy thông báo này có thể ứng dụng Dharma đang gặp sự cố lỗi
+              tạm thời. Hãy thử tải lại trang này nếu tình trạng không được giải
+              quyết hãy sử dụng tính năng báo cáo lỗi trong phần cài đặt của ứng
+              dụng. Rất xin lỗi vì sự bất tiện gây ra cho bạn!
             </p>
-            {this.state.stack && (
-              <pre className="mt-3 text-left text-[10px] leading-4 text-muted-foreground/80 max-h-40 overflow-auto rounded border border-border/60 p-2">
-                {this.state.stack}
-              </pre>
-            )}
+            <div className="mt-5 flex flex-col items-center justify-center gap-2.5 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="w-full rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 sm:w-auto"
+              >
+                Tải lại trang
+              </button>
+              <a
+                href={`${ROUTER_BASENAME === "/" ? "" : ROUTER_BASENAME}/settings`}
+                className="w-full rounded-full border border-border/70 px-5 py-2.5 text-sm font-medium transition hover:bg-accent sm:w-auto"
+              >
+                Báo cáo lỗi
+              </a>
+            </div>
           </div>
         </div>
       );
@@ -169,10 +187,14 @@ createRoot(document.getElementById("root")!).render(
           <BrowserRouter basename={ROUTER_BASENAME}>
             <PlayerProvider>
             <RouteSyncer />
+            {/* Thông báo mất kết nối / nâng cấp hệ thống / sự cố tạm thời */}
+            <ServiceNotice />
             <Suspense fallback={<RouteLoading />}>
               <Routes>
                 {/* Không còn đăng nhập/đăng ký — toàn bộ dữ liệu lưu cục bộ */}
-                <Route path="/" element={<Dashboard />} />
+                {/* Trang chủ: tin tức Phật giáo + video nổi bật */}
+                <Route path="/" element={<Home />} />
+                <Route path="/home" element={<Home />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/suttas" element={<Suttas />} />
                 <Route path="/suttas/:id" element={<SuttaReader />} />

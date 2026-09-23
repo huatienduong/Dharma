@@ -66,6 +66,7 @@ const VI = {
   // App / nav
   appName: "Dharma",
   appTagline: "Theravāda — Nguyên thủy",
+  navHome: "Trang chủ",
   navTalks: "VIDEO",
   navSuttas: "Kinh tạng",
   navVinaya: "Luật tạng",
@@ -153,6 +154,7 @@ const EN: Partial<Record<keyof typeof VI, string>> = {
   // App / nav
   appName: "Dharma",
   appTagline: "Theravāda — Early Buddhism",
+  navHome: "Home",
   navTalks: "VIDEO",
   navSuttas: "Suttas",
   navVinaya: "Vinaya",

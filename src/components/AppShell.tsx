@@ -8,6 +8,7 @@ import {
   Flower2,
   Globe2,
   History,
+  Home as HomeIcon,
   Layers,
   Menu,
   MessagesSquare,
@@ -26,6 +27,7 @@ import { cacheLogoClientSide } from "@/lib/appLogoCache";
 
 /** Nhóm trái: nội dung học liệu. */
 const NAV_LEFT: { to: string; tKey: TranslateKey; icon: typeof MonitorPlay }[] = [
+  { to: "/home", tKey: "navHome", icon: HomeIcon },
   { to: "/dashboard", tKey: "navTalks", icon: MonitorPlay },
   { to: "/suttas", tKey: "navSuttas", icon: BookOpen },
   { to: "/vinaya", tKey: "navVinaya", icon: Scale },
@@ -50,6 +52,7 @@ const NAV_BOTTOM: { to: string; tKey: TranslateKey; icon: typeof History }[] = [
 
 /** Nhãn ngắn gọn cho tab dưới mobile (không hiển thị nhãn dài bị cắt). */
 const BOTTOM_SHORT: Record<string, string> = {
+  "/home": "Trang chủ",
   "/suttas": "Kinh tạng",
   "/abhidhamma": "Luận tạng",
   "/meditation": "Thiền",
@@ -102,8 +105,8 @@ export function AppShell({
   }, [logo?.url]);
 
   const isActive = (to: string) =>
-    to === "/dashboard"
-      ? location.pathname === "/dashboard" || location.pathname === "/"
+    to === "/home"
+      ? location.pathname === "/home" || location.pathname === "/"
       : location.pathname.startsWith(to);
 
   // Đóng drawer khi điều hướng
@@ -217,7 +220,7 @@ export function AppShell({
         {/* Giữa: LOGO trên + tên DHARMA dưới — vị trí trung tâm, hiện ngay khi mở app */}
         <button
           type="button"
-          onClick={() => go("/dashboard")}
+          onClick={() => go("/home")}
           aria-label="Trang chủ Dharma"
           className="mx-auto flex min-w-0 flex-col items-center justify-center leading-none"
         >
@@ -388,11 +391,11 @@ export function AppShell({
           {/* Tab trái nhất: DHARMA — logo + tên ứng dụng, về trang chủ */}
           <button
             type="button"
-            onClick={() => go("/dashboard")}
-            aria-current={isActive("/dashboard") ? "page" : undefined}
+            onClick={() => go("/home")}
+            aria-current={isActive("/home") ? "page" : undefined}
             className={cn(
               "flex flex-1 flex-col items-center gap-0.5 py-2 text-[9px] font-bold tracking-wide transition",
-              isActive("/dashboard") ? "text-primary" : "text-muted-foreground",
+              isActive("/home") ? "text-primary" : "text-muted-foreground",
             )}
           >
             {logo?.url ? (
@@ -411,7 +414,11 @@ export function AppShell({
             )}
             <span className="w-full truncate text-center leading-tight">DHARMA</span>
           </button>
-          {[NAV_LEFT[1], NAV_LEFT[4], NAV_RIGHT[2], NAV_RIGHT[4]].map((item) => {
+          {/* Tab dưới: tra theo đường dẫn (không dùng chỉ số mảng để thứ tự */}
+          {/* menu thay đổi không làm lệch tab).                                 */}
+          {["/suttas", "/meditation", "/history", "/assistant"]
+            .map((to) => ALL_ITEMS.find((i) => i.to === to))
+            .map((item) => {
             if (!item) return null;
             const active = isActive(item.to);
             const Icon = item.icon;

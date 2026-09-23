@@ -20,25 +20,10 @@ export type NewsItem = {
   image?: string; // ảnh minh họa (nếu RSS cung cấp)
 };
 
-/* Nguồn RSS công khai — báo Phật giáo trước (có ảnh), Google News bổ sung */
+/* NGUỒN DUY NHẤT: Báo Giác Ngộ Online — cơ quan ngôn luận của Giáo hội   */
+/* Phật giáo Việt Nam. RSS có sẵn ảnh minh họa và cập nhật liên tục.       */
 const FEEDS: Array<{ name: string; url: string; curated?: boolean }> = [
-  { name: "Giác Ngộ Online", url: "https://giacngo.vn/rss/home.rss" },
-  { name: "Phật giáo Việt Nam", url: "https://phatgiao.vn/feed" },
-  {
-    name: "Google News",
-    url: "https://news.google.com/rss/search?q=Ph%E1%BA%ADt+gi%C3%A1o&hl=vi&gl=VN&ceid=VN:vi",
-    curated: true,
-  },
-  {
-    name: "Google News",
-    url: "https://news.google.com/rss/search?q=Ph%E1%BA%ADt+gi%C3%A1o+Nguy%C3%AAn+th%E1%BB%A7y+OR+Theravada&hl=vi&gl=VN&ceid=VN:vi",
-    curated: true,
-  },
-  {
-    name: "Google News",
-    url: "https://news.google.com/rss/search?q=Gi%C3%A1o+h%E1%BB%99i+Ph%E1%BA%ADt+gi%C3%A1o&hl=vi&gl=VN&ceid=VN:vi",
-    curated: true,
-  },
+  { name: "Giác Ngộ", url: "https://giacngo.vn/rss/home.rss" },
 ];
 
 /* Từ khóa lọc: chỉ giữ bài thuộc Phật giáo */
