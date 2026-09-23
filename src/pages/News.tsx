@@ -1,5 +1,4 @@
 import { AppShell } from "@/components/AppShell";
-import { SearchToolbar } from "@/components/SearchToolbar";
 import {
   fetchBuddhistNews,
   loadNewsCache,

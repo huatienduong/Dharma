@@ -299,7 +299,7 @@ export default function BuddhistHistory() {
                       : "border-border/70 text-muted-foreground",
                   )}
                 >
-                  <Scroll className="h-4.5 w-4.5" />
+                  <Scroll className="h-5 w-5" />
                 </span>
 
                 <button
