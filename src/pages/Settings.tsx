@@ -15,6 +15,7 @@ import { useMemo } from "react";
 import {
   Bell,
   Bug,
+  Check,
   CheckCircle2,
   ChevronRight,
   Download,
@@ -24,12 +25,22 @@ import {
   RefreshCw,
   Send,
   Sun,
+  UserRound,
+  UserRoundCheck,
+  Volume2,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router";
 import { clearAllLocalProgress } from "@/lib/localProgress";
+import {
+  getVoice,
+  loadVoicePref,
+  saveVoicePref,
+  VOICE_LIST,
+} from "@/lib/aiVoices";
+import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -50,14 +61,20 @@ export default function Settings() {
   const validSection =
     sectionParam === "appearance" ||
     sectionParam === "about" ||
+    sectionParam === "voice" ||
     sectionParam === "feedback"
       ? sectionParam
       : null;
   const [openCard, setOpenCard] = useState<
-    null | "appearance" | "about" | "feedback"
+    null | "appearance" | "about" | "voice" | "feedback"
   >(validSection);
   const toggle = (key: typeof openCard) =>
     setOpenCard((cur) => (cur === key ? null : key));
+
+  // Giọng đọc trợ lý — chọn + nghe thử ngay tại đây
+  const [voiceId, setVoiceId] = useState<string>(loadVoicePref);
+  const { speak: speakVI, stop: stopSpeaking } = useVietnameseTTS();
+  const currentVoice = getVoice(voiceId);
 
   const [fbType, setFbType] = useState<"idea" | "bug">("idea");
   const [fbMessage, setFbMessage] = useState("");
@@ -253,6 +270,86 @@ export default function Settings() {
             label="Thông báo"
           />
         </div>
+
+        {/* ---------- Giọng đọc trợ lý ---------- */}
+        <RowCard
+          label="Giọng đọc"
+          open={openCard === "voice"}
+          onClick={() => toggle("voice")}
+        >
+          <div className="space-y-1 pt-1">
+            {/* Giọng đang chọn — dòng tổng quan gọn */}
+            <div className="mb-2.5 flex items-center justify-between rounded-2xl bg-muted/50 px-4 py-3">
+              <p className="text-sm font-semibold">{currentVoice.name}</p>
+              <p className="text-xs text-muted-foreground">{currentVoice.desc}</p>
+            </div>
+            {VOICE_LIST.map((v) => {
+              const active = v.id === voiceId;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => {
+                    setVoiceId(v.id);
+                    saveVoicePref(v.id);
+                    stopSpeaking();
+                    void speakVI("Xin chào, tôi là trợ lý Phật học của bạn.", {
+                      voice: v.id,
+                    });
+                  }}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition",
+                    active
+                      ? "bg-primary/10"
+                      : "hover:bg-accent",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+                      active
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {v.male ? (
+                      <UserRound className="h-4 w-4" />
+                    ) : (
+                      <UserRoundCheck className="h-4 w-4" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className={cn(
+                        "block truncate text-sm font-semibold",
+                        active ? "text-primary" : "text-foreground",
+                      )}
+                    >
+                      {v.name}
+                    </span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {v.desc}
+                    </span>
+                  </span>
+                  {active ? (
+                    <Check className="h-4.5 w-4.5 shrink-0 text-primary" />
+                  ) : (
+                    <Volume2
+                      className="h-4 w-4 shrink-0 text-muted-foreground/50"
+                      aria-hidden
+                    />
+                  )}
+                </button>
+              );
+            })}
+            <p className="px-1 pt-2 text-[11px] leading-relaxed text-muted-foreground">
+              Giọng dùng cho câu trả lời trong hội thoại và đàm thoại. Chạm vào
+              giọng để nghe thử.
+            </p>
+          </div>
+        </RowCard>
 
         {/* ---------- Giới thiệu / Phiên bản ---------- */}
         <RowCard

@@ -1,10 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { showServiceNotice } from "@/components/ServiceNotice";
-import { VoicePicker } from "@/components/VoicePicker";
 import { api } from "@/convex/_generated/api";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
-import { loadVoicePref, saveVoicePref } from "@/lib/aiVoices";
+import { loadVoicePref } from "@/lib/aiVoices";
 import { cn } from "@/lib/utils";
 import { useAction } from "convex/react";
 import {
@@ -114,10 +113,6 @@ export default function Assistant() {
   const [stalled, setStalled] = useState(false);
   const [image, setImage] = useState<{ base64: string; mime: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  // Logo chính thức (cache cục bộ từ Convex Storage — khớp favicon màn boot)
-  const [logoUrl, setLogoUrl] = useState<string | null>(() =>
-    typeof localStorage !== "undefined" ? localStorage.getItem("dharma-logo-url") : null,
-  );
 
   const { supported: micSupported, listening, start, stop } = useVoiceSearch();
   const { speak: speakVI, stop: stopSpeaking } = useVietnameseTTS();
@@ -545,22 +540,7 @@ export default function Assistant() {
       {/* ---------- Header mảnh, cân đối ---------- */}
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border/60 bg-background px-2 sm:px-4">
         {isHome ? (
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center">
-            {logoUrl ? (
-              <img
-                src={logoUrl}
-                alt=""
-                className="h-8 w-8 rounded-full object-cover shadow-sm"
-              />
-            ) : (
-              <span
-                aria-hidden
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm"
-              >
-                ☸
-              </span>
-            )}
-          </span>
+          <span className="h-10 w-10 shrink-0" aria-hidden />
         ) : (
           <button
             type="button"
@@ -571,25 +551,12 @@ export default function Assistant() {
             <ArrowLeft className="h-5 w-5" />
           </button>
         )}
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 text-center">
           <p className="truncate text-[15px] font-extrabold uppercase tracking-[0.2em] leading-tight text-foreground">
             DHARMA AI
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <VoicePicker
-            value={voiceId}
-            onChange={(id) => {
-              setVoiceId(id);
-              saveVoicePref(id);
-            }}
-            onPreview={(id) => {
-              stopSpeaking();
-              void speakVI("Xin chào, tôi là trợ lý Phật học của bạn.", {
-                voice: id,
-              });
-            }}
-          />
           <Button
             onClick={openCall}
             className="h-9 gap-1.5 rounded-full px-3 shadow-sm sm:px-4"
