@@ -4,14 +4,13 @@ import { DockPlayer, formatCount, formatTime, usePlayer } from "@/lib/player";
 import { useSettings } from "@/lib/settings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { loadLocalWatch, type LocalWatchRow } from "@/lib/localProgress";
 import { relatedDirect, searchDirect } from "@/lib/youtubeDirect";
 import { loadUiState, saveUiState, trackScroll, restoreScroll } from "@/lib/uiState";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
-import { useAction, useQuery } from "convex/react";
+import { useAction } from "convex/react";
 import { anyApi } from "convex/server";
-import { Eye, Mic, Search as SearchIcon, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Film, Eye, Mic, Search as SearchIcon, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Talk = Doc<"dhammaTalks">;
 type YtRow = { _id: string; youtubeId: string; title: string; teacher: string; channelName: string; publishedAt: string; durationSec: number; viewCount?: number };
@@ -24,7 +23,6 @@ export default function Dashboard() {
   const { play, current } = usePlayer();
   const { t } = useSettings();
   const [search, setSearch] = useState(() => loadUiState<string>("dashboard-search", ""));
-  const [localWatch, setLocalWatch] = useState<LocalWatchRow[]>(() => loadLocalWatch());
   const [results, setResults] = useState<YtRow[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [nextPage, setNextPage] = useState<string>();
@@ -37,7 +35,6 @@ export default function Dashboard() {
   const relatedVideos = useAction(anyApi.youtubeSync.related);
 
   useEffect(() => { saveUiState("dashboard-search", search); }, [search]);
-  useEffect(() => { const refresh = () => setLocalWatch(loadLocalWatch()); refresh(); const id = window.setInterval(refresh, 4000); return () => window.clearInterval(id); }, [current]);
   useEffect(() => { const stop = trackScroll("dashboard"); return stop; }, []);
 
   // FIX "không hiển thị dữ liệu" + TỐC ĐỘ: chỉ thử Convex 1 lần (không
@@ -97,6 +94,11 @@ export default function Dashboard() {
   const toTalk = (row: YtRow): Talk => ({ _id: row._id || row.youtubeId, youtubeId: row.youtubeId, title: row.title, teacher: row.teacher || row.channelName, channelName: row.channelName, publishedAt: row.publishedAt, durationSec: row.durationSec, viewCount: row.viewCount, syncedAt: Date.now() }) as unknown as Talk;
   const openVideo = (row: YtRow) => { setSearch(""); setResults(null); setNextPage(undefined); play(toTalk(row)); };
   const hasVideo = Boolean(current);
+  // Không bao giờ lặp lại chính video đang phát trong danh sách liên quan
+  const relatedShown = useMemo(
+    () => related.filter((row) => row.youtubeId !== current?.youtubeId),
+    [related, current?.youtubeId],
+  );
 
   return (
     <AppShell title="VIDEO" hideTitle>
@@ -106,10 +108,26 @@ export default function Dashboard() {
         <DockPlayer className={cn(hasVideo && "mt-1")} />
       </div>
 
-      {/* 50 video đề xuất — KHÔNG tiêu đề, KHÔNG đếm số lượng.
+      {/* Khi ĐANG XEM một video → mục VIDEO hiển thị VIDEO LIÊN QUAN của video
+          đó (bấm vào là chuyển ngay, danh sách tự đổi theo video mới).
+          Trang chủ vẫn giữ 50 video đề xuất — KHÔNG tiêu đề, KHÔNG đếm số lượng.
           Skeleton khi nạp · thông báo lỗi + nút thử lại khi thất bại. */}
+      {!query && hasVideo && (
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-border/60 pt-4">
+          <h2 className="flex shrink-0 items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            <Film className="h-3.5 w-3.5" />
+            Video liên quan
+          </h2>
+          <p className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground/80">
+            Cùng chủ đề với «{current?.title}»
+          </p>
+        </div>
+      )}
       {!query && relatedLoading && (
-        <div className="space-y-3" aria-label="Đang nạp video đề xuất">
+        <div
+          className="space-y-3"
+          aria-label={hasVideo ? "Đang nạp video liên quan" : "Đang nạp video đề xuất"}
+        >
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex gap-4">
               <Skeleton className="aspect-video w-40 shrink-0 rounded-lg sm:w-60" />
@@ -121,11 +139,13 @@ export default function Dashboard() {
           ))}
         </div>
       )}
-      {!query && !relatedLoading && relatedError && related.length === 0 && (
+      {!query && !relatedLoading && relatedError && relatedShown.length === 0 && (
         <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-10 text-center">
           <SearchIcon className="mx-auto h-8 w-8 text-muted-foreground/50" />
           <p className="mt-3 text-sm text-muted-foreground">
-            Không nạp được video đề xuất lần này — kiểm tra kết nối mạng rồi thử lại.
+            {hasVideo
+              ? "Không nạp được video liên quan lần này — kiểm tra kết nối mạng rồi thử lại."
+              : "Không nạp được video đề xuất lần này — kiểm tra kết nối mạng rồi thử lại."}
           </p>
           <button
             type="button"
@@ -143,10 +163,13 @@ export default function Dashboard() {
           </button>
         </div>
       )}
-      {!query && !relatedLoading && related.length > 0 && (
-        <section className="mb-6" aria-label="Video đề xuất giáo lý Theravada">
+      {!query && !relatedLoading && relatedShown.length > 0 && (
+        <section
+          className="mb-6"
+          aria-label={hasVideo ? "Video liên quan" : "Video đề xuất giáo lý Theravada"}
+        >
           <div className="space-y-1">
-            {related.map((row) => <TalkRow key={row.youtubeId} title={row.title} youtubeId={row.youtubeId} durationSec={row.durationSec} viewCount={row.viewCount} active={current?.youtubeId === row.youtubeId} onClick={() => openVideo(row)} />)}
+            {relatedShown.map((row) => <TalkRow key={row.youtubeId} title={row.title} youtubeId={row.youtubeId} durationSec={row.durationSec} viewCount={row.viewCount} active={current?.youtubeId === row.youtubeId} onClick={() => openVideo(row)} />)}
           </div>
         </section>
       )}
@@ -167,9 +190,6 @@ function SearchRow({ value, onChange }: { value: string; onChange: (value: strin
   // Đồng bộ bố cục SearchToolbar: [micro] [ô nhập] ...... [kính lúp]
   return <div className="flex w-full items-center justify-center" role="search"><div className="flex w-full max-w-2xl items-center gap-2.5"><div className={cn("flex h-12 min-w-0 flex-1 items-center rounded-full border border-border/70 bg-muted/80 pl-2 pr-2 shadow-sm", (listening || hasText) && "border-destructive/30 ring-2 ring-destructive/10")} onClick={() => inputRef.current?.focus()}>{supported ? <button type="button" onClick={(e) => { e.stopPropagation(); listening ? stop() : start(onChange); }} aria-label="Tìm bằng giọng nói" className={cn("mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition", listening ? "border-destructive/60 bg-destructive/10 text-destructive" : "border-border/70 bg-background text-muted-foreground hover:bg-accent hover:text-foreground")}>{listening ? <span className="relative flex h-4 w-4 items-center justify-center"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-60" /><Mic className="relative h-4 w-4" /></span> : <Mic className="h-4 w-4" />}</button> : null}<input ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") onChange(""); }} aria-label="Tìm video" className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none" />{hasText && <button type="button" onClick={() => onChange("")} aria-label="Xóa từ khóa" className="mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent"><X className="h-4 w-4" /></button>}<button type="button" aria-label="Tìm" onClick={() => { if (hasText) onChange(value); }} className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition", hasText ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground" : "border-border/70 bg-background text-muted-foreground hover:bg-accent hover:text-foreground")}><SearchIcon className="h-4 w-4" /></button></div></div></div>;
 }
-
-function localProgressByTalk(rows: LocalWatchRow[], id: string, duration: number) { const row = rows.find((item) => item.youtubeId === id); return row && !row.completed && row.positionSec > 5 && duration > 0 ? row.positionSec : undefined; }
-function localCompletedByTalk(rows: LocalWatchRow[], id: string) { return rows.find((item) => item.youtubeId === id)?.completed ?? false; }
 
 export function TalkRow({ title, youtubeId, durationSec, viewCount, progressSec, completed, active, onClick }: { title: string; youtubeId: string; durationSec: number; viewCount?: number; progressSec?: number; completed?: boolean; active?: boolean; onClick: () => void }) {
   const percent = progressSec && durationSec > 0 ? Math.min(100, (progressSec / durationSec) * 100) : undefined;
