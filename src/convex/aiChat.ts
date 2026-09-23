@@ -113,6 +113,16 @@ function listProviders(needVision: boolean): ProviderChoice[] {
   const geminiKey = process.env.GEMINI_API_KEY;
   const vlyKey = process.env.VLY_INTEGRATION_KEY;
 
+  /* NHÀ CUNG CẤP DỰ PHÒNG MIỄN PHÍ — chủ dự án thêm khóa nào thì dùng
+   * nguồn đó, KHÔNG cần cấu hình gì thêm. Có nhiều nguồn miễn phí song
+   * song nên Trợ lý Phật học không bị gián đoạn khi một API hết hạn mức. */
+  const cerebrasKey = process.env.CEREBRAS_API_KEY;
+  const openrouterKey = process.env.OPENROUTER_API_KEY;
+  const mistralKey = process.env.MISTRAL_API_KEY;
+  const togetherKey = process.env.TOGETHER_API_KEY;
+  const deepseekKey = process.env.DEEPSEEK_API_KEY;
+  const hfKey = process.env.HF_TOKEN ?? process.env.HUGGINGFACE_API_KEY;
+
   /* NGUỒN CHÍNH: cổng AI của nền tảng (integrations.vly.ai) — chạy trên
    * máy chủ API riêng, khóa VLY_INTEGRATION_KEY do nền tảng tự cấp sẵn
    * cho dự án → Trợ lý HOẠT ĐỘNG NGAY mà không phụ thuộc bất kỳ khóa
@@ -163,11 +173,12 @@ function listProviders(needVision: boolean): ProviderChoice[] {
     return out;
   }
 
-  /* TỐC ĐỘ: nếu có khóa ngoài nhanh (Groq/Gemini), dùng TRƯỚC — phản hồi
-   * chỉ vài trăm ms thay vì chờ model suy luận; cổng AI nền tảng luôn nằm
-   * trong danh sách nên nếu các khóa ngoài lỗi/hết hạn vẫn tự chuyển về. */
+  /* TỐC ĐỘ + KHÔNG GIÁN ĐOẠN: xếp NGUỒN NHANH/MIỄN PHÍ trước, rồi cổng
+   * AI nền tảng, sau cùng là các nguồn còn lại. Chỉ cần MỘT nguồn sống là
+   * Trợ lý Phật học vẫn trả lời — nguồn lỗi/hết hạn mức sẽ tự bị bỏ qua. */
+  const fast: ProviderChoice[] = [];
   if (groqKey) {
-    out.unshift({
+    fast.push({
       label: "Groq",
       make: () =>
         createOpenAICompatible({
@@ -178,8 +189,20 @@ function listProviders(needVision: boolean): ProviderChoice[] {
       model: "llama-3.3-70b-versatile",
     });
   }
+  if (cerebrasKey) {
+    fast.push({
+      label: "Cerebras",
+      make: () =>
+        createOpenAICompatible({
+          name: "cerebras",
+          baseURL: "https://api.cerebras.ai/v1",
+          apiKey: cerebrasKey,
+        }),
+      model: "llama-3.3-70b",
+    });
+  }
   if (geminiKey) {
-    out.unshift({
+    fast.push({
       label: "Gemini",
       make: () =>
         createOpenAICompatible({
@@ -190,8 +213,70 @@ function listProviders(needVision: boolean): ProviderChoice[] {
       model: "gemini-flash-latest",
     });
   }
+
+  const extra: ProviderChoice[] = [];
+  if (mistralKey) {
+    extra.push({
+      label: "Mistral",
+      make: () =>
+        createOpenAICompatible({
+          name: "mistral",
+          baseURL: "https://api.mistral.ai/v1",
+          apiKey: mistralKey,
+        }),
+      model: "mistral-small-latest",
+    });
+  }
+  if (togetherKey) {
+    extra.push({
+      label: "Together AI",
+      make: () =>
+        createOpenAICompatible({
+          name: "together",
+          baseURL: "https://api.together.xyz/v1",
+          apiKey: togetherKey,
+        }),
+      model: "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+    });
+  }
+  if (openrouterKey) {
+    extra.push({
+      label: "OpenRouter",
+      make: () =>
+        createOpenAICompatible({
+          name: "openrouter",
+          baseURL: "https://openrouter.ai/api/v1",
+          apiKey: openrouterKey,
+        }),
+      model: "meta-llama/llama-3.3-70b-instruct:free",
+    });
+  }
+  if (deepseekKey) {
+    extra.push({
+      label: "DeepSeek",
+      make: () =>
+        createOpenAICompatible({
+          name: "deepseek",
+          baseURL: "https://api.deepseek.com/v1",
+          apiKey: deepseekKey,
+        }),
+      model: "deepseek-chat",
+    });
+  }
+  if (hfKey) {
+    extra.push({
+      label: "Hugging Face",
+      make: () =>
+        createOpenAICompatible({
+          name: "huggingface",
+          baseURL: "https://router.huggingface.co/v1",
+          apiKey: hfKey,
+        }),
+      model: "meta-llama/Llama-3.3-70B-Instruct",
+    });
+  }
   if (openaiKey) {
-    out.push({
+    extra.push({
       label: "OpenAI",
       make: () =>
         createOpenAICompatible({
@@ -202,7 +287,7 @@ function listProviders(needVision: boolean): ProviderChoice[] {
       model: "gpt-4.1-mini",
     });
   }
-  return out;
+  return [...fast, ...out, ...extra];
 }
 
 /**

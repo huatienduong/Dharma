@@ -10,6 +10,7 @@ import {
 } from "@/data/abhidhamma";
 import {
   loadLocalReadingPercent,
+  onAppHide,
   saveLocalReading,
 } from "@/lib/localProgress";
 import { loadUiState, restoreScroll, saveUiState, trackScroll } from "@/lib/uiState";
@@ -182,17 +183,21 @@ export function AbhidhammaReader() {
   useEffect(() => {
     if (!id) return;
     let t: ReturnType<typeof setTimeout> | undefined;
+    const saveNow = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = max > 0 ? Math.round((window.scrollY / max) * 100) : 100;
+      saveLocalReading(`abhidhamma:${id}`, pct);
+    };
     const onScroll = () => {
       if (t) clearTimeout(t);
-      t = setTimeout(() => {
-        const max = document.documentElement.scrollHeight - window.innerHeight;
-        const pct = max > 0 ? Math.round((window.scrollY / max) * 100) : 100;
-        saveLocalReading(`abhidhamma:${id}`, pct);
-      }, 500);
+      t = setTimeout(saveNow, 500);
     };
     window.addEventListener("scroll", onScroll, { passive: true });
+    // Ghi ngay khi rời ứng dụng — không mất tiến trình đọc
+    const stopHide = onAppHide(saveNow);
     return () => {
       window.removeEventListener("scroll", onScroll);
+      stopHide();
       if (t) clearTimeout(t);
     };
   }, [id]);
