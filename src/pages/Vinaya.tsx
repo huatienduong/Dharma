@@ -5,6 +5,7 @@ import { SearchToolbar } from "@/components/SearchToolbar";
 import { getVinayaDoc } from "@/data/vinaya";
 import {
   loadLocalReadingPercent,
+  onAppHide,
   saveLocalReading,
 } from "@/lib/localProgress";
 import { useNavigate, useParams } from "react-router";
@@ -76,18 +77,21 @@ export function VinayaReader() {
   useEffect(() => {
     if (!doc) return;
     let t: ReturnType<typeof setTimeout> | undefined;
+    const saveNow = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const pct = max > 0 ? Math.round((window.scrollY / max) * 100) : 100;
+      saveLocalReading(`vinaya:${doc.id}`, pct);
+    };
     const onScroll = () => {
       if (t) clearTimeout(t);
-      t = setTimeout(() => {
-        const max =
-          document.documentElement.scrollHeight - window.innerHeight;
-        const pct = max > 0 ? Math.round((window.scrollY / max) * 100) : 100;
-        saveLocalReading(`vinaya:${doc.id}`, pct);
-      }, 500);
+      t = setTimeout(saveNow, 500);
     };
     window.addEventListener("scroll", onScroll, { passive: true });
+    // Ghi ngay khi rời ứng dụng — không mất tiến trình đọc
+    const stopHide = onAppHide(saveNow);
     return () => {
       window.removeEventListener("scroll", onScroll);
+      stopHide();
       if (t) clearTimeout(t);
     };
   }, [doc]);
