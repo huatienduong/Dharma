@@ -29,7 +29,7 @@ Khi trả lời, ưu tiên:
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
 const HISTORY_LIMIT = 6; // giảm bớt context để AI trả lời nhanh hơn
-const MAX_TOKENS = 700; // giảm lượng output để tránh chậm và dài dòng
+const MAX_TOKENS = 1200; // đủ dư cho suy luận + câu trả lời, tránh bị cắt (finish=length)
 const AI_TIMEOUT_MS = 45_000; // phòng trường hợp provider treo — lỗi sau 45s thay vì treo vĩnh viễn
 
 /* ------------------------------------------------------------------ */
@@ -211,10 +211,15 @@ export const ask = action({
     const errors: string[] = [];
     for (const provider of providers) {
       try {
-        // FIX lỗi "trợ lý không phản hồi": gpt-5 là reasoning model —
-        // KHÔNG nhận temperature/max_tokens (400 Unsupported value).
-        // Phải dùng max_completion_tokens + reasoning_effort mức thấp,
-        // nếu không toàn bộ ngân sách token bị tiêu cho suy luận → rỗng.
+        // FIX lỗi "trợ lý không phản hồi":
+        // • gpt-5 là reasoning model — KHÔNG nhận temperature/max_tokens
+        //   (400 Unsupported value); phải dùng max_completion_tokens +
+        //   reasoning_effort thấp, nếu không toàn bộ ngân sách token bị
+        //   tiêu cho suy luận → câu trả lời rỗng.
+        // • Ngân sách 900 tokens trước đây quá nhỏ: khi suy luận dùng hết
+        //   quota, finishReason = "length" mà KHÔNG có text → client chỉ
+        //   thấy "đang suy niệm" mãi mãi. Nâng lên 3000 + kiểm tra
+        //   finishReason để cắt suy luận sớm hơn nội dung.
         const isGpt5 = provider.model.startsWith("gpt-5");
         // Timeout: provider chậm/treo → hủy sau 45s, thử provider kế tiếp
         const result = await Promise.race([
@@ -225,7 +230,7 @@ export const ask = action({
               ? {
                   providerOptions: {
                     "vly-gateway": {
-                      max_completion_tokens: 900,
+                      max_completion_tokens: 3000,
                       reasoningEffort: "low",
                     },
                   },
@@ -244,7 +249,13 @@ export const ask = action({
         ]);
         const reply = result.text.trim();
         if (reply) return reply;
-        errors.push(`${provider.label}: trả lời rỗng`);
+        // Giải thích rõ vì sao rỗng thay vì chỉ "trả lời rỗng"
+        const finish = (result as { finishReason?: unknown }).finishReason;
+        errors.push(
+          `${provider.label}: trả lời rỗng${
+            finish ? ` (finishReason=${String(finish)})` : ""
+          }`,
+        );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         errors.push(`${provider.label}: ${msg}`);

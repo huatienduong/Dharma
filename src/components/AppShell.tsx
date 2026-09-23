@@ -184,27 +184,30 @@ export function AppShell({
           </button>
         </div>
 
-        {/* Giữa: LOGO ỨNG DỤNG CHÍNH THỨC (ảnh chủ app tải lên) */}
+        {/* Giữa: LOGO trên + tên DHARMA dưới — vị trí trung tâm, hiện ngay khi mở app */}
         <button
           type="button"
           onClick={() => go("/dashboard")}
           aria-label="Trang chủ Dharma"
-          className="mx-auto flex min-w-0 items-center justify-center rounded-full px-2 py-1 transition hover:bg-accent"
+          className="mx-auto flex min-w-0 flex-col items-center justify-center leading-none"
         >
           {logo?.url ? (
             <img
               src={logo.url}
               alt="Dharma"
-              className="h-9 w-9 shrink-0 rounded-full object-cover"
+              className="h-7 w-7 shrink-0 rounded-full object-cover"
             />
           ) : (
             <span
               aria-hidden
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
             >
               ☸
             </span>
           )}
+          <span className="mt-0.5 text-[11px] font-bold uppercase tracking-[0.22em] text-foreground">
+            DHARMA
+          </span>
         </button>
 
         {/* Phải: chỉ còn Cài đặt (Hồ sơ đã bỏ) */}

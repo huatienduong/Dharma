@@ -103,6 +103,9 @@ export default function Assistant() {
   const [input, setInput] = useState("");
   const [pending, setPending] = useState<Msg[]>([]);
   const [busy, setBusy] = useState(false);
+  // FIX "không phản hồi": đếm thời gian chờ AI — quá 60s hiển thị lỗi
+  // thay vì đứng ở "đang suy niệm" vĩnh viễn (provider treo không trả).
+  const [stalled, setStalled] = useState(false);
   const [image, setImage] = useState<{ base64: string; mime: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -133,6 +136,16 @@ export default function Assistant() {
 
   useEffect(() => {
     busyRef.current = busy;
+  }, [busy]);
+
+  // Đồng hồ phòng treo: nếu AI không trả lời trong 60s → báo lỗi ra UI
+  useEffect(() => {
+    if (!busy) {
+      setStalled(false);
+      return;
+    }
+    const id = window.setTimeout(() => setStalled(true), 60_000);
+    return () => window.clearTimeout(id);
   }, [busy]);
 
   /* ----- Mở khóa autoplay âm thanh (chạm/bấm đầu tiên) ----- */
@@ -544,7 +557,18 @@ export default function Assistant() {
                 />
               ),
             )}
-            {busy && <AssistantThinking />}
+            {busy && (stalled ? (
+              <div className="flex items-start gap-3">
+                <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                  <Sparkles className="h-4 w-4" />
+                </span>
+                <p className="pt-2 text-sm text-muted-foreground">
+                  Trả lời quá lâu hoặc kết nối không ổn định — hãy thử gửi lại câu hỏi.
+                </p>
+              </div>
+            ) : (
+              <AssistantThinking />
+            ))}
           </div>
         )}
       </div>
