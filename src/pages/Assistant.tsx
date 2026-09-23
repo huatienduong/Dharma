@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { showServiceNotice } from "@/components/ServiceNotice";
 import { api } from "@/convex/_generated/api";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
@@ -257,6 +258,10 @@ export default function Assistant() {
           toast.error(
             err instanceof Error ? err.message : "Không kết nối được trợ lý.",
           );
+          // Tính năng không phản hồi do sự cố kết nối → hiện thông báo dịch vụ
+          if (/không kết nối|hết giờ|timeout|network|fetch/i.test(String(err))) {
+            showServiceNotice("upgrade");
+          }
           sendingRef.current = false;
           if (callActiveRef.current) {
             setCallStatus("listening");

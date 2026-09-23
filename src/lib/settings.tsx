@@ -135,10 +135,10 @@ const VI = {
     "Toàn bộ dữ liệu của bạn (lịch sử xem, tiến trình đọc, phiên thiền) được lưu ngay trên thiết bị này.",
   loginRegister: "Đăng nhập / Đăng ký",
   // Trang con
-  suttasSubtitle: "Sutta Piṭaka — học Kinh, luận giải và chú giải theo truyền thống Theravāda",
+  suttasSubtitle: "Sutta Piṭaka",
   dictTitle: "Từ điển Phật học",
-  dictSubtitle: "Thuật ngữ Pāḷi chuyên ngành theo truyền thống Theravāda",
-  watchedSubtitle: "Lịch sử xem của bạn — dừng ở đâu, quay lại đúng đoạn đó",
+  dictSubtitle: "Thuật ngữ Pāḷi — Theravāda",
+  watchedSubtitle: "Dừng ở đâu, quay lại đúng đoạn đó",
   suttaSearchPlaceholder: "Tìm kinh theo tên, số hiệu, nội dung…",
   dictSearchPlaceholder: "Tìm thuật ngữ — ví dụ: anicca, niết bàn, uposatha…",
   clearSearch: "Xóa tìm kiếm",

@@ -6,7 +6,6 @@ import {
   Globe2,
   Loader2,
   Search as SearchIcon,
-  Sparkles,
 } from "lucide-react";
 import { raceFirst } from "@/lib/raceFirst";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -169,7 +168,7 @@ export default function Lookup() {
   return (
     <AppShell
       title="TRA CỨU WIKIPEDIA"
-      subtitle="Tra cứu thuật ngữ Phật học — xem trực tiếp trong ứng dụng"
+      subtitle="Tra cứu thuật ngữ Phật học"
     >
       {/* Thanh tìm kiếm dùng chung — căn GIỮA, micro TRÁI kính lúp PHẢI */}
       <div className="sticky top-14 z-30 -mx-3 bg-background px-3 py-2.5 shadow-sm sm:-mx-5 sm:px-5">
@@ -193,10 +192,6 @@ export default function Lookup() {
           <h2 className="mt-4 text-lg font-semibold tracking-tight">
             Tra thuật ngữ Phật học
           </h2>
-          <p className="mx-auto mt-1.5 max-w-md text-sm text-muted-foreground">
-            Nhập từ khóa hoặc chọn nhanh thuật ngữ dưới đây — nội dung Wikipedia mở
-            ngay trong ứng dụng.
-          </p>
           <div className="mx-auto mt-5 flex max-w-2xl flex-wrap justify-center gap-2">
             {quickPicks.map((t) => (
               <button
@@ -350,10 +345,6 @@ export default function Lookup() {
           </button>
         </div>
       )}
-      <p className="mt-8 flex items-start justify-center gap-1.5 text-[11px] leading-relaxed text-muted-foreground/80">
-        <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
-        Nguồn: Wikipedia — dữ liệu tra cứu trực tiếp, cập nhật liên tục.
-      </p>
     </AppShell>
   );
 }

@@ -390,9 +390,6 @@ export function AIDocArticle({
               </p>
               <h3 className="mt-1 text-base font-bold leading-snug">{docTitle}</h3>
               {pali && <p className="mt-0.5 text-xs italic text-gold">{pali}</p>}
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
-                Biên soạn bởi Trợ lý Phật học · tự nạp dữ liệu khi tra cứu
-              </p>
             </div>
           </div>
         )}
@@ -401,7 +398,7 @@ export function AIDocArticle({
           <div className="space-y-3">
             <div className="mb-4 flex items-center gap-2 rounded-xl border border-border/60 bg-muted/50 px-3 py-2.5 text-xs font-medium text-foreground/90">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Trợ lý Phật học đang tự nạp và biên soạn nội dung theo truyền thống Theravāda…
+              Đang biên soạn…
             </div>
             {Array.from({ length: 7 }).map((_, i) => (
               <Skeleton key={i} className="h-4 w-full" style={{ maxWidth: `${88 - ((i * 13) % 30)}%` }} />

@@ -56,7 +56,7 @@ export default function Abhidhamma() {
   return (
     <AppShell
       title="Luận tạng"
-      subtitle="Abhidhamma Piṭaka — Vi Diệu Pháp theo truyền thống Theravāda"
+      subtitle="Abhidhamma Piṭaka — Vi Diệu Pháp"
     >
       <SearchToolbar
         value={search}
@@ -147,7 +147,7 @@ export default function Abhidhamma() {
       <section className="mt-6">
         <h2 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5" />
-          Trợ lý Phật học đề xuất thêm
+          Đề xuất thêm
         </h2>
         <AIIndexList
           indexKind="abhidhamma"

@@ -32,7 +32,7 @@ export default function Vinaya() {
   return (
     <AppShell
       title="Luật tạng"
-      subtitle="Vinaya Piṭaka — nền giới hạnh của Tăng-già theo truyền thống Theravāda"
+      subtitle="Vinaya Piṭaka — giới hạnh Tăng-già"
     >
       {/* Công cụ tìm kiếm — dính cố định dưới header khi cuộn */}
       <SearchToolbar
@@ -101,7 +101,7 @@ export function VinayaReader() {
     return (
       <AppShell
         title={decodeURIComponent(id).replace(/[-_]/g, " ")}
-        subtitle="Nội dung Luật tạng do Trợ lý Phật học tự nạp"
+        subtitle="Luật tạng Pāli"
         actions={<ShellBackButton />}
       >
         <AIDocArticle

@@ -177,7 +177,6 @@ export default function Settings() {
   return (
     <AppShell
       title="Cài đặt"
-      subtitle="Tùy chỉnh ứng dụng theo nhu cầu của bạn"
     >
       <div className="space-y-6">
         {/* ---------- Giao diện ---------- */}

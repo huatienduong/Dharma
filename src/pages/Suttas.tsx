@@ -116,7 +116,7 @@ export default function Suttas() {
         <section className="mt-4">
           <div className="mb-3 flex items-center gap-2 rounded-xl border border-border/60 bg-muted/40 px-3.5 py-2.5 text-xs font-medium">
             <Sparkles className="h-3.5 w-3.5 shrink-0" />
-            Không có sẵn «{search}» trong kho — Trợ lý Phật học tự nạp và biên soạn cho bạn:
+            Trợ lý Phật học đang biên soạn «{search}»:
           </div>
           <AIDocArticle
             kind="sutta"
@@ -224,7 +224,7 @@ export function SuttaReader() {
     return (
       <AppShell
         title={decodeURIComponent(id).replace(/[-_]/g, " ")}
-        subtitle="Bản kinh đầy đủ do Trợ lý Phật học tự nạp từ Kinh điển Pāli"
+        subtitle="Kinh điển Pāli"
         actions={<ShellBackButton />}
       >
         <AIDocArticle

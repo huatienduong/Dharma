@@ -3,7 +3,7 @@ import { NewsCard, NewsReader, useBuddhistNews } from "@/components/NewsFeed";
 import { TalkRow } from "@/pages/Dashboard";
 import { DockPlayer, usePlayer } from "@/lib/player";
 import { searchDirect } from "@/lib/youtubeDirect";
-import { loadUiState, restoreScroll, saveUiState, trackScroll } from "@/lib/uiState";
+import { restoreScroll, trackScroll } from "@/lib/uiState";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { anyApi } from "convex/server";
 import { useAction } from "convex/react";
@@ -48,13 +48,6 @@ export default function Home() {
   const searchVideos = useAction(anyApi.youtubeSync.search);
   const startedRef = useRef(false);
 
-  // Từ khóa tìm kiếm giữ lại khi quay về trang
-  const [search, setSearch] = useState(() =>
-    loadUiState<string>("home-search", ""),
-  );
-  useEffect(() => {
-    saveUiState("home-search", search);
-  }, [search]);
   useEffect(() => {
     const stop = trackScroll("home");
     return () => stop();

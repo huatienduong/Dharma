@@ -109,7 +109,7 @@ export default function Dictionary() {
         <section>
           <div className="mb-3 flex items-center gap-2 rounded-xl border border-border/60 bg-muted/40 px-3.5 py-2.5 text-xs font-medium">
             <Sparkles className="h-3.5 w-3.5 shrink-0" />
-            Chưa có «{q}» trong từ điển — Trợ lý Phật học tự nạp và tra cứu giúp bạn:
+            Trợ lý Phật học đang tra cứu «{q}»:
           </div>
           <AIDocArticle
             kind="dictionary"

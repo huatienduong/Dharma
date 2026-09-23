@@ -98,7 +98,7 @@ export function AIIndexList({
         <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/40 px-3.5 py-2.5 text-xs font-medium">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           <Sparkles className="h-3.5 w-3.5" />
-          Trợ lý Phật học đang tự nạp danh sách đề xuất từ Kinh điển Pāli…
+          Đang tải…
         </div>
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="h-14 animate-pulse rounded-xl bg-muted/60" />
