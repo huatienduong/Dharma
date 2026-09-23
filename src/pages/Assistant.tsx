@@ -571,12 +571,9 @@ export default function Assistant() {
             <ArrowLeft className="h-5 w-5" />
           </button>
         )}
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow">
-          <Sparkles className="h-4.5 w-4.5" />
-        </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-semibold leading-tight">
-            Dharma AI · Trợ lý Phật học
+          <p className="truncate text-[15px] font-extrabold uppercase tracking-[0.2em] leading-tight text-foreground">
+            DHARMA AI
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
@@ -603,9 +600,9 @@ export default function Assistant() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate("/settings")}
-            title="Cài đặt"
-            aria-label="Cài đặt ứng dụng"
+            onClick={() => navigate("/settings?section=about")}
+            title="Cài đặt & cập nhật ứng dụng"
+            aria-label="Cài đặt và cập nhật ứng dụng"
             className="h-9 w-9 rounded-full"
           >
             <Settings className="h-4.5 w-4.5" />

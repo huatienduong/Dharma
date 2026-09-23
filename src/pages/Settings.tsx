@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { clearAllLocalProgress } from "@/lib/localProgress";
 
 export default function Settings() {
@@ -43,10 +43,20 @@ export default function Settings() {
   const submitFeedback = useMutation(api.library.submitFeedback);
   const meta = useQuery(api.library.getAppVersion, {});
 
-  // Mục đang mở rộng (accordion) — mỗi mục một thẻ trắng như app hệ thống
+  // Mục đang mở rộng (accordion) — mỗi mục một thẻ trắng như app hệ thống.
+  // Hỗ trợ deep-link từ Trợ lý: /settings?section=about mở sẵn phần Giới thiệu
+  // (kiểm tra & cập nhật phiên bản ứng dụng).
+  const [searchParams] = useSearchParams();
+  const sectionParam = searchParams.get("section");
+  const validSection =
+    sectionParam === "appearance" ||
+    sectionParam === "about" ||
+    sectionParam === "feedback"
+      ? sectionParam
+      : null;
   const [openCard, setOpenCard] = useState<
     null | "appearance" | "about" | "feedback"
-  >(null);
+  >(validSection);
   const toggle = (key: typeof openCard) =>
     setOpenCard((cur) => (cur === key ? null : key));
 
