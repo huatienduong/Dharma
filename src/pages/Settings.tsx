@@ -1,4 +1,3 @@
-import { AppShell } from "@/components/AppShell";
 import { api } from "@/convex/_generated/api";
 import {
   APP_DEVELOPER,
@@ -180,19 +179,28 @@ export default function Settings() {
   };
 
   return (
-    <AppShell title="Cài đặt" hideTitle>
-      {/* ---------- Đầu trang: nút quay lại + tiêu đề đậm ---------- */}
-      <div className="mb-5 flex items-center gap-2.5">
+    <div className="fb-bg flex min-h-screen flex-col">
+      {/* ---------- Header mảnh đồng bộ với màn Trợ lý Phật học ---------- */}
+      <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border/60 bg-background/95 px-2 backdrop-blur sm:px-4">
         <button
           type="button"
-          onClick={() => navigate(-1)}
-          className="-ml-1 flex h-10 w-10 items-center justify-center rounded-full text-foreground transition hover:bg-accent"
-          aria-label="Quay lại"
+          onClick={() => navigate("/")}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-accent"
+          aria-label="Quay lại trợ lý"
         >
           <ArrowLeft />
         </button>
-        <h1 className="text-2xl font-extrabold tracking-tight">Cài đặt</h1>
-      </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-extrabold uppercase tracking-[0.2em] leading-tight text-foreground">
+            DHARMA AI
+          </p>
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-2xl flex-1 px-3 pb-16 pt-5 sm:px-5">
+        <h1 className="mb-5 text-2xl font-extrabold tracking-tight">
+          Cài đặt
+        </h1>
 
       <div className="space-y-3.5">
         {/* ---------- Giao diện ---------- */}
@@ -435,7 +443,7 @@ export default function Settings() {
         </RowCard>
       </div>
 
-      {/* ---------- Nút pill lớn cuối trang (kiểu "Đăng xuất") ---------- */}
+      {/* ---------- Nút pill lớn cuối trang ---------- */}
       <div className="mt-10 flex justify-center pb-4">
         <Button
           onClick={handleReset}
@@ -444,7 +452,8 @@ export default function Settings() {
           Đặt lại ứng dụng
         </Button>
       </div>
-    </AppShell>
+      </main>
+    </div>
   );
 }
 
