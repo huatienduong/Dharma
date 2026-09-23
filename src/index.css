@@ -138,12 +138,33 @@
     font-size: calc(16px * var(--font-size-scale, 1));
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
     /* Phông chữ rõ ràng: sans-serif chủ đạo cho UI, serif cho nội dung đọc */
     font-family:
       "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    /* NỀN HOA SÈN — ảnh Wikimedia Commons phủ lên nền ngà, mờ nhẹ */
+    background-color: var(--background);
+    background-image:
+      linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--background) 82%, transparent),
+        color-mix(in srgb, var(--background) 92%, transparent)
+      ),
+      url("https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Lotus_flower_%28978659%29.jpg/960px-Lotus_flower_%28978659%29.jpg");
+    background-size: cover, cover;
+    background-position: center, center top;
+    background-attachment: fixed;
+  }
+  .dark body {
+    background-image:
+      linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--background) 90%, transparent),
+        color-mix(in srgb, var(--background) 96%, transparent)
+      ),
+      url("https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Lotus_flower_%28978659%29.jpg/960px-Lotus_flower_%28978659%29.jpg");
   }
   h1, h2, h3, h4 {
     letter-spacing: -0.01em;

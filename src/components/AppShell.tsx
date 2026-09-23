@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   BookMarked,
   BookOpen,
+  Bot,
   CalendarDays,
   Flower2,
   Globe2,
@@ -13,7 +14,8 @@ import {
   Layers,
   Library,
   Menu,
-  MessagesSquare,
+  MoreHorizontal,
+  Music,
   Newspaper,
   Scale,
   Settings,
@@ -25,7 +27,7 @@ import { useQuery } from "convex/react";
 import { anyApi } from "convex/server";
 import { cacheLogoClientSide } from "@/lib/appLogoCache";
 
-/** Nhóm trái: nội dung học liệu (sidebar desktop). */
+/** Nhóm trái: nội dung học liệu (sidebar desktop + drawer). */
 const NAV_LEFT: { to: string; tKey: TranslateKey; icon: typeof BookOpen }[] = [
   { to: "/home", tKey: "navHome", icon: HomeIcon },
   { to: "/dashboard", tKey: "navTalks", icon: Library },
@@ -34,6 +36,7 @@ const NAV_LEFT: { to: string; tKey: TranslateKey; icon: typeof BookOpen }[] = [
   { to: "/abhidhamma", tKey: "navAbhidhamma", icon: Layers },
   { to: "/dictionary", tKey: "navDictionary", icon: BookMarked },
   { to: "/meditation", tKey: "navMeditation", icon: Flower2 },
+  { to: "/listen", tKey: "navMeditation" as TranslateKey, icon: Music },
 ];
 
 /** Nhóm phải: Tra cứu — Tin tức — Lịch sử — Lịch Phật giáo — Trợ lý Phật học. */
@@ -42,7 +45,7 @@ const NAV_RIGHT: { to: string; tKey: TranslateKey; icon: typeof Globe2 }[] = [
   { to: "/news", tKey: "navNews", icon: Newspaper },
   { to: "/history", tKey: "navBuddhistHistory", icon: HistoryIcon },
   { to: "/calendar", tKey: "navCalendar", icon: CalendarDays },
-  { to: "/assistant", tKey: "navAssistant", icon: MessagesSquare },
+  { to: "/assistant", tKey: "navAssistant", icon: Bot },
 ];
 
 /** Nhóm cuối: LỊCH SỬ XEM lưu dữ liệu xem video của người dùng. */
@@ -58,12 +61,18 @@ const SETTINGS_ITEM = {
 
 const ALL_ITEMS = [...NAV_LEFT, ...NAV_RIGHT, ...NAV_BOTTOM];
 
-/* Tab dưới mobile: duy nhất nút Trang chủ (vẽ trực tiếp trong JSX) */
-
-/** Viết in hoa nhãn tab sidebar (VI/EN đều ổn). */
-function upperLabel(s: string) {
-  return s.toUpperCase();
-}
+/**
+ * 5 TAB DƯỚI CHÍNH THỨC:
+ * Trang chủ · Kinh điển · Thiền tập · Nghe · Thêm
+ * "Thêm" mở drawer chứa các mục còn lại.
+ */
+const BOTTOM_TABS: { to: string; label: string; icon: typeof BookOpen }[] = [
+  { to: "/home", label: "Trang chủ", icon: HomeIcon },
+  { to: "/suttas", label: "Kinh điển", icon: BookOpen },
+  { to: "/meditation", label: "Thiền tập", icon: Flower2 },
+  { to: "/listen", label: "Nghe", icon: Music },
+  { to: "MORE", label: "Thêm", icon: MoreHorizontal },
+];
 
 export function AppShell({
   title,
@@ -117,6 +126,8 @@ export function AppShell({
   const NavItem = ({ item }: { item: (typeof ALL_ITEMS)[number] }) => {
     const active = isActive(item.to);
     const Icon = item.icon;
+    const label =
+      item.to === "/listen" ? "Nghe" : t(item.tKey);
     return (
       <button
         type="button"
@@ -139,7 +150,7 @@ export function AppShell({
         >
           <Icon className="h-[18px] w-[18px]" />
         </span>
-        <span className="truncate tracking-wide">{t(item.tKey)}</span>
+        <span className="truncate tracking-wide">{label}</span>
       </button>
     );
   };
@@ -181,51 +192,52 @@ export function AppShell({
   return (
     <div className="fb-bg min-h-screen">
       {/* ============================================================ */}
-      {/* HEADER — logo trái, menu + cài đặt phải (kiểu mẫu)              */}
+      {/* HEADER — MENU TRÁI · LOGO GIỮA · CÀI ĐẶT PHẢI                   */}
       {/* ============================================================ */}
-      <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center gap-2 bg-background/95 px-3 shadow-[0_1px_0_rgba(63,50,33,0.06)] backdrop-blur sm:px-4">
+      <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center bg-background/95 px-3 shadow-[0_1px_0_rgba(63,50,33,0.06)] backdrop-blur sm:px-4">
+        {/* Trái: nút menu (mobile mở drawer "Thêm" / desktop thu gọn sidebar) */}
+        <div className="flex w-24 shrink-0 items-center justify-start">
+          <button
+            type="button"
+            onClick={() => {
+              if (window.innerWidth >= 1024) setRailOpen((v) => !v);
+              else setMoreOpen(true);
+            }}
+            className="flex h-10 w-10 items-center justify-center rounded-full text-foreground transition hover:bg-accent"
+            aria-label="Menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Giữa: LOGO — vị trí trung tâm */}
         <button
           type="button"
           onClick={() => go("/home")}
           aria-label="Trang chủ Dharma"
-          className="flex min-w-0 shrink-0 items-center gap-2"
+          className="mx-auto flex flex-col items-center justify-center leading-none"
         >
           {logo?.url ? (
             <img
               src={logo.url}
               alt="Dharma"
-              className="h-9 w-9 shrink-0 rounded-full object-cover shadow-sm"
+              className="h-8 w-8 shrink-0 rounded-full object-cover shadow-sm"
             />
           ) : (
             <span
               aria-hidden
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm"
             >
               ☸
             </span>
           )}
-          <span className="truncate text-[15px] font-extrabold tracking-tight text-foreground">
+          <span className="mt-0.5 text-[10px] font-extrabold uppercase tracking-[0.24em] text-foreground">
             DHARMA
           </span>
         </button>
 
-        <div className="ml-auto flex shrink-0 items-center gap-0.5">
-          <button
-            type="button"
-            onClick={() => setMoreOpen(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-foreground transition hover:bg-accent lg:hidden"
-            aria-label={t("openMenu")}
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setRailOpen((v) => !v)}
-            className="hidden h-10 w-10 items-center justify-center rounded-full text-foreground transition hover:bg-accent lg:flex"
-            aria-label="Thu gọn menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+        {/* Phải: DUY NHẤT Cài đặt (đã xóa menu cạnh cài đặt) */}
+        <div className="flex w-24 shrink-0 items-center justify-end">
           <button
             type="button"
             onClick={() => go(SETTINGS_ITEM.to)}
@@ -245,7 +257,7 @@ export function AppShell({
       </header>
 
       {/* ============================================================ */}
-      {/* SIDEBAR DESKTOP (≥lg) — cột ô icon tròn, thu gọn được           */}
+      {/* SIDEBAR DESKTOP (≥lg)                                           */}
       {/* ============================================================ */}
       <aside
         className={cn(
@@ -260,13 +272,14 @@ export function AppShell({
             {ALL_ITEMS.map((item) => {
               const active = isActive(item.to);
               const Icon = item.icon;
+              const label = item.to === "/listen" ? "Nghe" : t(item.tKey);
               return (
                 <button
                   key={item.to}
                   type="button"
                   onClick={() => go(item.to)}
-                  title={t(item.tKey)}
-                  aria-label={t(item.tKey)}
+                  title={label}
+                  aria-label={label}
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "flex flex-col items-center gap-1 rounded-2xl px-1.5 py-2.5 text-[10px] leading-tight transition",
@@ -285,9 +298,7 @@ export function AppShell({
                   >
                     <Icon className="h-[18px] w-[18px]" />
                   </span>
-                  <span className="w-full truncate text-center">
-                    {t(item.tKey)}
-                  </span>
+                  <span className="w-full truncate text-center">{label}</span>
                 </button>
               );
             })}
@@ -374,23 +385,35 @@ export function AppShell({
       </div>
 
       {/* ============================================================ */}
-      {/* BOTTOM NAV — DUY NHẤT nút Trang chủ                             */}
+      {/* BOTTOM NAV — 5 tab chính thức                                   */}
       {/* ============================================================ */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)] lg:hidden">
-        <div className="mx-auto mb-3 flex w-fit items-center justify-center">
-          <button
-            type="button"
-            onClick={() => go("/home")}
-            aria-current={isActive("/home") ? "page" : undefined}
-            aria-label="Về Trang chủ"
-            className={cn(
-              "flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-[13px] font-bold text-primary-foreground shadow-[0_6px_20px_rgba(180,83,9,0.45)] transition active:scale-95",
-              isActive("/home") && "ring-4 ring-primary/20",
-            )}
-          >
-            <HomeIcon className="h-5 w-5" />
-            {t("navHome")}
-          </button>
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/50 bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+        <div className="mx-auto flex max-w-lg items-stretch justify-between px-2">
+          {BOTTOM_TABS.map((tab) => {
+            const isMore = tab.to === "MORE";
+            const active = !isMore && isActive(tab.to);
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.label}
+                type="button"
+                onClick={() => (isMore ? setMoreOpen(true) : go(tab.to))}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition",
+                  active ? "text-primary" : "text-muted-foreground",
+                )}
+              >
+                <Icon
+                  className={cn(
+                    "h-[22px] w-[22px]",
+                    active && "drop-shadow-[0_2px_6px_rgba(166,124,46,0.4)]",
+                  )}
+                />
+                <span className="leading-tight">{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
       </nav>
     </div>
@@ -410,6 +433,3 @@ export function ShellBackButton() {
     </Button>
   );
 }
-
-// upperLabel dùng cho nhãn in hoa kiểu YouTube ở nơi khác nếu cần
-export { upperLabel };
