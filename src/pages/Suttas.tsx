@@ -3,7 +3,7 @@ import { AIDocArticle, DocThumb } from "@/components/AIDocReader";
 import { AIIndexList } from "@/components/AIIndexList";
 import { SearchToolbar } from "@/components/SearchToolbar";
 import { api } from "@/convex/_generated/api";
-import { getSutta } from "@/data/suttas";
+import { getSutta, SUTTAS } from "@/data/suttas";
 import { loadLocalSuttaProgress, loadLocalSuttaPercent, onAppHide, saveLocalSuttaProgress } from "@/lib/localProgress";
 import { useSettings } from "@/lib/settings";
 import { loadUiState, saveUiState, trackScroll, restoreScroll } from "@/lib/uiState";
@@ -53,6 +53,16 @@ export default function Suttas() {
     restoreScroll("suttas");
   }, []);
 
+  /* Kho kinh Pāli cốt lõi hiển thị kèm tên Pāli — lọc theo từ khóa */
+  const staticList = useMemo(() => {
+    if (!searchQ) return SUTTAS;
+    return SUTTAS.filter((s) =>
+      `${s.title} ${s.paliTitle} ${s.summary} ${s.id} ${s.nikaya} ${s.number}`
+        .toLowerCase()
+        .includes(searchQ),
+    );
+  }, [searchQ]);
+
   // Tiến trình đọc lưu CỤC BỘ trên thiết bị (không cần đăng nhập)
   const progressMap = useMemo(() => {
     const map = new Map<string, number>();
@@ -80,6 +90,26 @@ export default function Suttas() {
         onOpen={(e) => navigate(`/suttas/${e.id}`)}
         emptyHint="Chưa nạp được danh sách kinh đề xuất. Hãy thử lại."
       />
+
+      {/* KHO PĀLI CỐT LÕI — luôn có sẵn trong ứng dụng, hiện kèm tên Pāli   */}
+      {/* (bổ sung các bài kinh quan trọng nhất của Phật giáo Nguyên thủy). */}
+      {staticList.length > 0 && (
+        <section className="mt-6">
+          <h2 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <ScrollText className="h-3.5 w-3.5" />
+            Kinh Pāli cốt lõi — có sẵn
+          </h2>
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {staticList.map((s) => (
+              <SuttaCard
+                key={s.id}
+                id={s.id}
+                pct={progressMap.get(`sutta:${s.id}`) ?? 0}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* AI tự nạp dữ liệu khi tìm kiếm không có kết quả */}
       {searchQ && (
@@ -125,6 +155,9 @@ function SuttaCard({ id, pct }: { id: string; pct: number }) {
         <h3 className="mt-1.5 line-clamp-1 text-sm font-semibold group-hover:text-primary">
           {s.title}
         </h3>
+        <p className="truncate text-[11px] italic text-muted-foreground/90">
+          {s.paliTitle}
+        </p>
         <p className="line-clamp-2 flex-1 text-xs leading-relaxed text-muted-foreground">
           {s.summary}
         </p>

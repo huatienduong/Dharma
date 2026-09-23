@@ -2,6 +2,8 @@
 // nguồn Pāḷi chuẩn). Mỗi bài gồm: Pāḷi gốc, dịch nghĩa, luận giải (meaning) và
 // chú giải (atthakathā — bình giải theo truyền thống).
 
+import { SUTTAS_EXTRA } from "./suttas-extra";
+
 export type SuttaSection = {
   heading: string;
   text: string[];
@@ -23,7 +25,7 @@ export type Sutta = {
   chuGiai: SuttaSection[]; // Chú giải (Atthakathā)
 };
 
-export const SUTTAS: Sutta[] = [
+const SUTTAS_CORE: Sutta[] = [
   {
     id: "sn56.11",
     pitaka: "nikaya",
@@ -386,6 +388,11 @@ export const SUTTAS: Sutta[] = [
     ],
   },
 ];
+
+/* KHO KINH TẠNG ĐẦY ĐỦ = 8 bài cốt lõi + các bài kinh quan trọng nhất   */
+/* bổ sung (Đại Niệm Xứ, Niệm Hơi Thở, Lửa Cháy, Kalama, Nhân Duyên,    */
+/* Giáo Thọ Ca La Việt, Pháp Cú, Ví Dụ Cái Cưa, Tiểu Mã Luân…) kèm Pāli. */
+export const SUTTAS: Sutta[] = [...SUTTAS_CORE, ...SUTTAS_EXTRA];
 
 // Lọc nhanh theo Nikaya
 export function suttasByNikaya(nikaya: string): Sutta[] {

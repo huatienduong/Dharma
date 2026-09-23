@@ -329,6 +329,7 @@ export function AIDocArticle({
   kind,
   refId,
   title,
+  pali,
   extra,
   showRelated = true,
   showThumb = true,
@@ -336,6 +337,8 @@ export function AIDocArticle({
   kind: AIDocKind;
   refId: string;
   title?: string;
+  /** Tên/thuật ngữ Pāli của tài liệu — hiển thị ngay dưới tiêu đề */
+  pali?: string;
   extra?: string;
   showRelated?: boolean;
   showThumb?: boolean;
@@ -386,6 +389,7 @@ export function AIDocArticle({
                 {kind === "sutta" ? "Bản kinh đầy đủ" : kind === "vinaya" ? "Luật tạng" : kind === "abhidhamma" ? "Luận tạng — Abhidhamma" : kind === "dictionary" ? "Từ điển Phật học" : kind === "commentary" ? "Chú giải Aṭṭhakathā" : "Luận giải Ṭīkā"}
               </p>
               <h3 className="mt-1 text-base font-bold leading-snug">{docTitle}</h3>
+              {pali && <p className="mt-0.5 text-xs italic text-gold">{pali}</p>}
               <p className="mt-0.5 text-[11px] text-muted-foreground">
                 Biên soạn bởi Trợ lý Phật học · tự nạp dữ liệu khi tra cứu
               </p>
@@ -436,6 +440,7 @@ export function AIDocReader({
   kind,
   refId,
   title,
+  pali,
   extra,
   appTitle,
   appSubtitle,
@@ -445,6 +450,7 @@ export function AIDocReader({
   kind: AIDocKind;
   refId: string;
   title?: string;
+  pali?: string;
   extra?: string;
   appTitle: string;
   appSubtitle?: string;
@@ -459,15 +465,28 @@ export function AIDocReader({
       <div className="mx-auto max-w-3xl">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h1 className="flex items-center gap-2 text-xl font-bold">
-            <ScrollText className="h-5 w-5" />
-            {docTitle}
+            <ScrollText className="h-5 w-5 shrink-0" />
+            <span className="min-w-0">
+              <span className="block truncate">{docTitle}</span>
+              {pali && (
+                <span className="block text-xs font-normal italic text-gold">
+                  {pali}
+                </span>
+              )}
+            </span>
           </h1>
           {headerExtra}
         </div>
 
         {children}
 
-        <AIDocArticle kind={kind} refId={refId} title={title} extra={extra} />
+        <AIDocArticle
+          kind={kind}
+          refId={refId}
+          title={title}
+          pali={pali}
+          extra={extra}
+        />
       </div>
     </AppShell>
   );

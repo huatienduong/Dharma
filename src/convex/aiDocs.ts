@@ -180,6 +180,7 @@ const SYSTEM = `Bạn là học giả Phật học Theravāda (Phật giáo Nguy
    - Liệt kê bắt đầu bằng "• "
    - In đậm "**từ khóa**"
 3. Không bịa trích dẫn. Khi nêu kinh điển phải đúng tên + số hiệu (vd "Majjhima Nikāya 118", "Saṃyutta Nikāya 56.11", "Dhammapada 276").
+3b. BẮT BUỘC kèm CHỮ PĀLI: mỗi tiêu đề mục ghi kèm thuật ngữ Pāli trong ngoặc, vd "## Bối cảnh (Nidāna)"; khi trích lời Phật phải đưa NGUYÊN VĂN PĀLI trong dấu «...» rồi mới đến dòng dịch nghĩa tiếng Việt ngay dưới. Nếu không chắc nguyên văn, chỉ ghi thuật ngữ Pāli, tuyệt đối không bịa câu Pāli.
 4. Người đọc là Phật tử Việt Nam tu tập tại gia — văn phong trang nghiêm, rõ ràng, dễ hiểu, tránh thuật ngữ Sanskrit khi có từ Pāli chuẩn.
 5. Cuối nội dung BẮT BUỘC có một dòng riêng bắt đầu bằng "Nguồn: " nêu rõ kinh điển/tập/trang tham chiếu chính.`;
 
@@ -244,7 +245,7 @@ export const generateIndex = action({
 
     const guides: Record<string, string> = {
       suttas:
-        `Liệt kê 60 bài kinh QUAN TRỌNG NHẤT và PHỔ BIẾN NHẤT của Kinh tạng Pāli (Sutta Piṭaka) theo truyền thống Theravāda mà người Phật tử Việt Nam nên đọc: trải đều Đại bộ (DN), Trung bộ (MN), Tương Ưng (SN), Tăng Chi (AN) và Tiểu bộ (Dhammapada, Sutta Nipāta, Theragāthā...). Ưu tiên kinh nền tảng: Chuyển pháp luân, Đại niệm xứ, Niệm hơi thở, Maṅgala, Raṭana, Sigālovāda, Cūḷakammavibhaṅga, Mahāsatipaṭṭhāna, Cūḷa- và Mahā-parinibbāna, Kinh dạy Sigāla, Mettā Sutta, Karaṇīyametta... Rải đều các nhóm: giáo lý nền tảng, thực hành thiền, đạo đức tại gia.`,
+        `Liệt kê 80 bài kinh QUAN TRỌNG NHẤT và PHỔ BIẾN NHẤT của Kinh tạng Pāli (Sutta Piṭaka) theo truyền thống Theravāda mà người Phật tử Việt Nam nên đọc: trải đều Đại bộ (DN), Trung bộ (MN), Tương Ưng (SN), Tăng Chi (AN) và Tiểu bộ (Khuddaka: Dhammapada, Sutta Nipāta, Udāna, Itivuttaka, Theragāthā, Therīgāthā, Khuddakapāṭha...). Phải có đủ các kinh nền tảng: Chuyển pháp luân (SN 56.11), Vô ngã tướng (SN 22.59), Đại niệm xứ (MN 10 / DN 22), Niệm hơi thở (MN 118), Tiểu kinh Khổ uẩn, Kinh Lửa Cháy (SN 35.28), Kinh Kalama (AN 3.65), Nhân duyên (SN 12.2), Đại kinh Bốn mươi (MN 117), Kinh Ví dụ cái cưa (MN 21), Tiểu Mã Luân (MN 63), Kinh Gia chủ Sigāla (DN 31), Maṅgala, Raṭana, Mettā (Karaṇīyamettā), Pháp Cú (các phẩm Song Yếu, Tâm, Hoa...), Kinh Vô ngã tướng, Cūḷa- và Mahā-parinibbāna, Kinh dạy Rāhula, Kinh Từ bi (Mettā), Abhayarājakumāra, Kinh An trú suối (AN 11.16)... Rải đều các nhóm: giáo lý nền tảng, thực hành thiền, đạo đức tại gia, xã hội-Tăng già.`,
       vinaya:
         `Liệt kê 20 văn bản/thành phần chính của Luật tạng Pāli (Vinaya Piṭaka): Pārājika, Pācittiya, Mahāvagga, Cūḷavagga, Parivāra, Pātimokkha... với mô tả nội dung và số điều luật nếu có.`,
       dictionary:
@@ -319,10 +320,11 @@ ${extra ? `- Ghi chú thêm: ${extra}` : ""}
 Yêu cầu cấu trúc:
 1. "## Danh xưng" — câu mở đầu đúng chuẩn Pāli (Namo Tassa... nếu phù hợp) hoặc bối cảnh (Như vầy tôi nghe...).
 2. "## Bối cảnh" — Đức Phật thuyết tại đâu, cho ai.
-3. "## Kinh văn" — phần kinh chính, chia đoạn ngắn dễ đọc, mỗi đoạn trước có "• Đoạn n:" hoặc đánh số.
-4. "## Ý nghĩa" — luận giải cốt lõi theo truyền thống Theravāda.
+3. "## Kinh văn (Pāli & dịch nghĩa)" — đưa NGUYÊN VĂN PĀLI các đoạn then chốt trong dấu «...», mỗi đoạn Pāli theo sau ngay bởi một dòng dịch nghĩa tiếng Việt; chia đoạn ngắn dễ đọc, mỗi đoạn trước có "• Đoạn n:" hoặc đánh số.
+4. "## Ý nghĩa" — luận giải cốt lõi theo truyền thống Theravāda (nêu tên Pāli trong ngoặc cho mỗi mục).
 5. "## Thực hành" — gợi ý ứng dụng tu tập.
-6. Kết thúc bằng dòng "Nguồn: ..." (nikāya + số hiệu + tham chiếu ATī/BU nếu rõ).`;
+6. "## Thuật ngữ Pāli then chốt" — liệt kê các thuật ngữ Pāli trong kinh kèm nghĩa ngắn.
+7. Kết thúc bằng dòng "Nguồn: ..." (nikāya + số hiệu + tham chiếu ATī/BU nếu rõ).`;
     const { text } = await generateWithFallback(prompt, 4000);
     return text;
   },
@@ -341,10 +343,12 @@ export const generateVinaya = action({
 ${extra ? `- Ghi chú: ${extra}` : ""}
 
 Cấu trúc:
-1. "## Tổng quan" — văn bản này thuộc Piṭaka nào (Pārājika, Pācittiya, Mahāvagga...), phạm vi áp dụng.
-2. "## Nội dung điều luật" — các điều chính, mỗi điều "• Điều n — ...", nêu ý nghĩa và trường hợp vi phạm.
-3. "## Ý nghĩa kỷ luật" — mục đích của giới luật theo lời Đức Phật (svakkhāta...).
-4. Kết thúc bằng "Nguồn: ...".`;
+1. "## Tổng quan (Pāli)" — văn bản này thuộc Piṭaka nào (Pārājika, Pācittiya, Mahāvagga...), nêu tên Pāli của văn bản trong ngoặc, phạm vi áp dụng.
+2. "## Nội dung điều luật (Sikkhāpada)" — các điều chính, mỗi điều "• Điều n — …", nêu tên Pāli của điều, ý nghĩa và trường hợp vi phạm.
+3. "## Pāli & dịch nghĩa" — trích nguyên văn câu Pāli chuẩn của các điều chính (trong dấu «...») rồi dịch nghĩa tiếng Việt ngay dưới.
+4. "## Thuật ngữ Pāli then chốt" — liệt kê thuật ngữ kèm nghĩa ngắn.
+5. "## Ý nghĩa kỷ luật" — mục đích của giới luật theo lời Đức Phật (svakkhāto bhagavatā dhammo...).
+6. Kết thúc bằng "Nguồn: ...".`;
     const { text } = await generateWithFallback(prompt, 4000);
     return text;
   },

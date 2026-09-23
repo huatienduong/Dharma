@@ -138,6 +138,7 @@ export function VinayaReader() {
         kind="vinaya"
         refId={doc.id}
         title={doc.title}
+        pali={doc.subtitle}
         extra={`Văn bản Luật tạng: ${doc.title}${doc.subtitle ? ` (${doc.subtitle})` : ""}.`}
       />
 

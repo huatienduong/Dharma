@@ -224,6 +224,7 @@ export function AbhidhammaReader() {
         kind="abhidhamma"
         refId={id ?? "abhidhamma"}
         title={title}
+        pali={entry?.pali}
         extra={
           entry
             ? `Văn bản Luận tạng: ${entry.title} (${entry.pali})${entry.note ? ` — ${entry.note}` : ""}.`
