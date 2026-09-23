@@ -84,7 +84,7 @@ function getApiKey(): string {
 }
 
 /** Tìm kiếm trực tiếp qua proxy — dùng khi action Convex lỗi. */
-export async function directSearch(q: string, pageToken?: string): Promise<{ items: DirectYtRow[]; nextPageToken?: string }> {
+export async function searchDirect(q: string, pageToken?: string): Promise<{ items: DirectYtRow[]; nextPageToken?: string }> {
   const key = getApiKey();
   if (!key) throw new Error("Chưa có khóa YouTube phía client.");
   const query = q.trim();
@@ -130,7 +130,7 @@ export async function directSearch(q: string, pageToken?: string): Promise<{ ite
 }
 
 /** 50 video đề xuất trực tiếp — nhiều truy vấn lấp đủ như backend. */
-export async function directRelated(excludeId: string): Promise<{ items: DirectYtRow[] }> {
+export async function relatedDirect(excludeId: string, _titleHint: string, targetCount = 50): Promise<{ items: DirectYtRow[] }> {
   const key = getApiKey();
   if (!key) throw new Error("Chưa có khóa YouTube phía client.");
   const queries = [
@@ -143,7 +143,7 @@ export async function directRelated(excludeId: string): Promise<{ items: DirectY
   const collected: DirectYtRow[] = [];
 
   for (const q of queries) {
-    if (collected.length >= 55) break;
+    if (collected.length >= Math.max(targetCount + 5, 55)) break;
     try {
       const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
       for (const [k, v] of Object.entries({

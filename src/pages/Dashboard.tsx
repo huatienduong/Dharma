@@ -51,8 +51,8 @@ export default function Dashboard() {
         await new Promise((r) => setTimeout(r, 800 * (i + 1)));
       }
     }
-    const items = await searchDirect(args.q);
-    return { items };
+    const r = await searchDirect(args.q);
+    return r;
   }, [searchVideos]);
 
   const relatedWithRetry = useCallback(async (args: { youtubeId: string; title: string }, attempts = 2): Promise<SearchResponse> => {
@@ -64,8 +64,8 @@ export default function Dashboard() {
         await new Promise((r) => setTimeout(r, 800 * (i + 1)));
       }
     }
-    const items = await relatedDirect(args.youtubeId, args.title, SUGGESTED_COUNT);
-    return { items };
+    const r = await relatedDirect(args.youtubeId, args.title, SUGGESTED_COUNT);
+    return r;
   }, [relatedVideos]);
 
   useEffect(() => {
