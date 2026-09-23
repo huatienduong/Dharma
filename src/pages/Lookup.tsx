@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { SearchToolbar } from "@/components/SearchToolbar";
-import { fetchJsonViaProxies } from "@/lib/proxyFetch";
 import { Search as SearchIcon, Globe2, Loader2, Sparkles, ExternalLink, BookOpen } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadUiState, saveUiState, trackScroll, restoreScroll } from "@/lib/uiState";
@@ -122,10 +121,10 @@ export default function Lookup() {
   const quickPicks = useMemo(() => (term.trim() ? null : QUICK_TERMS.slice(0, 8)), [term]);
 
   return (
-    <AppShell title="TRA CỨU" subtitle="Tra cứu thuật ngữ Phật học trên Wikipedia — xem trực tiếp trong ứng dụng">
-      {/* Thanh tìm kiếm dùng chung — micro TRÁI, kính lúp PHẢI */}
+    <AppShell title="TRA CỨU WIKIPEDIA" subtitle="Tra cứu thuật ngữ Phật học — xem trực tiếp trong ứng dụng">
+      {/* Thanh tìm kiếm dùng chung — Ở GIỮA, micro TRÁI kính lúp PHẢI */}
       <div className="sticky top-14 z-30 -mx-3 bg-background px-3 py-2.5 shadow-sm sm:-mx-5 sm:px-5">
-        <div className="flex items-center gap-2">
+        <div className="mx-auto flex w-full max-w-2xl items-center gap-2">
           <SearchToolbar
             value={term}
             onChange={setTerm}
@@ -153,13 +152,17 @@ export default function Lookup() {
         </div>
       </div>
 
-      {/* Gợi ý nhanh khi chưa nhập gì */}
+      {/* Gợi ý nhanh khi chưa nhập gì — bố cục đối xứng tập trung */}
       {quickPicks && !article && (
-        <section className="mb-6">
-          <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5" /> Thuật ngữ Phật học hay tra
-          </h2>
-          <div className="flex flex-wrap gap-2">
+        <section className="mt-6 mb-6 text-center">
+          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-border/60 bg-card/60 shadow-sm">
+            <BookOpen className="h-7 w-7 text-primary/60" />
+          </span>
+          <h2 className="mt-4 text-lg font-semibold tracking-tight">Tra thuật ngữ Phật học</h2>
+          <p className="mx-auto mt-1.5 max-w-md text-sm text-muted-foreground">
+            Nhập từ khóa hoặc chọn nhanh thuật ngữ dưới đây — nội dung Wikipedia mở ngay trong ứng dụng.
+          </p>
+          <div className="mx-auto mt-5 flex max-w-xl flex-wrap justify-center gap-2">
             {quickPicks.map((t) => (
               <button
                 key={t}
@@ -291,6 +294,10 @@ export default function Lookup() {
           </button>
         </div>
       )}
+      <p className="mt-8 flex items-start justify-center gap-1.5 text-[11px] leading-relaxed text-muted-foreground/80">
+        <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
+        Nguồn: Wikipedia — dữ liệu tra cứu trực tiếp, cập nhật liên tục.
+      </p>
     </AppShell>
   );
 }
