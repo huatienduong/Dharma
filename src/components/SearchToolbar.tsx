@@ -43,9 +43,8 @@ export function SearchToolbar({
   const bar = (
     <div
       className={cn(
-        "flex h-11 w-full items-center gap-2 rounded-full border border-border/70 bg-muted/50 pl-2 pr-2 transition focus-within:border-primary/40 focus-within:bg-background",
-        (listening || hasText) && "border-primary/45",
-        listening && "ring-2 ring-primary/20",
+        "flex h-12 w-full items-center gap-2 rounded-full bg-card pl-2 pr-2 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_4px_14px_rgba(16,24,40,0.06)] transition focus-within:ring-2 focus-within:ring-primary/25",
+        (listening || hasText) && "ring-2 ring-primary/25",
         className,
       )}
       role="search"

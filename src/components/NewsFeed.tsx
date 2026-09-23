@@ -136,7 +136,7 @@ export function NewsCard({
   return (
     <article
       className={cn(
-        "group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/70 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md",
+        "group flex flex-col overflow-hidden rounded-3xl bg-card shadow-[0_1px_2px_rgba(16,24,40,0.05),0_4px_14px_rgba(16,24,40,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(16,24,40,0.12)]",
         compact && "min-w-[16rem] flex-1 sm:min-w-[18rem]",
       )}
     >
