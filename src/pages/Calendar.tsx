@@ -14,7 +14,7 @@ import {
   Sparkles,
   Sun,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
 const WEEKDAYS = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
@@ -48,6 +48,61 @@ function sameDay(a: Date, b: Date) {
     a.getDate() === b.getDate() &&
     a.getMonth() === b.getMonth() &&
     a.getFullYear() === b.getFullYear()
+  );
+}
+
+/* Đồng hồ ngày giờ chạy trực tiếp — cập nhật mỗi giây, kèm Phật lịch hôm nay */
+function LiveClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const time = now.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  const dateLong = now.toLocaleDateString("vi-VN", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+  const nowBE =
+    now.getMonth() >= 4 ? now.getFullYear() - 543 : now.getFullYear() - 544;
+
+  return (
+    <div className="relative mb-5 overflow-hidden rounded-2xl border border-gold/40 bg-gradient-to-br from-gold/15 via-gold/5 to-transparent p-5 shadow-sm">
+      <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gold/15 blur-2xl" />
+      <div className="relative flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gold">
+            Ngày nay
+          </p>
+          <p className="mt-1 text-4xl font-bold tabular-nums tracking-tight sm:text-5xl">
+            {time}
+          </p>
+          <p className="mt-1.5 text-sm font-medium capitalize text-foreground/85">
+            {dateLong}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Phật lịch B.E. {nowBE}
+          </p>
+        </div>
+        <div className="text-right">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-background/70 px-3 py-1 text-[11px] font-semibold text-gold">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-gold" />
+            </span>
+            Giờ hiện tại
+          </span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -100,6 +155,9 @@ export default function CalendarPage() {
       title="Lịch Phật giáo"
       subtitle="Âm lịch · Can Chi · Phật lịch · lễ hội · ngày Uposatha"
     >
+      {/* Đồng hồ ngày giờ chạy trực tiếp */}
+      <LiveClock />
+
       <div className="grid gap-5 lg:grid-cols-[1fr_19rem]">
         {/* ---------- Lưới lịch ---------- */}
         <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/70 shadow-sm">
