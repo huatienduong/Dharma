@@ -215,7 +215,40 @@ export const upsertTalk = internalMutation({
   },
 });
 
-export const syncLatest = action({
+/* ------------------------------------------------------------------ */
+/* TRUYỀN HÌNH — tìm video PHÁT TRỰC TIẾP đang chạy của một kênh.       */
+/* Livestream của kênh TV không phải 24/7 cố định nên KHÔNG nhúng URL    */
+/* tĩnh: mỗi lần mở trang Truyền hình, tra YouTube Data API              */
+/* (search.evenType=live) để lấy videoId livestream hiện tại rồi nhúng.  */
+/* ------------------------------------------------------------------ */
+
+export const getLive = action({
+  args: { channelId: v.string() },
+  handler: async (_ctx, { channelId }): Promise<{ youtubeId: string; title: string } | null> => {
+    const key = process.env.YOUTUBE_API_KEY;
+    if (!key) throw new Error("Chưa cấu hình YOUTUBE_API_KEY. Hãy thêm khóa YouTube Data API v3 trong phần Keys của dự án.");
+    if (!/^UC[A-Za-z0-9_-]{20,}$/.test(channelId)) throw new Error("channelId không hợp lệ.");
+
+    // 1) Tìm livestream đang phát của kênh (eventType=live)
+    const search = (await ytFetch("search", {
+      part: "snippet", channelId, type: "video", eventType: "live", maxResults: "1", key,
+    })) as SearchList;
+    const liveId = search.items?.[0]?.id?.videoId ?? "";
+    const liveTitle = search.items?.[0]?.snippet?.title ?? "";
+
+    // 2) Không có live → trả về video MỚI NHẤT của kênh (xem như TV延迟)
+    if (!liveId) {
+      const ch = (await ytFetch("channels", { part: "contentDetails", id: channelId, key })) as ChannelList;
+      const uploads = ch.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+      if (!uploads) return null;
+      const latest = (await ytFetch("playlistItems", { part: "snippet", playlistId: uploads, maxResults: "1", key })) as PlaylistItems;
+      const vid = latest.items?.[0]?.snippet?.resourceId?.videoId ?? "";
+      if (!vid) return null;
+      return { youtubeId: vid, title: latest.items?.[0]?.snippet?.title ?? "" };
+    }
+    return { youtubeId: liveId, title: liveTitle };
+  },
+});
   args: { pages: v.optional(v.number()) },
   handler: async (ctx, { pages }) => {
     const key = process.env.YOUTUBE_API_KEY;
