@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/AppShell";
+import { AIMeditationExplorer } from "@/components/AIMeditationExplorer";
 import {
   getMeditation,
   MEDITATIONS,
@@ -144,6 +145,9 @@ function MeditationInner() {
           })}
         </div>
       </section>
+
+      {/* Khám phá thêm — Trợ lý Phật học tự đề xuất + biên soạn bài thiền mới */}
+      <AIMeditationExplorer />
 
       {/* Lịch sử phiên — dữ liệu cục bộ trên thiết bị */}
       {sessions.length > 0 && (
