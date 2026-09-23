@@ -8,6 +8,7 @@ import {
   Flower2,
   Globe2,
   History,
+  Layers,
   Menu,
   MessagesSquare,
   MonitorPlay,
@@ -28,6 +29,7 @@ const NAV_LEFT: { to: string; tKey: TranslateKey; icon: typeof MonitorPlay }[] =
   { to: "/dashboard", tKey: "navTalks", icon: MonitorPlay },
   { to: "/suttas", tKey: "navSuttas", icon: BookOpen },
   { to: "/vinaya", tKey: "navVinaya", icon: Scale },
+  { to: "/abhidhamma", tKey: "navAbhidhamma", icon: Layers },
   { to: "/dictionary", tKey: "navDictionary", icon: BookMarked },
   { to: "/meditation", tKey: "navMeditation", icon: Flower2 },
 ];
@@ -49,6 +51,7 @@ const NAV_BOTTOM: { to: string; tKey: TranslateKey; icon: typeof History }[] = [
 /** Nhãn ngắn gọn cho tab dưới mobile (không hiển thị nhãn dài bị cắt). */
 const BOTTOM_SHORT: Record<string, string> = {
   "/suttas": "Kinh tạng",
+  "/abhidhamma": "Luận tạng",
   "/meditation": "Thiền",
   "/history": "Lịch sử",
   "/assistant": "Trợ lý",

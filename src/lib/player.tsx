@@ -84,6 +84,7 @@ const MINI_ROUTES = [
   "/assistant",
   "/suttas",
   "/vinaya",
+  "/abhidhamma",
   "/meditation",
   "/calendar",
   "/dictionary",

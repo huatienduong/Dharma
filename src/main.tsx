@@ -17,6 +17,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const Suttas = lazy(() => import("./pages/Suttas.tsx"));
 const Vinaya = lazy(() => import("./pages/Vinaya.tsx"));
+const Abhidhamma = lazy(() => import("./pages/Abhidhamma.tsx"));
 const Dictionary = lazy(() => import("./pages/Dictionary.tsx"));
 const CalendarPage = lazy(() => import("./pages/Calendar.tsx"));
 const Meditation = lazy(() => import("./pages/Meditation.tsx"));
@@ -117,6 +118,11 @@ const SuttaReader = lazy(() =>
 const VinayaReader = lazy(() =>
   import("./pages/Vinaya.tsx").then((m) => ({ default: m.VinayaReader })),
 );
+const AbhidhammaReader = lazy(() =>
+  import("./pages/Abhidhamma.tsx").then((m) => ({
+    default: m.AbhidhammaReader,
+  })),
+);
 const MeditationDetail = lazy(() =>
   import("./pages/Meditation.tsx").then((m) => ({
     default: m.MeditationDetail,
@@ -172,6 +178,8 @@ createRoot(document.getElementById("root")!).render(
                 <Route path="/suttas/:id" element={<SuttaReader />} />
                 <Route path="/vinaya" element={<Vinaya />} />
                 <Route path="/vinaya/:id" element={<VinayaReader />} />
+                <Route path="/abhidhamma" element={<Abhidhamma />} />
+                <Route path="/abhidhamma/:id" element={<AbhidhammaReader />} />
                 <Route path="/dictionary" element={<Dictionary />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/meditation" element={<Meditation />} />
