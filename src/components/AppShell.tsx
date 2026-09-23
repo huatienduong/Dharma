@@ -14,8 +14,6 @@ import {
   Library,
   Menu,
   MessagesSquare,
-  MoreHorizontal,
-  Music,
   Newspaper,
   Scale,
   Settings,
@@ -60,18 +58,7 @@ const SETTINGS_ITEM = {
 
 const ALL_ITEMS = [...NAV_LEFT, ...NAV_RIGHT, ...NAV_BOTTOM];
 
-/**
- * 5 TAB DƯỚI CHÍNH THỨC (kiểu mẫu):
- * Trang chủ · Kinh điển · Thiền tập · Pháp âm · Thêm
- * "Pháp âm" mở Trợ lý Phật học (nghe pháp + đàm thoại); "Thêm" mở drawer.
- */
-const BOTTOM_TABS: { to: string; label: string; icon: typeof BookOpen }[] = [
-  { to: "/home", label: "Trang chủ", icon: HomeIcon },
-  { to: "/suttas", label: "Kinh điển", icon: BookOpen },
-  { to: "/meditation", label: "Thiền tập", icon: Flower2 },
-  { to: "/assistant", label: "Pháp âm", icon: Music },
-  { to: "MORE", label: "Thêm", icon: MoreHorizontal },
-];
+/* Tab dưới mobile: duy nhất nút Trang chủ (vẽ trực tiếp trong JSX) */
 
 /** Viết in hoa nhãn tab sidebar (VI/EN đều ổn). */
 function upperLabel(s: string) {
