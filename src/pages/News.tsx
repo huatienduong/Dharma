@@ -2,6 +2,7 @@ import { AppShell } from "@/components/AppShell";
 import {
   fetchBuddhistNews,
   loadNewsCache,
+  loadStaleNewsCache,
   saveNewsCache,
   type NewsItem,
 } from "@/data/news";
@@ -86,21 +87,32 @@ export default function News() {
   }, []);
 
   const load = useCallback(async (force: boolean) => {
+    // Cache còn hạn → dùng ngay, KHÔNG chờ mạng (nạp nhanh)
     if (!force) {
       const cached = loadNewsCache();
       if (cached.length > 0) {
         setItems(cached);
         return;
       }
+      // Có cache cũ → hiện ngay để trang không trống, nạp nền song song
+      const stale = loadStaleNewsCache();
+      if (stale.length > 0) setItems(stale);
     }
     setLoading(true);
     setError(false);
     try {
       const fresh = await fetchBuddhistNews();
+      if (fresh.length === 0) throw new Error("empty");
       setItems(fresh);
       saveNewsCache(fresh);
     } catch {
-      setError(true);
+      // Mọi nguồn lỗi → dùng cache cũ nếu có, chỉ báo lỗi khi hoàn toàn trống
+      const stale = loadStaleNewsCache();
+      if (stale.length > 0) {
+        setItems(stale);
+      } else {
+        setError(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -139,7 +151,7 @@ export default function News() {
 
   return (
     <AppShell
-      title="TIN TỨC PHẬT GIÁO"
+      title="TIN TỨC"
       subtitle="Tin mới nhất về Phật giáo — báo Phật giáo, Giáo hội, chuyên trang Phật học"
       actions={
         <button

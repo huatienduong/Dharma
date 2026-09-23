@@ -2,7 +2,13 @@ import { fetchTextViaProxies } from "@/lib/proxyFetch";
 
 /* ------------------------------------------------------------------ */
 /* TIN TỨC PHẬT GIÁO — tổng hợp RSS từ báo/chuyên trang Phật giáo VN    */
-/* Chỉ đọc (GET công khai), không cần khóa; lọc chặt chủ đề Phật giáo.  */
+/* Chỉ đọc (GET công khai), không cần khóa.                             */
+/* Chiến lược chống trống dữ liệu:                                      */
+/*  1. Nguồn RSS chuyên trang Phật giáo (ưu tiên).                      */
+/*  2. Google News RSS truy vấn "Phật giáo" — luôn có tin mới, CORS     */
+/*     friendly qua proxy.                                              */
+/*  3. Cache localStorage 15 phút + fallback cache CŨ khi mọi nguồn lỗi */
+/*     → trang tin KHÔNG BAO GIỜ trống nếu từng nạp thành công.         */
 /* ------------------------------------------------------------------ */
 
 export type NewsItem = {
@@ -15,19 +21,21 @@ export type NewsItem = {
   image?: string; // ảnh minh họa (nếu RSS cung cấp)
 };
 
-/* Nguồn RSS công khai của các báo/chuyên trang Phật giáo tiếng Việt */
+/* Nguồn RSS công khai — chuyên Phật giáo trước, Google News dự phòng */
 const FEEDS: Array<{ name: string; url: string }> = [
-  { name: "Giáo hội Phật giáo Việt Nam", url: "https://giadinh.net.vn/rss/giao-duc.rss" },
-  { name: "Báo Phật giáo Việt Nam", url: "https://baoangiang.com/rss/home.rss" },
+  { name: "Google News — Phật giáo", url: "https://news.google.com/rss/search?q=Ph%E1%BA%ADt+gi%C3%A1o&hl=vi&gl=VN&ceid=VN:vi" },
+  { name: "Google News — Theravada", url: "https://news.google.com/rss/search?q=theravada+OR+%22ph%C3%A1p+tho%E1%BA%A1i%22+OR+vesak&hl=vi&gl=VN&ceid=VN:vi" },
   { name: "Thư viện Hoa Sen", url: "https://thuvienhoasen.org/rss/all" },
-  { name: "Báo An Ninh Thủ Đô — Đạo Phật", url: "https://anninhthudo.vn/rss/374.antv" },
+  { name: "Báo Phật giáo Việt Nam", url: "https://baoangiang.com/rss/home.rss" },
+  { name: "RFA Tiếng Việt — Phật giáo", url: "https://www.rfa.org/vietnamese/rss.html" },
 ];
 
 /* Từ khóa lọc: chỉ giữ bài thuộc Phật giáo */
 const MUST_HINTS = [
   "phật", "phap", "pháp", "dhamma", "dharma", "theravada", "theravāda", "nguyên thủy",
-  "kinh", "chùa", "tăng", "ni", "tăng ni", "giáo hội", "giao hoi", "vesak", "phật đản",
+  "kinh", "chùa", "tăng", "ni", "giáo hội", "giao hoi", "vesak", "phật đản",
   "uposatha", "bổn sư", "bon su", "tịnh xá", "tinh xa", "thiền", "niết bàn", "bát quan trai",
+  "buddha", "buddhist", "sangha", "tăng đoàn", "hòa thượng", "đại đức", "sư",
 ];
 
 const BLOCKED = [
@@ -57,29 +65,35 @@ function hashId(s: string): string {
 
 /* ------------------------- RSS parsing ------------------------- */
 
-function pickTag(block: string, tag: string): string {
-  // Lấy nội dung của tag đầu tiên trong block (hỗ trợ CDATA)
-  const m = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i").exec(block);
-  if (!m) return "";
-  let txt = m[1];
-  const cdata = /<!\[CDATA\[([\s\S]*?)\]\]>/i.exec(txt);
-  if (cdata) txt = cdata[1];
-  return txt
-    .replace(/<[^>]+>/g, " ")
+function decodeEntities(s: string): string {
+  return s
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
     .replace(/&quot;/gi, '"')
     .replace(/&#39;|&apos;/gi, "'")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
-    .replace(/\s+/g, " ")
-    .trim();
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)));
+}
+
+function pickTag(block: string, tag: string): string {
+  const m = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, "i").exec(block);
+  if (!m) return "";
+  let txt = m[1];
+  const cdata = /<!\[CDATA\[([\s\S]*?)\]\]>/i.exec(txt);
+  if (cdata) txt = cdata[1];
+  return decodeEntities(
+    txt
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
 }
 
 function pickAttr(block: string, tag: string, attr: string): string {
   // Ảnh: <enclosure url="..."> hoặc <media:content url="...">
   const m = new RegExp(`<${tag}[^>]*\\s${attr}="([^"]+)"`, "i").exec(block);
-  return m ? m[1] : "";
+  return m ? decodeEntities(m[1]) : "";
 }
 
 function parseDate(s: string): number {
@@ -90,7 +104,6 @@ function parseDate(s: string): number {
 
 function parseFeed(xml: string, sourceName: string): NewsItem[] {
   const items: NewsItem[] = [];
-  // RSS <item> hoặc Atom <entry>
   const blocks = xml.match(/<(item|entry)[\s\S]*?<\/(item|entry)>/gi) ?? [];
   for (const block of blocks) {
     const title = pickTag(block, "title");
@@ -100,8 +113,11 @@ function parseFeed(xml: string, sourceName: string): NewsItem[] {
       link = pickAttr(block, "link", "href");
     }
     if (!title || !link) continue;
-    // Bỏ qua link có anchor chỉ dẫn thẻ (Atom style có thể trả rỗng)
-    const summary = pickTag(block, "description") || pickTag(block, "summary") || pickTag(block, "content:encoded") || pickTag(block, "content");
+    const summary =
+      pickTag(block, "description") ||
+      pickTag(block, "summary") ||
+      pickTag(block, "content:encoded") ||
+      pickTag(block, "content");
     const pub =
       parseDate(pickTag(block, "pubDate")) ||
       parseDate(pickTag(block, "published")) ||
@@ -111,10 +127,7 @@ function parseFeed(xml: string, sourceName: string): NewsItem[] {
       pickAttr(block, "enclosure", "url") ||
       pickAttr(block, "media:content", "url") ||
       pickAttr(block, "media:thumbnail", "url") ||
-      // rơi về ảnh đầu tiên trong HTML description
       (/<img[^>]*\ssrc="([^"]+)"/i.exec(block)?.[1] ?? "");
-
-    if (!isBuddhistNews(title, summary)) continue;
 
     items.push({
       id: hashId(link),
@@ -129,14 +142,20 @@ function parseFeed(xml: string, sourceName: string): NewsItem[] {
   return items;
 }
 
-/* Nạp song song tất cả nguồn, gộp + sắp mới nhất trước */
+/* Nạp song song tất cả nguồn — nguồn nào thành công dùng nguồn đó. */
+/* Mọi nguồn RSS từ Google News đã lọc sẵn theo từ khóa Phật giáo;   */
+/* nguồn khác áp thêm bộ lọc isBuddhistNews. */
 export async function fetchBuddhistNews(): Promise<NewsItem[]> {
   const results = await Promise.allSettled(
     FEEDS.map(async (f) => {
       const xml = await fetchTextViaProxies(f.url);
-      return parseFeed(xml, f.name);
+      const parsed = parseFeed(xml, f.name);
+      // Google News truy vấn đã lọc sẵn — giữ nguyên; nguồn khác lọc chặt
+      const isCurated = f.name.startsWith("Google News");
+      return isCurated ? parsed : parsed.filter((it) => isBuddhistNews(it.title, it.summary));
     }),
   );
+
   const merged: NewsItem[] = [];
   const seen = new Set<string>();
   for (const r of results) {
@@ -151,13 +170,13 @@ export async function fetchBuddhistNews(): Promise<NewsItem[]> {
   return merged;
 }
 
-/* Cache phiên (sessionStorage) để quay lại trang không phải nạp lại */
+/* Cache localStorage 15 phút + KHÔNG BAO GIỜ xóa cache cũ khi nạp lỗi */
 const CACHE_KEY = "dharma-news-cache";
-const CACHE_TTL = 10 * 60 * 1000; // 10 phút
+const CACHE_TTL = 15 * 60 * 1000; // 15 phút
 
 export function loadNewsCache(): NewsItem[] {
   try {
-    const raw = sessionStorage.getItem(CACHE_KEY);
+    const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as { at: number; items: NewsItem[] };
     if (Date.now() - parsed.at > CACHE_TTL) return [];
@@ -167,9 +186,21 @@ export function loadNewsCache(): NewsItem[] {
   }
 }
 
+/** Cache cũ (không giới hạn TTL) — dùng khi mọi nguồn đều lỗi. */
+export function loadStaleNewsCache(): NewsItem[] {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as { items?: NewsItem[] };
+    return Array.isArray(parsed.items) ? parsed.items : [];
+  } catch {
+    return [];
+  }
+}
+
 export function saveNewsCache(items: NewsItem[]) {
   try {
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), items: items.slice(0, 120) }));
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), items: items.slice(0, 150) }));
   } catch {
     /* bộ nhớ đầy — bỏ qua */
   }
