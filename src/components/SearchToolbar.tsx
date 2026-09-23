@@ -5,8 +5,9 @@ import { cn } from "@/lib/utils";
 
 /**
  * THANH CÔNG CỤ TÌM KIẾM DÙNG CHUNG — đồng bộ toàn ứng dụng.
- * Bố cục: [ô nhập — KHÔNG placeholder] ......... [mic][kính lúp]
- * Hai nút tròn nhỏ nằm cạnh nhau ở PHẢI, viền tròn đồng bộ.
+ * Bố cục: [mic][ô nhập — KHÔNG placeholder] ......... [kính lúp]
+ * • Micro nằm BÊN TRÁI, kính lúp nằm PHẢI — cùng đồng bộ ở mọi trang.
+ * • Nút tròn nhỏ viền tròn đồng bộ; không có văn bản gợi ý trong ô nhập.
  * Bật `sticky` để thanh tìm kiếm DÍNH CỐ ĐỊNH dưới header khi cuộn kết quả.
  */
 export function SearchToolbar({
@@ -42,42 +43,15 @@ export function SearchToolbar({
   const bar = (
     <div
       className={cn(
-        "flex h-11 w-full items-center gap-2 rounded-full border border-border/70 bg-muted/50 pl-4 pr-2 transition focus-within:border-primary/40 focus-within:bg-background",
+        "flex h-11 w-full items-center gap-2 rounded-full border border-border/70 bg-muted/50 pl-2 pr-2 transition focus-within:border-primary/40 focus-within:bg-background",
         (listening || hasText) && "border-primary/45",
         listening && "ring-2 ring-primary/20",
         className,
       )}
       role="search"
     >
-      {/* Ô nhập — KHÔNG có văn bản gợi ý */}
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && onSubmit) {
-            e.preventDefault();
-            onSubmit(value);
-          }
-          if (e.key === "Escape" && hasText) onChange("");
-        }}
-        aria-label={ariaLabel}
-        className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none"
-      />
-
-      {/* Xóa từ khóa — hiện khi có chữ, đứng trước cụm nút */}
-      {hasText && (
-        <button
-          type="button"
-          onClick={() => onChange("")}
-          aria-label="Xóa từ khóa"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 transition hover:bg-accent hover:text-foreground"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      )}
-
-      {/* Cụm nút tròn PHẢI: [mic] [kính lúp] nằm cạnh nhau trong vòng tròn */}
-      <div className="flex shrink-0 items-center gap-1.5">
+      {/* Cụm nút tròn TRÁI: micro nằm bên trái, cạnh ô nhập */}
+      <div className="flex shrink-0 items-center">
         {micSupported ? (
           <button
             type="button"
@@ -101,21 +75,49 @@ export function SearchToolbar({
             )}
           </button>
         ) : null}
-
-        <button
-          type={onSubmit ? "button" : "submit"}
-          onClick={onSubmit ? () => onSubmit(value) : undefined}
-          aria-label="Tìm"
-          className={cn(
-            "flex h-7 w-7 items-center justify-center rounded-full border transition",
-            onSubmit
-              ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground"
-              : "border-border/70 bg-background text-muted-foreground hover:bg-accent hover:text-foreground",
-          )}
-        >
-          <Search className="h-3.5 w-3.5" />
-        </button>
       </div>
+
+      {/* Ô nhập — KHÔNG có văn bản gợi ý */}
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && onSubmit) {
+            e.preventDefault();
+            onSubmit(value);
+          }
+          if (e.key === "Escape" && hasText) onChange("");
+        }}
+        aria-label={ariaLabel}
+        className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none"
+      />
+
+      {/* Xóa từ khóa — hiện khi có chữ, đứng trước kính lúp */}
+      {hasText && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          aria-label="Xóa từ khóa"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground/70 transition hover:bg-accent hover:text-foreground"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+
+      {/* Nút kính lúp — PHẢI cùng, đồng bộ viền tròn */}
+      <button
+        type={onSubmit ? "button" : "submit"}
+        onClick={onSubmit ? () => onSubmit(value) : undefined}
+        aria-label="Tìm"
+        className={cn(
+          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition",
+          onSubmit
+            ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground"
+            : "border-border/70 bg-background text-muted-foreground hover:bg-accent hover:text-foreground",
+        )}
+      >
+        <Search className="h-3.5 w-3.5" />
+      </button>
     </div>
   );
 

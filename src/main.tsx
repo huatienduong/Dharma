@@ -23,6 +23,7 @@ const Meditation = lazy(() => import("./pages/Meditation.tsx"));
 const SettingsPage = lazy(() => import("./pages/Settings.tsx"));
 const Assistant = lazy(() => import("./pages/Assistant.tsx"));
 const Watched = lazy(() => import("./pages/Watched.tsx"));
+const Lookup = lazy(() => import("./pages/Lookup.tsx"));
 
 // Fallback chuyển route — LOGO chính thức, KHÔNG chữ loading
 function RouteLoading() {
@@ -175,6 +176,7 @@ createRoot(document.getElementById("root")!).render(
                 <Route path="/meditation/:id" element={<MeditationDetail />} />
                 <Route path="/assistant" element={<Assistant />} />
                 <Route path="/watched" element={<Watched />} />
+                <Route path="/lookup" element={<Lookup />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>

@@ -165,7 +165,7 @@ export const generateIndex = action({
 
     const guides: Record<string, string> = {
       suttas:
-        `Liệt kê 40 bài kinh QUAN TRỌNG NHẤT và PHỔ BIẾN NHẤT của Kinh tạng Pāli (Sutta Piṭaka) theo truyền thống Theravāda mà người Phật tử Việt Nam nên đọc: trải đều Đại bộ (DN), Trung bộ (MN), Tương Ưng (SN), Tăng Chi (AN) và Tiểu bộ (Dhammapada, Sutta Nipāta...). Ưu tiên kinh nền tảng: Chuyển pháp luân, Đại niệm xứ, Niệm hơi thở, Maṅgala, Raṭana, Sigālovāda, Cūḷakammavibhaṅga...`,
+        `Liệt kê 60 bài kinh QUAN TRỌNG NHẤT và PHỔ BIẾN NHẤT của Kinh tạng Pāli (Sutta Piṭaka) theo truyền thống Theravāda mà người Phật tử Việt Nam nên đọc: trải đều Đại bộ (DN), Trung bộ (MN), Tương Ưng (SN), Tăng Chi (AN) và Tiểu bộ (Dhammapada, Sutta Nipāta, Theragāthā...). Ưu tiên kinh nền tảng: Chuyển pháp luân, Đại niệm xứ, Niệm hơi thở, Maṅgala, Raṭana, Sigālovāda, Cūḷakammavibhaṅga, Mahāsatipaṭṭhāna, Cūḷa- và Mahā-parinibbāna, Kinh dạy Sigāla, Mettā Sutta, Karaṇīyametta... Rải đều các nhóm: giáo lý nền tảng, thực hành thiền, đạo đức tại gia.`,
       vinaya:
         `Liệt kê 20 văn bản/thành phần chính của Luật tạng Pāli (Vinaya Piṭaka): Pārājika, Pācittiya, Mahāvagga, Cūḷavagga, Parivāra, Pātimokkha... với mô tả nội dung và số điều luật nếu có.`,
       dictionary:

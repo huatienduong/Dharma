@@ -6,6 +6,7 @@ import {
   BookMarked,
   CalendarDays,
   Flower2,
+  Globe2,
   History,
   Menu,
   MessagesSquare,
@@ -29,10 +30,16 @@ const NAV_LEFT: { to: string; tKey: TranslateKey; icon: typeof MonitorPlay }[] =
   { to: "/meditation", tKey: "navMeditation", icon: Flower2 },
 ];
 
-/** Nhóm phải: Lịch Phật giáo ở cuối, cạnh Trợ lý Phật học. */
+/** Nhóm phải: Tra cứu — Lịch Phật giáo — Trợ lý Phật học. */
 const NAV_RIGHT: { to: string; tKey: TranslateKey; icon: typeof MessagesSquare }[] = [
-  { to: "/assistant", tKey: "navAssistant", icon: MessagesSquare },
+  { to: "/lookup", tKey: "navLookup", icon: Globe2 },
   { to: "/calendar", tKey: "navCalendar", icon: CalendarDays },
+  { to: "/assistant", tKey: "navAssistant", icon: MessagesSquare },
+];
+
+/** Nhóm cuối: LỊCH SỬ XEM lưu dữ liệu xem video của người dùng. */
+const NAV_BOTTOM: { to: string; tKey: TranslateKey; icon: typeof History }[] = [
+  { to: "/watched", tKey: "navWatched", icon: History },
 ];
 
 const ASSISTANT_LABEL = "Trợ lý Phật học";
@@ -43,7 +50,7 @@ const SETTINGS_ITEM = {
   icon: Settings,
 };
 
-const ALL_ITEMS = [...NAV_LEFT, ...NAV_RIGHT];
+const ALL_ITEMS = [...NAV_LEFT, ...NAV_RIGHT, ...NAV_BOTTOM];
 
 /** Viết in hoa nhãn tab sidebar kiểu YouTube (VI/EN đều ổn). */
 function upperLabel(s: string) {
@@ -148,6 +155,11 @@ export function AppShell({
           <SectionLabel>Khác</SectionLabel>
           <div className="space-y-0.5">
             {NAV_RIGHT.map((item) => (
+              <NavItem key={item.to} item={item} />
+            ))}
+          </div>
+          <div className="space-y-0.5 pt-1">
+            {NAV_BOTTOM.map((item) => (
               <NavItem key={item.to} item={item} />
             ))}
           </div>
@@ -312,6 +324,9 @@ export function AppShell({
               className="h-9 w-9 rounded-full object-cover"
             />
           )}
+          <span className="truncate text-sm font-bold uppercase tracking-[0.18em] text-foreground">
+            DHARMA
+          </span>
         </div>
         {sidebarContent}
       </aside>
@@ -352,8 +367,34 @@ export function AppShell({
       {/* BOTTOM NAV MOBILE (<lg)                                        */}
       {/* ============================================================ */}
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background pb-[env(safe-area-inset-bottom)] lg:hidden">
-        <div className="mx-auto flex max-w-lg items-stretch justify-between px-2">
-          {[NAV_LEFT[0], NAV_LEFT[1], NAV_LEFT[4], NAV_RIGHT[0], NAV_RIGHT[1]].map((item) => {
+        <div className="mx-auto flex max-w-lg items-stretch justify-between px-1">
+          {/* Tab trái nhất: DHARMA — logo + tên ứng dụng, về trang chủ */}
+          <button
+            type="button"
+            onClick={() => go("/dashboard")}
+            aria-current={isActive("/dashboard") ? "page" : undefined}
+            className={cn(
+              "flex flex-1 flex-col items-center gap-0.5 py-2 text-[9px] font-bold tracking-wide transition",
+              isActive("/dashboard") ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            {logo?.url ? (
+              <img
+                src={logo.url}
+                alt=""
+                className="h-5 w-5 shrink-0 rounded-full object-cover"
+              />
+            ) : (
+              <span
+                aria-hidden
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] text-primary"
+              >
+                ☸
+              </span>
+            )}
+            <span className="w-full truncate text-center leading-tight">DHARMA</span>
+          </button>
+          {[NAV_LEFT[1], NAV_LEFT[4], NAV_RIGHT[2], NAV_BOTTOM[0]].map((item) => {
             if (!item) return null;
             const active = isActive(item.to);
             const Icon = item.icon;
