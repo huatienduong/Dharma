@@ -114,7 +114,7 @@ export default function Assistant() {
   const [stalled, setStalled] = useState(false);
   const [image, setImage] = useState<{ base64: string; mime: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  // Logo chính thức (cache cục bộ từ Convex Storage — AppShell cũng dùng cùng khóa)
+  // Logo chính thức (cache cục bộ từ Convex Storage — khớp favicon màn boot)
   const [logoUrl, setLogoUrl] = useState<string | null>(() =>
     typeof localStorage !== "undefined" ? localStorage.getItem("dharma-logo-url") : null,
   );
@@ -538,7 +538,7 @@ export default function Assistant() {
   const isEmpty = messages.length === 0;
 
   /* ================================================================ */
-  /* FULL MÀN HÌNH — không AppShell: cả viewport là Trợ lý Phật học   */
+  /* FULL MÀN HÌNH — cả viewport là Trợ lý Phật học Dharma AI            */
   /* ================================================================ */
   return (
     <div className="fb-bg flex h-[100dvh] flex-col overflow-hidden">

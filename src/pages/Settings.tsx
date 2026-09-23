@@ -39,8 +39,8 @@ export default function Settings() {
     setTheme,
     setNotifications,
   } = useSettings();
-  const submitFeedback = useMutation(api.library.submitFeedback);
   const meta = useQuery(api.library.getAppVersion, {});
+  const submitFeedback = useMutation(api.library.submitFeedback);
 
   // Mục đang mở rộng (accordion) — mỗi mục một thẻ trắng như app hệ thống.
   // Hỗ trợ deep-link từ Trợ lý: /settings?section=about mở sẵn phần Giới thiệu
@@ -190,11 +190,12 @@ export default function Settings() {
         >
           <ArrowLeft />
         </button>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 text-center">
           <p className="truncate text-[15px] font-extrabold uppercase tracking-[0.2em] leading-tight text-foreground">
             DHARMA AI
           </p>
         </div>
+        <span className="h-10 w-10 shrink-0" aria-hidden />
       </header>
 
       <main className="mx-auto w-full max-w-2xl flex-1 px-3 pb-16 pt-5 sm:px-5">
