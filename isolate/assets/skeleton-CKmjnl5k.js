@@ -1,1 +1,0 @@
-import{j as o}from"./framer-motion-C_cneupK.js";import{d as s}from"./index-fxJHhIZn.js";function r({className:t,...e}){return o.jsx("div",{"data-slot":"skeleton",className:s("bg-accent animate-pulse rounded-md",t),...e})}export{r as S};
