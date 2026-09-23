@@ -8,7 +8,6 @@ import {
   Flower2,
   Globe2,
   History,
-  Landmark,
   Menu,
   MessagesSquare,
   MonitorPlay,
