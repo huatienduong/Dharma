@@ -4,10 +4,6 @@ import { ScreenshotGuard } from "@/components/ScreenshotGuard";
 import { ServiceNotice } from "@/components/ServiceNotice";
 import { UpdateChecker } from "@/components/UpdateChecker";
 import { PlayerProvider } from "@/lib/player";
-import {
-  AudioPlayerProvider,
-} from "@/lib/audioPlayer";
-import { AudioBar } from "@/components/AudioBar";
 import { SettingsProvider } from "@/lib/settings";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
@@ -34,6 +30,7 @@ const Lookup = lazy(() => import("./pages/Lookup.tsx"));
 const News = lazy(() => import("./pages/News.tsx"));
 const BuddhistHistory = lazy(() => import("./pages/BuddhistHistory.tsx"));
 const Listen = lazy(() => import("./pages/Listen.tsx"));
+const TV = lazy(() => import("./pages/TV.tsx"));
 
 // Fallback chuyển route — LOGO chính thức, KHÔNG chữ loading
 function RouteLoading() {
@@ -190,7 +187,6 @@ createRoot(document.getElementById("root")!).render(
           <ScreenshotGuard />
           <UpdateChecker />
           <BrowserRouter basename={ROUTER_BASENAME}>
-            <AudioPlayerProvider>
             <PlayerProvider>
             <RouteSyncer />
             {/* Thông báo mất kết nối / nâng cấp hệ thống / sự cố tạm thời */}
@@ -218,13 +214,12 @@ createRoot(document.getElementById("root")!).render(
                 <Route path="/news" element={<News />} />
                 <Route path="/history" element={<BuddhistHistory />} />
                 <Route path="/listen" element={<Listen />} />
+                <Route path="/tv" element={<TV />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
-            <AudioBar />
             </PlayerProvider>
-            </AudioPlayerProvider>
           </BrowserRouter>
         </SettingsProvider>
         <Toaster />

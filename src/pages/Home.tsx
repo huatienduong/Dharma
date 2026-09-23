@@ -17,6 +17,7 @@ import {
   MonitorPlay,
   RefreshCw,
   Scale,
+  Tv,
 } from "lucide-react";
 import { DHAMMAPADA, type DhpVerse } from "@/data/dhammapada";
 import { useQuery } from "convex/react";
@@ -33,6 +34,7 @@ const MAIN_ITEMS: {
   { to: "/vinaya", label: "Luật", icon: Scale },
   { to: "/abhidhamma", label: "Luận", icon: Layers },
   { to: "/dashboard", label: "Pháp thoại", icon: MonitorPlay },
+  { to: "/tv", label: "Truyền hình", icon: Tv },
   { to: "/meditation", label: "Thiền", icon: Flower2 },
   { to: "/dictionary", label: "Từ điển", icon: BookMarked },
   { to: "/calendar", label: "Phật lịch", icon: CalendarDays },

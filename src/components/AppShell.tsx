@@ -16,6 +16,7 @@ import {
   MonitorPlay,
   Scale,
   Settings,
+  Tv,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -33,6 +34,7 @@ const NAV_ITEMS: { to: string; tKey: TranslateKey; icon: typeof BookOpen }[] = [
   { to: "/vinaya", tKey: "navVinaya", icon: Scale },
   { to: "/abhidhamma", tKey: "navAbhidhamma", icon: Layers },
   { to: "/dashboard", tKey: "navTalks", icon: MonitorPlay },
+  { to: "/tv", tKey: "navTV", icon: Tv },
   { to: "/meditation", tKey: "navMeditation", icon: Flower2 },
   { to: "/dictionary", tKey: "navDictionary", icon: BookMarked },
   { to: "/calendar", tKey: "navCalendar", icon: CalendarDays },
