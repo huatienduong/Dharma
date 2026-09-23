@@ -1,45 +1,44 @@
 import { AppShell } from "@/components/AppShell";
+import { api } from "@/convex/_generated/api";
 import { DockPlayer } from "@/lib/player";
 import { restoreScroll, trackScroll } from "@/lib/uiState";
+import { APP_DEVELOPER, APP_NAME, APP_VERSION } from "@/lib/version";
+import { cn } from "@/lib/utils";
 import {
   BookMarked,
   BookOpen,
-  ChevronRight,
+  Bot,
+  CalendarDays,
   Flower2,
-  Headphones,
+  Globe2,
+  History,
   Hourglass,
   Layers,
-  Library,
   MonitorPlay,
-  Music,
-  Newspaper,
+  RefreshCw,
   Scale,
-  History,
 } from "lucide-react";
 import { DHAMMAPADA, type DhpVerse } from "@/data/dhammapada";
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "convex/react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
-/* 8 ô chức năng chính thức (kiểu mẫu) */
+/* Các mục chức năng chính thức trên trang chủ — Kinh · Luật · Luận cạnh nhau */
 const MAIN_ITEMS: {
   to: string;
   label: string;
   icon: typeof BookOpen;
 }[] = [
-  { to: "/suttas", label: "Kinh điển\nTheravāda", icon: BookOpen },
-  { to: "/listen", label: "Nghe kinh\n& Nhạc", icon: Music },
-  { to: "/meditation", label: "Thiền tập", icon: Flower2 },
-  { to: "/dictionary", label: "Hướng dẫn\nthực hành", icon: BookMarked },
+  { to: "/suttas", label: "Kinh", icon: BookOpen },
+  { to: "/vinaya", label: "Luật", icon: Scale },
+  { to: "/abhidhamma", label: "Luận", icon: Layers },
   { to: "/dashboard", label: "Pháp thoại", icon: MonitorPlay },
-  { to: "/calendar", label: "Lịch tu học", icon: Library },
-  { to: "/vinaya", label: "Luật tạng", icon: Scale },
-  { to: "/abhidhamma", label: "Luận tạng", icon: Layers },
-];
-
-/* Mục phụ — thẻ nhỏ dưới banner */
-const EXTRA_ITEMS: { to: string; label: string; icon: typeof Library }[] = [
-  { to: "/news", label: "Tin tức", icon: Newspaper },
-  { to: "/history", label: "Lịch sử PG", icon: Hourglass },
+  { to: "/meditation", label: "Thiền", icon: Flower2 },
+  { to: "/dictionary", label: "Từ điển", icon: BookMarked },
+  { to: "/calendar", label: "Phật lịch", icon: CalendarDays },
+  { to: "/lookup", label: "Tra cứu", icon: Globe2 },
+  { to: "/assistant", label: "Trợ lý", icon: Bot },
+  { to: "/history", label: "Lịch sử\nPhật giáo", icon: Hourglass },
   { to: "/watched", label: "Lịch sử xem", icon: History },
 ];
 
@@ -75,15 +74,13 @@ export default function Home() {
     restoreScroll("home");
   }, []);
 
-  const goSuttas = useCallback(() => navigate("/suttas"), [navigate]);
-
   return (
     <AppShell title="Trang chủ" hideTitle>
       <div className="-mx-3 mb-4 bg-background px-3 sm:-mx-5 sm:px-5">
         <DockPlayer />
       </div>
 
-      {/* ---------------- HERO: ảnh Phật + logo + tagline ---------------- */}
+      {/* ---------------- HERO: ảnh Đức Phật Thích Ca ---------------- */}
       <section className="ds-card relative mb-4 overflow-hidden">
         <div className="relative h-52 w-full overflow-hidden bg-muted sm:h-64">
           <img
@@ -99,17 +96,6 @@ export default function Home() {
             aria-hidden
             className="absolute inset-0 bg-gradient-to-r from-[#3f3221]/70 via-[#3f3221]/35 to-transparent"
           />
-          <div className="absolute inset-0 flex flex-col items-start justify-center px-6">
-            <span aria-hidden className="text-3xl text-gold drop-shadow">
-              ☸
-            </span>
-            <p className="mt-1 text-4xl font-extrabold tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
-              Dharma
-            </p>
-            <p className="mt-1 text-[13px] font-medium text-white/90 drop-shadow">
-              Hiểu Phật Pháp · Sống An Lạc
-            </p>
-          </div>
         </div>
       </section>
 
@@ -135,7 +121,7 @@ export default function Home() {
         </blockquote>
       </section>
 
-      {/* -------- Lưới 8 ô chức năng chính thức -------- */}
+      {/* -------- Lưới các mục chức năng chính thức -------- */}
       <section className="ds-card mb-4 px-3 py-6">
         <div className="grid grid-cols-3 gap-y-6 sm:grid-cols-4">
           {MAIN_ITEMS.map((item) => {
@@ -159,103 +145,79 @@ export default function Home() {
         </div>
       </section>
 
-      {/* -------- Banner "Sống chánh niệm là sống tự do" -------- */}
-      <button
-        type="button"
-        onClick={() => navigate("/meditation")}
-        className="group relative mb-6 block w-full overflow-hidden rounded-[1.75rem] text-left shadow-[0_6px_24px_rgba(63,50,33,0.18)] transition active:scale-[0.99]"
-      >
-        <div className="relative flex items-center justify-between bg-gradient-to-r from-[#8a6420] via-[#a67c2e] to-[#c49a4a] px-6 py-6">
-          <span className="pointer-events-none absolute -right-4 -top-8 text-[6.5rem] leading-none text-white/10">
-            ☸
-          </span>
-          <span className="min-w-0">
-            <span className="block text-lg font-bold leading-snug text-white drop-shadow-sm">
-              Sống chánh niệm
-            </span>
-            <span className="block text-lg font-bold leading-snug text-white/95 drop-shadow-sm">
-              là sống tự do
-            </span>
-          </span>
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur transition group-hover:bg-white/30">
-            <ChevronRight className="h-5 w-5" />
-          </span>
-        </div>
-      </button>
-
-      {/* -------- Pháp thoại hôm nay + các mục phụ -------- */}
-      <section className="ds-card mb-4 p-4">
-        <header className="mb-3 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-[15px] font-bold tracking-tight">
-            <span className="text-gold">☸</span> Pháp thoại hôm nay
-          </h2>
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard")}
-            className="inline-flex items-center gap-0.5 text-xs font-medium text-muted-foreground transition hover:text-primary"
-          >
-            Xem tất cả <ChevronRight className="h-3.5 w-3.5" />
-          </button>
-        </header>
-        <button
-          type="button"
-          onClick={() => navigate("/dashboard")}
-          className="flex w-full items-center gap-3.5 rounded-2xl bg-secondary/60 p-3 text-left transition hover:bg-secondary active:scale-[0.99]"
-        >
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-gold/30 to-gold/10 text-gold">
-            <MonitorPlay className="h-5 w-5" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold">
-              Kho pháp thoại Theravāda
-            </span>
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              Xem và nghe pháp thoại mới nhất
-            </span>
-          </span>
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </button>
-
-        {/* Nút sang trang Nghe — kinh tụng + nhạc thiền */}
-        <button
-          type="button"
-          onClick={() => navigate("/listen")}
-          className="mt-2.5 flex w-full items-center gap-3.5 rounded-2xl bg-secondary/60 p-3 text-left transition hover:bg-secondary active:scale-[0.99]"
-        >
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-gold/30 to-gold/10 text-gold">
-            <Headphones className="h-5 w-5" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold">
-              Nghe kinh & nhạc thiền
-            </span>
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              Tụng Pāli và chuông thiền phát trực tiếp
-            </span>
-          </span>
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </button>
-
-        {/* Các mục phụ — thẻ nhỏ đồng bộ */}
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          {EXTRA_ITEMS.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.to}
-                type="button"
-                onClick={() => navigate(item.to)}
-                className="flex flex-col items-center gap-1.5 rounded-2xl bg-secondary/50 px-1 py-3 text-center transition hover:bg-secondary active:scale-[0.98]"
-              >
-                <Icon className="h-[18px] w-[18px] text-gold" strokeWidth={1.8} />
-                <span className="text-[10px] font-medium leading-tight text-foreground/80">
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+      <HomeFooter />
     </AppShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Chân trang: nhà phát triển + phiên bản + kiểm tra cập nhật          */
+/* (đồng bộ nội dung với mục "Giới thiệu" trong Cài đặt)               */
+/* ------------------------------------------------------------------ */
+
+function compareVersions(a: string, b: string): number {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] ?? 0) > (pb[i] ?? 0)) return 1;
+    if ((pa[i] ?? 0) < (pb[i] ?? 0)) return -1;
+  }
+  return 0;
+}
+
+function HomeFooter() {
+  const meta = useQuery(api.library.getAppVersion, {});
+  const [checking, setChecking] = useState(false);
+  const [checked, setChecked] = useState(false);
+
+  const latest = meta?.latestVersion ?? APP_VERSION;
+  const hasUpdate = compareVersions(latest, APP_VERSION) > 0;
+
+  const check = () => {
+    setChecking(true);
+    window.setTimeout(() => {
+      setChecking(false);
+      setChecked(true);
+    }, 600);
+  };
+
+  return (
+    <footer className="mb-6 px-2 pb-2 text-center">
+      <p className="text-[13px] font-semibold text-foreground/90">
+        Nhà phát triển ứng dụng: {APP_DEVELOPER}
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        {APP_NAME} · Phiên bản {APP_VERSION}
+      </p>
+
+      <div className="mt-3 flex flex-col items-center gap-2">
+        <button
+          type="button"
+          onClick={check}
+          disabled={checking}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-4 py-1.5 text-xs font-semibold text-foreground/85 transition hover:bg-accent disabled:opacity-60"
+        >
+          <RefreshCw
+            className={cn("h-3.5 w-3.5", checking && "animate-spin")}
+          />
+          {checking ? "Đang kiểm tra…" : "Kiểm tra cập nhật"}
+        </button>
+
+        {checked &&
+          (hasUpdate ? (
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground transition hover:opacity-90"
+            >
+              Có phiên bản mới {latest} — Tải bản mới
+            </button>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              Bạn đang dùng phiên bản mới nhất.
+            </p>
+          ))}
+      </div>
+    </footer>
   );
 }

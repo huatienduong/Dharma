@@ -14,9 +14,7 @@ import {
   Layers,
   Library,
   Menu,
-  MoreHorizontal,
-  Music,
-  Newspaper,
+  MonitorPlay,
   Scale,
   Settings,
   X,
@@ -27,30 +25,22 @@ import { useQuery } from "convex/react";
 import { anyApi } from "convex/server";
 import { cacheLogoClientSide } from "@/lib/appLogoCache";
 
-/** Nhóm trái: nội dung học liệu (sidebar desktop + drawer). */
-const NAV_LEFT: { to: string; tKey: TranslateKey; icon: typeof BookOpen }[] = [
+/** Thứ tự chính thức — đồng bộ với lưới mục trên trang chủ:
+ *  Kinh · Luật · Luận cạnh nhau, sau đó Pháp thoại · Thiền · Từ điển ·
+ *  Phật lịch · Tra cứu · Trợ lý · Lịch sử Phật giáo · Lịch sử xem. */
+const NAV_ITEMS: { to: string; tKey: TranslateKey; icon: typeof BookOpen }[] = [
   { to: "/home", tKey: "navHome", icon: HomeIcon },
-  { to: "/dashboard", tKey: "navTalks", icon: Library },
   { to: "/suttas", tKey: "navSuttas", icon: BookOpen },
   { to: "/vinaya", tKey: "navVinaya", icon: Scale },
   { to: "/abhidhamma", tKey: "navAbhidhamma", icon: Layers },
-  { to: "/dictionary", tKey: "navDictionary", icon: BookMarked },
+  { to: "/dashboard", tKey: "navTalks", icon: MonitorPlay },
   { to: "/meditation", tKey: "navMeditation", icon: Flower2 },
-  { to: "/listen", tKey: "navMeditation" as TranslateKey, icon: Music },
-];
-
-/** Nhóm phải: Tra cứu — Tin tức — Lịch sử — Lịch Phật giáo — Trợ lý Phật học. */
-const NAV_RIGHT: { to: string; tKey: TranslateKey; icon: typeof Globe2 }[] = [
-  { to: "/lookup", tKey: "navLookup", icon: Globe2 },
-  { to: "/news", tKey: "navNews", icon: Newspaper },
-  { to: "/history", tKey: "navBuddhistHistory", icon: HistoryIcon },
+  { to: "/dictionary", tKey: "navDictionary", icon: BookMarked },
   { to: "/calendar", tKey: "navCalendar", icon: CalendarDays },
+  { to: "/lookup", tKey: "navLookup", icon: Globe2 },
   { to: "/assistant", tKey: "navAssistant", icon: Bot },
-];
-
-/** Nhóm cuối: LỊCH SỬ XEM lưu dữ liệu xem video của người dùng. */
-const NAV_BOTTOM: { to: string; tKey: TranslateKey; icon: typeof Hourglass }[] = [
-  { to: "/watched", tKey: "navWatched", icon: Hourglass },
+  { to: "/history", tKey: "navBuddhistHistory", icon: Hourglass },
+  { to: "/watched", tKey: "navWatched", icon: HistoryIcon },
 ];
 
 const SETTINGS_ITEM = {
@@ -59,20 +49,7 @@ const SETTINGS_ITEM = {
   icon: Settings,
 };
 
-const ALL_ITEMS = [...NAV_LEFT, ...NAV_RIGHT, ...NAV_BOTTOM];
-
-/**
- * 5 TAB DƯỚI CHÍNH THỨC:
- * Trang chủ · Kinh điển · Thiền tập · Nghe · Thêm
- * "Thêm" mở drawer chứa các mục còn lại.
- */
-const BOTTOM_TABS: { to: string; label: string; icon: typeof BookOpen }[] = [
-  { to: "/home", label: "Trang chủ", icon: HomeIcon },
-  { to: "/suttas", label: "Kinh điển", icon: BookOpen },
-  { to: "/meditation", label: "Thiền tập", icon: Flower2 },
-  { to: "/listen", label: "Nghe", icon: Music },
-  { to: "MORE", label: "Thêm", icon: MoreHorizontal },
-];
+const ALL_ITEMS = [...NAV_ITEMS, SETTINGS_ITEM];
 
 export function AppShell({
   title,
@@ -91,7 +68,7 @@ export function AppShell({
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useSettings();
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [railOpen, setRailOpen] = useState(true);
 
   // Ảnh app chính thức — chủ app tải lên Convex Storage.
@@ -105,19 +82,19 @@ export function AppShell({
       ? location.pathname === "/home" || location.pathname === "/"
       : location.pathname.startsWith(to);
 
-  // Đóng "Thêm" khi điều hướng
+  // Đóng menu khi điều hướng
   useEffect(() => {
-    setMoreOpen(false);
+    setMenuOpen(false);
   }, [location.pathname]);
 
-  // Khóa cuộn nền khi drawer mở
+  // Khóa cuộn nền khi menu mở
   useEffect(() => {
-    if (!moreOpen) return;
+    if (!menuOpen) return;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [moreOpen]);
+  }, [menuOpen]);
 
   const go = (to: string) => navigate(to);
 
@@ -126,8 +103,7 @@ export function AppShell({
   const NavItem = ({ item }: { item: (typeof ALL_ITEMS)[number] }) => {
     const active = isActive(item.to);
     const Icon = item.icon;
-    const label =
-      item.to === "/listen" ? "Nghe" : t(item.tKey);
+    const label = t(item.tKey);
     return (
       <button
         type="button"
@@ -162,31 +138,13 @@ export function AppShell({
   );
 
   const sidebarContent = (
-    <>
-      <nav className="flex-1 overflow-y-auto px-2.5 pb-6 pt-1">
-        <div className="space-y-1">
-          {NAV_LEFT.map((item) => (
-            <NavItem key={item.to} item={item} />
-          ))}
-        </div>
-
-        <div className="mt-3 border-t border-border/60 pt-1">
-          <SectionLabel>Khác</SectionLabel>
-          <div className="space-y-1">
-            {NAV_RIGHT.map((item) => (
-              <NavItem key={item.to} item={item} />
-            ))}
-          </div>
-          <div className="space-y-1 pt-1">
-            {NAV_BOTTOM.map((item) => (
-              <NavItem key={item.to} item={item} />
-            ))}
-          </div>
-        </div>
-      </nav>
-
-      <div className="mt-auto border-t border-border/60 p-3" />
-    </>
+    <nav className="flex-1 overflow-y-auto px-2.5 pb-6 pt-1">
+      <div className="space-y-1">
+        {NAV_ITEMS.map((item) => (
+          <NavItem key={item.to} item={item} />
+        ))}
+      </div>
+    </nav>
   );
 
   return (
@@ -201,7 +159,7 @@ export function AppShell({
             type="button"
             onClick={() => {
               if (window.innerWidth >= 1024) setRailOpen((v) => !v);
-              else setMoreOpen(true);
+              else setMenuOpen(true);
             }}
             className="flex h-10 w-10 items-center justify-center rounded-full text-foreground transition hover:bg-accent"
             aria-label="Menu"
@@ -272,7 +230,7 @@ export function AppShell({
             {ALL_ITEMS.map((item) => {
               const active = isActive(item.to);
               const Icon = item.icon;
-              const label = item.to === "/listen" ? "Nghe" : t(item.tKey);
+              const label = t(item.tKey);
               return (
                 <button
                   key={item.to}
@@ -307,21 +265,21 @@ export function AppShell({
       </aside>
 
       {/* ============================================================ */}
-      {/* DRAWER "THÊM" MOBILE (<lg) — đầy đủ mọi mục                     */}
+      {/* DRAWER MENU MOBILE (<lg) — đầy đủ mọi mục                        */}
       {/* ============================================================ */}
-      {moreOpen && (
+      {menuOpen && (
         <div
           className="fixed inset-0 z-[60] bg-black/40 lg:hidden"
-          onClick={() => setMoreOpen(false)}
+          onClick={() => setMenuOpen(false)}
           aria-hidden
         />
       )}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-[61] flex w-72 max-w-[85vw] flex-col bg-background shadow-2xl transition-transform duration-300 lg:hidden",
-          moreOpen ? "translate-x-0" : "-translate-x-full",
+          menuOpen ? "translate-x-0" : "-translate-x-full",
         )}
-        aria-hidden={!moreOpen}
+        aria-hidden={!menuOpen}
       >
         <div className="flex h-14 shrink-0 items-center gap-2 px-3">
           {logo?.url ? (
@@ -385,35 +343,33 @@ export function AppShell({
       </div>
 
       {/* ============================================================ */}
-      {/* BOTTOM NAV — 5 tab chính thức                                   */}
+      {/* BOTTOM NAV — duy nhất nút Trang chủ                              */}
       {/* ============================================================ */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/50 bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
-        <div className="mx-auto flex max-w-lg items-stretch justify-between px-2">
-          {BOTTOM_TABS.map((tab) => {
-            const isMore = tab.to === "MORE";
-            const active = !isMore && isActive(tab.to);
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.label}
-                type="button"
-                onClick={() => (isMore ? setMoreOpen(true) : go(tab.to))}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition",
-                  active ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                <Icon
-                  className={cn(
-                    "h-[22px] w-[22px]",
-                    active && "drop-shadow-[0_2px_6px_rgba(166,124,46,0.4)]",
-                  )}
-                />
-                <span className="leading-tight">{tab.label}</span>
-              </button>
-            );
-          })}
+      <nav
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-40 bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden",
+          !showBottomNav && "hidden",
+        )}
+      >
+        <div className="mx-auto flex max-w-lg items-stretch justify-center px-2">
+          <button
+            type="button"
+            onClick={() => go("/home")}
+            aria-current={isActive("/home") ? "page" : undefined}
+            className={cn(
+              "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition",
+              isActive("/home") ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            <HomeIcon
+              className={cn(
+                "h-[22px] w-[22px]",
+                isActive("/home") &&
+                  "drop-shadow-[0_2px_6px_rgba(166,124,46,0.4)]",
+              )}
+            />
+            <span className="leading-tight">Trang chủ</span>
+          </button>
         </div>
       </nav>
     </div>
