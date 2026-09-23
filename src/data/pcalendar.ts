@@ -222,14 +222,12 @@ export function canChiYear(lunarYear: number): string {
 /* Phật lịch (Buddhist Era)                                            */
 /* ------------------------------------------------------------------ */
 
-// Phật lịch được tính từ ngày Phật nhập Niết-bàn. Truyền thống Theravāda
-// (Thái Lan, Sri Lanka, Lào, Campuchia) bắt đầu Phật lịch tại Vesak — nên
-// trước Vesak của năm dương lịch, Phật lịch = dương lịch - 544; sau Vesak
-// thì = dương lịch - 543.
+// Phật lịch (B.E.) theo truyền thống Việt Nam — do Hòa thượng Thích
+// Thiện Siếu đề xuất và Đại hội Phật giáo Tịnh giới Trung Việt 1957 thông
+// qua: Phật lịch = dương lịch + 544 cho TOÀN BỘ năm dương lịch (năm 0
+// bắt đầu từ năm Phật nhập diệt −623). Năm 2026 dương lịch → B.E. 2570.
 export function buddhistEra(lunar: LunarDate): number {
-  const isAfterVesak =
-    lunar.month > 4 || (lunar.month === 4 && lunar.day >= 15);
-  return lunar.year - (isAfterVesak ? 543 : 544);
+  return lunar.year + 544;
 }
 
 /* ------------------------------------------------------------------ */

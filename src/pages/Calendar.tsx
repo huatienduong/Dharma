@@ -51,7 +51,124 @@ function sameDay(a: Date, b: Date) {
   );
 }
 
-/* Đồng hồ ngày giờ chạy trực tiếp — cập nhật mỗi giây, kèm Phật lịch hôm nay */
+/* ------------------------------------------------------------------ */
+/* ĐỒNG HỒ ĐỒ HỌA — mặt analog 12 số kiểu sa-bành Phật lịch, kim       */
+/* giờ/phút/giây mượt, vành khánh vàng, kèm Phật lịch hôm nay.         */
+/* ------------------------------------------------------------------ */
+
+function ClockDial({ now }: { now: Date }) {
+  const h = now.getHours() % 12;
+  const m = now.getMinutes();
+  const s = now.getSeconds();
+  const ms = now.getMilliseconds();
+  // Kim giây mượt (quay liên tục theo ms), kim phút/giờ nhích mượt theo
+  const secDeg = (s + ms / 1000) * 6;
+  const minDeg = (m + s / 60) * 6;
+  const hourDeg = (h + m / 60) * 30;
+
+  return (
+    <svg
+      viewBox="0 0 200 200"
+      className="h-40 w-40 shrink-0 drop-shadow-[0_6px_18px_rgba(180,83,9,0.25)] sm:h-48 sm:w-48"
+      role="img"
+      aria-label={`Đồng hồ ${now.getHours()}:${String(m).padStart(2, "0")}`}
+    >
+      {/* Vành khánh vàng kép */}
+      <defs>
+        <linearGradient id="dial-rim" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#f0a04b" />
+          <stop offset="50%" stopColor="#b45309" />
+          <stop offset="100%" stopColor="#d97706" />
+        </linearGradient>
+        <radialGradient id="dial-face" cx="38%" cy="30%">
+          <stop offset="0%" stopColor="#fffdf5" />
+          <stop offset="100%" stopColor="#f3e5c8" />
+        </radialGradient>
+      </defs>
+      <circle cx="100" cy="100" r="98" fill="url(#dial-rim)" />
+      <circle cx="100" cy="100" r="90" fill="url(#dial-face)" />
+      <circle cx="100" cy="100" r="90" fill="none" stroke="#b45309" strokeOpacity="0.25" strokeWidth="1" />
+
+      {/* 60 vạch phút — 12 vạch giờ đậm hơn */}
+      {Array.from({ length: 60 }).map((_, i) => {
+        const big = i % 5 === 0;
+        const angle = (i * 6 * Math.PI) / 180;
+        const r1 = big ? 76 : 82;
+        const r2 = 86;
+        return (
+          <line
+            key={i}
+            x1={100 + r1 * Math.sin(angle)}
+            y1={100 - r1 * Math.cos(angle)}
+            x2={100 + r2 * Math.sin(angle)}
+            y2={100 - r2 * Math.cos(angle)}
+            stroke="#b45309"
+            strokeOpacity={big ? 0.85 : 0.3}
+            strokeWidth={big ? 2.4 : 1}
+            strokeLinecap="round"
+          />
+        );
+      })}
+
+      {/* 12 số La Mã → dùng số Ả Rập to hơn cho dễ đọc */}
+      {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((n) => {
+        const angle = (n * 30 * Math.PI) / 180;
+        const r = 62;
+        return (
+          <text
+            key={n}
+            x={100 + r * Math.sin(angle)}
+            y={100 - r * Math.cos(angle) + 5.5}
+            textAnchor="middle"
+            fontSize="15"
+            fontWeight="700"
+            fill="#5f4630"
+          >
+            {n}
+          </text>
+        );
+      })}
+
+      {/* Biểu tượng Phật pháp ở tâm trên — bánh xe 8 nan hoa nhỏ */}
+      <g transform="translate(100 34)">
+        <circle r="8.5" fill="none" stroke="#b45309" strokeWidth="1.6" />
+        {Array.from({ length: 8 }).map((_, i) => {
+          const a = (i * 45 * Math.PI) / 180;
+          return (
+            <line
+              key={i}
+              x1="0"
+              y1="0"
+              x2={7.4 * Math.sin(a)}
+              y2={-7.4 * Math.cos(a)}
+              stroke="#b45309"
+              strokeWidth="1.2"
+            />
+          );
+        })}
+      </g>
+
+      {/* Kim giờ */}
+      <g transform={`rotate(${hourDeg} 100 100)`}>
+        <line x1="100" y1="100" x2="100" y2="56" stroke="#2b1d12" strokeWidth="5" strokeLinecap="round" />
+      </g>
+      {/* Kim phút */}
+      <g transform={`rotate(${minDeg} 100 100)`}>
+        <line x1="100" y1="100" x2="100" y2="34" stroke="#2b1d12" strokeWidth="3.2" strokeLinecap="round" />
+      </g>
+      {/* Kim giây — màu cam đất, có đối trọng */}
+      <g transform={`rotate(${secDeg} 100 100)`}>
+        <line x1="100" y1="112" x2="100" y2="30" stroke="#b45309" strokeWidth="1.8" strokeLinecap="round" />
+        <circle cx="100" cy="30" r="2.6" fill="#b45309" />
+      </g>
+      {/* Trục tâm */}
+      <circle cx="100" cy="100" r="5" fill="#2b1d12" />
+      <circle cx="100" cy="100" r="2" fill="#f3e5c8" />
+    </svg>
+  );
+}
+
+/* Đồng hồ chạy trực tiếp — cập nhật mỗi giây, kèm Phật lịch hôm nay */
 function LiveClock() {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -71,14 +188,17 @@ function LiveClock() {
     month: "2-digit",
     year: "numeric",
   });
-  const nowBE =
-    now.getMonth() >= 4 ? now.getFullYear() - 543 : now.getFullYear() - 544;
+  // Phật lịch Việt Nam: dương lịch + 544 (B.E. 2570 cho năm 2026)
+  const nowBE = now.getFullYear() + 544;
 
   return (
-    <div className="relative mb-5 overflow-hidden rounded-2xl border border-gold/40 bg-gradient-to-br from-gold/15 via-gold/5 to-transparent p-5 shadow-sm">
+    <div className="relative mb-5 overflow-hidden rounded-3xl border border-gold/40 bg-gradient-to-br from-gold/15 via-gold/5 to-transparent p-5 shadow-sm">
       <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gold/15 blur-2xl" />
-      <div className="relative flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
+      <div className="relative flex flex-wrap items-center justify-between gap-5">
+        {/* Mặt đồng hồ đồ họa */}
+        <ClockDial now={now} />
+
+        <div className="min-w-0 flex-1">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gold">
             Ngày nay
           </p>
@@ -89,11 +209,9 @@ function LiveClock() {
             {dateLong}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Phật lịch B.E. {nowBE}
+            Phật lịch B.E. {nowBE} · Việt Nam GMT+7
           </p>
-        </div>
-        <div className="text-right">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-background/70 px-3 py-1 text-[11px] font-semibold text-gold">
+          <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-background/70 px-3 py-1 text-[11px] font-semibold text-gold">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-gold opacity-60" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-gold" />
@@ -132,7 +250,8 @@ export default function CalendarPage() {
     return FESTIVALS.filter((f) => f.major).slice(0, 4);
   }, []);
 
-  const beYear = view.m >= 4 ? view.y - 543 : view.y - 544;
+  // Phật lịch Việt Nam: dương lịch + 544 cho toàn bộ năm dương lịch
+  const beYear = view.y + 544;
 
   const shift = (delta: number) => {
     setView((v) => {
