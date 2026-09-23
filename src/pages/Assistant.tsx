@@ -539,24 +539,18 @@ export default function Assistant() {
     <div className="fb-bg flex h-[100dvh] flex-col overflow-hidden">
       {/* ---------- Header mảnh, cân đối ---------- */}
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border/60 bg-background px-2 sm:px-4">
-        {isHome ? (
-          <span className="h-10 w-10 shrink-0" aria-hidden />
-        ) : (
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-accent"
-            aria-label="Quay lại"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-        )}
-        <div className="min-w-0 flex-1 text-center">
-          <p className="truncate text-[15px] font-extrabold uppercase tracking-[0.2em] leading-tight text-foreground">
-            DHARMA AI
-          </p>
-        </div>
+        {/* Trái: Đàm thoại (+ nút quay lại khi mở từ trang khác) */}
         <div className="flex shrink-0 items-center gap-1">
+          {!isHome && (
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-accent"
+              aria-label="Quay lại"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          )}
           <Button
             onClick={openCall}
             className="h-9 gap-1.5 rounded-full px-3 shadow-sm sm:px-4"
@@ -564,6 +558,14 @@ export default function Assistant() {
             <Phone className="h-4 w-4" />
             <span className="hidden sm:inline">Đàm thoại</span>
           </Button>
+        </div>
+        <div className="min-w-0 flex-1 text-center">
+          <p className="truncate text-[15px] font-extrabold uppercase tracking-[0.2em] leading-tight text-foreground">
+            DHARMA AI
+          </p>
+        </div>
+        {/* Phải: Cài đặt + Xóa hội thoại */}
+        <div className="flex shrink-0 items-center gap-1">
           <Button
             variant="ghost"
             size="icon"
