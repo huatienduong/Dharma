@@ -249,6 +249,9 @@ export const getLive = action({
     return { youtubeId: liveId, title: liveTitle };
   },
 });
+
+/** Đồng bộ video từ các kênh Phật giáo (chạy định kỳ / khi cần). */
+export const syncAll = action({
   args: { pages: v.optional(v.number()) },
   handler: async (ctx, { pages }) => {
     const key = process.env.YOUTUBE_API_KEY;

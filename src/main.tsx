@@ -3,7 +3,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { ScreenshotGuard } from "@/components/ScreenshotGuard";
 import { ServiceNotice } from "@/components/ServiceNotice";
 import { UpdateChecker } from "@/components/UpdateChecker";
-import { PlayerProvider } from "@/lib/player";
 import { SettingsProvider } from "@/lib/settings";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
@@ -13,24 +12,11 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import "./index.css";
 
+// Dharma AI — ứng dụng chỉ còn Trợ lý Phật học (màn chính) + Cài đặt.
 // Lazy load route components for better code splitting
-const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
-const Home = lazy(() => import("./pages/Home.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
-const Suttas = lazy(() => import("./pages/Suttas.tsx"));
-const Vinaya = lazy(() => import("./pages/Vinaya.tsx"));
-const Abhidhamma = lazy(() => import("./pages/Abhidhamma.tsx"));
-const Dictionary = lazy(() => import("./pages/Dictionary.tsx"));
-const CalendarPage = lazy(() => import("./pages/Calendar.tsx"));
-const Meditation = lazy(() => import("./pages/Meditation.tsx"));
 const SettingsPage = lazy(() => import("./pages/Settings.tsx"));
 const Assistant = lazy(() => import("./pages/Assistant.tsx"));
-const Watched = lazy(() => import("./pages/Watched.tsx"));
-const Lookup = lazy(() => import("./pages/Lookup.tsx"));
-const News = lazy(() => import("./pages/News.tsx"));
-const BuddhistHistory = lazy(() => import("./pages/BuddhistHistory.tsx"));
-const Listen = lazy(() => import("./pages/Listen.tsx"));
-const TV = lazy(() => import("./pages/TV.tsx"));
 
 // Fallback chuyển route — LOGO chính thức, KHÔNG chữ loading
 function RouteLoading() {
@@ -86,11 +72,11 @@ class RootErrorBoundary extends React.Component<
         <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
           <div className="max-w-lg rounded-3xl border border-border/60 bg-card/90 p-6 text-center shadow-xl">
             <h2 className="text-lg font-bold tracking-tight">
-              Dharma đang được nâng cấp
+              Dharma AI đang được nâng cấp
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
               Đội ngũ kỹ thuật của chúng tôi đang tiến hành nâng cấp hệ thống hoặc
-              nếu bạn thấy thông báo này có thể ứng dụng Dharma đang gặp sự cố lỗi
+              nếu bạn thấy thông báo này có thể ứng dụng Dharma AI đang gặp sự cố lỗi
               tạm thời. Hãy thử tải lại trang này nếu tình trạng không được giải
               quyết hãy sử dụng tính năng báo cáo lỗi trong phần cài đặt của ứng
               dụng. Rất xin lỗi vì sự bất tiện gây ra cho bạn!
@@ -131,23 +117,7 @@ const ROUTER_BASENAME = window.location.pathname.startsWith("/dharma")
   ? "/dharma"
   : "/";
 
-// Lazy load các named export (trang đọc chi tiết)
-const SuttaReader = lazy(() =>
-  import("./pages/Suttas.tsx").then((m) => ({ default: m.SuttaReader })),
-);
-const VinayaReader = lazy(() =>
-  import("./pages/Vinaya.tsx").then((m) => ({ default: m.VinayaReader })),
-);
-const AbhidhammaReader = lazy(() =>
-  import("./pages/Abhidhamma.tsx").then((m) => ({
-    default: m.AbhidhammaReader,
-  })),
-);
-const MeditationDetail = lazy(() =>
-  import("./pages/Meditation.tsx").then((m) => ({
-    default: m.MeditationDetail,
-  })),
-);
+
 
 
 
@@ -187,39 +157,19 @@ createRoot(document.getElementById("root")!).render(
           <ScreenshotGuard />
           <UpdateChecker />
           <BrowserRouter basename={ROUTER_BASENAME}>
-            <PlayerProvider>
             <RouteSyncer />
             {/* Thông báo mất kết nối / nâng cấp hệ thống / sự cố tạm thời */}
             <ServiceNotice />
             <Suspense fallback={<RouteLoading />}>
               <Routes>
-                {/* Không còn đăng nhập/đăng ký — toàn bộ dữ liệu lưu cục bộ */}
-                {/* Trang chủ: tin tức Phật giáo + video nổi bật */}
-                <Route path="/" element={<Home />} />
-                <Route path="/home" element={<Home />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/suttas" element={<Suttas />} />
-                <Route path="/suttas/:id" element={<SuttaReader />} />
-                <Route path="/vinaya" element={<Vinaya />} />
-                <Route path="/vinaya/:id" element={<VinayaReader />} />
-                <Route path="/abhidhamma" element={<Abhidhamma />} />
-                <Route path="/abhidhamma/:id" element={<AbhidhammaReader />} />
-                <Route path="/dictionary" element={<Dictionary />} />
-                <Route path="/calendar" element={<CalendarPage />} />
-                <Route path="/meditation" element={<Meditation />} />
-                <Route path="/meditation/:id" element={<MeditationDetail />} />
+                {/* Dharma AI: màn chính là Trợ lý Phật học */}
+                <Route path="/" element={<Assistant />} />
                 <Route path="/assistant" element={<Assistant />} />
-                <Route path="/watched" element={<Watched />} />
-                <Route path="/lookup" element={<Lookup />} />
-                <Route path="/news" element={<News />} />
-                <Route path="/history" element={<BuddhistHistory />} />
-                <Route path="/listen" element={<Listen />} />
-                <Route path="/tv" element={<TV />} />
+                <Route path="/home" element={<Assistant />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
-            </PlayerProvider>
           </BrowserRouter>
         </SettingsProvider>
         <Toaster />

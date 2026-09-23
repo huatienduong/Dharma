@@ -19,10 +19,10 @@ export default function NotFound() {
                 Không tìm thấy trang
               </p>
               <Link
-                to="/dashboard"
+                to="/"
                 className="mt-6 inline-flex items-center rounded-full border border-border/60 px-4 py-2 text-sm font-medium text-foreground transition hover:bg-accent"
               >
-                Về trang chủ
+                Về trợ lý Phật học
               </Link>
             </div>
           </div>

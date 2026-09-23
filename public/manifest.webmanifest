@@ -1,7 +1,7 @@
 {
-  "name": "Dharma — Giới - Định - Tuệ",
-  "short_name": "Dharma",
-  "description": "Ứng dụng Phật giáo Theravāda — Giới - Định - Tuệ",
+  "name": "Dharma AI — Trợ lý Phật học",
+  "short_name": "Dharma AI",
+  "description": "Trợ lý Phật học Theravāda — hỏi đáp giáo lý, thiền, kinh điển",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

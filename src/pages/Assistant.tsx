@@ -550,7 +550,7 @@ export default function Assistant() {
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[15px] font-semibold leading-tight">
-            Trợ lý Phật học
+            Dharma AI · Trợ lý Phật học
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
@@ -766,7 +766,7 @@ export default function Assistant() {
                 </span>
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/50">
-                    Dharma Voice
+                    Dharma AI Voice
                   </p>
                 </div>
               </div>

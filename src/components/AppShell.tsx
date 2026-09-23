@@ -2,21 +2,10 @@ import { useSettings, type TranslateKey } from "@/lib/settings";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
-  BookMarked,
-  BookOpen,
   Bot,
-  CalendarDays,
-  Flower2,
-  Globe2,
-  History as HistoryIcon,
   Home as HomeIcon,
-  Hourglass,
-  Layers,
   Menu,
-  MonitorPlay,
-  Scale,
   Settings,
-  Tv,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -25,32 +14,18 @@ import { useQuery } from "convex/react";
 import { anyApi } from "convex/server";
 import { cacheLogoClientSide } from "@/lib/appLogoCache";
 
-/** Thứ tự chính thức — đồng bộ với lưới mục trên trang chủ:
- *  Kinh · Luật · Luận cạnh nhau, sau đó Pháp thoại · Thiền · Từ điển ·
- *  Phật lịch · Tra cứu · Trợ lý · Lịch sử Phật giáo · Lịch sử xem. */
-const NAV_ITEMS: { to: string; tKey: TranslateKey; icon: typeof BookOpen }[] = [
-  { to: "/home", tKey: "navHome", icon: HomeIcon },
-  { to: "/suttas", tKey: "navSuttas", icon: BookOpen },
-  { to: "/vinaya", tKey: "navVinaya", icon: Scale },
-  { to: "/abhidhamma", tKey: "navAbhidhamma", icon: Layers },
-  { to: "/dashboard", tKey: "navTalks", icon: MonitorPlay },
-  { to: "/tv", tKey: "navTV", icon: Tv },
-  { to: "/meditation", tKey: "navMeditation", icon: Flower2 },
-  { to: "/dictionary", tKey: "navDictionary", icon: BookMarked },
-  { to: "/calendar", tKey: "navCalendar", icon: CalendarDays },
-  { to: "/lookup", tKey: "navLookup", icon: Globe2 },
-  { to: "/assistant", tKey: "navAssistant", icon: Bot },
-  { to: "/history", tKey: "navBuddhistHistory", icon: Hourglass },
-  { to: "/watched", tKey: "navWatched", icon: HistoryIcon },
+/** Dharma AI — duy nhất Trợ lý Phật học là nội dung chính, cộng Cài đặt. */
+const NAV_ITEMS: { to: string; tKey: TranslateKey; icon: typeof Bot }[] = [
+  { to: "/", tKey: "navAssistant", icon: Bot },
 ];
 
-const SETTINGS_ITEM = {
+const SETTINGS_NAV_ITEM = {
   to: "/settings",
   tKey: "navSettings" as TranslateKey,
   icon: Settings,
 };
 
-const ALL_ITEMS = [...NAV_ITEMS, SETTINGS_ITEM];
+const ALL_ITEMS = [...NAV_ITEMS, SETTINGS_NAV_ITEM];
 
 export function AppShell({
   title,
@@ -72,7 +47,7 @@ export function AppShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const [railOpen, setRailOpen] = useState(true);
 
-  // Tab dưới chỉ có "Trang chủ" — ẩn luôn trên chính trang chủ
+  // Tab dưới chỉ có "Trang chủ" — ẩn khi đang ở chính trang Trợ lý ("/")
   const showBottomNav =
     location.pathname !== "/" && location.pathname !== "/home";
 
@@ -83,8 +58,8 @@ export function AppShell({
   }, [logo?.url]);
 
   const isActive = (to: string) =>
-    to === "/home"
-      ? location.pathname === "/home" || location.pathname === "/"
+    to === "/"
+      ? location.pathname === "/" || location.pathname === "/home"
       : location.pathname.startsWith(to);
 
   // Đóng menu khi điều hướng
@@ -176,8 +151,8 @@ export function AppShell({
         {/* Giữa: LOGO — vị trí trung tâm */}
         <button
           type="button"
-          onClick={() => go("/home")}
-          aria-label="Trang chủ Dharma"
+          onClick={() => go("/")}
+          aria-label="Trang chủ Dharma AI"
           className="mx-auto flex flex-col items-center justify-center leading-none"
         >
           {logo?.url ? (
@@ -195,7 +170,7 @@ export function AppShell({
             </span>
           )}
           <span className="mt-0.5 text-[10px] font-extrabold uppercase tracking-[0.24em] text-foreground">
-            DHARMA
+            DHARMA AI
           </span>
         </button>
 
@@ -203,13 +178,13 @@ export function AppShell({
         <div className="flex w-24 shrink-0 items-center justify-end">
           <button
             type="button"
-            onClick={() => go(SETTINGS_ITEM.to)}
-            aria-current={isActive(SETTINGS_ITEM.to) ? "page" : undefined}
+            onClick={() => go(SETTINGS_NAV_ITEM.to)}
+            aria-current={isActive(SETTINGS_NAV_ITEM.to) ? "page" : undefined}
             title={t("navSettings")}
             aria-label={t("navSettings")}
             className={cn(
               "flex h-10 w-10 items-center justify-center rounded-full transition",
-              isActive(SETTINGS_ITEM.to)
+              isActive(SETTINGS_NAV_ITEM.to)
                 ? "bg-primary text-primary-foreground"
                 : "text-foreground hover:bg-accent",
             )}
@@ -302,7 +277,7 @@ export function AppShell({
             </span>
           )}
           <span className="truncate text-[15px] font-extrabold tracking-tight text-foreground">
-            DHARMA
+            DHARMA AI
           </span>
           <button
             type="button"
@@ -359,17 +334,17 @@ export function AppShell({
         <div className="mx-auto flex max-w-lg items-stretch justify-center px-2">
           <button
             type="button"
-            onClick={() => go("/home")}
-            aria-current={isActive("/home") ? "page" : undefined}
+            onClick={() => go("/")}
+            aria-current={isActive("/") ? "page" : undefined}
             className={cn(
               "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition",
-              isActive("/home") ? "text-primary" : "text-muted-foreground",
+              isActive("/") ? "text-primary" : "text-muted-foreground",
             )}
           >
             <HomeIcon
               className={cn(
                 "h-[22px] w-[22px]",
-                isActive("/home") &&
+                isActive("/") &&
                   "drop-shadow-[0_2px_6px_rgba(166,124,46,0.4)]",
               )}
             />

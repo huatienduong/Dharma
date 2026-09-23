@@ -64,8 +64,8 @@ function saveLocal(s: AppSettings) {
 
 const VI = {
   // App / nav
-  appName: "Dharma",
-  appTagline: "Theravāda — Nguyên thủy",
+  appName: "Dharma AI",
+  appTagline: "Trợ lý Phật học Theravāda",
   navHome: "Trang chủ",
   navTalks: "Pháp thoại",
   navTV: "Truyền hình",
@@ -75,7 +75,7 @@ const VI = {
   navDictionary: "Từ điển",
   navCalendar: "Phật lịch",
   navMeditation: "Thiền",
-  navAssistant: "Trợ lý",
+  navAssistant: "Trợ lý Phật học",
   navSettings: "Cài đặt",
   navLookup: "Tra cứu",
   navNews: "Tin tức",
@@ -153,8 +153,8 @@ const VI = {
 
 const EN: Partial<Record<keyof typeof VI, string>> = {
   // App / nav
-  appName: "Dharma",
-  appTagline: "Theravāda — Early Buddhism",
+  appName: "Dharma AI",
+  appTagline: "Theravāda Buddhist Assistant",
   navHome: "Home",
   navTalks: "Dhamma talks",
   navTV: "TV",
@@ -164,7 +164,7 @@ const EN: Partial<Record<keyof typeof VI, string>> = {
   navDictionary: "Dictionary",
   navCalendar: "Buddhist Calendar",
   navMeditation: "Meditation",
-  navAssistant: "Assistant",
+  navAssistant: "Buddhist Assistant",
   navSettings: "Settings",
   navLookup: "Lookup",
   navNews: "News",
