@@ -24,6 +24,11 @@ type Provider = {
   model: string;
 };
 
+/* NGUỒN CHÍNH: cổng AI của nền tảng (integrations.vly.ai) — chạy trên máy
+ * chủ API riêng, khóa VLY_INTEGRATION_KEY do nền tảng tự cấp sẵn → biên
+ * soạn Kinh/Luật/Từ điển hoạt động ngay không cần khóa ngoài.
+ * Khóa Groq/Gemini/OpenAI (nếu có) chỉ là dự phòng.
+ * gpt-5 là reasoning model: không nhận temperature/max_tokens. */
 function listProviders(): Provider[] {
   const out: Provider[] = [];
   const groqKey = process.env.GROQ_API_KEY;
@@ -31,6 +36,18 @@ function listProviders(): Provider[] {
   const openaiKey = process.env.OPENAI_API_KEY;
   const vlyKey = process.env.VLY_INTEGRATION_KEY;
 
+  if (vlyKey) {
+    out.push({
+      label: "Cổng AI nền tảng",
+      make: () =>
+        createOpenAICompatible({
+          name: "vly-gateway",
+          baseURL: "https://integrations.vly.ai/v1/llm",
+          headers: { Authorization: `Bearer ${vlyKey}` },
+        }),
+      model: "gpt-5",
+    });
+  }
   if (groqKey) {
     out.push({
       label: "Groq",
@@ -68,19 +85,6 @@ function listProviders(): Provider[] {
       model: "gpt-4.1-mini",
     });
   }
-  if (vlyKey) {
-    out.push({
-      label: "Cổng AI tích hợp",
-      make: () =>
-        createOpenAICompatible({
-          name: "vly-gateway",
-          baseURL: "https://integrations.vly.ai/v1/llm",
-          headers: { Authorization: `Bearer ${vlyKey}` },
-        }),
-      // FIX: cổng VLY phục vụ gpt-5 — model cũ gpt-4.1-mini luôn 400.
-      model: "gpt-5",
-    });
-  }
   return out;
 }
 
@@ -111,7 +115,7 @@ async function generateWithFallback(
   const providers = listProviders();
   if (providers.length === 0) {
     throw new Error(
-      "AI chưa được cấu hình. Chủ ứng dụng vui lòng thêm GROQ_API_KEY (miễn phí) hoặc GEMINI_API_KEY qua tab Keys/API keys.",
+      "Chưa kết nối được máy chủ AI. Vui lòng thử lại sau ít phút.",
     );
   }
   const errors: string[] = [];

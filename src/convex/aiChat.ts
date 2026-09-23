@@ -49,6 +49,28 @@ function listProviders(needVision: boolean): ProviderChoice[] {
   const geminiKey = process.env.GEMINI_API_KEY;
   const vlyKey = process.env.VLY_INTEGRATION_KEY;
 
+  /* NGUỒN CHÍNH: cổng AI của nền tảng (integrations.vly.ai) — chạy trên
+   * máy chủ API riêng, khóa VLY_INTEGRATION_KEY do nền tảng tự cấp sẵn
+   * cho dự án → Trợ lý HOẠT ĐỘNG NGAY mà không phụ thuộc bất kỳ khóa
+   * API ngoài nào chủ ứng dụng phải nạp. Các khóa Groq/Gemini/OpenAI
+   * (nếu có) chỉ là DỰ PHỌNG khi cổng nền tảng lỗi.
+   * gpt-5 là reasoning model: KHÔNG nhận temperature/max_tokens —
+   * phải dùng max_completion_tokens + reasoning_effort thấp.
+   */
+  if (vlyKey) {
+    out.push({
+      label: "Cổng AI nền tảng",
+      make: () =>
+        createOpenAICompatible({
+          name: "vly-gateway",
+          baseURL: "https://integrations.vly.ai/v1/llm",
+          headers: { Authorization: `Bearer ${vlyKey}` },
+        }),
+      model: "gpt-5",
+    });
+  }
+
+  // Dự phòng: chỉ khi đã có khóa ngoài
   if (needVision) {
     if (geminiKey) {
       out.push({
@@ -74,24 +96,9 @@ function listProviders(needVision: boolean): ProviderChoice[] {
         model: "gpt-4.1-mini",
       });
     }
-    // FIX tra cứu ảnh: cổng VLY cũng hỗ trợ vision (gpt-5) — trước đây
-    // khi không có khóa Gemini/OpenAI, gửi ảnh luôn thất bại.
-    if (vlyKey) {
-      out.push({
-        label: "Cổng AI tích hợp",
-        make: () =>
-          createOpenAICompatible({
-            name: "vly-gateway",
-            baseURL: "https://integrations.vly.ai/v1/llm",
-            headers: { Authorization: `Bearer ${vlyKey}` },
-          }),
-        model: "gpt-5",
-      });
-    }
     return out;
   }
 
-  // Ưu tiên mô hình nhanh hơn cho văn bản
   if (openaiKey) {
     out.push({
       label: "OpenAI",
@@ -128,20 +135,6 @@ function listProviders(needVision: boolean): ProviderChoice[] {
       model: "llama-3.3-70b-versatile",
     });
   }
-  if (vlyKey) {
-    out.push({
-      label: "Cổng AI tích hợp",
-      make: () =>
-        createOpenAICompatible({
-          name: "vly-gateway",
-          baseURL: "https://integrations.vly.ai/v1/llm",
-          headers: { Authorization: `Bearer ${vlyKey}` },
-        }),
-      // FIX nguyên nhân gốc "Trợ lý không phản hồi": cổng VLY phục vụ
-      // mô hình gpt-5 — gọi gpt-4.1-mini luôn trả 400 model_not_found.
-      model: "gpt-5",
-    });
-  }
   return out;
 }
 
@@ -172,7 +165,7 @@ export const ask = action({
     const providers = listProviders(Boolean(imageBase64));
     if (providers.length === 0) {
       throw new Error(
-        "Trợ lý Phật học chưa được cấu hình AI. Chủ ứng dụng vui lòng thêm khóa OPENAI_API_KEY hoặc GEMINI_API_KEY qua tab Keys/API keys.",
+        "Trợ lý Phật học chưa kết nối được máy chủ AI. Vui lòng thử lại sau ít phút hoặc báo lỗi qua mục Góp ý.",
       );
     }
 
@@ -263,8 +256,8 @@ export const ask = action({
     }
     throw new Error(
       `Không kết nối được Trợ lý Phật học. Chi tiết: ${errors.join(" | ")}` +
-        (imageBase64 && !process.env.GEMINI_API_KEY
-          ? " — Gửi ảnh cần khóa GEMINI_API_KEY (miễn phí tại aistudio.google.com), dán vào tab Keys/API keys."
+        (imageBase64 && providers.every((p) => p.label !== "Cổng AI nền tảng")
+          ? " — Gửi ảnh cần máy chủ AI hỗ trợ thị giác, vui lòng thử lại sau."
           : ""),
     );
   },
