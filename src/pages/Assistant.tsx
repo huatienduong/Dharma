@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { showServiceNotice } from "@/components/ServiceNotice";
+import { VoicePicker } from "@/components/VoicePicker";
 import { api } from "@/convex/_generated/api";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
+import { loadVoicePref, saveVoicePref } from "@/lib/aiVoices";
 import { cn } from "@/lib/utils";
 import { useAction } from "convex/react";
 import {
@@ -111,9 +113,15 @@ export default function Assistant() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { supported: micSupported, listening, start, stop } = useVoiceSearch();
-  const { speak: speakVI, speakBrowser: speakDirect, stop: stopSpeaking } =
-    useVietnameseTTS();
+  const { speak: speakVI, stop: stopSpeaking } = useVietnameseTTS();
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  /* ----- Giọng đọc người dùng chọn (lưu cục bộ, dùng cho chat + đàm thoại) ----- */
+  const [voiceId, setVoiceId] = useState<string>(loadVoicePref);
+  const voiceIdRef = useRef(voiceId);
+  useEffect(() => {
+    voiceIdRef.current = voiceId;
+  }, [voiceId]);
 
   /* ================= CHẾ ĐỘ ĐÀM THOÁI (kiểu Gemini Live) ============== */
   /* Nói như gọi điện: AI nghe liên tục, tự gửi khi bạn ngừng câu, tự     */
@@ -132,12 +140,33 @@ export default function Assistant() {
   const micDeniedRef = useRef(false);
   const busyRef = useRef(false);
   const lastAiWordAtRef = useRef(0);
+  const lastAssistantEventAtRef = useRef(0);
   const recRef = useRef<RecLike | null>(null);
   const startListeningRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     busyRef.current = busy;
   }, [busy]);
+
+  /* ----- Watchdog đàm thoại 2 chiều: nếu phiên nghe mic rơi/treo quá 12s
+   * (trình duyệt âm thầm dừng SpeechRecognition, tab bị treo ngắn…) thì tự
+   * khởi động lại — cuộc gọi không bao giờ "đứng hình" vô tiếng. ----- */
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (
+        callActiveRef.current &&
+        !mutedRef.current &&
+        !micDeniedRef.current &&
+        !aiSpeakingRef.current &&
+        !sendingRef.current &&
+        Date.now() - lastAssistantEventAtRef.current > 12_000
+      ) {
+        lastAssistantEventAtRef.current = Date.now();
+        startListeningRef.current();
+      }
+    }, 5_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   // Đồng hồ phòng treo: nếu AI không trả lời trong 60s → báo lỗi ra UI
   useEffect(() => {
@@ -230,20 +259,25 @@ export default function Assistant() {
           return next;
         });
         if (opts?.fromCall) {
-          // Trong cuộc gọi: đọc to xong rồi tự nghe tiếp (rảnh tay).
-          // Dùng Web Speech trực tiếp (speakBrowser) — KHÔNG chờ server tổng
-          // hợp audio nên phản hồi gần như tức thì, không còn chậm trễ.
+          // Trong cuộc gọi: đọc to bằng giọng người dùng đã chọn — server TTS
+          // trước (Gemini/OpenAI), quá 12s hoặc lỗi thì tự rơi về giọng trình
+          // duyệt; đọc xong tự nghe tiếp → đàm thoại 2 chiều liền mạch.
           if (!callActiveRef.current) return;
           aiSpeakingRef.current = true;
           sendingRef.current = false;
           setInterim("");
           setCallStatus("speaking");
-          speakDirect(reply, () => {
-            aiSpeakingRef.current = false;
-            lastAiWordAtRef.current = Date.now();
-            if (!callActiveRef.current) return;
-            setCallStatus("listening");
-            startListeningRef.current();
+          lastAssistantEventAtRef.current = Date.now();
+          void speakVI(reply, {
+            voice: voiceIdRef.current,
+            onDone: () => {
+              aiSpeakingRef.current = false;
+              lastAiWordAtRef.current = Date.now();
+              lastAssistantEventAtRef.current = Date.now();
+              if (!callActiveRef.current) return;
+              setCallStatus("listening");
+              startListeningRef.current();
+            },
           });
         } else {
           // CHAT: ĐÃ LOẠI BỎ tự động đọc âm thanh — chỉ trả lời văn bản;
@@ -272,7 +306,7 @@ export default function Assistant() {
         setBusy(false);
       }
     },
-    [ask, busy, history, image, pending, speakVI],
+    [ask, busy, history, image, pending],
   );
 
   /* ----- Đàm thoại: xử lý một câu người dùng vừa nói ----- */
@@ -285,6 +319,7 @@ export default function Assistant() {
       setInterim("");
       sendingRef.current = true;
       setCallStatus("thinking");
+      lastAssistantEventAtRef.current = Date.now();
       void send(text, { fromCall: true });
     },
     [send],
@@ -318,6 +353,7 @@ export default function Assistant() {
 
     let finalBuf = "";
     rec.onstart = () => {
+      lastAssistantEventAtRef.current = Date.now();
       if (callActiveRef.current) setCallStatus("listening");
     };
     rec.onresult = (e) => {
@@ -394,6 +430,7 @@ export default function Assistant() {
     setCallStatus("listening");
     setCallOpen(true);
     callActiveRef.current = true;
+    lastAssistantEventAtRef.current = Date.now();
     window.setTimeout(() => startListeningRef.current(), 400);
   }, [micSupported, stopSpeaking]);
 
@@ -424,6 +461,7 @@ export default function Assistant() {
       setInterim("");
       setCallStatus("muted");
     } else {
+      lastAssistantEventAtRef.current = Date.now();
       setCallStatus("listening");
       startListeningRef.current();
     }
@@ -516,6 +554,19 @@ export default function Assistant() {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          <VoicePicker
+            value={voiceId}
+            onChange={(id) => {
+              setVoiceId(id);
+              saveVoicePref(id);
+            }}
+            onPreview={(id) => {
+              stopSpeaking();
+              void speakVI("Xin chào, tôi là trợ lý Phật học của bạn.", {
+                voice: id,
+              });
+            }}
+          />
           <Button
             onClick={openCall}
             className="h-9 gap-1.5 rounded-full px-3 shadow-sm sm:px-4"
@@ -574,7 +625,7 @@ export default function Assistant() {
                 <AssistantMessage
                   key={i}
                   content={m.content}
-                  onSpeak={() => void speakVI(m.content)}
+                  onSpeak={() => void speakVI(m.content, { voice: voiceId })}
                 />
               ),
             )}
@@ -756,6 +807,30 @@ export default function Assistant() {
               {/* Chỉ hiển thị trạng thái ngắn — không còn văn bản trả lời/caption */}
             </div>
 
+            {/* Chọn giọng ngay trong cuộc gọi — đổi là nghe thử luôn */}
+            <div className="relative z-10 flex justify-center pb-1">
+              <VoicePicker
+                value={voiceId}
+                onChange={(id) => {
+                  setVoiceId(id);
+                  saveVoicePref(id);
+                  stopSpeaking();
+                  // Khóa mic trong lúc nghe thử để không tự bắt tiếng AI
+                  aiSpeakingRef.current = true;
+                  void speakVI("Xin chào, tôi là trợ lý Phật học của bạn.", {
+                    voice: id,
+                    onDone: () => {
+                      aiSpeakingRef.current = false;
+                      lastAssistantEventAtRef.current = Date.now();
+                      if (callActiveRef.current && !mutedRef.current) {
+                        startListeningRef.current();
+                      }
+                    },
+                  });
+                }}
+              />
+            </div>
+
             <div className="relative z-10 flex items-center justify-center gap-6 pb-[max(1.6rem,env(safe-area-inset-bottom))] pt-2">
               {callStatus !== "muted" ? (
                 <button
@@ -797,6 +872,7 @@ export default function Assistant() {
                       stopSpeaking();
                       aiSpeakingRef.current = false;
                       sendingRef.current = false;
+                      lastAssistantEventAtRef.current = Date.now();
                       setCallStatus("listening");
                       startListeningRef.current();
                     }}

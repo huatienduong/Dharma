@@ -37,6 +37,24 @@ const AI_TIMEOUT_MS = 30_000; // provider treo → lỗi sau 30s và chuyển ng
 /* thiếu (chỉ trả về boolean, KHÔNG bao giờ lộ giá trị khóa).           */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/* BẢN ĐỒ GIỌNG TTS — đồng bộ với danh mục client (src/lib/aiVoices.ts). */
+/* Client gửi voice id + male; máy chủ chọn giọng Gemini/OpenAI tương ứng. */
+/* ------------------------------------------------------------------ */
+
+type ServerVoice = { gemini: string; openai: string; male: boolean };
+
+const SERVER_VOICES: Record<string, ServerVoice> = {
+  metta: { gemini: "Kore", openai: "shimmer", male: false },
+  karuna: { gemini: "Puck", openai: "coral", male: false },
+  panna: { gemini: "Leda", openai: "sage", male: false },
+  sati: { gemini: "Aoede", openai: "nova", male: false },
+  mettam: { gemini: "Enceladus", openai: "echo", male: true },
+  adosa: { gemini: "Algieba", openai: "onyx", male: true },
+  upekkha: { gemini: "Alnilam", openai: "fable", male: true },
+  sila: { gemini: "Iapetus", openai: "alloy", male: true },
+};
+
 export type ProviderCheck = {
   key: string;
   label: string;
@@ -124,6 +142,20 @@ export const providerStatus = action({
         required: false,
       },
       {
+        key: "PERPLEXITY_API_KEY",
+        label: "Perplexity",
+        purpose: "Dự phòng, trả lời có dẫn nguồn thực tế",
+        ready: Boolean(process.env.PERPLEXITY_API_KEY),
+        required: false,
+      },
+      {
+        key: "XAI_API_KEY",
+        label: "xAI Grok",
+        purpose: "Dự phòng",
+        ready: Boolean(process.env.XAI_API_KEY ?? process.env.GROK_API_KEY),
+        required: false,
+      },
+      {
         key: "YOUTUBE_API_KEY",
         label: "YouTube Data API v3",
         purpose: "Nguồn video pháp thoại (máy chủ)",
@@ -155,15 +187,17 @@ function listProviders(needVision: boolean): ProviderChoice[] {
   const geminiKey = process.env.GEMINI_API_KEY;
   const vlyKey = process.env.VLY_INTEGRATION_KEY;
 
-  /* NHÀ CUNG CẤP DỰ PHÒNG MIỄN PHÍ — chủ dự án thêm khóa nào thì dùng
-   * nguồn đó, KHÔNG cần cấu hình gì thêm. Có nhiều nguồn miễn phí song
-   * song nên Trợ lý Phật học không bị gián đoạn khi một API hết hạn mức. */
+  /* NHÀ CUNG CẤP DỰ PHÒNG — chủ dự án thêm khóa nào thì dùng nguồn đó,
+   * KHÔNG cần cấu hình gì thêm. Nhiều nguồn song song giúp Trợ lý không
+   * bị gián đoạn khi một API hết hạn mức. */
   const cerebrasKey = process.env.CEREBRAS_API_KEY;
   const openrouterKey = process.env.OPENROUTER_API_KEY;
   const mistralKey = process.env.MISTRAL_API_KEY;
   const togetherKey = process.env.TOGETHER_API_KEY;
   const deepseekKey = process.env.DEEPSEEK_API_KEY;
   const hfKey = process.env.HF_TOKEN ?? process.env.HUGGINGFACE_API_KEY;
+  const perplexityKey = process.env.PERPLEXITY_API_KEY;
+  const xaiKey = process.env.XAI_API_KEY ?? process.env.GROK_API_KEY;
 
   /* NGUỒN CHÍNH: cổng AI của nền tảng (integrations.vly.ai) — chạy trên
    * máy chủ API riêng, khóa VLY_INTEGRATION_KEY do nền tảng tự cấp sẵn
@@ -317,6 +351,30 @@ function listProviders(needVision: boolean): ProviderChoice[] {
       model: "meta-llama/Llama-3.3-70B-Instruct",
     });
   }
+  if (perplexityKey) {
+    extra.push({
+      label: "Perplexity",
+      make: () =>
+        createOpenAICompatible({
+          name: "perplexity",
+          baseURL: "https://api.perplexity.ai",
+          apiKey: perplexityKey,
+        }),
+      model: "sonar",
+    });
+  }
+  if (xaiKey) {
+    extra.push({
+      label: "xAI Grok",
+      make: () =>
+        createOpenAICompatible({
+          name: "xai",
+          baseURL: "https://api.x.ai/v1",
+          apiKey: xaiKey,
+        }),
+      model: "grok-3-mini",
+    });
+  }
   if (openaiKey) {
     extra.push({
       label: "OpenAI",
@@ -466,11 +524,28 @@ export const ask = action({
  * Trả về null khi không có khóa TTS → client dùng Web Speech dự phòng.
  */
 export const speak = action({
-  args: { text: v.string() },
-  handler: async (ctx, { text }) => {
+  args: {
+    text: v.string(),
+    /** Giọng đọc người dùng chọn (xem AI_VOICES) — null = mặc định */
+    voice: v.optional(v.string()),
+    /** true = giọng nam, false = giọng nữ, null = mặc định */
+    male: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { text, voice, male }) => {
     void ctx;
     const clean = text.trim().slice(0, 2400);
     if (!clean) return null;
+    // Hướng dẫn giọng đọc theo lựa chọn của người dùng (tiếng Việt)
+    const wantMale =
+      male ?? (voice ? SERVER_VOICES[voice]?.male ?? false : false);
+    const toneHint =
+      wantMale
+        ? "Đọc bằng tiếng Việt, giọng NAM trầm ấm, chậm rãi trang nghiêm:"
+        : "Đọc bằng tiếng Việt, giọng NỮ nhẹ nhàng, chậm rãi trang nghiêm:";
+    const geminiVoice =
+      SERVER_VOICES[voice ?? ""]?.gemini ?? (wantMale ? "Charon" : "Kore");
+    const openaiVoice =
+      SERVER_VOICES[voice ?? ""]?.openai ?? (wantMale ? "onyx" : "shimmer");
 
     const geminiKey = process.env.GEMINI_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
@@ -490,7 +565,7 @@ export const speak = action({
                 {
                   parts: [
                     {
-                      text: `Đọc bằng tiếng Việt, giọng nữ nhẹ nhàng, chậm rãi trang nghiêm: ${clean}`,
+                      text: `${toneHint} ${clean}`,
                     },
                   ],
                 },
@@ -498,7 +573,9 @@ export const speak = action({
               generationConfig: {
                 responseModalities: ["AUDIO"],
                 speechConfig: {
-                  voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } },
+                  voiceConfig: {
+                    prebuiltVoiceConfig: { voiceName: geminiVoice },
+                  },
                 },
               },
             }),
@@ -535,7 +612,7 @@ export const speak = action({
           },
           body: JSON.stringify({
             model: "gpt-4o-mini-tts",
-            voice: "shimmer",
+            voice: openaiVoice,
             input: clean,
             response_format: "mp3",
           }),

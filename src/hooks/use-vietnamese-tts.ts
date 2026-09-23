@@ -1,4 +1,5 @@
 import { api } from "@/convex/_generated/api";
+import { getVoice } from "@/lib/aiVoices";
 import { useAction } from "convex/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -38,12 +39,21 @@ function pcmToWav(base64Pcm: string, sampleRate = 24000): string {
   return btoa(out);
 }
 
+/** Tùy chọn giọng đọc: id giọng (AI_VOICES) + giới tính mong muốn. */
+export type SpeakOpts = {
+  voice?: string | null;
+  male?: boolean;
+  onDone?: () => void;
+};
+
 /**
  * TTS tiếng Việt hai tầng cho Trợ lý Pháp:
  * 1. SERVER TTS (ưu tiên): Gemini TTS / OpenAI TTS trả về audio base64 →
- *    phát qua <Audio> — giọng tiếng Việt tự nhiên bất kể máy người dùng.
+ *    phát qua <Audio> — giọng tiếng Việt tự nhiên bất kể máy người dùng,
+ *    đúng giọng người dùng đã chọn. Có TIMEOUT 12s: máy chủ chậm/treo →
+ *    chuyển ngay sang giọng trình duyệt, đàm thoại không bị khựng.
  * 2. FALLBACK: Web Speech API cải tiến — chunk câu dài, chờ voices tải,
- *    chọn giọng vi tốt nhất (Google vi-VN nếu có).
+ *    chọn giọng vi khớp giới tính người dùng chọn (Google vi-VN nếu có).
  */
 export function useVietnameseTTS() {
   const speakAction = useAction(api.aiChat.speak);
@@ -88,7 +98,7 @@ export function useVietnameseTTS() {
   /* --------------------- Web Speech fallback --------------------- */
 
   const webSpeak = useCallback(
-    (text: string, onDone?: () => void) => {
+    (text: string, voiceId?: string | null, onDone?: () => void) => {
       if (typeof window === "undefined" || !("speechSynthesis" in window)) {
         onDone?.();
         return;
@@ -97,15 +107,26 @@ export function useVietnameseTTS() {
       synth.cancel();
       setEngine("browser");
 
-      // Chọn giọng vi tốt nhất, chờ voices tải nếu chưa
+      const pref = getVoice(voiceId);
+
+      // Chọn giọng vi khớp giọng người dùng chọn, chờ voices tải nếu chưa
       const pickVoice = () => {
         const voices = synth.getVoices();
         const viVoices = voices.filter((v) =>
           v.lang?.toLowerCase().startsWith("vi"),
         );
-        // Ưu tiên Google vi-VN (nếu có), sau đó bất kỳ giọng vi nào
+        const pool = viVoices.length > 0 ? viVoices : voices;
+        // Ưu tiên: giọng khớp mẫu của giọng đã chọn → Google vi → đúng giới
+        // tính → giọng vi đầu tiên.
         return (
-          viVoices.find((v) => /google/i.test(v.name)) ?? viVoices[0]
+          pool.find((v) => pref.browser.test(v.name)) ??
+          pool.find((v) => /google/i.test(v.name) && /vi/i.test(v.lang)) ??
+          pool.find((v) =>
+            pref.male
+              ? /male|nam|nam-phong/i.test(v.name)
+              : /female|nữ/i.test(v.name),
+          ) ??
+          pool[0]
         );
       };
 
@@ -138,6 +159,7 @@ export function useVietnameseTTS() {
         const u = new SpeechSynthesisUtterance(chunks[idx++]);
         u.lang = "vi-VN";
         u.rate = 0.95;
+        u.pitch = pref.male ? 0.85 : 1.05;
         const vi = pickVoice();
         if (vi) u.voice = vi;
         u.onend = () => speakNext();
@@ -166,17 +188,30 @@ export function useVietnameseTTS() {
   /* --------------------- Server TTS (ưu tiên) --------------------- */
 
   const speak = useCallback(
-    async (text: string, onDone?: () => void) => {
+    async (text: string, optsOrDone?: SpeakOpts | (() => void)) => {
+      const opts: SpeakOpts =
+        typeof optsOrDone === "function"
+          ? { onDone: optsOrDone }
+          : (optsOrDone ?? {});
       stopFlagRef.current = false;
       const clean = text.trim();
       if (!clean) {
-        onDone?.();
+        opts.onDone?.();
         return;
       }
 
-      // 1. Thử server TTS
+      // 1. Thử server TTS — timeout 12s, chậm/treo thì rời về Web Speech
       try {
-        const res = await speakAction({ text: clean.slice(0, 2400) });
+        const res = await Promise.race([
+          speakAction({
+            text: clean.slice(0, 2400),
+            voice: opts.voice ?? undefined,
+            male: opts.male,
+          }),
+          new Promise<null>((resolve) =>
+            window.setTimeout(() => resolve(null), 12_000),
+          ),
+        ]);
         if (res && !stopFlagRef.current) {
           // Gemini trả PCM thô → bọc WAV; mp3/WAV dùng nguyên bản
           const src = /L16|pcm/i.test(res.mime)
@@ -189,13 +224,13 @@ export function useVietnameseTTS() {
           audio.onended = () => {
             setSpeaking(false);
             audioRef.current = null;
-            onDone?.();
+            opts.onDone?.();
           };
           audio.onerror = () => {
             setSpeaking(false);
             audioRef.current = null;
             // Server audio lỗi → rơi về Web Speech
-            webSpeak(clean, onDone);
+            webSpeak(clean, opts.voice, opts.onDone);
           };
           try {
             await audio.play();
@@ -203,7 +238,7 @@ export function useVietnameseTTS() {
           } catch {
             setSpeaking(false);
             audioRef.current = null;
-            webSpeak(clean, onDone);
+            webSpeak(clean, opts.voice, opts.onDone);
           }
           return;
         }
@@ -212,7 +247,8 @@ export function useVietnameseTTS() {
       }
 
       // 2. Fallback Web Speech
-      webSpeak(clean, onDone);
+      if (!stopFlagRef.current) webSpeak(clean, opts.voice, opts.onDone);
+      else opts.onDone?.();
     },
     [speakAction, webSpeak],
   );
