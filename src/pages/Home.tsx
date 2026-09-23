@@ -2,54 +2,55 @@ import { AppShell } from "@/components/AppShell";
 import { DockPlayer } from "@/lib/player";
 import { restoreScroll, trackScroll } from "@/lib/uiState";
 import {
+  BookMarked,
   BookOpen,
   CalendarDays,
+  Download,
   Flower2,
   Globe2,
   History,
   Hourglass,
   Layers,
-  Library,
   MonitorPlay,
   Music,
   Newspaper,
+  RefreshCw,
   Scale,
-  Settings,
   Search,
-  User,
-  HandHeart,
-  BookMarked,
-  ChevronRight,
-  Play,
 } from "lucide-react";
+import { APP_VERSION } from "@/lib/version";
 import { DHAMMAPADA, type DhpVerse } from "@/data/dhammapada";
+import { api } from "@/convex/_generated/api";
+import { useQuery } from "convex/react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
-/* 8 ô chức năng chính thức (kiểu mẫu) */
-const MAIN_ITEMS: {
+/* Lưới chính: KINH — LUẬT — LUẬN cạnh nhau theo thứ tự Tam tạng */
+const TIPITAKA_ITEMS: {
   to: string;
   label: string;
   icon: typeof BookOpen;
 }[] = [
-  { to: "/suttas", label: "Kinh điển\nTheravāda", icon: BookOpen },
-  { to: "/assistant", label: "Pháp âm\n(Nghe)", icon: Music },
-  { to: "/meditation", label: "Thiền tập", icon: Flower2 },
-  { to: "/dictionary", label: "Hướng dẫn\nthực hành", icon: BookMarked },
-  { to: "/calendar", label: "Lịch tu học", icon: CalendarDays },
-  { to: "/lookup", label: "Từ thiện\n& Cộng đồng", icon: HandHeart },
-  { to: "/settings", label: "Cài đặt", icon: Settings },
-  { to: "/watched", label: "Hồ sơ", icon: User },
+  { to: "/suttas", label: "Kinh", icon: BookOpen },
+  { to: "/vinaya", label: "Luật", icon: Scale },
+  { to: "/abhidhamma", label: "Luận", icon: Layers },
 ];
 
-/* Mục phụ (thẻ nhỏ dưới banner) */
-const EXTRA_ITEMS: { to: string; label: string; icon: typeof Library }[] = [
+/* Các mục còn lại */
+const OTHER_ITEMS: {
+  to: string;
+  label: string;
+  icon: typeof BookOpen;
+}[] = [
+  { to: "/assistant", label: "Trợ lý", icon: Music },
+  { to: "/meditation", label: "Thiền tập", icon: Flower2 },
   { to: "/dashboard", label: "Pháp thoại", icon: MonitorPlay },
-  { to: "/vinaya", label: "Luật tạng", icon: Scale },
-  { to: "/abhidhamma", label: "Luận tạng", icon: Layers },
-  { to: "/news", label: "Tin tức", icon: Newspaper },
-  { to: "/history", label: "Lịch sử PG", icon: Hourglass },
+  { to: "/dictionary", label: "Từ điển", icon: BookMarked },
+  { to: "/calendar", label: "Phật lịch", icon: CalendarDays },
+  { to: "/lookup", label: "Tra cứu", icon: Globe2 },
+  { to: "/history", label: "Lịch sử Phật giáo", icon: Hourglass },
   { to: "/watched", label: "Lịch sử xem", icon: History },
+  { to: "/news", label: "Tin tức", icon: Newspaper },
 ];
 
 /* Ảnh Đức Phật Thích Ca — Wikimedia Commons (đã xác minh), ngẫu nhiên */
@@ -61,9 +62,12 @@ const BUDDHA_IMAGES = [
   "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Three_golden_statues_of_the_Buddha_at_Wat_Mai_with_colorful_clouds_at_sunset_in_Luang_Prabang_Laos.jpg/960px-Three_golden_statues_of_the_Buddha_at_Wat_Mai_with_colorful_clouds_at_sunset_in_Luang_Prabang_Laos.jpg",
 ];
 
+
+
 export default function Home() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const meta = useQuery(api.library.getAppVersion, {});
 
   /* Câu Pháp Cú + ảnh Đức Phật — chọn ngẫu nhiên, ổn định trong phiên */
   const [verse] = useState<DhpVerse>(
@@ -87,6 +91,10 @@ export default function Home() {
     navigate(`/suttas?q=${encodeURIComponent(q)}`);
   }, [query, navigate]);
 
+  /* Kiểm tra cập nhật: so sánh phiên bản máy chủ với phiên bản hiện tại */
+  const latest = meta?.latestVersion ?? APP_VERSION;
+  const hasUpdate = compareVersions(latest, APP_VERSION) > 0;
+
   return (
     <AppShell title="Trang chủ" hideTitle>
       <div className="-mx-3 mb-4 bg-background px-3 sm:-mx-5 sm:px-5">
@@ -102,7 +110,7 @@ export default function Home() {
         className="mb-4"
         role="search"
       >
-        <div className="flex h-12 items-center gap-3 rounded-full bg-card px-4 shadow-[0_1px_2px_rgba(63,50,33,0.04),0_6px_20px_rgba(63,50,33,0.06)] transition focus-within:ring-2 focus-within:ring-primary/30">
+        <div className="flex h-12 items-center gap-3 rounded-full bg-card px-4 shadow-[0_1px_2px_rgba(43,29,18,0.04),0_6px_20px_rgba(43,29,18,0.06)] transition focus-within:ring-2 focus-within:ring-primary/30">
           <Search className="h-5 w-5 shrink-0 text-muted-foreground" />
           <input
             value={query}
@@ -114,7 +122,7 @@ export default function Home() {
         </div>
       </form>
 
-      {/* ---------------- HERO: ảnh Phật + logo + tagline ---------------- */}
+      {/* ---------------- HERO: ảnh Phật + Kinh Pháp Cú ---------------- */}
       <section className="ds-card relative mb-4 overflow-hidden">
         <div className="relative h-52 w-full overflow-hidden bg-muted sm:h-64">
           <img
@@ -126,144 +134,43 @@ export default function Home() {
               (e.currentTarget as HTMLImageElement).style.display = "none";
             }}
           />
-          {/* Lớp phủ vàng đồng nhạt cho chữ nổi rõ */}
           <span
             aria-hidden
-            className="absolute inset-0 bg-gradient-to-r from-[#3f3221]/70 via-[#3f3221]/35 to-transparent"
+            className="absolute inset-0 bg-gradient-to-t from-[#2b1d12]/75 via-transparent to-transparent"
           />
-          <div className="absolute inset-0 flex flex-col items-start justify-center px-6">
-            <span aria-hidden className="text-3xl text-gold drop-shadow">
-              ☸
-            </span>
-            <p className="mt-1 text-4xl font-extrabold tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
-              Dharma
-            </p>
-            <p className="mt-1 text-[13px] font-medium text-white/90 drop-shadow">
-              Hiểu Phật Pháp · Sống An Lạc
-            </p>
-          </div>
         </div>
 
-        {/* Thẻ trích danh ngôn nổi lên trên hero */}
-        <div className="relative -mt-10 px-4 pb-4">
-          <div className="rounded-3xl bg-card/95 px-5 py-5 text-center shadow-[0_8px_28px_rgba(63,50,33,0.14)] backdrop-blur">
-            <span aria-hidden className="flex items-center justify-center gap-3 text-gold">
-              <span className="h-px w-10 bg-gold/40" />
-              <span className="text-lg">🪷</span>
-              <span className="h-px w-10 bg-gold/40" />
-            </span>
-            <blockquote className="mt-2.5">
-              <p className="readable-serif text-[15px] leading-[1.85] text-foreground/95">
-                “{verse.vi}”
+        {/* Trích Kinh Pháp Cú nổi trên đáy hero */}
+        <div className="relative -mt-14 px-4 pb-4">
+          <div className="rounded-3xl bg-card/95 px-5 py-4 text-center shadow-[0_8px_28px_rgba(43,29,18,0.16)] backdrop-blur">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gold">
+              Kinh Pháp Cú — câu {verse.n}
+            </p>
+            <blockquote className="mt-2">
+              <p className="readable-serif line-clamp-3 text-[14px] leading-[1.8] text-foreground/95">
+                {verse.vi}
               </p>
-              <footer className="mt-2.5 text-xs font-medium text-muted-foreground">
-                — Đức Phật Thích Ca Mâu Ni —
-              </footer>
             </blockquote>
-            <p className="mt-3 line-clamp-2 text-[11px] italic leading-relaxed text-muted-foreground/80">
-              «{verse.pali}»
-            </p>
           </div>
         </div>
       </section>
 
-      {/* -------- Lưới 8 ô chức năng chính thức -------- */}
-      <section className="ds-card mb-4 px-3 py-6">
-        <div className="grid grid-cols-3 gap-y-6 sm:grid-cols-4">
-          {MAIN_ITEMS.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.to + item.label}
-                type="button"
-                onClick={() => navigate(item.to)}
-                className="flex flex-col items-center gap-2.5 px-1 text-center transition active:scale-95"
-              >
-                <span className="ds-tile h-[58px] w-[58px] shadow-[0_2px_8px_rgba(63,50,33,0.08)] transition group-hover:shadow-md">
-                  <Icon className="h-6 w-6" strokeWidth={1.8} />
-                </span>
-                <span className="whitespace-pre-line text-[11px] font-semibold leading-tight text-foreground/90">
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* -------- Banner "Sống chánh niệm là sống tự do" -------- */}
-      <button
-        type="button"
-        onClick={() => navigate("/meditation")}
-        className="group relative mb-6 block w-full overflow-hidden rounded-[1.75rem] text-left shadow-[0_6px_24px_rgba(63,50,33,0.18)] transition active:scale-[0.99]"
-      >
-        <div className="relative flex items-center justify-between bg-gradient-to-r from-[#8a6420] via-[#a67c2e] to-[#c49a4a] px-6 py-6">
-          <span className="pointer-events-none absolute -right-4 -top-8 text-[6.5rem] leading-none text-white/10">
-            ☸
-          </span>
-          <span className="min-w-0">
-            <span className="block text-lg font-bold leading-snug text-white drop-shadow-sm">
-              Sống chánh niệm
-            </span>
-            <span className="block text-lg font-bold leading-snug text-white/95 drop-shadow-sm">
-              là sống tự do
-            </span>
-          </span>
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur transition group-hover:bg-white/30">
-            <ChevronRight className="h-5 w-5" />
-          </span>
-        </div>
-      </button>
-
-      {/* -------- Pháp thoại hôm nay + các mục phụ -------- */}
-      <section className="ds-card mb-4 p-4">
-        <header className="mb-3 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-[15px] font-bold tracking-tight">
-            <span className="text-gold">☸</span> Pháp thoại hôm nay
-          </h2>
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard")}
-            className="inline-flex items-center gap-0.5 text-xs font-medium text-muted-foreground transition hover:text-primary"
-          >
-            Xem tất cả <ChevronRight className="h-3.5 w-3.5" />
-          </button>
-        </header>
-        <button
-          type="button"
-          onClick={() => navigate("/dashboard")}
-          className="flex w-full items-center gap-3.5 rounded-2xl bg-secondary/60 p-3 text-left transition hover:bg-secondary active:scale-[0.99]"
-        >
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-gold/30 to-gold/10 text-gold">
-            <Play className="h-5 w-5" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold">
-              Bài Pháp: Tứ Niệm Xứ
-            </span>
-            <span className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-              Kho pháp thoại Theravāda
-              <span className="inline-flex items-center gap-1 rounded-full bg-card px-1.5 py-0.5 text-[10px] font-semibold text-foreground/70">
-                <Play className="h-2.5 w-2.5" /> Nghe
-              </span>
-            </span>
-          </span>
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </button>
-
-        {/* Các mục phụ — thẻ nhỏ đồng bộ */}
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          {EXTRA_ITEMS.map((item) => {
+      {/* -------- Tam tạng: KINH — LUẬT — LUẬN cạnh nhau -------- */}
+      <section className="ds-card mb-4 px-4 py-5">
+        <div className="grid grid-cols-3 gap-2">
+          {TIPITAKA_ITEMS.map((item) => {
             const Icon = item.icon;
             return (
               <button
                 key={item.to}
                 type="button"
                 onClick={() => navigate(item.to)}
-                className="flex flex-col items-center gap-1.5 rounded-2xl bg-secondary/50 px-1 py-3 text-center transition hover:bg-secondary active:scale-[0.98]"
+                className="flex flex-col items-center gap-2 px-1 text-center transition active:scale-95"
               >
-                <Icon className="h-[18px] w-[18px] text-gold" strokeWidth={1.8} />
-                <span className="text-[10px] font-medium leading-tight text-foreground/80">
+                <span className="ds-tile h-[54px] w-[54px] shadow-[0_2px_8px_rgba(43,29,18,0.08)]">
+                  <Icon className="h-6 w-6" strokeWidth={1.8} />
+                </span>
+                <span className="text-xs font-semibold leading-tight text-foreground/90">
                   {item.label}
                 </span>
               </button>
@@ -271,6 +178,86 @@ export default function Home() {
           })}
         </div>
       </section>
+
+      {/* -------- Lưới các mục còn lại -------- */}
+      <section className="ds-card mb-6 px-3 py-5">
+        <div className="grid grid-cols-3 gap-y-5 sm:grid-cols-5">
+          {OTHER_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.to}
+                type="button"
+                onClick={() => navigate(item.to)}
+                className="flex flex-col items-center gap-2 px-1 text-center transition active:scale-95"
+              >
+                <span className="ds-tile h-[54px] w-[54px] shadow-[0_2px_8px_rgba(43,29,18,0.08)]">
+                  <Icon className="h-6 w-6" strokeWidth={1.8} />
+                </span>
+                <span className="text-[11px] font-medium leading-tight text-foreground/90">
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ---------------- Chân trang: nhà phát triển + phiên bản ---------------- */}
+      <footer className="ds-card mb-4 p-5 text-center">
+        <p className="text-[13px] font-semibold text-foreground/90">
+          Nhà phát triển ứng dụng: Hứa Tiến Dương
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Dharma · Phiên bản {APP_VERSION}
+        </p>
+        {meta?.releaseNotes && !hasUpdate && (
+          <p className="mx-auto mt-2 max-w-sm text-[11px] leading-relaxed text-muted-foreground/80">
+            {meta.releaseNotes}
+          </p>
+        )}
+        {hasUpdate && (
+          <div className="mx-auto mt-3 max-w-sm rounded-2xl bg-gold/10 p-3">
+            <p className="flex items-center justify-center gap-1.5 text-xs font-semibold text-gold">
+              <Download className="h-3.5 w-3.5" />
+              Có phiên bản mới {latest}
+            </p>
+            {meta?.releaseNotes && (
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                {meta.releaseNotes}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+            >
+              <RefreshCw className="h-3 w-3" /> Tải bản mới
+            </button>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            // Kiểm tra cập nhật: nạp lại trang để lấy bundle mới nhất
+            window.location.reload();
+          }}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-4 py-1.5 text-xs font-medium text-foreground/85 transition hover:border-primary/40 hover:bg-accent"
+        >
+          <RefreshCw className="h-3.5 w-3.5" /> Kiểm tra cập nhật
+        </button>
+      </footer>
     </AppShell>
   );
+}
+
+/* So sánh phiên bản x.y.z: 1 nếu a > b, -1 nếu a < b, 0 nếu bằng */
+function compareVersions(a: string, b: string): number {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] ?? 0) > (pb[i] ?? 0)) return 1;
+    if ((pa[i] ?? 0) < (pb[i] ?? 0)) return -1;
+  }
+  return 0;
 }

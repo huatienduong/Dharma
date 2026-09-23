@@ -44,90 +44,90 @@
   --color-gold-soft: var(--gold-soft);
 }
 
-/* CHANGE VALUES FOR THEME — GIAO DIỆN CHÍNH THỨC: nền ngà ấm, vàng đồng,
- * thẻ trắng kem bo lớn, icon vàng đồng trên ô ngà — theo thiết kế mẫu. */
+/* CHANGE VALUES FOR THEME — màu áo y cà sa theo truyền thống Theravāda:
+ * nền kem ấm, cam đất y cà sa làm điểm nhấn, thẻ trắng kem bo lớn. */
 :root {
   --radius: 1.25rem;
-  --background: #f0e7d3; /* nền ngà ấm */
-  --foreground: #3f3221;
-  --card: #fbf7ee;
-  --card-foreground: #3f3221;
-  --popover: #fbf7ee;
-  --popover-foreground: #3f3221;
-  --primary: #a67c2e; /* vàng đồng */
-  --primary-foreground: #fdfaf3;
-  --secondary: #efe4cc;
-  --secondary-foreground: #6b5836;
-  --muted: #ece1c8;
-  --muted-foreground: #8a7a5c;
-  --accent: #eee3c9;
-  --accent-foreground: #5d4c2e;
-  --destructive: #b3402e;
-  --border: #e2d5b8;
-  --input: #e2d5b8;
-  --ring: #a67c2e;
-  --chart-1: #a67c2e;
-  --chart-2: #7d6a4f;
-  --chart-3: #c49a4a;
-  --chart-4: #8f6b28;
-  --chart-5: #5c4a2a;
-  --sidebar: #f5eddb;
-  --sidebar-foreground: #3f3221;
-  --sidebar-primary: #a67c2e;
-  --sidebar-primary-foreground: #fdfaf3;
-  --sidebar-accent: #ece1c8;
-  --sidebar-accent-foreground: #6b5836;
-  --sidebar-border: #e2d5b8;
-  --sidebar-ring: #a67c2e;
+  --background: #faf6ef; /* kem ấm nền app */
+  --foreground: #2b1d12;
+  --card: #ffffff;
+  --card-foreground: #2b1d12;
+  --popover: #fffdf8;
+  --popover-foreground: #2b1d12;
+  --primary: #b45309; /* cam đất y cà sa sẫm — điểm nhấn thương hiệu */
+  --primary-foreground: #fff8ec;
+  --secondary: #f3e5c8; /* vàng saffron nhạt */
+  --secondary-foreground: #5f4630;
+  --muted: #f1e8d8;
+  --muted-foreground: #7a6a55;
+  --accent: #f3e5c8;
+  --accent-foreground: #5f4630;
+  --destructive: #b91c1c;
+  --border: #e5d9c3;
+  --input: #e5d9c3;
+  --ring: #b45309;
+  --chart-1: #b45309;
+  --chart-2: #92400e;
+  --chart-3: #ca8a04;
+  --chart-4: #854d0e;
+  --chart-5: #d97706;
+  --sidebar: #f6efe1;
+  --sidebar-foreground: #2b1d12;
+  --sidebar-primary: #b45309;
+  --sidebar-primary-foreground: #fff8ec;
+  --sidebar-accent: #efe2c9;
+  --sidebar-accent-foreground: #5f4630;
+  --sidebar-border: #e5d9c3;
+  --sidebar-ring: #b45309;
 
-  /* Token phụ trợ — vàng đồng làm điểm nhấn chính */
-  --brown-deep: #3f3221;
-  --brown-mid: #6b5836;
-  --gold: #a67c2e; /* vàng đồng chủ đạo */
-  --gold-soft: #c49a4a;
-  --lotus: #efe4cc;
+  /* Token phụ trợ — cam đất y cà sa làm điểm nhấn chính */
+  --brown-deep: #2b1d12;
+  --brown-mid: #5f4630;
+  --gold: #b45309; /* cam y cà sa chủ đạo */
+  --gold-soft: #d97706;
+  --lotus: #f3e5c8;
 
   --font-size-scale: 1;
 }
 
 .dark {
-  --background: #191410;
-  --foreground: #efe6d2;
-  --card: #241d15;
-  --card-foreground: #efe6d2;
-  --popover: #292117;
-  --popover-foreground: #efe6d2;
-  --primary: #cfa14b; /* vàng đồng sáng trên nền tối */
-  --primary-foreground: #191410;
-  --secondary: #2c241a;
-  --secondary-foreground: #d9c9a6;
-  --muted: #2c241a;
-  --muted-foreground: #a5947a;
-  --accent: #2c241a;
-  --accent-foreground: #e5d7b8;
-  --destructive: #e0684f;
-  --border: #372d20;
-  --input: #372d20;
-  --ring: #cfa14b;
-  --chart-1: #cfa14b;
-  --chart-2: #a08a68;
-  --chart-3: #e0b56a;
-  --chart-4: #9c7a35;
-  --chart-5: #6e5a36;
-  --sidebar: #191410;
-  --sidebar-foreground: #efe6d2;
-  --sidebar-primary: #cfa14b;
-  --sidebar-primary-foreground: #191410;
-  --sidebar-accent: #2c241a;
-  --sidebar-accent-foreground: #d9c9a6;
-  --sidebar-border: #372d20;
-  --sidebar-ring: #cfa14b;
+  --background: #17100a;
+  --foreground: #f3e9d8;
+  --card: #241a10;
+  --card-foreground: #f3e9d8;
+  --popover: #2b2015;
+  --popover-foreground: #f3e9d8;
+  --primary: #e0852a; /* y cà sa sáng trên nền tối */
+  --primary-foreground: #1a1108;
+  --secondary: #2f2314;
+  --secondary-foreground: #ecd9b5;
+  --muted: #2f2314;
+  --muted-foreground: #b3a184;
+  --accent: #2f2314;
+  --accent-foreground: #ecd9b5;
+  --destructive: #ef6a5a;
+  --border: #3a2c1c;
+  --input: #3a2c1c;
+  --ring: #e0852a;
+  --chart-1: #e0852a;
+  --chart-2: #c2711c;
+  --chart-3: #d4a72c;
+  --chart-4: #9a5b13;
+  --chart-5: #f0a04b;
+  --sidebar: #17100a;
+  --sidebar-foreground: #f3e9d8;
+  --sidebar-primary: #e0852a;
+  --sidebar-primary-foreground: #1a1108;
+  --sidebar-accent: #2f2314;
+  --sidebar-accent-foreground: #ecd9b5;
+  --sidebar-border: #3a2c1c;
+  --sidebar-ring: #e0852a;
 
-  --brown-deep: #191410;
-  --brown-mid: #2c241a;
-  --gold: #cfa14b;
-  --gold-soft: #e0b56a;
-  --lotus: #2c241a;
+  --brown-deep: #17100a;
+  --brown-mid: #2f2314;
+  --gold: #e0852a;
+  --gold-soft: #f0a04b;
+  --lotus: #2f2314;
 }
 
 @layer base {
@@ -191,7 +191,7 @@
     0 6px 20px rgba(0, 0, 0, 0.3);
 }
 
-/* Ô icon tròn ngà — icon vàng đồng bên trong (kiểu mẫu chính thức) */
+/* Ô icon tròn ngà — icon cam đất bên trong (chủ đạo Theravāda) */
 .ds-tile {
   display: flex;
   align-items: center;
@@ -200,7 +200,7 @@
   background-color: var(--secondary);
   color: var(--gold);
   box-shadow:
-    inset 0 0 0 1px rgba(166, 124, 46, 0.18);
+    inset 0 0 0 1px rgba(180, 83, 9, 0.2);
 }
 
 /* ---------- Logo Bánh xe Chuyển pháp luân quay ---------- */

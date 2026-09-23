@@ -238,15 +238,17 @@ export default function Settings() {
           onClick={() => toggle("about")}
         >
           <div className="space-y-3 pt-1">
+            {/* Đồng bộ với chân trang Trang chủ: nhà phát triển + phiên bản */}
+            <div className="rounded-2xl bg-muted/50 px-4 py-4 text-center">
+              <p className="text-[13px] font-semibold text-foreground/90">
+                Nhà phát triển ứng dụng: Hứa Tiến Dương
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Dharma · Phiên bản {APP_VERSION}
+              </p>
+            </div>
             <div className="flex items-center justify-between rounded-2xl bg-muted/50 px-4 py-3">
-              <div>
-                <p className="text-sm font-semibold">
-                  Dharma {APP_VERSION}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {t("developer")}: Hứa Tiến Dương
-                </p>
-              </div>
+              <p className="text-sm font-semibold">Cập nhật ứng dụng</p>
               <Button
                 size="sm"
                 variant="outline"
@@ -255,7 +257,7 @@ export default function Settings() {
                 className="gap-1.5 rounded-full"
               >
                 <RefreshCw className={cn("h-3.5 w-3.5", checking && "animate-spin")} />
-                {checking ? "Đang kiểm tra…" : "Cập nhật"}
+                {checking ? "Đang kiểm tra…" : "Kiểm tra"}
               </Button>
             </div>
 

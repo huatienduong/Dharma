@@ -387,35 +387,23 @@ export function AppShell({
       </div>
 
       {/* ============================================================ */}
-      {/* BOTTOM NAV — 5 tab chính thức kiểu mẫu                          */}
+      {/* BOTTOM NAV — DUY NHẤT nút Trang chủ                             */}
       {/* ============================================================ */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/50 bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
-        <div className="mx-auto flex max-w-lg items-stretch justify-between px-2">
-          {BOTTOM_TABS.map((tab) => {
-            const isMore = tab.to === "MORE";
-            const active = !isMore && isActive(tab.to);
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.label}
-                type="button"
-                onClick={() => (isMore ? setMoreOpen(true) : go(tab.to))}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition",
-                  active ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                <Icon
-                  className={cn(
-                    "h-[22px] w-[22px]",
-                    active && "drop-shadow-[0_2px_6px_rgba(166,124,46,0.4)]",
-                  )}
-                />
-                <span className="leading-tight">{tab.label}</span>
-              </button>
-            );
-          })}
+      <nav className="fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)] lg:hidden">
+        <div className="mx-auto mb-3 flex w-fit items-center justify-center">
+          <button
+            type="button"
+            onClick={() => go("/home")}
+            aria-current={isActive("/home") ? "page" : undefined}
+            aria-label="Về Trang chủ"
+            className={cn(
+              "flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-[13px] font-bold text-primary-foreground shadow-[0_6px_20px_rgba(180,83,9,0.45)] transition active:scale-95",
+              isActive("/home") && "ring-4 ring-primary/20",
+            )}
+          >
+            <HomeIcon className="h-5 w-5" />
+            {t("navHome")}
+          </button>
         </div>
       </nav>
     </div>
