@@ -222,18 +222,13 @@ export default function Settings() {
         </RowCard>
 
         {/* ---------- Thông báo (toggle ngay trên hàng) ---------- */}
-        <div>
-          <div className="ds-card flex items-center justify-between gap-4 px-5 py-5">
-            <p className="text-[16px] font-semibold">{t("notifications")}</p>
-            <Switch
-              checked={settings.notifications}
-              onChange={(v) => setNotifications(v)}
-              label="Thông báo"
-            />
-          </div>
-          <p className="px-1 pt-2 text-[13px] leading-relaxed text-muted-foreground">
-            {t("notifDesc")}.
-          </p>
+        <div className="ds-card flex items-center justify-between gap-4 px-5 py-5">
+          <p className="text-[16px] font-semibold">{t("notifications")}</p>
+          <Switch
+            checked={settings.notifications}
+            onChange={(v) => setNotifications(v)}
+            label="Thông báo"
+          />
         </div>
 
         {/* ---------- Giới thiệu / Phiên bản ---------- */}

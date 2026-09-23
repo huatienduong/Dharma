@@ -15,9 +15,8 @@ import {
   BookOpen,
   Search,
 } from "lucide-react";
-import { APP_VERSION } from "@/lib/version";
 import { DHAMMAPADA, type DhpVerse } from "@/data/dhammapada";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
 /* Lưới chức năng: KINH — LUẬT — LUẬN cạnh nhau theo thứ tự tạng */
@@ -85,14 +84,6 @@ export default function Home() {
     navigate(`/suttas?q=${encodeURIComponent(q)}`);
   }, [query, navigate]);
 
-  const greeting = useMemo(() => {
-    const h = new Date().getHours();
-    if (h < 11) return "Chào buổi sáng";
-    if (h < 14) return "Chào buổi trưa";
-    if (h < 18) return "Chào buổi chiều";
-    return "Chào buổi tối";
-  }, []);
-
   return (
     <AppShell title="Trang chủ" hideTitle>
       <div className="-mx-3 mb-4 bg-background px-3 sm:-mx-5 sm:px-5">
@@ -120,7 +111,7 @@ export default function Home() {
         </div>
       </form>
 
-      {/* -------- Thẻ chào mừng: ảnh Đức Phật ngẫu nhiên + Pháp Cú -------- */}
+      {/* -------- Ảnh Đức Phật ngẫu nhiên + Trích Kinh Pháp Cú -------- */}
       <section className="ds-card relative mb-5 overflow-hidden">
         {/* Ảnh Đức Phật Thích Ca — chạy ngẫu nhiên từ internet */}
         <div className="relative h-44 w-full overflow-hidden bg-muted sm:h-56">
@@ -136,13 +127,8 @@ export default function Home() {
           />
           <span
             aria-hidden
-            className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-primary/25 via-transparent to-primary/40 text-6xl text-primary/30"
-          >
-            ☸
-          </span>
-          <p className="absolute bottom-3 left-4 text-[13px] font-semibold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]">
-            {greeting} 🙏
-          </p>
+            className="absolute inset-0 bg-gradient-to-b from-transparent to-primary/30"
+          />
         </div>
 
         {/* Trích Kinh Pháp Cú ngẫu nhiên */}
@@ -186,7 +172,7 @@ export default function Home() {
       </section>
 
       {/* -------- Lưới chức năng còn lại (đồng bộ ô màu) -------- */}
-      <section className="ds-card mb-6 px-3 py-5">
+      <section className="ds-card mb-4 px-3 py-5">
         <div className="grid grid-cols-4 gap-y-5 sm:grid-cols-4">
           {OTHER_ITEMS.map((item) => {
             const Icon = item.icon;
@@ -209,33 +195,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ---------------- Chân trang: nhà phát triển ---------------- */}
-      <footer className="mt-4 pb-4 pt-2 text-center">
-        <span aria-hidden className="mb-2 block text-2xl text-primary/40">
-          ☸
-        </span>
-        <p className="text-[13px] font-semibold text-foreground/85">
-          Dharma · Phiên bản {APP_VERSION}
-        </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Biên soạn bởi nhà phát triển{" "}
-          <span className="font-medium text-foreground/80">
-            Hứa Tiến Dương
-          </span>
-        </p>
-        <a
-          href="https://facebook.com/huatienduong.official"
-          target="_blank"
-          rel="noreferrer"
-          className="mt-2.5 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card px-4 py-1.5 text-xs font-medium text-foreground/85 transition hover:border-primary/40 hover:bg-accent"
-          aria-label="Liên hệ nhà phát triển qua Facebook"
-        >
-          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-[#1877F2]" aria-hidden>
-            <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.66c0-3.025 1.792-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.971H15.83c-1.491 0-1.956.93-1.956 1.886v2.264h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
-          </svg>
-          Liên hệ Facebook
-        </a>
-      </footer>
     </AppShell>
   );
 }
