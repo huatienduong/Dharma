@@ -154,23 +154,51 @@ export const related = action({
   handler: async (ctx, { youtubeId, title }): Promise<{ items: TalkRow[]; nextPageToken?: string }> => {
     const key = process.env.YOUTUBE_API_KEY;
     if (!key) throw new Error("Chưa cấu hình YOUTUBE_API_KEY. Hãy thêm khóa YouTube Data API v3 trong phần Keys của dự án.");
-    const result = (await ytFetch("search", { part: "snippet", q: title.replace(/\s+/g, " ").trim().slice(0, 90) || "pháp thoại theravada", type: "video", maxResults: "20", relevanceLanguage: "vi", key })) as SearchList;
-    const entries = (result.items ?? []).flatMap((item) => {
-      const id = item.id?.videoId ?? "";
-      const name = item.snippet?.title ?? "";
-      return id && name && id !== youtubeId ? [{ videoId: id, title: name, publishedAt: item.snippet?.publishedAt ?? "", channelTitle: item.snippet?.channelTitle ?? "" }] : [];
-    }).filter((e) => isDhammaRelated(e.title, e.channelTitle));
-    if (entries.length === 0) return { items: [], nextPageToken: result.nextPageToken };
-    const details = (await ytFetch("videos", { part: "contentDetails,statistics", id: entries.map((e) => e.videoId).join(","), key })) as VideoList;
-    const items: TalkRow[] = [];
-    for (const entry of entries) {
-      const detail = (details.items ?? []).find((item) => item.id === entry.videoId);
-      const durationSec = parseIsoDuration(detail?.contentDetails?.duration);
-      const viewCount = Number(detail?.statistics?.viewCount ?? 0);
-      await ctx.runMutation(internal.youtubeSync.upsertTalk, { youtubeId: entry.videoId, title: entry.title, channelName: entry.channelTitle, publishedAt: entry.publishedAt, durationSec, viewCount });
-      items.push({ _id: entry.videoId, youtubeId: entry.videoId, title: entry.title, teacher: entry.channelTitle, channelName: entry.channelTitle, publishedAt: entry.publishedAt, durationSec, viewCount });
+
+    /* ĐỦ 50 VIDEO ĐỀ XUẤT: 1 trang API chỉ có 20 kết quả — lọc Phật pháp
+     * lại rơi bớt nên phải tải NHIỀU TRANG với các truy vấn khác nhau
+     * (video liên quan → pháp thoại nguyên thủy → giáo lý) cho đến khi
+     * đủ ~50 video hợp lệ hoặc hết 4 truy vấn. */
+    const baseQuery = title.replace(/\s+/g, " ").trim().slice(0, 90) || "pháp thoại theravada";
+    const queries = [
+      baseQuery,
+      "pháp thoại Phật giáo Theravada nguyên thủy",
+      "giáo lý phật pháp Theravada kinh điển",
+      "thiền định pháp thoại thiền sư",
+    ];
+    const seen = new Set<string>([youtubeId]);
+    const collected: Array<{ videoId: string; title: string; publishedAt: string; channelTitle: string }> = [];
+    for (const q of queries) {
+      if (collected.length >= 55) break;
+      try {
+        const result = (await ytFetch("search", { part: "snippet", q, type: "video", maxResults: "50", relevanceLanguage: "vi", key })) as SearchList;
+        for (const item of result.items ?? []) {
+          const id = item.id?.videoId ?? "";
+          const name = item.snippet?.title ?? "";
+          if (!id || !name || seen.has(id)) continue;
+          if (!isDhammaRelated(name, item.snippet?.channelTitle ?? "")) continue;
+          seen.add(id);
+          collected.push({ videoId: id, title: name, publishedAt: item.snippet?.publishedAt ?? "", channelTitle: item.snippet?.channelTitle ?? "" });
+        }
+      } catch {
+        /* truy vấn này lỗi — thử truy vấn kế tiếp */
+      }
     }
-    return { items, nextPageToken: result.nextPageToken };
+    if (collected.length === 0) return { items: [] };
+
+    const items: TalkRow[] = [];
+    for (let i = 0; i < collected.length; i += 50) {
+      const batch = collected.slice(i, i + 50);
+      const details = (await ytFetch("videos", { part: "contentDetails,statistics", id: batch.map((e) => e.videoId).join(","), key })) as VideoList;
+      for (const entry of batch) {
+        const detail = (details.items ?? []).find((item) => item.id === entry.videoId);
+        const durationSec = parseIsoDuration(detail?.contentDetails?.duration);
+        const viewCount = Number(detail?.statistics?.viewCount ?? 0);
+        await ctx.runMutation(internal.youtubeSync.upsertTalk, { youtubeId: entry.videoId, title: entry.title, channelName: entry.channelTitle, publishedAt: entry.publishedAt, durationSec, viewCount });
+        items.push({ _id: entry.videoId, youtubeId: entry.videoId, title: entry.title, teacher: entry.channelTitle, channelName: entry.channelTitle, publishedAt: entry.publishedAt, durationSec, viewCount });
+      }
+    }
+    return { items: items.slice(0, 60) };
   },
 });
 
