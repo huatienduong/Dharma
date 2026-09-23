@@ -18,18 +18,9 @@ const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const SettingsPage = lazy(() => import("./pages/Settings.tsx"));
 const Assistant = lazy(() => import("./pages/Assistant.tsx"));
 
-// Fallback chuyển route — LOGO chính thức, KHÔNG chữ loading
+// Fallback chuyển route — nền phẳng sạch, không logo
 function RouteLoading() {
-  const logo = typeof localStorage !== "undefined" ? localStorage.getItem("dharma-logo-url") : null;
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      {logo ? (
-        <img src={logo} alt="" className="h-16 w-16 animate-pulse rounded-3xl object-contain" />
-      ) : (
-        <span aria-hidden className="flex h-16 w-16 animate-pulse items-center justify-center rounded-3xl bg-primary/10 text-3xl text-primary">☸</span>
-      )}
-    </div>
-  );
+  return <div className="min-h-screen bg-background" />;
 }
 
 /** Silent error boundary — if VlyToolbar crashes it renders nothing instead of
