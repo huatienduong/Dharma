@@ -1,1 +1,0 @@
-import{c as o}from"./index-CEyrp_28.js";const e=[["path",{d:"m9 18 6-6-6-6",key:"mthhwq"}]],n=o("chevron-right",e);const t=[["path",{d:"m15 18-6-6 6-6",key:"1wnfg3"}]],h=o("chevron-left",t);export{h as C,n as a};
