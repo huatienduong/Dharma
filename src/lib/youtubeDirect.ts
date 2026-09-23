@@ -9,8 +9,9 @@
  */
 
 const PROXIES = [
-  (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  (url: string) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+  (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
   (url: string) => url, // thử trực tiếp cuối cùng (một số môi trường cho phép)
 ];
 
@@ -97,7 +98,7 @@ export async function searchDirect(q: string, pageToken?: string): Promise<{ ite
       /* rơi xuống Piped */
     }
   }
-  const items = await pipedSearch(query);
+  const items = await openSearch(query);
   return { items };
 }
 
@@ -211,6 +212,13 @@ const PIPED_HOSTS = [
   "https://pipedapi.leptons.xyz",
 ];
 
+/* Nguồn dự phòng cuối: Invidious (CORS mở, không cần khóa) */
+const INVIDIOUS_HOSTS = [
+  "https://inv.nadeko.net",
+  "https://invidious.nerdvpn.de",
+  "https://yewtu.be",
+];
+
 const PIPED_QUERIES = [
   "phật pháp pháp thoại theravada",
   "pháp thoại theravada nguyên thủy",
@@ -265,14 +273,67 @@ async function pipedSearch(query: string): Promise<DirectYtRow[]> {
   throw new Error("Không truy cập được nguồn video công cộng.");
 }
 
-/** Nhiều truy vấn Piped lấp đủ số video đề xuất. */
+/* -------------- Invidious — dự phòng sau Piped -------------- */
+
+type InvidiousItem = {
+  videoId?: string;
+  title?: string;
+  author?: string;
+  lengthSeconds?: number;
+  viewCount?: number;
+  published?: number; // epoch giây
+};
+
+function invidiousItemToRow(it: InvidiousItem): DirectYtRow | null {
+  const vid = it.videoId ?? "";
+  if (!vid) return null;
+  return {
+    _id: vid,
+    youtubeId: vid,
+    title: it.title ?? "",
+    teacher: it.author ?? "",
+    channelName: it.author ?? "",
+    publishedAt: typeof it.published === "number" ? new Date(it.published * 1000).toISOString() : "",
+    durationSec: typeof it.lengthSeconds === "number" ? it.lengthSeconds : 0,
+    viewCount: typeof it.viewCount === "number" ? it.viewCount : undefined,
+  };
+}
+
+async function invidiousSearch(query: string): Promise<DirectYtRow[]> {
+  for (const host of INVIDIOUS_HOSTS) {
+    try {
+      const url = `${host}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
+      const res = await fetch(url, { signal: AbortSignal.timeout?.(10_000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as InvidiousItem[];
+      const rows = (Array.isArray(data) ? data : [])
+        .map(invidiousItemToRow)
+        .filter((r): r is DirectYtRow => !!r && isDhammaRelated(r.title, r.channelName));
+      if (rows.length > 0) return rows;
+    } catch {
+      /* host lỗi — thử host kế tiếp */
+    }
+  }
+  throw new Error("Nguồn dự phòng cũng không khả dụng.");
+}
+
+/** Tìm kiếm tổng hợp: Piped trước, Invidious sau — luôn thử hết nguồn công cộng. */
+async function openSearch(query: string): Promise<DirectYtRow[]> {
+  try {
+    return await pipedSearch(query);
+  } catch {
+    return await invidiousSearch(query);
+  }
+}
+
+/** Nhiều truy vấn Piped/Invidious lấp đủ số video đề xuất. */
 async function pipedRelated(excludeId: string, targetCount: number): Promise<DirectYtRow[]> {
   const seen = new Set<string>([excludeId]);
   const collected: DirectYtRow[] = [];
   for (const q of PIPED_QUERIES) {
     if (collected.length >= targetCount) break;
     try {
-      for (const r of await pipedSearch(q)) {
+      for (const r of await openSearch(q)) {
         if (!seen.has(r.youtubeId)) {
           seen.add(r.youtubeId);
           collected.push(r);

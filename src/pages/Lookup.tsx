@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/AppShell";
 import { SearchToolbar } from "@/components/SearchToolbar";
-import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { Search as SearchIcon, Globe2, Loader2, Sparkles, ExternalLink } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadUiState, saveUiState, trackScroll, restoreScroll } from "@/lib/uiState";
@@ -66,7 +65,6 @@ export default function Lookup() {
   const [loadingArticle, setLoadingArticle] = useState(false);
   const [error, setError] = useState(false);
   const [lang, setLang] = useState<"vi" | "en">(() => loadUiState<"vi" | "en">("lookup-lang", "vi"));
-  const { supported: micSupported, listening, start, stop } = useVoiceSearch();
   const debounceRef = useRef<number | null>(null);
 
   useEffect(() => saveUiState("lookup-term", term), [term]);
@@ -157,18 +155,6 @@ export default function Lookup() {
           </div>
         </div>
       </div>
-
-      {/* Đang nghe giọng nói */}
-      {listening && (
-        <div className="mb-3 flex items-center gap-2 rounded-full border border-destructive/40 bg-destructive/5 px-3.5 py-2 text-xs font-medium text-destructive">
-          <span className="relative flex h-3.5 w-3.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-60" />
-            <span className="relative inline-flex h-3.5 w-3.5 rounded-full bg-destructive/60" />
-          </span>
-          Đang nghe… (bấm micro lần nữa để dừng)
-        </div>
-      )}
-      {micSupported === false && null /* micro không hỗ trợ — ẩn im lặng */}
 
       {/* Gợi ý nhanh khi chưa nhập gì */}
       {quickPicks && !article && (
