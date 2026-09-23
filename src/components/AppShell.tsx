@@ -16,6 +16,7 @@ import {
   Scale,
   ScrollText,
   Settings,
+  Hourglass,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router";
@@ -36,7 +37,7 @@ const NAV_LEFT: { to: string; tKey: TranslateKey; icon: typeof MonitorPlay }[] =
 const NAV_RIGHT: { to: string; tKey: TranslateKey; icon: typeof MessagesSquare }[] = [
   { to: "/lookup", tKey: "navLookup", icon: Globe2 },
   { to: "/news", tKey: "navNews", icon: Newspaper },
-  { to: "/history", tKey: "navBuddhistHistory", icon: Landmark },
+  { to: "/history", tKey: "navBuddhistHistory", icon: Hourglass },
   { to: "/calendar", tKey: "navCalendar", icon: CalendarDays },
   { to: "/assistant", tKey: "navAssistant", icon: MessagesSquare },
 ];

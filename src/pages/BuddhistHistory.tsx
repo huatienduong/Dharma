@@ -47,21 +47,20 @@ export default function BuddhistHistory() {
     restoreScroll("buddhist-history");
   }, []);
 
-  /* Nạp ảnh Wikipedia cho toàn bộ mục (song song, câm lặng) */
+  /* Nạp ảnh Wikipedia cho toàn bộ mục — SONG SONG, nhanh hơn nhiều */
   useEffect(() => {
     let alive = true;
     (async () => {
-      for (const entry of HISTORY) {
-        if (!alive) return;
-        if (images[entry.id]) continue;
-        const img = await fetchHistoryImage(entry);
-        if (img && alive) {
-          setImages((prev) => {
-            const next = { ...prev, [entry.id]: img };
-            saveUiState("hist-images", next);
-            return next;
-          });
-        }
+      const pending = HISTORY.filter((e) => e.wiki && !images[e.id]);
+      const results = await Promise.allSettled(pending.map((e) => fetchHistoryImage(e)));
+      if (!alive) return;
+      const next = { ...images };
+      results.forEach((r, i) => {
+        if (r.status === "fulfilled" && r.value) next[pending[i].id] = r.value;
+      });
+      if (Object.keys(next).length > Object.keys(images).length) {
+        setImages(next);
+        saveUiState("hist-images", next);
       }
     })();
     return () => {
@@ -159,7 +158,7 @@ export default function BuddhistHistory() {
             )}
             {img && (
               <p className="border-t border-border/60 bg-background/80 px-3 py-1.5 text-[10px] text-muted-foreground">
-                Hình minh họa: Wikipedia
+                Nguồn: Wikipedia
               </p>
             )}
           </div>
@@ -367,7 +366,7 @@ export default function BuddhistHistory() {
 
       <p className="mt-8 flex items-start gap-1.5 text-[11px] leading-relaxed text-muted-foreground/80">
         <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
-        Lịch sử Phật giáo theo truyền thống Theravāda — hình ảnh minh họa nạp trực tiếp từ Wikipedia.
+        Lịch sử Phật giáo theo truyền thống Theravāda — Nguồn: Wikipedia.
       </p>
     </AppShell>
   );
