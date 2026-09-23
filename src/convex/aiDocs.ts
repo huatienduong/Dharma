@@ -35,6 +35,13 @@ function listProviders(): Provider[] {
   const geminiKey = process.env.GEMINI_API_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
   const vlyKey = process.env.VLY_INTEGRATION_KEY;
+  // Nguồn dự phòng MIỄN PHÍ — thêm khóa nào là dùng nguồn đó ngay
+  const cerebrasKey = process.env.CEREBRAS_API_KEY;
+  const openrouterKey = process.env.OPENROUTER_API_KEY;
+  const mistralKey = process.env.MISTRAL_API_KEY;
+  const togetherKey = process.env.TOGETHER_API_KEY;
+  const deepseekKey = process.env.DEEPSEEK_API_KEY;
+  const hfKey = process.env.HF_TOKEN ?? process.env.HUGGINGFACE_API_KEY;
 
   if (vlyKey) {
     out.push({
@@ -71,6 +78,78 @@ function listProviders(): Provider[] {
         }),
       // FIX: gemini-2.0-flash đã bị Google ngừng (404) → dùng alias mới nhất
       model: "gemini-flash-latest",
+    });
+  }
+  if (cerebrasKey) {
+    out.push({
+      label: "Cerebras",
+      make: () =>
+        createOpenAICompatible({
+          name: "cerebras",
+          baseURL: "https://api.cerebras.ai/v1",
+          apiKey: cerebrasKey,
+        }),
+      model: "llama-3.3-70b",
+    });
+  }
+  if (mistralKey) {
+    out.push({
+      label: "Mistral",
+      make: () =>
+        createOpenAICompatible({
+          name: "mistral",
+          baseURL: "https://api.mistral.ai/v1",
+          apiKey: mistralKey,
+        }),
+      model: "mistral-small-latest",
+    });
+  }
+  if (togetherKey) {
+    out.push({
+      label: "Together AI",
+      make: () =>
+        createOpenAICompatible({
+          name: "together",
+          baseURL: "https://api.together.xyz/v1",
+          apiKey: togetherKey,
+        }),
+      model: "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+    });
+  }
+  if (openrouterKey) {
+    out.push({
+      label: "OpenRouter",
+      make: () =>
+        createOpenAICompatible({
+          name: "openrouter",
+          baseURL: "https://openrouter.ai/api/v1",
+          apiKey: openrouterKey,
+        }),
+      model: "meta-llama/llama-3.3-70b-instruct:free",
+    });
+  }
+  if (deepseekKey) {
+    out.push({
+      label: "DeepSeek",
+      make: () =>
+        createOpenAICompatible({
+          name: "deepseek",
+          baseURL: "https://api.deepseek.com/v1",
+          apiKey: deepseekKey,
+        }),
+      model: "deepseek-chat",
+    });
+  }
+  if (hfKey) {
+    out.push({
+      label: "Hugging Face",
+      make: () =>
+        createOpenAICompatible({
+          name: "huggingface",
+          baseURL: "https://router.huggingface.co/v1",
+          apiKey: hfKey,
+        }),
+      model: "meta-llama/Llama-3.3-70B-Instruct",
     });
   }
   if (openaiKey) {
