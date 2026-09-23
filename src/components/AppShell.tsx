@@ -46,7 +46,17 @@ const NAV_BOTTOM: { to: string; tKey: TranslateKey; icon: typeof History }[] = [
   { to: "/watched", tKey: "navWatched", icon: History },
 ];
 
-const ASSISTANT_LABEL = "Trợ lý Phật học";
+/** Nhãn ngắn gọn cho tab dưới mobile (không hiển thị nhãn dài bị cắt). */
+const BOTTOM_SHORT: Record<string, string> = {
+  "/suttas": "Kinh tạng",
+  "/meditation": "Thiền",
+  "/history": "Lịch sử",
+  "/assistant": "Trợ lý",
+};
+
+function bottomLabel(to: string, fallback: string) {
+  return BOTTOM_SHORT[to] ?? fallback;
+}
 
 const SETTINGS_ITEM = {
   to: "/settings",
@@ -398,7 +408,7 @@ export function AppShell({
             )}
             <span className="w-full truncate text-center leading-tight">DHARMA</span>
           </button>
-          {[NAV_LEFT[1], NAV_LEFT[4], NAV_RIGHT[2], NAV_BOTTOM[0]].map((item) => {
+          {[NAV_LEFT[1], NAV_LEFT[4], NAV_RIGHT[2], NAV_RIGHT[4]].map((item) => {
             if (!item) return null;
             const active = isActive(item.to);
             const Icon = item.icon;
@@ -414,7 +424,7 @@ export function AppShell({
               >
                 <Icon className="h-5 w-5" />
                 <span className="w-full truncate text-center leading-tight">
-                  {upperLabel(t(item.tKey))}
+                  {upperLabel(bottomLabel(item.to, t(item.tKey)))}
                 </span>
               </button>
             );
