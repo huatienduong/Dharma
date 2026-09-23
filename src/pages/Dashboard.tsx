@@ -18,6 +18,7 @@ type YtRow = { _id: string; youtubeId: string; title: string; teacher: string; c
 type SearchResponse = { items: YtRow[]; nextPageToken?: string };
 const HOME_QUERY = "pháp thoại Phật giáo Theravada";
 const SUGGESTED_COUNT = 50; // số video đề xuất giáo lý Theravada hiển thị
+const SEARCH_DEBOUNCE_MS = 350; // phản hồi tìm kiếm nhanh
 
 export default function Dashboard() {
   const { play, current } = usePlayer();
@@ -39,33 +40,25 @@ export default function Dashboard() {
   useEffect(() => { const refresh = () => setLocalWatch(loadLocalWatch()); refresh(); const id = window.setInterval(refresh, 4000); return () => window.clearInterval(id); }, [current]);
   useEffect(() => { const stop = trackScroll("dashboard"); return stop; }, []);
 
-  // FIX "không hiển thị dữ liệu": action Convex có thể lỗi (mạng, backend
-  // đang deploy lại…) → thử lại tối đa 2 lần. Vẫn lỗi → FALLBACK gọi thẳng
-  // YouTube Data API từ client (qua CORS proxy) để video LUÔN hiển thị.
-  const searchWithRetry = useCallback(async (args: { q: string; pageToken?: string }, attempts = 2): Promise<SearchResponse> => {
-    for (let i = 0; i <= attempts; i++) {
-      try {
-        return await searchVideos(args) as SearchResponse;
-      } catch {
-        if (i === attempts) break;
-        await new Promise((r) => setTimeout(r, 800 * (i + 1)));
-      }
+  // FIX "không hiển thị dữ liệu" + TỐC ĐỘ: chỉ thử Convex 1 lần (không
+  // chờ retry nhiều tầng), lỗi → fallback client gọi thẳng nguồn công cộng
+  // (race song song) để video LUÔN hiện, trong ~1-2 giây thay vì 30s+.
+  const searchWithRetry = useCallback(async (args: { q: string; pageToken?: string }): Promise<SearchResponse> => {
+    try {
+      return await searchVideos(args) as SearchResponse;
+    } catch {
+      return searchDirect(args.q);
     }
-    const r = await searchDirect(args.q);
-    return r;
   }, [searchVideos]);
 
-  const relatedWithRetry = useCallback(async (args: { youtubeId: string; title: string }, attempts = 2): Promise<SearchResponse> => {
-    for (let i = 0; i <= attempts; i++) {
-      try {
-        return await relatedVideos(args) as SearchResponse;
-      } catch {
-        if (i === attempts) break;
-        await new Promise((r) => setTimeout(r, 800 * (i + 1)));
-      }
+  const relatedWithRetry = useCallback(async (args: { youtubeId: string; title: string }): Promise<SearchResponse> => {
+    try {
+      const r = await relatedVideos(args) as SearchResponse;
+      if (r.items.length > 0) return r;
+      throw new Error("empty");
+    } catch {
+      return relatedDirect(args.youtubeId, args.title, SUGGESTED_COUNT);
     }
-    const r = await relatedDirect(args.youtubeId, args.title, SUGGESTED_COUNT);
-    return r;
   }, [relatedVideos]);
 
   useEffect(() => {
@@ -74,7 +67,7 @@ export default function Dashboard() {
     setLoading(true);
     const timer = window.setTimeout(() => {
       searchWithRetry({ q: query }).then((r: SearchResponse) => { if (!cancelled) { setResults(r.items); setNextPage(r.nextPageToken); } }).catch(() => { if (!cancelled) setResults(null); }).finally(() => { if (!cancelled) setLoading(false); });
-    }, 450);
+    }, SEARCH_DEBOUNCE_MS);
     return () => { cancelled = true; window.clearTimeout(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, searchWithRetry]);
@@ -106,7 +99,7 @@ export default function Dashboard() {
   const hasVideo = Boolean(current);
 
   return (
-    <AppShell title="VIDEO PHẬT PHÁP" hideTitle>
+    <AppShell title="VIDEO" hideTitle>
       {/* Video 100% trực tiếp từ YouTube API — không dùng kho cục bộ */}
       <div className="sticky top-14 z-30 -mx-3 bg-background px-3 py-3 shadow-sm sm:-mx-5 sm:px-5">
         {!hasVideo && <SearchRow value={search} onChange={setSearch} />}

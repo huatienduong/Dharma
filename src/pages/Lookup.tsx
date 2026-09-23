@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { SearchToolbar } from "@/components/SearchToolbar";
-import { Search as SearchIcon, Globe2, Loader2, Sparkles, ExternalLink } from "lucide-react";
+import { fetchJsonViaProxies } from "@/lib/proxyFetch";
+import { Search as SearchIcon, Globe2, Loader2, Sparkles, ExternalLink, BookOpen } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadUiState, saveUiState, trackScroll, restoreScroll } from "@/lib/uiState";
 import { cn } from "@/lib/utils";
@@ -36,25 +37,21 @@ const QUICK_TERMS = [
 ];
 
 const PROXIES = [
+  (url: string) => url, // trực tiếp — Wikipedia REST API có CORS mở
   (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  (url: string) => url, // trực tiếp cuối cùng — môi trường có CORS mở vẫn chạy
 ];
 
 async function fetchViaProxies(url: string): Promise<unknown> {
-  let lastErr: unknown = null;
-  for (const wrap of PROXIES) {
-    try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 12_000);
-      const res = await fetch(wrap(url), { signal: ctrl.signal });
-      clearTimeout(timer);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } catch (err) {
-      lastErr = err;
-    }
-  }
-  throw lastErr ?? new Error("Không truy cập được Wikipedia.");
+  // Wikipedia REST mở CORS nên gọi thẳng gần như luôn thành công tức thì;
+  // race với proxy chỉ là mạng lưới dự phòng khi mạng chặn.
+  const attempts = PROXIES.map(async (wrap) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8_000);
+    const res = await fetch(wrap(url), { signal: ctrl.signal }).finally(() => clearTimeout(timer));
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()) as unknown;
+  });
+  return Promise.any(attempts);
 }
 
 export default function Lookup() {

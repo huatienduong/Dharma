@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useSettings } from "@/lib/settings";
 import { Eye, History, Play, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import { useQuery } from "convex/react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -109,6 +110,7 @@ function TalkRowHorizontal({
 }
 
 export default function Watched() {
+  const navigate = useNavigate();
   const { play, current } = usePlayer();
   const { t } = useSettings();
   const [rows, setRows] = useState<LocalWatchRow[]>(() => loadLocalWatch());
@@ -161,12 +163,23 @@ export default function Watched() {
       )}
 
       {list.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-12 text-center">
-          <History className="mx-auto h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-4 text-sm font-medium">Chưa có lịch sử xem</p>
-          <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
-            Những pháp thoại bạn xem sẽ được lưu ngay trên thiết bị này.
+        /* Thông báo giữa trang — bố cục đối xứng, có lời dẫn vào mục VIDEO */
+        <div className="flex min-h-[55vh] flex-col items-center justify-center px-4 text-center">
+          <span className="flex h-24 w-24 items-center justify-center rounded-full border border-border/60 bg-card/60 shadow-sm">
+            <History className="h-10 w-10 text-primary/50" />
+          </span>
+          <h2 className="mt-6 text-lg font-semibold tracking-tight">Chưa có lịch sử xem</h2>
+          <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+            Những video bạn xem sẽ được lưu lại đây — dừng ở đâu, quay lại đúng đoạn đó.
           </p>
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard")}
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90 active:scale-[0.98]"
+          >
+            <Play className="h-4 w-4" />
+            Xem video Phật pháp
+          </button>
         </div>
       ) : (
         <div className="space-y-1">

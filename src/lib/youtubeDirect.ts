@@ -3,34 +3,27 @@
  * lại, mạng đứt tới Convex…), client tự gọi YouTube Data API qua proxy
  * CORS công cộng để VIDEO vẫn hiển thị, không đứng trống.
  *
- * Proxy dùng các dịch vụ CORS công cộng — chỉ cho luồng đọc (search),
- * không chạm khóa riêng nào ngoài YOUTUBE_API_KEY của dự án (được hệ
- * thống cấp qua biến môi trường khi build, không hard-code).
+ * TỐC ĐỘ: mọi host Piped/Invidious được gọi ĐỒNG THỜI (race) — host nhanh
+ * nhất thắng. Kết quả lưu cache phiên 10 phút để mở lại trang tức thì.
  */
 
 const PROXIES = [
+  (url: string) => url, // thẳng trước — nhanh nhất khi CORS mở
   (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
   (url: string) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
   (url: string) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-  (url: string) => url, // thử trực tiếp cuối cùng (một số môi trường cho phép)
+  (url: string) => `https://test.cors.workers.dev/?${url}`,
 ];
 
 async function fetchViaProxies(url: string): Promise<unknown> {
-  let lastErr: unknown = null;
-  for (const wrap of PROXIES) {
-    try {
-      // AbortSignal.timeout có thể không tồn tại trên trình duyệt cũ — hủy thủ công
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 12_000);
-      const res = await fetch(wrap(url), { signal: ctrl.signal });
-      clearTimeout(timer);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
-    } catch (err) {
-      lastErr = err;
-    }
-  }
-  throw lastErr ?? new Error("Tất cả proxy đều lỗi");
+  const attempts = PROXIES.map(async (wrap) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 9_000);
+    const res = await fetch(wrap(url), { signal: ctrl.signal }).finally(() => clearTimeout(timer));
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()) as unknown;
+  });
+  return Promise.any(attempts);
 }
 
 export type DirectYtRow = {
@@ -84,22 +77,27 @@ function getApiKey(): string {
   return (import.meta.env?.VITE_YOUTUBE_API_KEY as string | undefined) ?? "";
 }
 
-/** Tìm kiếm trực tiếp qua proxy — dùng khi action Convex lỗi.
+/** Tìm kiếm trực tiếp — dùng khi action Convex lỗi.
  *  Nguồn 1: YouTube Data API (cần VITE_YOUTUBE_API_KEY).
  *  Nguồn 2: Piped API công cộng (KHÔNG cần khóa) — luôn khả dụng. */
 export async function searchDirect(q: string, pageToken?: string): Promise<{ items: DirectYtRow[]; nextPageToken?: string }> {
   const query = q.trim();
   if (!query) return { items: [] };
+  const cached = readCache(`search:${query}:${pageToken ?? ""}`);
+  if (cached) return cached;
+  let result: { items: DirectYtRow[]; nextPageToken?: string };
   const key = getApiKey();
   if (key) {
     try {
-      return await dataApiSearch(query, pageToken, key);
+      result = await dataApiSearch(query, pageToken, key);
     } catch {
-      /* rơi xuống Piped */
+      result = { items: await openSearch(query) };
     }
+  } else {
+    result = { items: await openSearch(query) };
   }
-  const items = await openSearch(query);
-  return { items };
+  writeCache(`search:${query}:${pageToken ?? ""}`, result);
+  return result;
 }
 
 async function dataApiSearch(query: string, pageToken: string | undefined, key: string): Promise<{ items: DirectYtRow[]; nextPageToken?: string }> {
@@ -143,62 +141,85 @@ async function dataApiSearch(query: string, pageToken: string | undefined, key: 
   return { items, nextPageToken: search.nextPageToken };
 }
 
-/** 50 video đề xuất trực tiếp — nhiều truy vấn lấp đủ như backend.
- *  Nguồn 1: YouTube Data API (nếu có khóa). Nguồn 2: Piped (không cần khóa). */
+/** 50 video đề xuất trực tiếp — nhiều truy vấn chạy SONG SONG, lấp đủ
+ *  như backend. Nguồn 1: YouTube Data API (nếu có khóa). Nguồn 2: Piped/
+ *  Invidious (không cần khóa). Kết quả cache phiên để quay lại tức thì. */
 export async function relatedDirect(excludeId: string, _titleHint: string, targetCount = 50): Promise<{ items: DirectYtRow[] }> {
+  const cacheKey = `related:${excludeId || "home"}`;
+  const cached = readCache(cacheKey);
+  if (cached) return cached;
   const key = getApiKey();
+  let result: { items: DirectYtRow[] };
   if (!key) {
-    return { items: await pipedRelated(excludeId, targetCount) };
-  }
-  const queries = [
-    "pháp thoại Phật giáo Theravada nguyên thủy",
-    "giáo lý phật pháp kinh điển theravada",
-    "thiền định pháp thoại thiền sư việt nam",
-    "kinh phật ngày thường theravada",
-  ];
-  const seen = new Set<string>([excludeId]);
-  const collected: DirectYtRow[] = [];
-
-  for (const q of queries) {
-    if (collected.length >= Math.max(targetCount + 5, 55)) break;
-    try {
-      const searchUrl = new URL("https://www.googleapis.com/youtube/v3/search");
-      for (const [k, v] of Object.entries({
-        part: "snippet", q, type: "video", maxResults: "50", relevanceLanguage: "vi", key,
-      })) searchUrl.searchParams.set(k, v);
-      const search = (await fetchViaProxies(searchUrl.toString())) as SearchList;
-      const entries = (search.items ?? [])
-        .map((it) => ({
-          videoId: it.id?.videoId ?? "",
-          title: it.snippet?.title ?? "",
-          publishedAt: it.snippet?.publishedAt ?? "",
-          channelTitle: it.snippet?.channelTitle ?? "",
-        }))
-        .filter((e) => e.videoId && e.title && !seen.has(e.videoId) && isDhammaRelated(e.title, e.channelTitle));
-      for (const e of entries) seen.add(e.videoId);
-
-      if (entries.length > 0) {
-        const detUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
-        detUrl.searchParams.set("part", "contentDetails,statistics");
-        detUrl.searchParams.set("id", entries.map((e) => e.videoId).join(","));
-        detUrl.searchParams.set("key", key);
-        const details = (await fetchViaProxies(detUrl.toString())) as VideoList;
-        for (const e of entries) {
-          const d = (details.items ?? []).find((x) => x.id === e.videoId);
-          collected.push({
-            _id: e.videoId, youtubeId: e.videoId, title: e.title,
-            teacher: e.channelTitle, channelName: e.channelTitle,
-            publishedAt: e.publishedAt,
-            durationSec: parseIsoDuration(d?.contentDetails?.duration),
-            viewCount: Number(d?.statistics?.viewCount ?? 0),
-          });
-        }
+    result = { items: await openRelated(excludeId, targetCount) };
+  } else {
+    const queries = [
+      "pháp thoại Phật giáo Theravada nguyên thủy",
+      "giáo lý phật pháp kinh điển theravada",
+      "thiền định pháp thoại thiền sư việt nam",
+      "kinh phật ngày thường theravada",
+    ];
+    const seen = new Set<string>([excludeId]);
+    const collected: DirectYtRow[] = [];
+    const batches = await Promise.allSettled(queries.map((q) => dataApiSearch(q, undefined, key)));
+    for (const batch of batches) {
+      if (batch.status !== "fulfilled") continue;
+      for (const row of batch.value.items) {
+        if (seen.has(row.youtubeId)) continue;
+        seen.add(row.youtubeId);
+        collected.push(row);
       }
-    } catch {
-      /* truy vấn này lỗi — thử tiếp */
+    }
+    if (collected.length === 0) {
+      result = { items: await openRelated(excludeId, targetCount) };
+    } else {
+      result = { items: collected };
     }
   }
-  return { items: collected };
+  writeCache(cacheKey, result);
+  return result;
+}
+
+/** Nhiều truy vấn Piped/Invidious chạy SONG SONG lấp đủ số video đề xuất. */
+async function openRelated(excludeId: string, targetCount: number): Promise<DirectYtRow[]> {
+  const seen = new Set<string>([excludeId]);
+  const collected: DirectYtRow[] = [];
+  const batches = await Promise.allSettled(PIPED_QUERIES.map((q) => openSearch(q)));
+  for (const batch of batches) {
+    if (batch.status !== "fulfilled") continue;
+    for (const r of batch.value) {
+      if (seen.has(r.youtubeId)) continue;
+      seen.add(r.youtubeId);
+      collected.push(r);
+      if (collected.length >= targetCount) return collected;
+    }
+  }
+  return collected;
+}
+
+/* ---------------------- Cache phiên 10 phút ---------------------- */
+
+const CACHE_PREFIX = "dharma-yt:";
+const CACHE_TTL = 10 * 60 * 1000;
+
+function readCache(key: string): unknown | null {
+  try {
+    const raw = sessionStorage.getItem(CACHE_PREFIX + key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { at: number; data: unknown };
+    if (Date.now() - parsed.at > CACHE_TTL) return null;
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(key: string, data: unknown) {
+  try {
+    sessionStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ at: Date.now(), data }));
+  } catch {
+    /* bộ nhớ đầy — bỏ qua */
+  }
 }
 
 /* ==================================================================== */
@@ -226,7 +247,6 @@ const PIPED_QUERIES = [
   "thiền định pháp thoại",
   "kinh phật theravada",
 ];
-
 type PipedItem = {
   url?: string; // "/watch?v=VIDEO_ID"
   title?: string;
@@ -252,25 +272,23 @@ function pipedItemToRow(it: PipedItem): DirectYtRow | null {
   };
 }
 
-/** Tìm kiếm qua Piped — thử lần lượt từng host công cộng. */
+/** Tìm kiếm qua Piped — RACE tất cả host cùng lúc, host trả kết quả
+ *  hợp lệ đầu tiên thắng. */
 async function pipedSearch(query: string): Promise<DirectYtRow[]> {
-  for (const host of PIPED_HOSTS) {
-    try {
-      const url = `${host}/search?q=${encodeURIComponent(query)}&filter=videos`;
-      const res = await fetch(url, {
-        signal: AbortSignal.timeout?.(10_000),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as { items?: PipedItem[] };
-      const rows = (data.items ?? [])
-        .map(pipedItemToRow)
-        .filter((r): r is DirectYtRow => !!r && isDhammaRelated(r.title, r.channelName));
-      if (rows.length > 0) return rows;
-    } catch {
-      /* host lỗi — thử host kế tiếp */
-    }
-  }
-  throw new Error("Không truy cập được nguồn video công cộng.");
+  const attempts = PIPED_HOSTS.map(async (host) => {
+    const url = `${host}/search?q=${encodeURIComponent(query)}&filter=videos`;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 9_000);
+    const res = await fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = (await res.json()) as { items?: PipedItem[] };
+    const rows = (data.items ?? [])
+      .map(pipedItemToRow)
+      .filter((r): r is DirectYtRow => !!r && isDhammaRelated(r.title, r.channelName));
+    if (rows.length === 0) throw new Error("Trống");
+    return rows;
+  });
+  return Promise.any(attempts);
 }
 
 /* -------------- Invidious — dự phòng sau Piped -------------- */
@@ -300,29 +318,44 @@ function invidiousItemToRow(it: InvidiousItem): DirectYtRow | null {
 }
 
 async function invidiousSearch(query: string): Promise<DirectYtRow[]> {
-  for (const host of INVIDIOUS_HOSTS) {
-    try {
-      const url = `${host}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
-      const res = await fetch(url, { signal: AbortSignal.timeout?.(10_000) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as InvidiousItem[];
-      const rows = (Array.isArray(data) ? data : [])
-        .map(invidiousItemToRow)
-        .filter((r): r is DirectYtRow => !!r && isDhammaRelated(r.title, r.channelName));
-      if (rows.length > 0) return rows;
-    } catch {
-      /* host lỗi — thử host kế tiếp */
-    }
-  }
-  throw new Error("Nguồn dự phòng cũng không khả dụng.");
+  const attempts = INVIDIOUS_HOSTS.map(async (host) => {
+    const url = `${host}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 9_000);
+    const res = await fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = (await res.json()) as InvidiousItem[];
+    const rows = (Array.isArray(data) ? data : [])
+      .map(invidiousItemToRow)
+      .filter((r): r is DirectYtRow => !!r && isDhammaRelated(r.title, r.channelName));
+    if (rows.length === 0) throw new Error("Trống");
+    return rows;
+  });
+  return Promise.any(attempts);
 }
 
-/** Tìm kiếm tổng hợp: Piped trước, Invidious sau — luôn thử hết nguồn công cộng. */
+/** Tìm kiếm tổng hợp: Piped và Invidious RACE CÙNG LÚC — nguồn nào trả
+ *  kết quả hợp lệ đầu tiên thắng. */
 async function openSearch(query: string): Promise<DirectYtRow[]> {
   try {
-    return await pipedSearch(query);
+    return await Promise.any([pipedSearch(query), invidiousSearch(query)]);
   } catch {
-    return await invidiousSearch(query);
+    // Lần cuối: thử lại tuần tự từng host Piped (xử lý host chậm nhưng sống)
+    for (const host of PIPED_HOSTS) {
+      try {
+        const url = `${host}/search?q=${encodeURIComponent(query)}&filter=videos`;
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const data = (await res.json()) as { items?: PipedItem[] };
+        const rows = (data.items ?? [])
+          .map(pipedItemToRow)
+          .filter((r): r is DirectYtRow => !!r && isDhammaRelated(r.title, r.channelName));
+        if (rows.length > 0) return rows;
+      } catch {
+        /* tiếp host kế */
+      }
+    }
+    throw new Error("Không truy cập được nguồn video công cộng.");
   }
 }
 
