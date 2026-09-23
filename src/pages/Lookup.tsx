@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/AppShell";
 import { SearchToolbar } from "@/components/SearchToolbar";
 import { Search as SearchIcon, Globe2, Loader2, Sparkles, ExternalLink, BookOpen } from "lucide-react";
+import { raceFirst } from "@/lib/raceFirst";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadUiState, saveUiState, trackScroll, restoreScroll } from "@/lib/uiState";
 import { cn } from "@/lib/utils";
@@ -50,7 +51,7 @@ async function fetchViaProxies(url: string): Promise<unknown> {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return (await res.json()) as unknown;
   });
-  return Promise.any(attempts);
+  return raceFirst(attempts);
 }
 
 export default function Lookup() {

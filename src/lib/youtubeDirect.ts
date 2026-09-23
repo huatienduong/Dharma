@@ -25,7 +25,7 @@ async function fetchViaProxies(url: string): Promise<unknown> {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return (await res.json()) as unknown;
   });
-  return Promise.any(attempts);
+  return raceFirst(attempts);
 }
 
 export type DirectYtRow = {
