@@ -199,12 +199,28 @@ export default function Assistant() {
       setPending((p) => [...p, userMsg]);
       setBusy(true);
 
-      try {
-        const reply = await ask({
+      // FIX "không phản hồi": thử lại 1 lần khi lỗi mạng nhất thời —
+      // chỉ lỗi nghiệp vụ (câu hỏi trống…) mới dừng ngay.
+      const askOnce = () =>
+        ask({
           messages: [...base, { role: "user", content: q }],
           imageBase64: opts?.fromCall ? undefined : image?.base64,
           imageMime: opts?.fromCall ? undefined : image?.mime,
         });
+
+      try {
+        let reply: string;
+        try {
+          reply = await askOnce();
+        } catch (firstErr) {
+          const msg = firstErr instanceof Error ? firstErr.message : String(firstErr);
+          // Lỗi nhất thời (mạng/giới hạn tốc độ/treo provider) → thử lại 1 lần
+          if (/hết giờ|timeout|network|fetch|rate|429|5\d\d|ECONN/i.test(msg)) {
+            reply = await askOnce();
+          } else {
+            throw firstErr;
+          }
+        }
         const replyMsg: Msg = { role: "assistant", content: reply };
         setPending((p) => p.filter((m) => m !== userMsg));
         setHistory((h) => {

@@ -1,17 +1,21 @@
 import { AppShell, ShellBackButton } from "@/components/AppShell";
 import { AIDocArticle } from "@/components/AIDocReader";
 import { AIIndexList } from "@/components/AIIndexList";
+import { SearchToolbar } from "@/components/SearchToolbar";
 import { getVinayaDoc } from "@/data/vinaya";
 import {
   loadLocalReadingPercent,
   saveLocalReading,
 } from "@/lib/localProgress";
 import { useNavigate, useParams } from "react-router";
-import { useEffect, useRef } from "react";
-import { trackScroll, restoreScroll } from "@/lib/uiState";
+import { useEffect, useRef, useState } from "react";
+import { trackScroll, restoreScroll, loadUiState, saveUiState } from "@/lib/uiState";
 
 export default function Vinaya() {
   const navigate = useNavigate();
+  // Từ khóa tìm kiếm giữ nguyên khi rời trang rồi quay lại
+  const [search, setSearch] = useState(() => loadUiState<string>("vinaya-search", ""));
+  useEffect(() => { saveUiState("vinaya-search", search); }, [search]);
 
   // Giữ vị trí cuộn khi rời trang rồi quay lại
   useEffect(() => {
@@ -29,11 +33,20 @@ export default function Vinaya() {
       title="Luật tạng"
       subtitle="Vinaya Piṭaka — nền giới hạnh của Tăng-già theo truyền thống Theravāda"
     >
-      {/* Danh sách đề xuất do Trợ lý Phật học TỰ NẠP TOÀN BỘ — thay dữ liệu cũ */}
+      {/* Công cụ tìm kiếm — dính cố định dưới header khi cuộn */}
+      <SearchToolbar
+        value={search}
+        onChange={setSearch}
+        sticky
+        ariaLabel="Tìm trong Luật tạng"
+      />
+
+      {/* Danh sách đề xuất do Trợ lý Phật học TỰ NẠP TOÀN BỘ — lọc theo từ khóa */}
       <AIIndexList
         indexKind="vinaya"
         onOpen={(e) => navigate(`/vinaya/${e.id}`)}
         emptyHint="Chưa nạp được danh sách Luật tạng. Hãy thử lại."
+        query={search}
       />
     </AppShell>
   );

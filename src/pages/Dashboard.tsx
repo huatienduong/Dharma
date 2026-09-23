@@ -10,7 +10,7 @@ import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { useAction, useQuery } from "convex/react";
 import { anyApi } from "convex/server";
 import { Eye, Mic, Search as SearchIcon, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Talk = Doc<"dhammaTalks">;
 type YtRow = { _id: string; youtubeId: string; title: string; teacher: string; channelName: string; publishedAt: string; durationSec: number; viewCount?: number };
@@ -36,35 +36,61 @@ export default function Dashboard() {
   useEffect(() => { const refresh = () => setLocalWatch(loadLocalWatch()); refresh(); const id = window.setInterval(refresh, 4000); return () => window.clearInterval(id); }, [current]);
   useEffect(() => { const stop = trackScroll("dashboard"); return stop; }, []);
 
+  // FIX "không hiển thị dữ liệu": action Convex có thể lỗi (mạng, backend
+  // đang deploy lại…) → thử lại tối đa 2 lần trước khi báo rỗng.
+  const searchWithRetry = useCallback(async (args: { q: string; pageToken?: string }, attempts = 2): Promise<SearchResponse> => {
+    for (let i = 0; i <= attempts; i++) {
+      try {
+        return await searchVideos(args) as SearchResponse;
+      } catch (err) {
+        if (i === attempts) throw err;
+        await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+      }
+    }
+    throw new Error("unreachable");
+  }, [searchVideos]);
+
+  const relatedWithRetry = useCallback(async (args: { youtubeId: string; title: string }, attempts = 2): Promise<SearchResponse> => {
+    for (let i = 0; i <= attempts; i++) {
+      try {
+        return await relatedVideos(args) as SearchResponse;
+      } catch (err) {
+        if (i === attempts) throw err;
+        await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+      }
+    }
+    throw new Error("unreachable");
+  }, [relatedVideos]);
+
   useEffect(() => {
     if (!query) { setResults(null); setNextPage(undefined); return; }
     let cancelled = false;
     setLoading(true);
     const timer = window.setTimeout(() => {
-      searchVideos({ q: query }).then((r: SearchResponse) => { if (!cancelled) { setResults(r.items); setNextPage(r.nextPageToken); } }).catch(() => { if (!cancelled) setResults(null); }).finally(() => { if (!cancelled) setLoading(false); });
+      searchWithRetry({ q: query }).then((r: SearchResponse) => { if (!cancelled) { setResults(r.items); setNextPage(r.nextPageToken); } }).catch(() => { if (!cancelled) setResults(null); }).finally(() => { if (!cancelled) setLoading(false); });
     }, 450);
     return () => { cancelled = true; window.clearTimeout(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  }, [query, searchWithRetry]);
 
   // Danh sách 50 video đề xuất giáo lý Theravada — luôn hiển thị ở mục VIDEO
   // (khi không có từ khóa tìm kiếm).
   useEffect(() => {
     let cancelled = false;
     if (query) return;
-    relatedVideos({ youtubeId: current?.youtubeId ?? "", title: current?.title ?? HOME_QUERY })
+    relatedWithRetry({ youtubeId: current?.youtubeId ?? "", title: current?.title ?? HOME_QUERY })
       .then((r: SearchResponse) => { if (!cancelled) setRelated(r.items.slice(0, SUGGESTED_COUNT)); })
       .catch(() => { if (!cancelled) setRelated([]); });
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, current?.youtubeId, current?.title]);
+  }, [query, current?.youtubeId, current?.title, relatedWithRetry]);
 
   useEffect(() => { if (!loading) restoreScroll("dashboard"); }, [loading]);
 
   const loadMore = () => {
     if (!nextPage || loadingMore || !query) return;
     setLoadingMore(true);
-    searchVideos({ q: query, pageToken: nextPage }).then((r: SearchResponse) => { setResults((old) => [...(old ?? []), ...r.items]); setNextPage(r.nextPageToken); }).catch(() => undefined).finally(() => setLoadingMore(false));
+    searchWithRetry({ q: query, pageToken: nextPage }).then((r: SearchResponse) => { setResults((old) => [...(old ?? []), ...r.items]); setNextPage(r.nextPageToken); }).catch(() => undefined).finally(() => setLoadingMore(false));
   };
   const toTalk = (row: YtRow): Talk => ({ _id: row._id || row.youtubeId, youtubeId: row.youtubeId, title: row.title, teacher: row.teacher || row.channelName, channelName: row.channelName, publishedAt: row.publishedAt, durationSec: row.durationSec, viewCount: row.viewCount, syncedAt: Date.now() }) as unknown as Talk;
   const openVideo = (row: YtRow) => { setSearch(""); setResults(null); setNextPage(undefined); play(toTalk(row)); };

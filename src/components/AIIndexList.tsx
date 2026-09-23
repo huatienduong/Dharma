@@ -3,7 +3,6 @@ import type { Doc } from "@/convex/_generated/dataModel";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { BookMarked, Loader2, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 
 export type AIIndexKind = "suttas" | "vinaya" | "dictionary" | "commentary";
 
@@ -19,16 +18,19 @@ type IndexDoc = Doc<"aiDocs"> | null | undefined;
 /**
  * Danh sách đề xuất do Trợ lý Phật học TỰ NẠP TOÀN BỘ — thay dữ liệu cứng cũ.
  * Cache dùng chung: người đầu mở là AI nạp (vài giây), người sau đọc tức thì.
+ * `query`: từ khóa lọc danh sách theo tiêu đề/Pāli/mô tả (không phân biệt dấu).
  */
 export function AIIndexList({
   indexKind,
   onOpen,
   emptyHint,
+  query = "",
 }: {
   indexKind: AIIndexKind;
   /** id + title do danh sách đề xuất cung cấp */
   onOpen(entry: IndexEntry): void;
   emptyHint?: string;
+  query?: string;
 }) {
   const cached = useQuery(api.aiDocs.getDoc, {
     kind: `index-${indexKind}`,
@@ -39,6 +41,10 @@ export function AIIndexList({
 
   const [entries, setEntries] = useState<IndexEntry[] | null>(null);
   const [busy, setBusy] = useState(false);
+  // FIX "không hoạt động": đếm số lần nạp lỗi — khi đã lỗi thì cho nút
+  // "Thử lại" và tự retry 1 lần trước đó thay vì đứng im mãi mãi.
+  const [failed, setFailed] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
 
   const body = cached?.body ?? null;
 
@@ -57,6 +63,7 @@ export function AIIndexList({
     if (cached === undefined) return; // đang query
     if (cached !== null || entries || busy) return; // đã có cache/danh sách hoặc đang nạp
     setBusy(true);
+    setFailed(false);
     generate({ indexKind })
       .then(async (json) => {
         const parsed = JSON.parse(json) as IndexEntry[];
@@ -72,12 +79,13 @@ export function AIIndexList({
           source: "Trợ lý Phật học tự nạp từ Kinh điển Pāli — truyền thống Theravāda",
         }).catch(() => undefined);
       })
-      .catch((err: Error) => {
-        toast.error(err.message);
+      .catch(() => {
+        // Đánh dấu lỗi để hiện nút "Thử lại ngay"
+        setFailed(true);
       })
       .finally(() => setBusy(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cached, entries, busy, indexKind]);
+  }, [cached, entries, busy, indexKind, retryTick]);
 
   if (cached === undefined || (!entries && busy)) {
     return (
@@ -97,14 +105,57 @@ export function AIIndexList({
   if (!entries || entries.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border/70 bg-card/40 p-8 text-center text-sm text-muted-foreground">
-        {emptyHint ?? "Chưa nạp được danh sách. Hãy thử lại sau."}
+        {failed
+          ? "Không nạp được danh sách lần này."
+          : (emptyHint ?? "Chưa nạp được danh sách. Hãy thử lại sau.")}
+        {failed && (
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => {
+                setEntries(null);
+                setRetryTick((t) => t + 1);
+              }}
+              className="rounded-full border border-border/60 px-4 py-1.5 text-xs font-medium text-foreground transition hover:bg-accent"
+            >
+              Thử lại ngay
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Lọc theo từ khóa — bỏ dấu để "thien" vẫn khớp "thiền", "kinh" khớp "Kinh"
+  const filtered = (() => {
+    const q = query
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .toLowerCase();
+    if (!q) return entries;
+    return entries.filter((e) => {
+      const hay = `${e.title} ${e.pali ?? ""} ${e.desc ?? ""} ${e.id}`
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/đ/g, "d")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  })();
+
+  if (filtered.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-border/70 bg-card/40 p-8 text-center text-sm text-muted-foreground">
+        Không có mục nào khớp "{query.trim()}" trong danh sách.
       </div>
     );
   }
 
   return (
     <div className="grid gap-2.5 sm:grid-cols-2">
-      {entries.map((e, i) => (
+      {filtered.map((e, i) => (
         <button
           key={`${e.id}-${i}`}
           type="button"
