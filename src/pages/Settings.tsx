@@ -25,8 +25,6 @@ import {
   RefreshCw,
   Send,
   Sun,
-  UserRound,
-  UserRoundCheck,
   Volume2,
   X,
 } from "lucide-react";
@@ -314,11 +312,7 @@ export default function Settings() {
                         : "bg-muted text-muted-foreground",
                     )}
                   >
-                    {v.male ? (
-                      <UserRound className="h-4 w-4" />
-                    ) : (
-                      <UserRoundCheck className="h-4 w-4" />
-                    )}
+                    <Volume2 className="h-4 w-4" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span
