@@ -28,9 +28,73 @@ Khi trả lời, ưu tiên:
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-const HISTORY_LIMIT = 6; // giảm bớt context để AI trả lời nhanh hơn
+const HISTORY_LIMIT = 4; // ngữ cảnh gọn → phản hồi nhanh hơn
 const MAX_TOKENS = 1200; // đủ dư cho suy luận + câu trả lời, tránh bị cắt (finish=length)
-const AI_TIMEOUT_MS = 45_000; // phòng trường hợp provider treo — lỗi sau 45s thay vì treo vĩnh viễn
+const AI_TIMEOUT_MS = 30_000; // provider treo → lỗi sau 30s và chuyển nguồn kế tiếp
+
+/* ------------------------------------------------------------------ */
+/* KIỂM TRA KẾT NỐI AI — cho biết khóa nào đã sẵn sàng, khóa nào còn    */
+/* thiếu (chỉ trả về boolean, KHÔNG bao giờ lộ giá trị khóa).           */
+/* ------------------------------------------------------------------ */
+
+export type ProviderCheck = {
+  key: string;
+  label: string;
+  purpose: string;
+  ready: boolean;
+  required: boolean;
+};
+
+export const providerStatus = action({
+  args: {},
+  handler: async (): Promise<{
+    checks: ProviderCheck[];
+    missingRequired: string[];
+    ready: boolean;
+  }> => {
+    const checks: ProviderCheck[] = [
+      {
+        key: "VLY_INTEGRATION_KEY",
+        label: "Cổng AI nền tảng",
+        purpose: "Nguồn chính cho Trợ lý Phật học và biên soạn học liệu",
+        ready: Boolean(process.env.VLY_INTEGRATION_KEY),
+        required: true,
+      },
+      {
+        key: "GROQ_API_KEY",
+        label: "Groq",
+        purpose: "Dự phòng tốc độ cao (phản hồi nhanh nhất)",
+        ready: Boolean(process.env.GROQ_API_KEY),
+        required: false,
+      },
+      {
+        key: "GEMINI_API_KEY",
+        label: "Google Gemini",
+        purpose: "Dự phòng, đọc hình ảnh và giọng nói tiếng Việt",
+        ready: Boolean(process.env.GEMINI_API_KEY),
+        required: false,
+      },
+      {
+        key: "OPENAI_API_KEY",
+        label: "OpenAI",
+        purpose: "Dự phòng và giọng nói tiếng Việt",
+        ready: Boolean(process.env.OPENAI_API_KEY),
+        required: false,
+      },
+      {
+        key: "YOUTUBE_API_KEY",
+        label: "YouTube Data API v3",
+        purpose: "Nguồn video pháp thoại (máy chủ)",
+        ready: Boolean(process.env.YOUTUBE_API_KEY),
+        required: false,
+      },
+    ];
+    const missingRequired = checks
+      .filter((c) => c.required && !c.ready)
+      .map((c) => c.key);
+    return { checks, missingRequired, ready: missingRequired.length === 0 };
+  },
+});
 
 /* ------------------------------------------------------------------ */
 /* Danh sách nhà cung cấp AI — ưu tiên tốc độ, fallback chỉ khi cần     */
@@ -223,7 +287,10 @@ export const ask = action({
               ? {
                   providerOptions: {
                     "vly-gateway": {
-                      max_completion_tokens: 3000,
+                      // Giảm ngân sách suy luận → câu trả lời về nhanh hơn
+                      // mà vẫn đủ dài; reasoning-effort thấp để tránh "suy
+                      // niệm" lâu rồi hết token không có nội dung.
+                      max_completion_tokens: 2000,
                       reasoningEffort: "low",
                     },
                   },

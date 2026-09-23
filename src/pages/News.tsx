@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/AppShell";
 import {
+  enrichNewsImages,
   fetchBuddhistNews,
   loadNewsCache,
   loadStaleNewsCache,
@@ -86,40 +87,61 @@ export default function News() {
     restoreScroll("news");
   }, []);
 
-  const load = useCallback(async (force: boolean) => {
-    // Cache còn hạn → dùng ngay, KHÔNG chờ mạng (nạp nhanh)
-    if (!force) {
-      const cached = loadNewsCache();
-      if (cached.length > 0) {
-        setItems(cached);
-        return;
-      }
-      // Có cache cũ → hiện ngay để trang không trống, nạp nền song song
-      const stale = loadStaleNewsCache();
-      if (stale.length > 0) setItems(stale);
-    }
-    setLoading(true);
-    setError(false);
-    try {
-      const fresh = await fetchBuddhistNews();
-      if (fresh.length === 0) throw new Error("empty");
-      setItems(fresh);
-      saveNewsCache(fresh);
-    } catch {
-      // Mọi nguồn lỗi → dùng cache cũ nếu có, chỉ báo lỗi khi hoàn toàn trống
-      const stale = loadStaleNewsCache();
-      if (stale.length > 0) {
-        setItems(stale);
-      } else {
-        setError(true);
-      }
-    } finally {
-      setLoading(false);
-    }
+  /* Nạp ảnh minh họa cho các tin chưa có ảnh (nạp nền, không chặn giao diện) */
+  const fillImages = useCallback((list: NewsItem[]) => {
+    void enrichNewsImages(list, (id, url) => {
+      setItems((prev) =>
+        prev.map((it) => (it.id === id && !it.image ? { ...it, image: url } : it)),
+      );
+    });
   }, []);
 
+  const load = useCallback(
+    async (force: boolean) => {
+      // Cache còn hạn → hiện NGAY, nhưng vẫn nạp nền để dữ liệu luôn mới nhất
+      if (!force) {
+        const cached = loadNewsCache();
+        if (cached.length > 0) {
+          setItems(cached);
+          fillImages(cached);
+        } else {
+          // Có cache cũ → hiện ngay để trang không trống
+          const stale = loadStaleNewsCache();
+          if (stale.length > 0) {
+            setItems(stale);
+            fillImages(stale);
+          }
+        }
+      }
+      setLoading(true);
+      setError(false);
+      try {
+        const fresh = await fetchBuddhistNews();
+        if (fresh.length === 0) throw new Error("empty");
+        setItems(fresh);
+        saveNewsCache(fresh);
+        fillImages(fresh);
+      } catch {
+        // Mọi nguồn lỗi → dùng cache cũ nếu có, chỉ báo lỗi khi hoàn toàn trống
+        const stale = loadStaleNewsCache();
+        if (stale.length > 0) {
+          setItems(stale);
+          fillImages(stale);
+        } else {
+          setError(true);
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [fillImages],
+  );
+
+  // Luôn nạp lại khi mở trang (kể cả đã có cache) → nội dung không bị cũ
   useEffect(() => {
     void load(false);
+    const id = window.setInterval(() => void load(false), 10 * 60 * 1000);
+    return () => window.clearInterval(id);
   }, [load]);
 
   const sources = useMemo(() => {
@@ -199,9 +221,6 @@ export default function News() {
             {s}
           </button>
         ))}
-        <span className="ml-auto text-[11px] tabular-nums text-muted-foreground">
-          {filtered.length} tin
-        </span>
       </div>
 
       {/* Đang nạp */}
@@ -237,21 +256,33 @@ export default function News() {
               key={it.id}
               className="group flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/70 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
             >
-              {/* Ảnh minh họa */}
-              {it.image ? (
-                <button
-                  type="button"
-                  onClick={() => void openArticle(it)}
-                  className="block aspect-video w-full overflow-hidden bg-muted"
-                >
+              {/* Ảnh minh họa — tự nạp; chưa có thì hiện ảnh bìa theo chủ đề */}
+              <button
+                type="button"
+                onClick={() => void openArticle(it)}
+                aria-label={it.title}
+                className="relative block aspect-video w-full overflow-hidden bg-muted"
+              >
+                {/* Lớp nền theo chủ đề — luôn có, hiện khi thiếu/ảnh lỗi */}
+                <span className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/20 via-gold/10 to-card">
+                  <span aria-hidden className="text-5xl text-primary/25">☸</span>
+                  <span className="absolute inset-x-3 bottom-2 truncate text-[11px] font-medium uppercase tracking-wide text-foreground/50">
+                    {it.source}
+                  </span>
+                </span>
+                {it.image ? (
                   <img
                     src={it.image}
                     alt=""
                     loading="lazy"
-                    className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.04]"
+                    onError={(e) => {
+                      // Ảnh hỏng → ẩn để lộ lớp nền theo chủ đề
+                      (e.currentTarget as HTMLImageElement).style.display = "none";
+                    }}
+                    className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.04]"
                   />
-                </button>
-              ) : null}
+                ) : null}
+              </button>
               <div className="flex flex-1 flex-col p-4">
                 <button
                   type="button"
