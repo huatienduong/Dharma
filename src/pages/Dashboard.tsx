@@ -182,20 +182,11 @@ export default function Dashboard() {
         <DockPlayer className={cn(hasVideo && "mt-1")} />
       </div>
 
-      {/* Khi ĐANG XEM một video → mục VIDEO hiển thị VIDEO LIÊN QUAN của video
-          đó (bấm vào là chuyển ngay, danh sách tự đổi theo video mới).
-          Trang chủ vẫn giữ 50 video đề xuất — KHÔNG tiêu đề, KHÔNG đếm số lượng.
-          Skeleton khi nạp · thông báo lỗi + nút thử lại khi thất bại. */}
+      {/* Danh sách phát tiếp theo — KHÔNG tiêu đề, KHÔNG đếm số lượng.
+          Cuộn tới đáy là tự nạp thêm (vô tận) · skeleton khi nạp · thông
+          báo lỗi + nút thử lại khi thất bại. */}
       {!query && hasVideo && (
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-border/60 pt-4">
-          <h2 className="flex shrink-0 items-center gap-1.5 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            <Film className="h-3.5 w-3.5" />
-            Video liên quan
-          </h2>
-          <p className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground/80">
-            Cùng chủ đề với «{current?.title}»
-          </p>
-        </div>
+        <div className="border-t border-border/60" />
       )}
       {!query && relatedLoading && (
         <div
@@ -217,9 +208,7 @@ export default function Dashboard() {
         <div className="rounded-2xl border border-dashed border-border/70 bg-card/40 p-10 text-center">
           <SearchIcon className="mx-auto h-8 w-8 text-muted-foreground/50" />
           <p className="mt-3 text-sm text-muted-foreground">
-            {hasVideo
-              ? "Không nạp được video liên quan lần này — kiểm tra kết nối mạng rồi thử lại."
-              : "Không nạp được video đề xuất lần này — kiểm tra kết nối mạng rồi thử lại."}
+            Không nạp được danh sách video lần này — kiểm tra kết nối mạng rồi thử lại.
           </p>
           <button
             type="button"
@@ -240,11 +229,19 @@ export default function Dashboard() {
       {!query && !relatedLoading && relatedShown.length > 0 && (
         <section
           className="mb-6"
-          aria-label={hasVideo ? "Video liên quan" : "Video đề xuất giáo lý Theravada"}
+          aria-label={hasVideo ? "Danh sách phát tiếp theo — video liên quan" : "Danh sách video đề xuất giáo lý Theravada"}
         >
           <div className="space-y-1">
             {relatedShown.map((row) => <TalkRow key={row.youtubeId} title={row.title} youtubeId={row.youtubeId} durationSec={row.durationSec} viewCount={row.viewCount} active={current?.youtubeId === row.youtubeId} onClick={() => openVideo(row)} />)}
           </div>
+          {/* Điểm quan sát để nạp thêm khi cuộn tới đáy */}
+          <div ref={sentinelRef} aria-hidden className="h-1" />
+          {moreLoading && (
+            <div className="flex items-center justify-center gap-2 py-5 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Đang nạp thêm video đề xuất…
+            </div>
+          )}
         </section>
       )}
 
