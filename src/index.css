@@ -44,90 +44,89 @@
   --color-gold-soft: var(--gold-soft);
 }
 
-/* CHANGE VALUES FOR THEME — phong cách app dịch vụ: nền xám xanh nhạt,
- * thẻ trắng bo lớn nổi khối, điểm nhấn vàng saffron Theravāda. */
+/* CHANGE VALUES FOR THEME — màu áo y cà sa theo truyền thống Theravāda */
 :root {
   --radius: 1rem;
-  --background: #eef1f6; /* xám xanh nhạt nền app */
-  --foreground: #101828;
+  --background: #faf6ef; /* kem ấm nền app */
+  --foreground: #2b1d12;
   --card: #ffffff;
-  --card-foreground: #101828;
-  --popover: #ffffff;
-  --popover-foreground: #101828;
+  --card-foreground: #2b1d12;
+  --popover: #fffdf8;
+  --popover-foreground: #2b1d12;
   --primary: #b45309; /* cam đất y cà sa sẫm — điểm nhấn thương hiệu */
   --primary-foreground: #fff8ec;
-  --secondary: #e9eef6;
-  --secondary-foreground: #334155;
-  --muted: #f1f4f9;
-  --muted-foreground: #64748b;
-  --accent: #eef2f8;
-  --accent-foreground: #1e293b;
-  --destructive: #dc2626;
-  --border: #e3e8ef;
-  --input: #e3e8ef;
+  --secondary: #f3e5c8; /* vàng saffron nhạt */
+  --secondary-foreground: #5f4630;
+  --muted: #f1e8d8;
+  --muted-foreground: #7a6a55;
+  --accent: #f3e5c8;
+  --accent-foreground: #5f4630;
+  --destructive: #b91c1c;
+  --border: #e5d9c3;
+  --input: #e5d9c3;
   --ring: #b45309;
   --chart-1: #f97316;
   --chart-2: #22c55e;
   --chart-3: #3b82f6;
   --chart-4: #f59e0b;
   --chart-5: #14b8a6;
-  --sidebar: #f7f9fc;
-  --sidebar-foreground: #101828;
+  --sidebar: #f6efe1;
+  --sidebar-foreground: #2b1d12;
   --sidebar-primary: #b45309;
   --sidebar-primary-foreground: #fff8ec;
-  --sidebar-accent: #e9eef6;
-  --sidebar-accent-foreground: #334155;
-  --sidebar-border: #e3e8ef;
+  --sidebar-accent: #efe2c9;
+  --sidebar-accent-foreground: #5f4630;
+  --sidebar-border: #e5d9c3;
   --sidebar-ring: #b45309;
 
   /* Token phụ trợ — vàng saffron dùng cho điểm nhấn phụ */
-  --brown-deep: #101828;
-  --brown-mid: #334155;
+  --brown-deep: #2b1d12;
+  --brown-mid: #5f4630;
   --gold: #b45309; /* cam y cà sa chủ đạo */
   --gold-soft: #d97706;
-  --lotus: #e9eef6;
+  --lotus: #f3e5c8;
 
   --font-size-scale: 1;
 }
 
 .dark {
-  --background: #0d1117;
-  --foreground: #e6edf5;
-  --card: #161b22;
-  --card-foreground: #e6edf5;
-  --popover: #1a2029;
-  --popover-foreground: #e6edf5;
-  --primary: #f0a04b; /* y cà sa sáng trên nền tối */
+  --background: #17100a;
+  --foreground: #f3e9d8;
+  --card: #241a10;
+  --card-foreground: #f3e9d8;
+  --popover: #2b2015;
+  --popover-foreground: #f3e9d8;
+  --primary: #e0852a; /* y cà sa sáng trên nền tối */
   --primary-foreground: #1a1108;
-  --secondary: #1c232d;
-  --secondary-foreground: #cbd5e1;
-  --muted: #1c232d;
-  --muted-foreground: #8fa1b5;
-  --accent: #1c232d;
-  --accent-foreground: #dbe4ee;
+  --secondary: #2f2314;
+  --secondary-foreground: #ecd9b5;
+  --muted: #2f2314;
+  --muted-foreground: #b3a184;
+  --accent: #2f2314;
+  --accent-foreground: #ecd9b5;
   --destructive: #ef6a5a;
-  --border: #232b36;
-  --input: #232b36;
-  --ring: #f0a04b;
+  --border: #3a2c1c;
+  --input: #3a2c1c;
+  --ring: #e0852a;
   --chart-1: #fb923c;
   --chart-2: #4ade80;
   --chart-3: #60a5fa;
   --chart-4: #fbbf24;
   --chart-5: #2dd4bf;
-  --sidebar: #0d1117;
-  --sidebar-foreground: #e6edf5;
-  --sidebar-primary: #f0a04b;
+  --sidebar: #17100a;
+  --sidebar-foreground: #f3e9d8;
+  --sidebar-primary: #e0852a;
   --sidebar-primary-foreground: #1a1108;
-  --sidebar-accent: #1c232d;
-  --sidebar-accent-foreground: #cbd5e1;
-  --sidebar-border: #232b36;
-  --sidebar-ring: #f0a04b;
+  --sidebar-accent: #2f2314;
+  --sidebar-accent-foreground: #ecd9b5;
+  --sidebar-border: #3a2c1c;
+  --sidebar-ring: #e0852a;
 
-  --brown-deep: #0d1117;
-  --brown-mid: #1c232d;
-  --gold: #f0a04b;
+  --brown-deep: #17100a;
+  --brown-mid: #2f2314;
+  --gold: #e0852a;
   --gold-soft: #f0a04b;
-  --lotus: #1c232d;
+  --lotus: #2f2314;
 }
 
 @layer base {
@@ -181,8 +180,8 @@
   background-color: var(--card);
   border-radius: calc(var(--radius) + 0.25rem);
   box-shadow:
-    0 1px 2px rgba(16, 24, 40, 0.05),
-    0 4px 14px rgba(16, 24, 40, 0.06);
+    0 1px 2px rgba(43, 29, 18, 0.05),
+    0 4px 14px rgba(43, 29, 18, 0.06);
 }
 
 .dark .ds-card {
@@ -199,7 +198,7 @@
   border-radius: 22%;
   color: #fff;
   box-shadow:
-    0 2px 6px rgba(16, 24, 40, 0.12);
+    0 2px 6px rgba(43, 29, 18, 0.12);
 }
 
 /* ---------- Logo Bánh xe Chuyển pháp luân quay ---------- */

@@ -807,30 +807,6 @@ export default function Assistant() {
               {/* Chỉ hiển thị trạng thái ngắn — không còn văn bản trả lời/caption */}
             </div>
 
-            {/* Chọn giọng ngay trong cuộc gọi — đổi là nghe thử luôn */}
-            <div className="relative z-10 flex justify-center pb-1">
-              <VoicePicker dark
-                value={voiceId}
-                onChange={(id) => {
-                  setVoiceId(id);
-                  saveVoicePref(id);
-                  stopSpeaking();
-                  // Khóa mic trong lúc nghe thử để không tự bắt tiếng AI
-                  aiSpeakingRef.current = true;
-                  void speakVI("Xin chào, tôi là trợ lý Phật học của bạn.", {
-                    voice: id,
-                    onDone: () => {
-                      aiSpeakingRef.current = false;
-                      lastAssistantEventAtRef.current = Date.now();
-                      if (callActiveRef.current && !mutedRef.current) {
-                        startListeningRef.current();
-                      }
-                    },
-                  });
-                }}
-              />
-            </div>
-
             <div className="relative z-10 flex items-center justify-center gap-6 pb-[max(1.6rem,env(safe-area-inset-bottom))] pt-2">
               {callStatus !== "muted" ? (
                 <button

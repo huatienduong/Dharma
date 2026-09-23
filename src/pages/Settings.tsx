@@ -7,18 +7,15 @@ import {
 } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useMemo } from "react";
 import {
-  AlertTriangle,
   Bell,
   Bug,
   CheckCircle2,
   ChevronRight,
   Download,
-  KeyRound,
   Lightbulb,
-  Loader2,
   Moon,
   Paperclip,
   RefreshCw,
@@ -41,37 +38,13 @@ export default function Settings() {
   } = useSettings();
   const submitFeedback = useMutation(api.library.submitFeedback);
   const meta = useQuery(api.library.getAppVersion, {});
-  const checkAiProviders = useAction(api.aiChat.providerStatus);
 
   // Mục đang mở rộng (accordion) — mỗi mục một thẻ trắng như app hệ thống
   const [openCard, setOpenCard] = useState<
-    null | "appearance" | "about" | "ai" | "feedback"
+    null | "appearance" | "about" | "feedback"
   >(null);
   const toggle = (key: typeof openCard) =>
     setOpenCard((cur) => (cur === key ? null : key));
-
-  // Trạng thái kết nối AI — kiểm tra theo yêu cầu, cảnh báo khóa còn thiếu
-  const [aiChecking, setAiChecking] = useState(false);
-  const [aiStatus, setAiStatus] = useState<{
-    checks: { key: string; label: string; purpose: string; ready: boolean; required: boolean }[];
-    missingRequired: string[];
-    ready: boolean;
-  } | null>(null);
-  const [aiError, setAiError] = useState<string | null>(null);
-
-  const handleCheckAi = async () => {
-    setAiChecking(true);
-    setAiError(null);
-    try {
-      const res = await checkAiProviders({});
-      setAiStatus(res);
-    } catch {
-      setAiError("Không kiểm tra được — máy chủ chưa sẵn sàng. Hãy thử lại sau ít phút.");
-      setAiStatus(null);
-    } finally {
-      setAiChecking(false);
-    }
-  };
 
   const [fbType, setFbType] = useState<"idea" | "bug">("idea");
   const [fbMessage, setFbMessage] = useState("");
@@ -328,101 +301,6 @@ export default function Settings() {
               </div>
             )}
 
-            <a
-              href="https://facebook.com/huatienduong.official"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-2.5 rounded-2xl bg-muted/50 px-4 py-3 text-sm font-medium text-foreground/85 transition hover:bg-accent"
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-[#1877F2]" aria-hidden>
-                <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.66c0-3.025 1.792-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.971H15.83c-1.491 0-1.956.93-1.956 1.886v2.264h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
-              </svg>
-              Liên hệ nhà phát triển
-              <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
-            </a>
-          </div>
-        </RowCard>
-
-        {/* ---------- Trợ lý Phật học — kết nối AI ---------- */}
-        <RowCard
-          label="Trợ lý Phật học — kết nối AI"
-          open={openCard === "ai"}
-          onClick={() => toggle("ai")}
-        >
-          <div className="space-y-3 pt-1">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => void handleCheckAi()}
-              disabled={aiChecking}
-              className="gap-1.5 rounded-full"
-            >
-              {aiChecking ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="h-3.5 w-3.5" />
-              )}
-              {aiChecking ? "Đang kiểm tra…" : "Kiểm tra kết nối"}
-            </Button>
-
-            {aiError && (
-              <div className="flex items-start gap-2.5 rounded-2xl bg-destructive/10 p-3">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                <p className="text-xs leading-relaxed">{aiError}</p>
-              </div>
-            )}
-
-            {aiStatus && (
-              <div className="space-y-2">
-                <div
-                  className={cn(
-                    "flex items-start gap-2.5 rounded-2xl p-3",
-                    aiStatus.ready
-                      ? "bg-green-500/10"
-                      : "bg-destructive/10",
-                  )}
-                >
-                  {aiStatus.ready ? (
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
-                  ) : (
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                  )}
-                  <p className="text-xs font-medium leading-relaxed">
-                    {aiStatus.ready
-                      ? "Trợ lý Phật học đã kết nối đầy đủ."
-                      : `Thiếu khóa bắt buộc: ${aiStatus.missingRequired.join(", ")}.`}
-                  </p>
-                </div>
-                <ul className="space-y-1.5">
-                  {aiStatus.checks.map((c) => (
-                    <li
-                      key={c.key}
-                      className="flex items-center gap-2.5 rounded-2xl bg-muted/50 px-3 py-2.5"
-                    >
-                      <KeyRound
-                        className={cn(
-                          "h-3.5 w-3.5 shrink-0",
-                          c.ready ? "text-green-600" : "text-muted-foreground/50",
-                        )}
-                      />
-                      <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                        {c.label}
-                      </span>
-                      <span
-                        className={cn(
-                          "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                          c.ready
-                            ? "bg-green-500/15 text-green-700 dark:text-green-400"
-                            : "bg-border/60 text-muted-foreground",
-                        )}
-                      >
-                        {c.ready ? "Sẵn sàng" : "Chưa có"}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         </RowCard>
 

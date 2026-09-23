@@ -1,8 +1,5 @@
 import { AppShell } from "@/components/AppShell";
-import { NewsCard, NewsReader, useBuddhistNews } from "@/components/NewsFeed";
-import { TalkRow } from "@/pages/Dashboard";
 import { DockPlayer, usePlayer } from "@/lib/player";
-import { searchDirect } from "@/lib/youtubeDirect";
 import { restoreScroll, trackScroll } from "@/lib/uiState";
 import {
   loadLocalSession,
@@ -10,6 +7,7 @@ import {
   type LocalSession,
 } from "@/lib/localProgress";
 import { getSutta } from "@/data/suttas";
+import { APP_VERSION } from "@/lib/version";
 import {
   BookOpen,
   BookMarked,
@@ -20,7 +18,6 @@ import {
   History,
   Hourglass,
   Layers,
-  Loader2,
   MessagesSquare,
   MonitorPlay,
   Newspaper,
@@ -28,38 +25,8 @@ import {
   Scale,
   Search,
 } from "lucide-react";
-import type { Doc } from "@/convex/_generated/dataModel";
-import { anyApi } from "convex/server";
-import { useAction } from "convex/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-
-type Talk = Doc<"dhammaTalks">;
-type YtRow = {
-  _id: string;
-  youtubeId: string;
-  title: string;
-  teacher: string;
-  channelName: string;
-  publishedAt: string;
-  durationSec: number;
-  viewCount?: number;
-};
-
-/* Truy vấn video Phật giáo Theravāda — ưu tiên mới nhất */
-const VIDEO_QUERY = "pháp thoại Phật giáo Theravada nguyên thủy mới nhất";
-const VIDEO_COUNT = 12;
-const NEWS_COUNT = 6;
-
-function newestFirst(rows: YtRow[]): YtRow[] {
-  return [...rows]
-    .sort((a, b) => {
-      const ta = a.publishedAt ? Date.parse(a.publishedAt) : 0;
-      const tb = b.publishedAt ? Date.parse(b.publishedAt) : 0;
-      return tb - ta;
-    })
-    .slice(0, VIDEO_COUNT);
-}
 
 /* ---------------- Lưới chức năng kiểu app dịch vụ ---------------- */
 
@@ -89,14 +56,8 @@ const EXTRA_ROW: { to: string; label: string; icon: typeof Newspaper }[] = [
 
 export default function Home() {
   const navigate = useNavigate();
-  const { play, current } = usePlayer();
-  const { items: news, loading: newsLoading } = useBuddhistNews();
-  const [reader, setReader] = useState<(typeof news)[number] | null>(null);
-  const [videos, setVideos] = useState<YtRow[] | null>(null);
-  const [videoLoading, setVideoLoading] = useState(true);
+  const { play } = usePlayer();
   const [query, setQuery] = useState("");
-  const searchVideos = useAction(anyApi.youtubeSync.search);
-  const startedRef = useRef(false);
 
   /* Tiến trình cục bộ: phiên xem dở + kinh đang đọc dở */
   const [session, setSession] = useState<LocalSession | null>(null);
@@ -129,54 +90,6 @@ export default function Home() {
     setReadingSutta(null);
   }, []);
 
-  /* Video nổi bật — API YouTube (qua máy chủ), fallback nguồn công cộng */
-  useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-    let cancelled = false;
-    (async () => {
-      try {
-        const r = (await searchVideos({ q: VIDEO_QUERY })) as { items?: YtRow[] };
-        if (cancelled) return;
-        if (r.items && r.items.length > 0) {
-          setVideos(newestFirst(r.items));
-          return;
-        }
-        throw new Error("empty");
-      } catch {
-        try {
-          const r = await searchDirect(VIDEO_QUERY);
-          if (!cancelled) setVideos(newestFirst(r.items as YtRow[]));
-        } catch {
-          if (!cancelled) setVideos([]);
-        }
-      } finally {
-        if (!cancelled) setVideoLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [searchVideos]);
-
-  const toTalk = useCallback(
-    (row: YtRow): Talk =>
-      ({
-        _id: row._id || row.youtubeId,
-        youtubeId: row.youtubeId,
-        title: row.title,
-        teacher: row.teacher || row.channelName,
-        channelName: row.channelName,
-        publishedAt: row.publishedAt,
-        durationSec: row.durationSec,
-        viewCount: row.viewCount,
-        syncedAt: Date.now(),
-      }) as unknown as Talk,
-    [],
-  );
-
-  const topNews = useMemo(() => news.slice(0, NEWS_COUNT), [news]);
-
   const submitSearch = useCallback(() => {
     const q = query.trim();
     if (!q) return;
@@ -193,7 +106,7 @@ export default function Home() {
 
   return (
     <AppShell title="Trang chủ" hideTitle>
-      {current && (
+      {session && (
         <div className="-mx-3 mb-4 bg-background px-3 sm:-mx-5 sm:px-5">
           <DockPlayer />
         </div>
@@ -208,7 +121,7 @@ export default function Home() {
         className="mb-4"
         role="search"
       >
-        <div className="flex h-12 items-center gap-3 rounded-full bg-card px-4 shadow-[0_1px_2px_rgba(16,24,40,0.05),0_4px_14px_rgba(16,24,40,0.06)] transition focus-within:ring-2 focus-within:ring-primary/30">
+        <div className="flex h-12 items-center gap-3 rounded-full bg-card px-4 shadow-[0_1px_2px_rgba(43,29,18,0.05),0_4px_14px_rgba(43,29,18,0.06)] transition focus-within:ring-2 focus-within:ring-primary/30">
           <Search className="h-5 w-5 shrink-0 text-muted-foreground" />
           <input
             value={query}
@@ -363,90 +276,36 @@ export default function Home() {
         </section>
       )}
 
-      {/* ---------------- Tin tức Phật giáo Theravāda ---------------- */}
-      <section className="mb-8">
-        <header className="mb-2.5 flex items-center justify-between">
-          <h2 className="text-lg font-extrabold tracking-tight">Tin tức</h2>
-          <button
-            type="button"
-            onClick={() => navigate("/news")}
-            className="inline-flex items-center gap-0.5 text-sm font-medium text-muted-foreground transition hover:text-primary"
-          >
-            Thêm <ChevronRight className="h-4 w-4" />
-          </button>
-        </header>
-
-        {newsLoading && topNews.length === 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="ds-card space-y-2 p-3">
-                <div className="aspect-video w-full animate-pulse rounded-xl bg-muted/70" />
-                <div className="h-4 w-4/5 animate-pulse rounded bg-muted/70" />
-              </div>
-            ))}
-          </div>
-        ) : topNews.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {topNews.map((it) => (
-              <NewsCard key={it.id} item={it} onOpen={setReader} compact />
-            ))}
-          </div>
-        ) : (
-          <p className="ds-card p-6 text-center text-sm text-muted-foreground">
-            Chưa có tin tức.
-          </p>
-        )}
-      </section>
-
-      {/* ---------------- Video nổi bật ---------------- */}
-      <section className="mb-4">
-        <header className="mb-2.5 flex items-center justify-between">
-          <h2 className="text-lg font-extrabold tracking-tight">
-            Video nổi bật
-          </h2>
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard")}
-            className="inline-flex items-center gap-0.5 text-sm font-medium text-muted-foreground transition hover:text-primary"
-          >
-            Thêm <ChevronRight className="h-4 w-4" />
-          </button>
-        </header>
-
-        {videoLoading && videos === null ? (
-          <div className="ds-card space-y-3 p-4">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex gap-4">
-                <div className="aspect-video w-40 shrink-0 animate-pulse rounded-xl bg-muted/70 sm:w-60" />
-                <div className="flex-1 space-y-2 pt-1">
-                  <div className="h-4 w-4/5 animate-pulse rounded bg-muted/70" />
-                  <div className="h-3 w-2/5 animate-pulse rounded bg-muted/70" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : videos && videos.length > 0 ? (
-          <div className="ds-card p-2 sm:p-3">
-            {videos.map((row) => (
-              <TalkRow
-                key={row.youtubeId}
-                title={row.title}
-                youtubeId={row.youtubeId}
-                durationSec={row.durationSec}
-                viewCount={row.viewCount}
-                active={current?.youtubeId === row.youtubeId}
-                onClick={() => play(toTalk(row))}
-              />
-            ))}
-          </div>
-        ) : (
-          <p className="ds-card p-6 text-center text-sm text-muted-foreground">
-            Chưa nạp được video.
-          </p>
-        )}
-      </section>
-
-      {reader && <NewsReader item={reader} onClose={() => setReader(null)} />}
+      {/* ---------------- Chân trang: nhà phát triển ---------------- */}
+      <footer className="mt-4 pb-4 pt-2 text-center">
+        <span
+          aria-hidden
+          className="mb-2 block text-2xl text-primary/40"
+        >
+          ☸
+        </span>
+        <p className="text-[13px] font-semibold text-foreground/85">
+          Dharma · Phiên bản {APP_VERSION}
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Biên soạn bởi nhà phát triển{" "}
+          <span className="font-medium text-foreground/80">
+            Hứa Tiến Dương
+          </span>
+        </p>
+        <a
+          href="https://facebook.com/huatienduong.official"
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2.5 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card px-4 py-1.5 text-xs font-medium text-foreground/85 transition hover:border-primary/40 hover:bg-accent"
+          aria-label="Liên hệ nhà phát triển qua Facebook"
+        >
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-[#1877F2]" aria-hidden>
+            <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047v-2.66c0-3.025 1.792-4.697 4.533-4.697 1.313 0 2.686.236 2.686.236v2.971H15.83c-1.491 0-1.956.93-1.956 1.886v2.264h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
+          </svg>
+          Liên hệ Facebook
+        </a>
+      </footer>
     </AppShell>
   );
 }

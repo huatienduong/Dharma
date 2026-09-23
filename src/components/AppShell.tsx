@@ -391,90 +391,23 @@ export function AppShell({
       </div>
 
       {/* ============================================================ */}
-      {/* BOTTOM NAV MOBILE (<lg) — dải trắng nổi khối, tab giữa nổi tròn  */}
+      {/* BOTTOM NAV MOBILE (<lg) — DUY NHẤT nút Trang chủ nổi tròn       */}
       {/* ============================================================ */}
       <nav className="fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)] lg:hidden">
-        <div className="mx-2 mb-2 flex items-stretch justify-between rounded-[1.75rem] bg-card px-1 py-1.5 shadow-[0_4px_20px_rgba(16,24,40,0.14)]">
-          {/* Tab trái nhất: TRANG CHỦ */}
+        <div className="mx-auto mb-3 flex w-fit items-center justify-center">
           <button
             type="button"
             onClick={() => go("/home")}
             aria-current={isActive("/home") ? "page" : undefined}
+            aria-label="Về Trang chủ"
             className={cn(
-              "flex flex-1 flex-col items-center gap-0.5 py-1.5 text-[10px] font-semibold transition",
-              isActive("/home")
-                ? "text-primary"
-                : "text-muted-foreground",
+              "flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-[13px] font-bold text-primary-foreground shadow-[0_6px_20px_rgba(180,83,9,0.45)] transition active:scale-95",
+              isActive("/home") && "ring-4 ring-primary/20",
             )}
           >
-            {logo?.url ? (
-              <img
-                src={logo.url}
-                alt=""
-                className="h-5 w-5 shrink-0 rounded-full object-cover"
-              />
-            ) : (
-              <HomeIcon
-                className={cn(
-                  "h-5 w-5",
-                  isActive("/home") && "text-primary",
-                )}
-              />
-            )}
-            <span className="w-full truncate text-center leading-tight">
-              {t("navHome")}
-            </span>
+            <HomeIcon className="h-5 w-5" />
+            {t("navHome")}
           </button>
-
-          {/* Tab giữa: KINH TẠNG nổi tròn (ô màu primary) */}
-          <button
-            type="button"
-            onClick={() => go("/suttas")}
-            aria-current={isActive("/suttas") ? "page" : undefined}
-            className="relative flex flex-1 flex-col items-center"
-            aria-label="Kinh tạng"
-          >
-            <span
-              className={cn(
-                "-mt-7 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_6px_16px_rgba(180,83,9,0.45)] transition active:scale-95",
-              )}
-            >
-              <BookOpen className="h-6 w-6" />
-            </span>
-            <span
-              className={cn(
-                "mt-0.5 text-[10px] font-semibold",
-                isActive("/suttas") ? "text-primary" : "text-muted-foreground",
-              )}
-            >
-              Kinh tạng
-            </span>
-          </button>
-
-          {/* Tab phải: Thiền — Lịch sử — Trợ lý (tra theo path) */}
-          {["/meditation", "/history", "/assistant"]
-            .map((to) => ALL_ITEMS.find((i) => i.to === to))
-            .map((item) => {
-              if (!item) return null;
-              const active = isActive(item.to);
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.to}
-                  type="button"
-                  onClick={() => go(item.to)}
-                  className={cn(
-                    "flex flex-1 flex-col items-center gap-0.5 py-1.5 text-[10px] font-semibold transition",
-                    active ? "text-primary" : "text-muted-foreground",
-                  )}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span className="w-full truncate text-center leading-tight">
-                    {bottomLabel(item.to, t(item.tKey))}
-                  </span>
-                </button>
-              );
-            })}
         </div>
       </nav>
     </div>
