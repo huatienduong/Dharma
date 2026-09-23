@@ -5,6 +5,7 @@ import { useSettings } from "@/lib/settings";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { loadLocalWatch, type LocalWatchRow } from "@/lib/localProgress";
+import { relatedDirect, searchDirect } from "@/lib/youtubeDirect";
 import { loadUiState, saveUiState, trackScroll, restoreScroll } from "@/lib/uiState";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { useAction, useQuery } from "convex/react";
@@ -39,29 +40,32 @@ export default function Dashboard() {
   useEffect(() => { const stop = trackScroll("dashboard"); return stop; }, []);
 
   // FIX "không hiển thị dữ liệu": action Convex có thể lỗi (mạng, backend
-  // đang deploy lại…) → thử lại tối đa 2 lần trước khi báo rỗng.
+  // đang deploy lại…) → thử lại tối đa 2 lần. Vẫn lỗi → FALLBACK gọi thẳng
+  // YouTube Data API từ client (qua CORS proxy) để video LUÔN hiển thị.
   const searchWithRetry = useCallback(async (args: { q: string; pageToken?: string }, attempts = 2): Promise<SearchResponse> => {
     for (let i = 0; i <= attempts; i++) {
       try {
         return await searchVideos(args) as SearchResponse;
-      } catch (err) {
-        if (i === attempts) throw err;
+      } catch {
+        if (i === attempts) break;
         await new Promise((r) => setTimeout(r, 800 * (i + 1)));
       }
     }
-    throw new Error("unreachable");
+    const items = await searchDirect(args.q);
+    return { items };
   }, [searchVideos]);
 
   const relatedWithRetry = useCallback(async (args: { youtubeId: string; title: string }, attempts = 2): Promise<SearchResponse> => {
     for (let i = 0; i <= attempts; i++) {
       try {
         return await relatedVideos(args) as SearchResponse;
-      } catch (err) {
-        if (i === attempts) throw err;
+      } catch {
+        if (i === attempts) break;
         await new Promise((r) => setTimeout(r, 800 * (i + 1)));
       }
     }
-    throw new Error("unreachable");
+    const items = await relatedDirect(args.youtubeId, args.title, SUGGESTED_COUNT);
+    return { items };
   }, [relatedVideos]);
 
   useEffect(() => {
