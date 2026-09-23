@@ -158,7 +158,7 @@ export function AppShell({
           {logo?.url ? (
             <img
               src={logo.url}
-              alt="Dharma"
+              alt="Dharma AI"
               className="h-8 w-8 shrink-0 rounded-full object-cover shadow-sm"
             />
           ) : (
@@ -265,7 +265,7 @@ export function AppShell({
           {logo?.url ? (
             <img
               src={logo.url}
-              alt="Dharma"
+              alt="Dharma AI"
               className="h-9 w-9 rounded-full object-cover"
             />
           ) : (

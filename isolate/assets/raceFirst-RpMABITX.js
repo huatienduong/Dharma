@@ -1,1 +1,0 @@
-function s(e){return new Promise((f,t)=>{let o=e.length;if(o===0){t(new Error("Không có nguồn nào để truy cập."));return}let r=!1;const u=[];for(const i of e)i.then(n=>{r||(r=!0,f(n))},n=>{u.push(n),--o===0&&!r&&t(u[0]??new Error("Tất cả nguồn đều lỗi."))})})}export{s as r};

@@ -20,13 +20,14 @@ import {
   PhoneOff,
   Scale,
   Send,
+  Settings,
   Sparkles,
   Square,
   Volume2,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -99,6 +100,8 @@ function saveLocalChat(msgs: Msg[]) {
 
 export default function Assistant() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isHome = location.pathname === "/" || location.pathname === "/home";
   const ask = useAction(api.aiChat.ask);
 
   const [history, setHistory] = useState<Msg[]>(loadLocalChat);
@@ -111,6 +114,10 @@ export default function Assistant() {
   const [stalled, setStalled] = useState(false);
   const [image, setImage] = useState<{ base64: string; mime: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Logo chính thức (cache cục bộ từ Convex Storage — AppShell cũng dùng cùng khóa)
+  const [logoUrl, setLogoUrl] = useState<string | null>(() =>
+    typeof localStorage !== "undefined" ? localStorage.getItem("dharma-logo-url") : null,
+  );
 
   const { supported: micSupported, listening, start, stop } = useVoiceSearch();
   const { speak: speakVI, stop: stopSpeaking } = useVietnameseTTS();
@@ -537,14 +544,33 @@ export default function Assistant() {
     <div className="fb-bg flex h-[100dvh] flex-col overflow-hidden">
       {/* ---------- Header mảnh, cân đối ---------- */}
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border/60 bg-background px-2 sm:px-4">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-accent"
-          aria-label="Quay lại"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
+        {isHome ? (
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt=""
+                className="h-8 w-8 rounded-full object-cover shadow-sm"
+              />
+            ) : (
+              <span
+                aria-hidden
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm"
+              >
+                ☸
+              </span>
+            )}
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-accent"
+            aria-label="Quay lại"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        )}
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow">
           <Sparkles className="h-4.5 w-4.5" />
         </span>
@@ -573,6 +599,16 @@ export default function Assistant() {
           >
             <Phone className="h-4 w-4" />
             <span className="hidden sm:inline">Đàm thoại</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/settings")}
+            title="Cài đặt"
+            aria-label="Cài đặt ứng dụng"
+            className="h-9 w-9 rounded-full"
+          >
+            <Settings className="h-4.5 w-4.5" />
           </Button>
           <Button
             variant="ghost"
