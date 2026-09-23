@@ -1,71 +1,75 @@
 import { AppShell } from "@/components/AppShell";
-import { DockPlayer, usePlayer } from "@/lib/player";
+import { DockPlayer } from "@/lib/player";
 import { restoreScroll, trackScroll } from "@/lib/uiState";
 import {
-  loadLocalSession,
-  loadLocalSuttaProgress,
-  type LocalSession,
-} from "@/lib/localProgress";
-import { getSutta } from "@/data/suttas";
-import { APP_VERSION } from "@/lib/version";
-import {
-  BookOpen,
   BookMarked,
   CalendarDays,
-  ChevronRight,
   Flower2,
   Globe2,
   History,
   Hourglass,
   Layers,
-  MessagesSquare,
   MonitorPlay,
   Newspaper,
-  Play,
   Scale,
+  BookOpen,
   Search,
 } from "lucide-react";
+import { APP_VERSION } from "@/lib/version";
+import { DHAMMAPADA, type DhpVerse } from "@/data/dhammapada";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 
-/* ---------------- Lưới chức năng kiểu app dịch vụ ---------------- */
-
-const QUICK_ITEMS: {
+/* Lưới chức năng: KINH — LUẬT — LUẬN cạnh nhau theo thứ tự tạng */
+const TIPITAKA_ITEMS: {
   to: string;
   label: string;
   icon: typeof BookOpen;
-  tile: string; // màu ô icon
+  tile: string;
+}[] = [
+  { to: "/suttas", label: "Kinh tạng", icon: BookOpen, tile: "bg-green-500" },
+  { to: "/vinaya", label: "Luật tạng", icon: Scale, tile: "bg-yellow-600" },
+  { to: "/abhidhamma", label: "Luận tạng", icon: Layers, tile: "bg-teal-500" },
+];
+
+const OTHER_ITEMS: {
+  to: string;
+  label: string;
+  icon: typeof BookOpen;
+  tile: string;
 }[] = [
   { to: "/dashboard", label: "Pháp thoại", icon: MonitorPlay, tile: "bg-orange-500" },
-  { to: "/suttas", label: "Kinh tạng", icon: BookOpen, tile: "bg-green-500" },
   { to: "/meditation", label: "Thiền định", icon: Flower2, tile: "bg-amber-500" },
   { to: "/dictionary", label: "Từ điển", icon: BookMarked, tile: "bg-emerald-500" },
-  { to: "/vinaya", label: "Luật tạng", icon: Scale, tile: "bg-yellow-500" },
-  { to: "/abhidhamma", label: "Luận tạng", icon: Layers, tile: "bg-teal-500" },
   { to: "/calendar", label: "Lịch Phật giáo", icon: CalendarDays, tile: "bg-blue-500" },
   { to: "/lookup", label: "Tra cứu", icon: Globe2, tile: "bg-indigo-500" },
+  /* Đồng bộ cùng lưới ô màu: Tin tức — Lịch sử Phật giáo — Lịch sử xem */
+  { to: "/news", label: "Tin tức", icon: Newspaper, tile: "bg-rose-500" },
+  { to: "/history", label: "Lịch sử PG", icon: Hourglass, tile: "bg-purple-500" },
+  { to: "/watched", label: "Lịch sử xem", icon: History, tile: "bg-cyan-600" },
 ];
 
-const EXTRA_ROW: { to: string; label: string; icon: typeof Newspaper }[] = [
-  { to: "/news", label: "Tin tức", icon: Newspaper },
-  { to: "/history", label: "Lịch sử Phật giáo", icon: Hourglass },
-  { to: "/watched", label: "Lịch sử xem", icon: History },
+/* Ảnh Đức Phật Thích Ca — Wikimedia Commons (đã xác minh 200 OK),
+ * chạy ngẫu nhiên mỗi lần mở Trang chủ. */
+const BUDDHA_IMAGES = [
+  "https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Tian_Tan_Buddha_by_Beria.jpg/960px-Tian_Tan_Buddha_by_Beria.jpg",
+  "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Buddha_statue_at_Buddha_Park_of_Ravangla%2C_Sikkim%2C_India_%281%29.jpg/960px-Buddha_statue_at_Buddha_Park_of_Ravangla%2C_Sikkim%2C_India_%281%29.jpg",
+  "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Large_Gautama_Buddha_statue_in_Buddha_Park_of_Ravangla%2C_Sikkim.jpg/960px-Large_Gautama_Buddha_statue_in_Buddha_Park_of_Ravangla%2C_Sikkim.jpg",
+  "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Vairocana_Buddha_statue.jpg/960px-Vairocana_Buddha_statue.jpg",
+  "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Three_golden_statues_of_the_Buddha_at_Wat_Mai_with_colorful_clouds_at_sunset_in_Luang_Prabang_Laos.jpg/960px-Three_golden_statues_of_the_Buddha_at_Wat_Mai_with_colorful_clouds_at_sunset_in_Luang_Prabang_Laos.jpg",
 ];
-
-/* ----------------------- Trang chủ ----------------------- */
 
 export default function Home() {
   const navigate = useNavigate();
-  const { play } = usePlayer();
   const [query, setQuery] = useState("");
 
-  /* Tiến trình cục bộ: phiên xem dở + kinh đang đọc dở */
-  const [session, setSession] = useState<LocalSession | null>(null);
-  const [readingSutta, setReadingSutta] = useState<{
-    id: string;
-    title: string;
-    percent: number;
-  } | null>(null);
+  /* Câu Pháp Cú + ảnh Đức Phật — chọn ngẫu nhiên, ổn định trong phiên */
+  const [verse] = useState<DhpVerse>(
+    () => DHAMMAPADA[Math.floor(Math.random() * DHAMMAPADA.length)],
+  );
+  const [buddhaImg] = useState(() =>
+    BUDDHA_IMAGES[Math.floor(Math.random() * BUDDHA_IMAGES.length)],
+  );
 
   useEffect(() => {
     const stop = trackScroll("home");
@@ -73,21 +77,6 @@ export default function Home() {
   }, []);
   useEffect(() => {
     restoreScroll("home");
-    // Nạp tiến trình sau khi mount (localStorage — tránh lệch SSR)
-    setSession(loadLocalSession());
-    const rows = loadLocalSuttaProgress()
-      .slice()
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .filter((r) => r.percent > 0 && r.percent < 100);
-    const top = rows[0];
-    if (top) {
-      const s = getSutta(top.docId);
-      if (s) {
-        setReadingSutta({ id: s.id, title: s.title, percent: top.percent });
-        return;
-      }
-    }
-    setReadingSutta(null);
   }, []);
 
   const submitSearch = useCallback(() => {
@@ -106,11 +95,9 @@ export default function Home() {
 
   return (
     <AppShell title="Trang chủ" hideTitle>
-      {session && (
-        <div className="-mx-3 mb-4 bg-background px-3 sm:-mx-5 sm:px-5">
-          <DockPlayer />
-        </div>
-      )}
+      <div className="-mx-3 mb-4 bg-background px-3 sm:-mx-5 sm:px-5">
+        <DockPlayer />
+      </div>
 
       {/* ---------------- Thanh tìm kiếm pill ---------------- */}
       <form
@@ -133,43 +120,75 @@ export default function Home() {
         </div>
       </form>
 
-      {/* ---------------- Thẻ chào mừng ---------------- */}
-      <section className="ds-card relative mb-5 overflow-hidden px-5 py-6">
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -right-6 -top-8 text-[7rem] leading-none text-primary/10"
-        >
-          ☸
-        </span>
-        <p className="text-[13px] font-medium text-muted-foreground">
-          {greeting} 🙏
-        </p>
-        <h1 className="mt-1 text-xl font-extrabold leading-snug tracking-tight sm:text-2xl">
-          Học Phật pháp mỗi ngày
-          <br className="hidden sm:block" /> theo truyền thống Theravāda
-        </h1>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => navigate("/meditation")}
-            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 active:scale-[0.98]"
+      {/* -------- Thẻ chào mừng: ảnh Đức Phật ngẫu nhiên + Pháp Cú -------- */}
+      <section className="ds-card relative mb-5 overflow-hidden">
+        {/* Ảnh Đức Phật Thích Ca — chạy ngẫu nhiên từ internet */}
+        <div className="relative h-44 w-full overflow-hidden bg-muted sm:h-56">
+          <img
+            src={buddhaImg}
+            alt="Đức Phật Thích Ca"
+            loading="eager"
+            className="h-full w-full object-cover object-top"
+            onError={(e) => {
+              // Ảnh lỗi → ẩn, giữ nền gradient trang nghiêm
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
+          <span
+            aria-hidden
+            className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-primary/25 via-transparent to-primary/40 text-6xl text-primary/30"
           >
-            <Flower2 className="h-4 w-4" /> Thiền ngay
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/assistant")}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-4 py-2 text-[13px] font-semibold text-foreground transition hover:bg-accent active:scale-[0.98]"
-          >
-            <MessagesSquare className="h-4 w-4" /> Hỏi Trợ lý
-          </button>
+            ☸
+          </span>
+          <p className="absolute bottom-3 left-4 text-[13px] font-semibold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]">
+            {greeting} 🙏
+          </p>
+        </div>
+
+        {/* Trích Kinh Pháp Cú ngẫu nhiên */}
+        <div className="px-5 pb-5 pt-4">
+          <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-gold">
+            Kinh Pháp Cú — câu {verse.n}
+          </p>
+          <blockquote className="mt-2 border-l-4 border-primary/60 pl-3.5">
+            <p className="readable-serif text-[15px] leading-[1.8] text-foreground/95">
+              {verse.vi}
+            </p>
+            <p className="mt-2 text-[12px] italic leading-relaxed text-muted-foreground">
+              «{verse.pali}»
+            </p>
+          </blockquote>
         </div>
       </section>
 
-      {/* ---------------- Lưới chức năng 8 mục ---------------- */}
+      {/* -------- Tam tạng: KINH — LUẬT — LUẬN cạnh nhau -------- */}
+      <section className="ds-card mb-4 px-4 py-5">
+        <div className="grid grid-cols-3 gap-2">
+          {TIPITAKA_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.to}
+                type="button"
+                onClick={() => navigate(item.to)}
+                className="flex flex-col items-center gap-2 px-1 text-center transition active:scale-95"
+              >
+                <span className={`ds-tile h-[52px] w-[52px] ${item.tile}`}>
+                  <Icon className="h-6 w-6" />
+                </span>
+                <span className="text-xs font-semibold leading-tight text-foreground/90">
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* -------- Lưới chức năng còn lại (đồng bộ ô màu) -------- */}
       <section className="ds-card mb-6 px-3 py-5">
-        <div className="grid grid-cols-4 gap-y-5">
-          {QUICK_ITEMS.map((item) => {
+        <div className="grid grid-cols-4 gap-y-5 sm:grid-cols-4">
+          {OTHER_ITEMS.map((item) => {
             const Icon = item.icon;
             return (
               <button
@@ -188,100 +207,11 @@ export default function Home() {
             );
           })}
         </div>
-        <div className="mx-1 mt-4 grid grid-cols-3 gap-2 border-t border-border/60 pt-4">
-          {EXTRA_ROW.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.to}
-                type="button"
-                onClick={() => navigate(item.to)}
-                className="flex items-center justify-center gap-1.5 rounded-xl bg-muted/70 px-2 py-2.5 text-[11px] font-medium text-foreground/80 transition hover:bg-accent active:scale-[0.98]"
-              >
-                <Icon className="h-4 w-4 shrink-0 text-primary" />
-                <span className="truncate">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
       </section>
-
-      {/* ---------------- Tiến trình của tôi ---------------- */}
-      {(session || readingSutta) && (
-        <section className="mb-7">
-          <h2 className="mb-2.5 text-lg font-extrabold tracking-tight">
-            Tiến trình của tôi
-          </h2>
-          <div className="ds-card p-4">
-            {session && (
-              <button
-                type="button"
-                onClick={() =>
-                  // Trình phát tự khôi phục đúng đoạn đang xem dở (localStorage)
-                  void play({
-                    _id: session.youtubeId,
-                    youtubeId: session.youtubeId,
-                    title: session.title,
-                    teacher: session.teacher,
-                    channelName: session.channelName,
-                    publishedAt: session.publishedAt,
-                    durationSec: session.durationSec,
-                  })
-                }
-                className="flex w-full items-center gap-3.5 text-left transition active:scale-[0.99]"
-              >
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Play className="h-5 w-5" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold">
-                    {session.title || "Video đang xem dở"}
-                  </span>
-                  <span className="mt-0.5 block text-xs text-muted-foreground">
-                    Xem dở — bấm để tiếp tục
-                  </span>
-                </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </button>
-            )}
-            {session && readingSutta && (
-              <div className="my-3 border-t border-border/60" />
-            )}
-            {readingSutta && (
-              <button
-                type="button"
-                onClick={() => navigate(`/suttas/${readingSutta.id}`)}
-                className="flex w-full items-center gap-3.5 text-left transition active:scale-[0.99]"
-              >
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-500/10 text-green-600">
-                  <BookOpen className="h-5 w-5" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold">
-                    {readingSutta.title}
-                  </span>
-                  <span className="mt-1 block h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                    <span
-                      className="block h-full rounded-full bg-green-500"
-                      style={{ width: `${readingSutta.percent}%` }}
-                    />
-                  </span>
-                </span>
-                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                  {readingSutta.percent}%
-                </span>
-              </button>
-            )}
-          </div>
-        </section>
-      )}
 
       {/* ---------------- Chân trang: nhà phát triển ---------------- */}
       <footer className="mt-4 pb-4 pt-2 text-center">
-        <span
-          aria-hidden
-          className="mb-2 block text-2xl text-primary/40"
-        >
+        <span aria-hidden className="mb-2 block text-2xl text-primary/40">
           ☸
         </span>
         <p className="text-[13px] font-semibold text-foreground/85">
