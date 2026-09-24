@@ -23,7 +23,6 @@ import {
   Settings,
   Sparkles,
   Square,
-  Volume2,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -35,8 +34,8 @@ type Msg = { role: "user" | "assistant"; content: string; ts: number };
 const SUGGESTIONS: { icon: typeof BookOpen; text: string }[] = [
   { icon: Sparkles, text: "Tứ Diệu Đế là gì?" },
   { icon: Heart, text: "Hướng dẫn thiền niệm hơi thở cho người mới" },
-  { icon: BookOpen, text: "Thiền Vipassanā khác Samatha như thế nào?" },
-  { icon: Scale, text: "Ý nghĩa của Bát Chánh Đạo" },
+  { icon: BookOpen, text: "Kinh Ananda khác Kinh Kim Cang chỗ nào?" },
+  { icon: Scale, text: "Mình nên bắt đầu tập tu như thế nào?" },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -633,12 +632,7 @@ export default function Assistant() {
               m.role === "user" ? (
                 <UserMessage key={i} content={m.content} ts={m.ts} />
               ) : (
-                <AssistantMessage
-                  key={i}
-                  content={m.content}
-                  ts={m.ts}
-                  onSpeak={() => void speakVI(m.content, { voice: voiceId })}
-                />
+                <AssistantMessage key={i} content={m.content} ts={m.ts} />
               ),
             )}
             {busy && (stalled ? (
@@ -720,7 +714,7 @@ export default function Assistant() {
               }}
               rows={1}
               placeholder=""
-              className="max-h-36 min-h-11 flex-1 resize-none self-center bg-transparent py-2.5 text-base outline-none placeholder:text-muted-foreground/60 sm:text-[17px]"
+              className="max-h-40 min-h-12 flex-1 resize-none self-center bg-transparent py-2.5 text-[17px] outline-none placeholder:text-muted-foreground/60 sm:text-lg"
             />
 
             {micSupported && (
@@ -882,34 +876,15 @@ export default function Assistant() {
 
 /* ------------------------------------------------------------------ */
 
-function AssistantMessage({
-  content,
-  ts,
-  onSpeak,
-}: {
-  content: string;
-  ts: number;
-  onSpeak?: () => void;
-}) {
+function AssistantMessage({ content, ts }: { content: string; ts: number }) {
   return (
-    <div className="group flex items-start gap-3">
+    <div className="flex items-start gap-3">
       <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
         <Sparkles className="h-4.5 w-4.5" />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="whitespace-pre-wrap text-base leading-[1.85] text-foreground/95 sm:text-[17px]">
+        <div className="whitespace-pre-wrap text-[17px] leading-[1.85] text-foreground/95 sm:text-lg">
           {content}
-          {onSpeak && (
-            <button
-              type="button"
-              onClick={onSpeak}
-              title="Nghe câu trả lời"
-              aria-label="Nghe câu trả lời bằng giọng nói"
-              className="ml-2 inline-flex h-7 w-7 translate-y-1.5 items-center justify-center rounded-full text-muted-foreground opacity-60 transition hover:bg-accent hover:text-foreground group-hover:opacity-100"
-            >
-              <Volume2 className="h-4 w-4" />
-            </button>
-          )}
         </div>
         <p className="mt-1.5 text-xs text-muted-foreground/70">{formatTs(ts)}</p>
       </div>
@@ -920,7 +895,7 @@ function AssistantMessage({
 function UserMessage({ content, ts }: { content: string; ts: number }) {
   return (
     <div className="flex flex-col items-end">
-      <div className="max-w-[85%] whitespace-pre-wrap rounded-3xl rounded-br-lg bg-muted px-4 py-3 text-base leading-[1.7] sm:text-[17px]">
+      <div className="max-w-[85%] whitespace-pre-wrap rounded-3xl rounded-br-lg bg-muted px-4 py-3 text-[17px] leading-[1.75] sm:text-lg">
         {content}
       </div>
       <p className="mt-1 pr-2 text-xs text-muted-foreground/70">{formatTs(ts)}</p>
