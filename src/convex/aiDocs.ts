@@ -24,51 +24,15 @@ type Provider = {
   model: string;
 };
 
-/* NGUỒN CHÍNH: cổng AI của nền tảng (integrations.vly.ai) — chạy trên máy
- * chủ API riêng, khóa VLY_INTEGRATION_KEY do nền tảng tự cấp sẵn → biên
- * soạn Kinh/Luật/Từ điển hoạt động ngay không cần khóa ngoài.
- * Khóa Groq/Gemini/OpenAI (nếu có) chỉ là dự phòng.
- * gpt-5 là reasoning model: không nhận temperature/max_tokens. */
 function listProviders(): Provider[] {
-  const out: Provider[] = [];
-  const groqKey = process.env.GROQ_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
-  const openaiKey = process.env.OPENAI_API_KEY;
-  const vlyKey = process.env.VLY_INTEGRATION_KEY;
-  // Nguồn dự phòng MIỄN PHÍ — thêm khóa nào là dùng nguồn đó ngay
-  const cerebrasKey = process.env.CEREBRAS_API_KEY;
-  const openrouterKey = process.env.OPENROUTER_API_KEY;
-  const mistralKey = process.env.MISTRAL_API_KEY;
-  const togetherKey = process.env.TOGETHER_API_KEY;
-  const deepseekKey = process.env.DEEPSEEK_API_KEY;
-  const hfKey = process.env.HF_TOKEN ?? process.env.HUGGINGFACE_API_KEY;
 
-  if (vlyKey) {
-    out.push({
-      label: "Cổng AI nền tảng",
-      make: () =>
-        createOpenAICompatible({
-          name: "vly-gateway",
-          baseURL: "https://integrations.vly.ai/v1/llm",
-          headers: { Authorization: `Bearer ${vlyKey}` },
-        }),
-      model: "gpt-5",
-    });
+  if (!geminiKey) {
+    return [];
   }
-  if (groqKey) {
-    out.push({
-      label: "Groq",
-      make: () =>
-        createOpenAICompatible({
-          name: "groq",
-          baseURL: "https://api.groq.com/openai/v1",
-          apiKey: groqKey,
-        }),
-      model: "openai/gpt-oss-120b",
-    });
-  }
-  if (geminiKey) {
-    out.push({
+
+  return [
+    {
       label: "Gemini",
       make: () =>
         createOpenAICompatible({
@@ -76,97 +40,10 @@ function listProviders(): Provider[] {
           baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
           apiKey: geminiKey,
         }),
-      // FIX: gemini-2.0-flash đã bị Google ngừng (404) → dùng alias mới nhất
-      model: "gemini-flash-latest",
-    });
-  }
-  if (cerebrasKey) {
-    out.push({
-      label: "Cerebras",
-      make: () =>
-        createOpenAICompatible({
-          name: "cerebras",
-          baseURL: "https://api.cerebras.ai/v1",
-          apiKey: cerebrasKey,
-        }),
-      model: "llama-3.3-70b",
-    });
-  }
-  if (mistralKey) {
-    out.push({
-      label: "Mistral",
-      make: () =>
-        createOpenAICompatible({
-          name: "mistral",
-          baseURL: "https://api.mistral.ai/v1",
-          apiKey: mistralKey,
-        }),
-      model: "mistral-small-latest",
-    });
-  }
-  if (togetherKey) {
-    out.push({
-      label: "Together AI",
-      make: () =>
-        createOpenAICompatible({
-          name: "together",
-          baseURL: "https://api.together.xyz/v1",
-          apiKey: togetherKey,
-        }),
-      model: "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
-    });
-  }
-  if (openrouterKey) {
-    out.push({
-      label: "OpenRouter",
-      make: () =>
-        createOpenAICompatible({
-          name: "openrouter",
-          baseURL: "https://openrouter.ai/api/v1",
-          apiKey: openrouterKey,
-        }),
-      model: "meta-llama/llama-3.3-70b-instruct:free",
-    });
-  }
-  if (deepseekKey) {
-    out.push({
-      label: "DeepSeek",
-      make: () =>
-        createOpenAICompatible({
-          name: "deepseek",
-          baseURL: "https://api.deepseek.com/v1",
-          apiKey: deepseekKey,
-        }),
-      model: "deepseek-chat",
-    });
-  }
-  if (hfKey) {
-    out.push({
-      label: "Hugging Face",
-      make: () =>
-        createOpenAICompatible({
-          name: "huggingface",
-          baseURL: "https://router.huggingface.co/v1",
-          apiKey: hfKey,
-        }),
-      model: "meta-llama/Llama-3.3-70B-Instruct",
-    });
-  }
-  if (openaiKey) {
-    out.push({
-      label: "OpenAI",
-      make: () =>
-        createOpenAICompatible({
-          name: "openai",
-          baseURL: "https://api.openai.com/v1",
-          apiKey: openaiKey,
-        }),
-      model: "gpt-4.1-mini",
-    });
-  }
-  return out;
+      model: "gemini-3.6-flash",
+    },
+  ];
 }
-
 /* ------------------------------------------------------------------ */
 /* Prompt hệ thống biên soạn nội dung Theravāda                        */
 /* ------------------------------------------------------------------ */
@@ -201,28 +78,14 @@ async function generateWithFallback(
   const errors: string[] = [];
   for (const p of providers) {
     try {
-      // FIX: gpt-5 (cổng VLY) là reasoning model — KHÔNG nhận
-      // temperature/max_tokens; dùng max_completion_tokens thay thế.
-      const isGpt5 = p.model.startsWith("gpt-5");
       const result = await generateText({
         model: p.make()(p.model),
         messages: [
           { role: "system" as const, content: SYSTEM },
           { role: "user" as const, content: prompt },
         ],
-        ...(isGpt5
-          ? {
-              providerOptions: {
-                "vly-gateway": {
-                  max_completion_tokens: maxTokens + 1500, // dự phòng cho suy luận
-                  reasoningEffort: "low",
-                },
-              },
-            }
-          : {
-              temperature: 0.4,
-              maxOutputTokens: maxTokens,
-            }),
+        temperature: 0.4,
+        maxOutputTokens: maxTokens,
       });
       const text = result.text.trim();
       if (text.length > 200) return { text, errors };

@@ -29,8 +29,8 @@ Khi trả lời, ưu tiên:
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
 const HISTORY_LIMIT = 4; // ngữ cảnh gọn → phản hồi nhanh hơn
-const MAX_TOKENS = 1200; // đủ dư cho suy luận + câu trả lời, tránh bị cắt (finish=length)
-const AI_TIMEOUT_MS = 30_000; // provider treo → lỗi sau 30s và chuyển nguồn kế tiếp
+const MAX_TOKENS = 4096; // cho phép câu trả lời dài hơn, tránh bị cắt giữa chừng
+const AI_TIMEOUT_MS = 60_000; // cho phép Gemini đủ thời gian sinh câu trả lời dài
 
 /* ------------------------------------------------------------------ */
 /* KIỂM TRA KẾT NỐI AI — cho biết khóa nào đã sẵn sàng, khóa nào còn    */
@@ -71,13 +71,6 @@ export const providerStatus = action({
     ready: boolean;
   }> => {
     const checks: ProviderCheck[] = [
-      {
-        key: "VLY_INTEGRATION_KEY",
-        label: "Cổng AI nền tảng",
-        purpose: "Nguồn chính cho Trợ lý Phật học và biên soạn học liệu",
-        ready: Boolean(process.env.VLY_INTEGRATION_KEY),
-        required: true,
-      },
       {
         key: "GROQ_API_KEY",
         label: "Groq",
@@ -181,104 +174,14 @@ type ProviderChoice = {
 };
 
 function listProviders(needVision: boolean): ProviderChoice[] {
-  const out: ProviderChoice[] = [];
-  const openaiKey = process.env.OPENAI_API_KEY;
-  const groqKey = process.env.GROQ_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
-  const vlyKey = process.env.VLY_INTEGRATION_KEY;
 
-  /* NHÀ CUNG CẤP DỰ PHÒNG — chủ dự án thêm khóa nào thì dùng nguồn đó,
-   * KHÔNG cần cấu hình gì thêm. Nhiều nguồn song song giúp Trợ lý không
-   * bị gián đoạn khi một API hết hạn mức. */
-  const cerebrasKey = process.env.CEREBRAS_API_KEY;
-  const openrouterKey = process.env.OPENROUTER_API_KEY;
-  const mistralKey = process.env.MISTRAL_API_KEY;
-  const togetherKey = process.env.TOGETHER_API_KEY;
-  const deepseekKey = process.env.DEEPSEEK_API_KEY;
-  const hfKey = process.env.HF_TOKEN ?? process.env.HUGGINGFACE_API_KEY;
-  const perplexityKey = process.env.PERPLEXITY_API_KEY;
-  const xaiKey = process.env.XAI_API_KEY ?? process.env.GROK_API_KEY;
-
-  /* NGUỒN CHÍNH: cổng AI của nền tảng (integrations.vly.ai) — chạy trên
-   * máy chủ API riêng, khóa VLY_INTEGRATION_KEY do nền tảng tự cấp sẵn
-   * cho dự án → Trợ lý HOẠT ĐỘNG NGAY mà không phụ thuộc bất kỳ khóa
-   * API ngoài nào chủ ứng dụng phải nạp. Các khóa Groq/Gemini/OpenAI
-   * (nếu có) chỉ là DỰ PHỌNG khi cổng nền tảng lỗi.
-   * gpt-5 là reasoning model: KHÔNG nhận temperature/max_tokens —
-   * phải dùng max_completion_tokens + reasoning_effort thấp.
-   */
-  if (vlyKey) {
-    out.push({
-      label: "Cổng AI nền tảng",
-      make: () =>
-        createOpenAICompatible({
-          name: "vly-gateway",
-          baseURL: "https://integrations.vly.ai/v1/llm",
-          headers: { Authorization: `Bearer ${vlyKey}` },
-        }),
-      model: "gpt-5",
-    });
+  if (!geminiKey) {
+    return [];
   }
 
-  // Dự phòng: chỉ khi đã có khóa ngoài
-  if (needVision) {
-    if (geminiKey) {
-      out.push({
-        label: "Gemini",
-        make: () =>
-          createOpenAICompatible({
-            name: "gemini",
-            baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
-            apiKey: geminiKey,
-          }),
-        model: "gemini-flash-latest",
-      });
-    }
-    if (openaiKey) {
-      out.push({
-        label: "OpenAI",
-        make: () =>
-          createOpenAICompatible({
-            name: "openai",
-            baseURL: "https://api.openai.com/v1",
-            apiKey: openaiKey,
-          }),
-        model: "gpt-4.1-mini",
-      });
-    }
-    return out;
-  }
-
-  /* TỐC ĐỘ + KHÔNG GIÁN ĐOẠN: xếp NGUỒN NHANH/MIỄN PHÍ trước, rồi cổng
-   * AI nền tảng, sau cùng là các nguồn còn lại. Chỉ cần MỘT nguồn sống là
-   * Trợ lý Phật học vẫn trả lời — nguồn lỗi/hết hạn mức sẽ tự bị bỏ qua. */
-  const fast: ProviderChoice[] = [];
-  if (groqKey) {
-    fast.push({
-      label: "Groq",
-      make: () =>
-        createOpenAICompatible({
-          name: "groq",
-          baseURL: "https://api.groq.com/openai/v1",
-          apiKey: groqKey,
-        }),
-      model: "llama-3.3-70b-versatile",
-    });
-  }
-  if (cerebrasKey) {
-    fast.push({
-      label: "Cerebras",
-      make: () =>
-        createOpenAICompatible({
-          name: "cerebras",
-          baseURL: "https://api.cerebras.ai/v1",
-          apiKey: cerebrasKey,
-        }),
-      model: "llama-3.3-70b",
-    });
-  }
-  if (geminiKey) {
-    fast.push({
+  return [
+    {
       label: "Gemini",
       make: () =>
         createOpenAICompatible({
@@ -286,108 +189,9 @@ function listProviders(needVision: boolean): ProviderChoice[] {
           baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
           apiKey: geminiKey,
         }),
-      model: "gemini-flash-latest",
-    });
-  }
-
-  const extra: ProviderChoice[] = [];
-  if (mistralKey) {
-    extra.push({
-      label: "Mistral",
-      make: () =>
-        createOpenAICompatible({
-          name: "mistral",
-          baseURL: "https://api.mistral.ai/v1",
-          apiKey: mistralKey,
-        }),
-      model: "mistral-small-latest",
-    });
-  }
-  if (togetherKey) {
-    extra.push({
-      label: "Together AI",
-      make: () =>
-        createOpenAICompatible({
-          name: "together",
-          baseURL: "https://api.together.xyz/v1",
-          apiKey: togetherKey,
-        }),
-      model: "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
-    });
-  }
-  if (openrouterKey) {
-    extra.push({
-      label: "OpenRouter",
-      make: () =>
-        createOpenAICompatible({
-          name: "openrouter",
-          baseURL: "https://openrouter.ai/api/v1",
-          apiKey: openrouterKey,
-        }),
-      model: "meta-llama/llama-3.3-70b-instruct:free",
-    });
-  }
-  if (deepseekKey) {
-    extra.push({
-      label: "DeepSeek",
-      make: () =>
-        createOpenAICompatible({
-          name: "deepseek",
-          baseURL: "https://api.deepseek.com/v1",
-          apiKey: deepseekKey,
-        }),
-      model: "deepseek-chat",
-    });
-  }
-  if (hfKey) {
-    extra.push({
-      label: "Hugging Face",
-      make: () =>
-        createOpenAICompatible({
-          name: "huggingface",
-          baseURL: "https://router.huggingface.co/v1",
-          apiKey: hfKey,
-        }),
-      model: "meta-llama/Llama-3.3-70B-Instruct",
-    });
-  }
-  if (perplexityKey) {
-    extra.push({
-      label: "Perplexity",
-      make: () =>
-        createOpenAICompatible({
-          name: "perplexity",
-          baseURL: "https://api.perplexity.ai",
-          apiKey: perplexityKey,
-        }),
-      model: "sonar",
-    });
-  }
-  if (xaiKey) {
-    extra.push({
-      label: "xAI Grok",
-      make: () =>
-        createOpenAICompatible({
-          name: "xai",
-          baseURL: "https://api.x.ai/v1",
-          apiKey: xaiKey,
-        }),
-      model: "grok-3-mini",
-    });
-  }
-  if (openaiKey) {
-    extra.push({
-      label: "OpenAI",
-      make: () =>
-        createOpenAICompatible({
-          name: "openai",
-          baseURL: "https://api.openai.com/v1",
-          apiKey: openaiKey,
-        }),
-      model: "gpt-4.1-mini",
-    });
-  }
-  return [...fast, ...out, ...extra];
+      model: "gemini-3.6-flash",
+    },
+  ];
 }
 
 /**
@@ -457,36 +261,12 @@ export const ask = action({
     for (const provider of providers) {
       try {
         // FIX lỗi "trợ lý không phản hồi":
-        // • gpt-5 là reasoning model — KHÔNG nhận temperature/max_tokens
-        //   (400 Unsupported value); phải dùng max_completion_tokens +
-        //   reasoning_effort thấp, nếu không toàn bộ ngân sách token bị
-        //   tiêu cho suy luận → câu trả lời rỗng.
-        // • Ngân sách 900 tokens trước đây quá nhỏ: khi suy luận dùng hết
-        //   quota, finishReason = "length" mà KHÔNG có text → client chỉ
-        //   thấy "đang suy niệm" mãi mãi. Nâng lên 3000 + kiểm tra
-        //   finishReason để cắt suy luận sớm hơn nội dung.
-        const isGpt5 = provider.model.startsWith("gpt-5");
-        // Timeout: provider chậm/treo → hủy sau 45s, thử provider kế tiếp
         const result = await Promise.race([
           generateText({
             model: provider.make()(provider.model),
             messages: payload as never,
-            ...(isGpt5
-              ? {
-                  providerOptions: {
-                    "vly-gateway": {
-                      // Giảm ngân sách suy luận → câu trả lời về nhanh hơn
-                      // mà vẫn đủ dài; reasoning-effort thấp để tránh "suy
-                      // niệm" lâu rồi hết token không có nội dung.
-                      max_completion_tokens: 2000,
-                      reasoningEffort: "low",
-                    },
-                  },
-                }
-              : {
-                  temperature: 0.35,
-                  maxOutputTokens: MAX_TOKENS,
-                }),
+            temperature: 0.35,
+            maxOutputTokens: MAX_TOKENS,
           }),
           new Promise<never>((_, reject) =>
             setTimeout(
@@ -505,7 +285,7 @@ export const ask = action({
           }`,
         );
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = err instanceof Error ? `${err.name}: ${err.message}\n${err.stack ?? ""}` : String(err);
         errors.push(`${provider.label}: ${msg}`);
       }
     }
