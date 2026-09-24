@@ -269,9 +269,9 @@ export default function Settings() {
           />
         </div>
 
-        {/* ---------- Giọng đọc trợ lý ---------- */}
+        {/* ---------- Lựa chọn giọng nói ---------- */}
         <RowCard
-          label="Giọng đọc"
+          label="Lựa chọn giọng nói"
           open={openCard === "voice"}
           onClick={() => toggle("voice")}
         >
@@ -338,10 +338,6 @@ export default function Settings() {
                 </button>
               );
             })}
-            <p className="px-1 pt-2 text-[11px] leading-relaxed text-muted-foreground">
-              Giọng dùng cho câu trả lời trong hội thoại và đàm thoại. Chạm vào
-              giọng để nghe thử.
-            </p>
           </div>
         </RowCard>
 

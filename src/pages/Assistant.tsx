@@ -9,6 +9,7 @@ import { useAction } from "convex/react";
 import {
   ArrowLeft,
   AudioLines,
+  Bot,
   BookOpen,
   Eraser,
   Heart,
@@ -764,11 +765,11 @@ export default function Assistant() {
             <div className="flex w-full items-center justify-between px-5 pt-5 sm:px-8">
               <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-sm">
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-gold to-amber-700">
-                  <Sparkles className="h-4 w-4 text-white" />
+                  <Bot className="h-4 w-4 text-white" />
                 </span>
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/50">
-                    Dharma AI Voice
+                    Trợ lý Phật học
                   </p>
                 </div>
               </div>

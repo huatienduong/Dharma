@@ -47,6 +47,28 @@ export type SpeakOpts = {
 };
 
 /**
+ * Mở khóa autoplay (resume AudioContext) rồi phát audio — FIX "im lặng":
+ * trình duyệt chặn phát âm thanh nếu chưa có tương tác; resume context
+ * + bấm play ngay trong chuỗi promise giúp đa số trình duyệt cho phép.
+ */
+async function unlockAudioAndPlay(audio: HTMLMediaElement): Promise<void> {
+  try {
+    const AC =
+      window.AudioContext ??
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext;
+    if (AC) {
+      const ctx = new AC();
+      if (ctx.state === "suspended") await ctx.resume();
+      void ctx.close();
+    }
+  } catch {
+    /* bỏ qua — chỉ là mở khóa phụ */
+  }
+  await audio.play();
+}
+
+/**
  * TTS tiếng Việt hai tầng cho Trợ lý Pháp:
  * 1. SERVER TTS (ưu tiên): Gemini TTS / OpenAI TTS trả về audio base64 →
  *    phát qua <Audio> — giọng tiếng Việt tự nhiên bất kể máy người dùng,
@@ -200,7 +222,11 @@ export function useVietnameseTTS() {
         return;
       }
 
-      // 1. Thử server TTS — timeout 12s, chậm/treo thì rời về Web Speech
+      // 1. Thử server TTS — timeout 12s, chậm/treo thì rời về Web Speech.
+      // FIX "đàm thoại im lặng": dùng cờ settled để KẾT QUẢ MUỘN của action
+      // (trả sau khi timeout đã rơi về Web Speech) không phát chồng 2 tiếng;
+      // và mở khóa AudioContext trước khi play để vượt autoplay policy.
+      let settled = false;
       try {
         const res = await Promise.race([
           speakAction({
@@ -212,7 +238,7 @@ export function useVietnameseTTS() {
             window.setTimeout(() => resolve(null), 12_000),
           ),
         ]);
-        if (res && !stopFlagRef.current) {
+        if (res && !stopFlagRef.current && !settled) {
           // Gemini trả PCM thô → bọc WAV; mp3/WAV dùng nguyên bản
           const src = /L16|pcm/i.test(res.mime)
             ? `data:audio/wav;base64,${pcmToWav(res.audioBase64)}`
@@ -229,16 +255,22 @@ export function useVietnameseTTS() {
           audio.onerror = () => {
             setSpeaking(false);
             audioRef.current = null;
+            if (settled) return;
+            settled = true;
             // Server audio lỗi → rơi về Web Speech
             webSpeak(clean, opts.voice, opts.onDone);
           };
           try {
-            await audio.play();
+            await unlockAudioAndPlay(audio);
+            if (!settled) settled = true;
             return;
           } catch {
             setSpeaking(false);
             audioRef.current = null;
-            webSpeak(clean, opts.voice, opts.onDone);
+            if (!settled) {
+              settled = true;
+              webSpeak(clean, opts.voice, opts.onDone);
+            }
           }
           return;
         }
@@ -247,8 +279,13 @@ export function useVietnameseTTS() {
       }
 
       // 2. Fallback Web Speech
-      if (!stopFlagRef.current) webSpeak(clean, opts.voice, opts.onDone);
-      else opts.onDone?.();
+      if (!stopFlagRef.current && !settled) {
+        settled = true;
+        webSpeak(clean, opts.voice, opts.onDone);
+      } else if (!settled) {
+        settled = true;
+        opts.onDone?.();
+      }
     },
     [speakAction, webSpeak],
   );
