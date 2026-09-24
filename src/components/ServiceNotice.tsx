@@ -26,7 +26,7 @@ export function showServiceNotice(reason: ServiceNoticeReason = "upgrade") {
 }
 
 const MESSAGE =
-  "Đội ngũ kỹ thuật của chúng tôi đang tiến hành nâng cấp hệ thống hoặc nếu bạn thấy thông báo này có thể ứng dụng Dharma AI đang gặp sự cố lỗi tạm thời. Hãy thử tải lại trang này nếu tình trạng không được giải quyết hãy sử dụng tính năng báo cáo lỗi trong phần cài đặt của ứng dụng. Rất xin lỗi vì sự bất tiện gây ra cho bạn!";
+  "Đội ngũ kỹ thuật của chúng tôi đang tiến hành nâng cấp hệ thống hoặc nếu bạn thấy thông báo này có thể ứng dụng Trợ lý Phật học đang gặp sự cố lỗi tạm thời. Hãy thử tải lại trang này nếu tình trạng không được giải quyết hãy sử dụng tính năng báo cáo lỗi trong phần cài đặt của ứng dụng. Rất xin lỗi vì sự bất tiện gây ra cho bạn!";
 
 export function ServiceNotice() {
   const navigate = useNavigate();
@@ -94,7 +94,7 @@ export function ServiceNotice() {
     <div
       role="alertdialog"
       aria-modal="true"
-      aria-label="Thông báo từ Dharma AI"
+      aria-label="Thông báo từ Trợ lý Phật học"
       className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-background/95 px-4 py-10 backdrop-blur-sm"
     >
       <div className="w-full max-w-lg rounded-3xl border border-border/60 bg-card/90 p-6 text-center shadow-xl sm:p-8">
@@ -114,7 +114,7 @@ export function ServiceNotice() {
         </span>
 
         <h2 className="mt-5 text-lg font-bold tracking-tight">
-          {offline ? "Mất kết nối mạng" : "Dharma AI đang được nâng cấp"}
+          {offline ? "Mất kết nối mạng" : "Trợ lý Phật học đang được nâng cấp"}
         </h2>
 
         <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">

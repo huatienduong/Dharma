@@ -30,69 +30,15 @@ const schema = defineSchema(
       isAnonymous: v.optional(v.boolean()), // is the user anonymous. do not remove
 
       role: v.optional(roleValidator), // role of the user. do not remove
-
-      // Hồ sơ người dùng Dhamma Stream
-      dhammaName: v.optional(v.string()), // pháp danh / tên thiền (không bắt buộc)
-      bio: v.optional(v.string()), // giới thiệu ngắn
-      birthYear: v.optional(v.number()), // năm sinh dương lịch
     }).index("email", ["email"]), // index for the email. do not remove or modify
 
-    // Pháp thoại Theravada: một bản ghi cho mỗi video YouTube
-    dhammaTalks: defineTable({
-      youtubeId: v.string(), // video ID trên YouTube
-      title: v.string(),
-      teacher: v.string(), // tên vị giảng sư
-      channelName: v.string(), // tên kênh YouTube
-      publishedAt: v.string(), // ngày phát hành (ISO)
-      durationSec: v.number(), // thời lượng (giây), 0 nếu chưa rõ
-      viewCount: v.optional(v.number()), // số lượt xem trên YouTube
-      description: v.optional(v.string()),
-      syncedAt: v.number(), // thời điểm đồng bộ
-    })
-      .index("by_youtubeId", ["youtubeId"])
-      .index("by_publishedAt", ["publishedAt"]),
-
-    // Tiến trình xem của người dùng, khôi phục khi quay lại ứng dụng
-    watchProgress: defineTable({
+    // Hội thoại với Trợ lý Phật học (lưu để quay lại không mất)
+    aiMessages: defineTable({
       userId: v.id("users"),
-      talkId: v.id("dhammaTalks"),
-      positionSec: v.number(), // vị trí dừng (giây)
-      durationSec: v.number(), // thời lượng video (giây)
-      completed: v.boolean(), // đã xem gần hết
-      updatedAt: v.number(),
-    })
-      .index("by_user", ["userId"])
-      .index("by_user_talk", ["userId", "talkId"]),
-
-    // Cài đặt ứng dụng của từng người dùng (sáng/tối, cỡ chữ, ngôn ngữ, thông báo)
-    userSettings: defineTable({
-      userId: v.id("users"),
-      theme: v.string(), // "light" | "dark" | "system"
-      fontScale: v.number(), // 0.9 | 1.0 | 1.15 | 1.3
-      language: v.string(), // "vi" | "en"
-      notifications: v.boolean(),
-      screenshotBlock: v.optional(v.boolean()), // chống chụp màn hình
-    })
-      .index("by_user", ["userId"]),
-
-    // Tiến trình đọc Kinh/Luật: khôi phục vị trí cuộn khi quay lại
-    readingProgress: defineTable({
-      userId: v.id("users"),
-      docId: v.string(), // ID văn bản (vd: "sn56.11", "vin-patimokkha")
-      percent: v.number(), // 0..100
-      updatedAt: v.number(),
-    })
-      .index("by_user", ["userId"])
-      .index("by_user_doc", ["userId", "docId"]),
-
-    // Phiên thiền định đã thực hành
-    meditationSessions: defineTable({
-      userId: v.id("users"),
-      technique: v.string(), // "anapanasati" | "metta" | "maranasati" | "walking" | "custom"
-      durationSec: v.number(),
-      completedAt: v.number(), // thời điểm kết thúc phiên
-    })
-      .index("by_user", ["userId"]),
+      role: v.string(), // "user" | "assistant"
+      content: v.string(),
+      createdAt: v.number(),
+    }).index("by_user", ["userId"]),
 
     // Góp ý và báo cáo lỗi từ người dùng
     feedback: defineTable({
@@ -103,73 +49,15 @@ const schema = defineSchema(
       appVersion: v.string(),
       status: v.string(), // "new" | "reading" | "resolved"
       createdAt: v.number(),
-    }).index("by_createdAt", ["createdAt"]),  // Siêu dữ liệu ứng dụng: phiên bản mới nhất, ghi chú phát hành
-  appMeta: defineTable({
-    key: v.string(),
-    latestVersion: v.string(),
-    releaseNotes: v.optional(v.string()),
-    releasedAt: v.optional(v.number()),
-  }).index("by_key", ["key"]),  // Hội thoại Phật pháp với trợ lý AI (lưu theo người dùng để quay lại không mất)
-  aiMessages: defineTable({
-    userId: v.id("users"),
-    role: v.string(), // "user" | "assistant"
-    content: v.string(),
-    createdAt: v.number(),
-  }).index("by_user", ["userId"]),
-  watchRooms: defineTable({
-    code: v.string(), // mã phòng 6 ký tự (duy nhất)
-    hostId: v.id("users"),
-    youtubeId: v.optional(v.string()), // video đang chọn
-    talkId: v.optional(v.id("dhammaTalks")),
-    isPlaying: v.boolean(),
-    positionSec: v.number(), // vị trí phát đồng bộ (giây)
-    stateUpdatedAt: v.number(), // để tính drift + tự nối tiếp vị trí
-    createdAt: v.number(),
-  })
-    .index("by_code", ["code"])
-    .index("by_host", ["hostId"]),
+    }).index("by_createdAt", ["createdAt"]),
 
-  // Thành viên đang trong phòng (heartbeat để hiện danh sách + rút gọn)
-  roomMembers: defineTable({
-    roomId: v.id("watchRooms"),
-    userId: v.id("users"),
-    name: v.string(),
-    micOn: v.boolean(),
-    camOn: v.boolean(),
-    lastSeen: v.number(),
-  })
-    .index("by_room", ["roomId"])
-    .index("by_room_user", ["roomId", "userId"]),
-
-  // Tín hiệu WebRTC (offer/answer/ICE) trao đổi qua Convex — signal server
-  roomSignals: defineTable({
-    roomId: v.id("watchRooms"),
-    fromId: v.id("users"),
-    toId: v.id("users"),
-    payload: v.string(), // JSON SDP/ICE
-    createdAt: v.number(),
-  }).index("by_room_to", ["roomId", "toId"]),
-
-  // Nhắn tin trong phòng xem chung
-  roomChat: defineTable({
-    roomId: v.id("watchRooms"),
-    userId: v.id("users"),
-    name: v.string(),
-    text: v.string(),
-    createdAt: v.number(),
-  }).index("by_room", ["roomId"]),
-
-  // Nội dung Phật học do AI biên soạn (Kinh/Luật/Từ điển/Chú giải/Luận giải)
-  // — cache để người dùng sau đọc ngay không phải chờ AI.
-  aiDocs: defineTable({
-    kind: v.string(), // "sutta" | "vinaya" | "dictionary" | "commentary" | "subcommentary"
-    refId: v.string(), // khóa tra cứu: mã kinh / thuật ngữ / mã văn bản
-    title: v.string(),
-    body: v.string(), // markdown đơn giản: # / ## / đoạn văn —  · ** ** · — Phần X
-    source: v.string(), // nguồn: "Majjhima Nikāya 118 · Sutta Piṭaka, Theravāda"
-    createdAt: v.number(),
-  })
-    .index("by_kind_ref", ["kind", "refId"]),
+    // Siêu dữ liệu ứng dụng: phiên bản mới nhất, ghi chú phát hành
+    appMeta: defineTable({
+      key: v.string(),
+      latestVersion: v.string(),
+      releaseNotes: v.optional(v.string()),
+      releasedAt: v.optional(v.number()),
+    }).index("by_key", ["key"]),
   },
   {
     schemaValidation: false,

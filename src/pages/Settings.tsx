@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "convex/react";
 import { useMemo } from "react";
 import {
+  ArrowLeft,
   Bell,
   Bug,
   Check,
@@ -31,7 +32,6 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router";
-import { clearAllLocalProgress } from "@/lib/localProgress";
 import {
   getVoice,
   loadVoicePref,
@@ -184,11 +184,17 @@ export default function Settings() {
   const handleReset = () => {
     if (
       typeof window !== "undefined" &&
-      !window.confirm("Xóa toàn bộ tiến trình xem/đọc đã lưu trên thiết bị này?")
+      !window.confirm("Xóa toàn bộ dữ liệu đã lưu trên thiết bị này?")
     ) {
       return;
     }
-    clearAllLocalProgress();
+    try {
+      // Trợ lý Phật học: dữ liệu cục bộ gồm hội thoại + lựa chọn giọng
+      localStorage.removeItem("ds-assistant-history");
+      localStorage.removeItem("ds-assistant-voice");
+    } catch {
+      /* bỏ qua */
+    }
     toast.success("Đã đặt lại dữ liệu cục bộ.");
     window.setTimeout(() => window.location.reload(), 600);
   };
@@ -609,24 +615,6 @@ function Switch({
         )}
       />
     </button>
-  );
-}
-
-function ArrowLeft() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-6 w-6"
-      aria-hidden
-    >
-      <path d="M19 12H5" />
-      <path d="M12 19l-7-7 7-7" />
-    </svg>
   );
 }
 

@@ -1,6 +1,5 @@
 import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
-import { ScreenshotGuard } from "@/components/ScreenshotGuard";
 import { ServiceNotice } from "@/components/ServiceNotice";
 import { UpdateChecker } from "@/components/UpdateChecker";
 import { SettingsProvider } from "@/lib/settings";
@@ -63,11 +62,11 @@ class RootErrorBoundary extends React.Component<
         <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
           <div className="max-w-lg rounded-3xl border border-border/60 bg-card/90 p-6 text-center shadow-xl">
             <h2 className="text-lg font-bold tracking-tight">
-              Dharma AI đang được nâng cấp
+              Trợ lý Phật học đang được nâng cấp
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
               Đội ngũ kỹ thuật của chúng tôi đang tiến hành nâng cấp hệ thống hoặc
-              nếu bạn thấy thông báo này có thể ứng dụng Dharma AI đang gặp sự cố lỗi
+              nếu bạn thấy thông báo này có thể ứng dụng Trợ lý Phật học đang gặp sự cố lỗi
               tạm thời. Hãy thử tải lại trang này nếu tình trạng không được giải
               quyết hãy sử dụng tính năng báo cáo lỗi trong phần cài đặt của ứng
               dụng. Rất xin lỗi vì sự bất tiện gây ra cho bạn!
@@ -144,7 +143,6 @@ createRoot(document.getElementById("root")!).render(
       </ToolbarErrorBoundary>
       <ConvexAuthProvider client={convex}>
         <SettingsProvider>
-          <ScreenshotGuard />
           <UpdateChecker />
           <BrowserRouter basename={ROUTER_BASENAME}>
             <RouteSyncer />

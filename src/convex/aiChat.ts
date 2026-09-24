@@ -28,11 +28,6 @@ const MAX_TOKENS = 4096; // cho phép câu trả lời dài hơn, tránh bị c�
 const AI_TIMEOUT_MS = 60_000; // cho phép Gemini đủ thời gian sinh câu trả lời dài
 
 /* ------------------------------------------------------------------ */
-/* KIỂM TRA KẾT NỐI AI — cho biết khóa nào đã sẵn sàng, khóa nào còn    */
-/* thiếu (chỉ trả về boolean, KHÔNG bao giờ lộ giá trị khóa).           */
-/* ------------------------------------------------------------------ */
-
-/* ------------------------------------------------------------------ */
 /* BẢN ĐỒ GIỌNG TTS — đồng bộ với danh mục client (src/lib/aiVoices.ts). */
 /* Client gửi voice id + male; máy chủ chọn giọng Gemini/OpenAI tương ứng. */
 /* ------------------------------------------------------------------ */
@@ -49,114 +44,6 @@ const SERVER_VOICES: Record<string, ServerVoice> = {
   upekkha: { gemini: "Alnilam", openai: "fable", male: true },
   sila: { gemini: "Iapetus", openai: "alloy", male: true },
 };
-
-export type ProviderCheck = {
-  key: string;
-  label: string;
-  purpose: string;
-  ready: boolean;
-  required: boolean;
-};
-
-export const providerStatus = action({
-  args: {},
-  handler: async (): Promise<{
-    checks: ProviderCheck[];
-    missingRequired: string[];
-    ready: boolean;
-  }> => {
-    const checks: ProviderCheck[] = [
-      {
-        key: "GROQ_API_KEY",
-        label: "Groq",
-        purpose: "Dự phòng tốc độ cao (phản hồi nhanh nhất)",
-        ready: Boolean(process.env.GROQ_API_KEY),
-        required: false,
-      },
-      {
-        key: "GEMINI_API_KEY",
-        label: "Google Gemini",
-        purpose: "Dự phòng, đọc hình ảnh và giọng nói tiếng Việt",
-        ready: Boolean(process.env.GEMINI_API_KEY),
-        required: false,
-      },
-      {
-        key: "OPENAI_API_KEY",
-        label: "OpenAI",
-        purpose: "Dự phòng và giọng nói tiếng Việt",
-        ready: Boolean(process.env.OPENAI_API_KEY),
-        required: false,
-      },
-      {
-        key: "CEREBRAS_API_KEY",
-        label: "Cerebras (miễn phí)",
-        purpose: "Dự phòng miễn phí, tốc độ rất cao",
-        ready: Boolean(process.env.CEREBRAS_API_KEY),
-        required: false,
-      },
-      {
-        key: "OPENROUTER_API_KEY",
-        label: "OpenRouter (miễn phí)",
-        purpose: "Dự phòng miễn phí qua các model :free",
-        ready: Boolean(process.env.OPENROUTER_API_KEY),
-        required: false,
-      },
-      {
-        key: "MISTRAL_API_KEY",
-        label: "Mistral (miễn phí)",
-        purpose: "Dự phòng miễn phí",
-        ready: Boolean(process.env.MISTRAL_API_KEY),
-        required: false,
-      },
-      {
-        key: "TOGETHER_API_KEY",
-        label: "Together AI (miễn phí)",
-        purpose: "Dự phòng miễn phí (model Turbo-Free)",
-        ready: Boolean(process.env.TOGETHER_API_KEY),
-        required: false,
-      },
-      {
-        key: "DEEPSEEK_API_KEY",
-        label: "DeepSeek",
-        purpose: "Dự phòng",
-        ready: Boolean(process.env.DEEPSEEK_API_KEY),
-        required: false,
-      },
-      {
-        key: "HF_TOKEN",
-        label: "Hugging Face (miễn phí)",
-        purpose: "Dự phòng miễn phí qua Inference Router",
-        ready: Boolean(process.env.HF_TOKEN ?? process.env.HUGGINGFACE_API_KEY),
-        required: false,
-      },
-      {
-        key: "PERPLEXITY_API_KEY",
-        label: "Perplexity",
-        purpose: "Dự phòng, trả lời có dẫn nguồn thực tế",
-        ready: Boolean(process.env.PERPLEXITY_API_KEY),
-        required: false,
-      },
-      {
-        key: "XAI_API_KEY",
-        label: "xAI Grok",
-        purpose: "Dự phòng",
-        ready: Boolean(process.env.XAI_API_KEY ?? process.env.GROK_API_KEY),
-        required: false,
-      },
-      {
-        key: "YOUTUBE_API_KEY",
-        label: "YouTube Data API v3",
-        purpose: "Nguồn video pháp thoại (máy chủ)",
-        ready: Boolean(process.env.YOUTUBE_API_KEY),
-        required: false,
-      },
-    ];
-    const missingRequired = checks
-      .filter((c) => c.required && !c.ready)
-      .map((c) => c.key);
-    return { checks, missingRequired, ready: missingRequired.length === 0 };
-  },
-});
 
 /* ------------------------------------------------------------------ */
 /* Danh sách nhà cung cấp AI — ưu tiên tốc độ, fallback chỉ khi cần     */
