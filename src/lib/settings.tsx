@@ -64,7 +64,7 @@ function saveLocal(s: AppSettings) {
 
 const VI = {
   // App / nav
-  appName: "Dharma AI",
+  appName: "Trợ lý Phật học",
   appTagline: "Trợ lý Phật học Theravāda",
   navHome: "Trang chủ",
   navTalks: "Pháp thoại",
@@ -153,7 +153,7 @@ const VI = {
 
 const EN: Partial<Record<keyof typeof VI, string>> = {
   // App / nav
-  appName: "Dharma AI",
+  appName: "Trợ lý Phật học",
   appTagline: "Theravāda Buddhist Assistant",
   navHome: "Home",
   navTalks: "Dhamma talks",

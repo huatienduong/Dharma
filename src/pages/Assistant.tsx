@@ -30,7 +30,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = { role: "user" | "assistant"; content: string; ts: number };
 
 const SUGGESTIONS: { icon: typeof BookOpen; text: string }[] = [
   { icon: Sparkles, text: "Tứ Diệu Đế là gì?" },
@@ -82,9 +82,17 @@ function loadLocalChat(): Msg[] {
     const raw = localStorage.getItem(CHAT_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as Msg[];
-    return Array.isArray(parsed)
-      ? parsed.filter((m) => m && (m.role === "user" || m.role === "assistant"))
-      : [];
+    if (!Array.isArray(parsed)) return [];
+    // Tin nhắn cũ chưa có mốc giờ → gán thời gian lệch nhau theo thứ tự
+    return parsed
+      .filter((m) => m && (m.role === "user" || m.role === "assistant"))
+      .map((m, i, arr) => ({
+        ...m,
+        ts:
+          typeof m.ts === "number"
+            ? m.ts
+            : Date.now() - (arr.length - i) * 60_000,
+      }));
   } catch {
     return [];
   }
@@ -222,7 +230,7 @@ export default function Assistant() {
       if (!q || busy) return;
 
       const base: Msg[] = [...history, ...pending];
-      const userMsg: Msg = { role: "user", content: q };
+      const userMsg: Msg = { role: "user", content: q, ts: Date.now() };
 
       if (!opts?.fromCall) {
         setInput("");
@@ -254,7 +262,7 @@ export default function Assistant() {
             throw firstErr;
           }
         }
-        const replyMsg: Msg = { role: "assistant", content: reply };
+        const replyMsg: Msg = { role: "assistant", content: reply, ts: Date.now() };
         setPending((p) => p.filter((m) => m !== userMsg));
         setHistory((h) => {
           const next = [...h, userMsg, replyMsg];
@@ -561,8 +569,8 @@ export default function Assistant() {
           </Button>
         </div>
         <div className="min-w-0 flex-1 text-center">
-          <p className="truncate text-[15px] font-extrabold uppercase tracking-[0.2em] leading-tight text-foreground">
-            DHARMA AI
+          <p className="truncate text-[15px] font-extrabold uppercase tracking-[0.18em] leading-tight text-foreground">
+            Trợ lý Phật học
           </p>
         </div>
         {/* Phải: Cài đặt + Xóa hội thoại */}
@@ -608,7 +616,7 @@ export default function Assistant() {
                     key={s.text}
                     type="button"
                     onClick={() => void send(s.text)}
-                    className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3.5 text-left text-sm leading-snug text-foreground/90 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/50"
+                    className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3.5 text-left text-[15px] leading-snug text-foreground/90 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/50"
                   >
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold">
                       <Icon className="h-4 w-4" />
@@ -623,11 +631,12 @@ export default function Assistant() {
           <div className="mx-auto w-full max-w-3xl space-y-7 px-3 pb-8 pt-3 sm:px-4">
             {messages.map((m, i) =>
               m.role === "user" ? (
-                <UserMessage key={i} content={m.content} />
+                <UserMessage key={i} content={m.content} ts={m.ts} />
               ) : (
                 <AssistantMessage
                   key={i}
                   content={m.content}
+                  ts={m.ts}
                   onSpeak={() => void speakVI(m.content, { voice: voiceId })}
                 />
               ),
@@ -711,7 +720,7 @@ export default function Assistant() {
               }}
               rows={1}
               placeholder=""
-              className="max-h-36 min-h-10 flex-1 resize-none self-center bg-transparent py-2 text-[15px] outline-none placeholder:text-muted-foreground/60"
+              className="max-h-36 min-h-11 flex-1 resize-none self-center bg-transparent py-2.5 text-base outline-none placeholder:text-muted-foreground/60 sm:text-[17px]"
             />
 
             {micSupported && (
@@ -875,42 +884,69 @@ export default function Assistant() {
 
 function AssistantMessage({
   content,
+  ts,
   onSpeak,
 }: {
   content: string;
+  ts: number;
   onSpeak?: () => void;
 }) {
   return (
     <div className="group flex items-start gap-3">
       <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
-        <Sparkles className="h-4 w-4" />
+        <Sparkles className="h-4.5 w-4.5" />
       </span>
-      <div className="min-w-0 flex-1 whitespace-pre-wrap text-[15px] leading-[1.8] text-foreground/95 sm:text-base">
-        {content}
-        {onSpeak && (
-          <button
-            type="button"
-            onClick={onSpeak}
-            title="Nghe câu trả lời"
-            aria-label="Nghe câu trả lời bằng giọng nói"
-            className="ml-2 inline-flex h-7 w-7 translate-y-1.5 items-center justify-center rounded-full text-muted-foreground opacity-60 transition hover:bg-accent hover:text-foreground group-hover:opacity-100"
-          >
-            <Volume2 className="h-4 w-4" />
-          </button>
-        )}
+      <div className="min-w-0 flex-1">
+        <div className="whitespace-pre-wrap text-base leading-[1.85] text-foreground/95 sm:text-[17px]">
+          {content}
+          {onSpeak && (
+            <button
+              type="button"
+              onClick={onSpeak}
+              title="Nghe câu trả lời"
+              aria-label="Nghe câu trả lời bằng giọng nói"
+              className="ml-2 inline-flex h-7 w-7 translate-y-1.5 items-center justify-center rounded-full text-muted-foreground opacity-60 transition hover:bg-accent hover:text-foreground group-hover:opacity-100"
+            >
+              <Volume2 className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <p className="mt-1.5 text-xs text-muted-foreground/70">{formatTs(ts)}</p>
       </div>
     </div>
   );
 }
 
-function UserMessage({ content }: { content: string }) {
+function UserMessage({ content, ts }: { content: string; ts: number }) {
   return (
-    <div className="flex justify-end">
-      <div className="max-w-[85%] whitespace-pre-wrap rounded-3xl rounded-br-lg bg-muted px-4 py-3 text-[15px] leading-relaxed sm:text-base">
+    <div className="flex flex-col items-end">
+      <div className="max-w-[85%] whitespace-pre-wrap rounded-3xl rounded-br-lg bg-muted px-4 py-3 text-base leading-[1.7] sm:text-[17px]">
         {content}
       </div>
+      <p className="mt-1 pr-2 text-xs text-muted-foreground/70">{formatTs(ts)}</p>
     </div>
   );
+}
+
+/** Định dạng thời gian tin nhắn: "14:05" hôm nay, "14:05 · 24/09" hôm trước. */
+function formatTs(ts: number): string {
+  if (!ts) return "";
+  const d = new Date(ts);
+  const time = d.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const now = new Date();
+  const sameDay =
+    d.getDate() === now.getDate() &&
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear();
+  if (sameDay) return time;
+  const date = d.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+  });
+  return `${time} · ${date}`;
 }
 
 function AssistantThinking() {

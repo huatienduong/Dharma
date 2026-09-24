@@ -206,8 +206,8 @@ export default function Settings() {
           <ArrowLeft />
         </button>
         <div className="min-w-0 flex-1 text-center">
-          <p className="truncate text-[15px] font-extrabold uppercase tracking-[0.2em] leading-tight text-foreground">
-            DHARMA AI
+          <p className="truncate text-[15px] font-extrabold uppercase tracking-[0.18em] leading-tight text-foreground">
+            Trợ lý Phật học
           </p>
         </div>
         <span className="h-10 w-10 shrink-0" aria-hidden />
