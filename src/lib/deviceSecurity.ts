@@ -59,6 +59,15 @@ export function deviceFingerprint(): string {
 
 type ScanResult = { score: number; reasons: string[] };
 
+/**
+ * Trình duyệt nhúng hợp pháp trong các ứng dụng phổ biến. Kích thướt cửa sổ
+ * và nền tảng của các trình duyệt này không đồng nhất với Chrome nên không
+ * được dùng để suy diễn công cụ gỡ lỗi hoặc thiết bị ảo.
+ */
+function isTrustedInAppBrowser(userAgent: string): boolean {
+  return /\b(?:FBAN|FBAV|FB_IAB|Messenger|Instagram|Zalo)\b/i.test(userAgent);
+}
+
 /** DevTools đang mở? (khoảng trống giữa cửa sổ và khung nhìn) */
 function devToolsGapOpen(): boolean {
   try {
@@ -82,6 +91,9 @@ function scanOnce(): ScanResult {
     languages?: readonly string[];
   };
   const ua = nav.userAgent ?? "";
+
+  // Messenger, Instagram và Zalo là các trình duyệt nhúng hợp pháp.
+  if (isTrustedInAppBrowser(ua)) return res;
 
   // 1. Cờ tự động hóa của trình điều khiển (Puppeteer/Playwright/Selenium)
   if (nav.webdriver === true) {
@@ -132,8 +144,10 @@ function scanOnce(): ScanResult {
 
   // 6. DevTools đang mở khi quét
   if (devToolsGapOpen()) {
-    res.score += 50;
-    res.reasons.push("devtools-open");
+    // Sai số khung cửa sổ xảy ra phổ biến trên trình duyệt nhúng/mobile,
+    // nên chỉ đánh dấu nghi ngờ thay vì khóa ứng dụng.
+    res.score += 10;
+    res.reasons.push("window-gap");
   }
 
   // 7. THIẾT BỊ ROOT/JAILBREAK · GIẢ LẬP — tín hiệu qua môi trường web.
@@ -148,9 +162,9 @@ function scanOnce(): ScanResult {
     res.score += 80;
     res.reasons.push("emulator-ua");
   }
-  // Kiến trúc giả lập trên Android (x86/x86_64 ROM can thiệp)
-  const archHit =
-    /x86_64|x86;/i.test(ua) || (/arm/i.test(platform) === false && /Android/i.test(ua));
+  // Chỉ phát hiện kiến trúc giả lập khi UA nói rõ x86. Không suy đoán từ
+  // navigator.platform vì nhiều WebView Android dùng cấu trúc không chứa "arm".
+  const archHit = /x86_64|x86;/i.test(ua);
   if (archHit && !emulatorHit) {
     res.score += 60;
     res.reasons.push("android-x86");
