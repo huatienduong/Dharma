@@ -605,11 +605,13 @@ export default function Assistant() {
   /* ================================================================ */
   return (
     <div className="fb-bg flex h-[100dvh] flex-col overflow-hidden">
-      {/* ---------- Header mảnh, cân đối ---------- */}
-      {/* ---------- Header cân đối: lưới 3 cột — tiêu đề LUÔN nằm giữa thật ---------- */}
-      <header className="grid h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-1 border-b border-border/60 bg-background px-2 sm:px-4">
-        {/* Trái: Đàm thoại (+ nút quay lại khi mở từ trang khác) */}
+      {/* ---------- Header: tiêu đề sát trái, cụm 3 nút sát phải ---------- */}
+      <header className="grid h-16 shrink-0 grid-cols-[1fr_auto] items-center gap-1 border-b border-border/60 bg-background px-2 sm:px-4">
+        {/* Trái: Tiêu đề sát lề trái (+ nút quay lại khi mở từ trang khác) */}
         <div className="flex items-center gap-1 justify-self-start">
+          <p className="whitespace-nowrap text-sm font-extrabold uppercase tracking-[0.08em] leading-tight text-foreground sm:text-[17px] sm:tracking-[0.16em]">
+            Trợ lý Phật học
+          </p>
           {!isHome && (
             <button
               type="button"
@@ -620,6 +622,9 @@ export default function Assistant() {
               <ArrowLeft className="h-5 w-5" />
             </button>
           )}
+        </div>
+        {/* Phải: Đàm thoại (1) + Xóa hội thoại (2) + Cài đặt (3) — icon sát nhau, sát lề phải */}
+        <div className="flex items-center gap-0 justify-self-end">
           <Button
             onClick={openCall}
             className="h-11 w-11 justify-center rounded-full p-0 shadow-sm sm:w-auto sm:px-4"
@@ -628,19 +633,13 @@ export default function Assistant() {
             <Phone className="h-5 w-5 shrink-0" />
             <span className="hidden sm:inline">Đàm thoại</span>
           </Button>
-        </div>
-        <p className="justify-self-center whitespace-nowrap text-sm font-extrabold uppercase tracking-[0.08em] leading-tight text-foreground sm:text-[17px] sm:tracking-[0.16em]">
-          Trợ lý Phật học
-        </p>
-        {/* Phải: Xóa hội thoại (1) + Cài đặt (2) — icon sát nhau, sát lề phải */}
-        <div className="flex items-center gap-0 justify-self-end">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => void clearAll()}
             title="Xóa hội thoại"
             aria-label="Xóa hội thoại"
-            className="h-11 w-11 rounded-full"
+            className="-ml-1.5 h-11 w-11 rounded-full"
           >
             <Eraser className="h-5 w-5" />
           </Button>
