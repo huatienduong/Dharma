@@ -45,6 +45,9 @@ import {
 } from "@/lib/aiVoices";
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 
+const FEEDBACK_RECEIVED_MESSAGE =
+  "Hứa Tiến Dương đã nhận được yêu cầu hỗ trợ của bạn. Hãy theo dõi phiếu hỗ trợ để cập nhật thêm thông tin. Xin cảm ơn!";
+
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{
@@ -260,9 +263,7 @@ export default function Settings() {
         // Phiếu vẫn được lưu an toàn nếu chưa thể gửi email.
       }
 
-      toast.success(
-        "Hứa Tiến Dương đã nhận được yêu cầu hỗ trợ của bạn. Hãy theo dõi phiếu hỗ trợ để cập nhật thêm thông tin. Xin cảm ơn!",
-      );
+      toast.success(FEEDBACK_RECEIVED_MESSAGE);
       setFbMessage("");
       setFbEmail("");
       setFbFile(null);
