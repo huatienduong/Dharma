@@ -17,7 +17,6 @@ import { useMemo } from "react";
 import {
   ArrowLeft,
   Bell,
-  Bot,
   Bug,
   Check,
   CheckCircle2,
@@ -303,22 +302,12 @@ export default function Settings() {
                     });
                   }}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-full border py-2 pl-2 pr-4 text-left backdrop-blur-sm transition",
+                    "flex w-full items-center gap-3 rounded-full border py-3 px-4 text-left backdrop-blur-sm transition",
                     active
                       ? "border-gold/40 bg-white/10"
                       : "border-white/10 bg-white/5 hover:bg-white/10",
                   )}
                 >
-                  <span
-                    className={cn(
-                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white",
-                      active
-                        ? "bg-gradient-to-br from-gold to-amber-700 shadow-sm"
-                        : "bg-gradient-to-br from-zinc-600 to-zinc-800",
-                    )}
-                  >
-                    <Bot className="h-6 w-6" />
-                  </span>
                   <span className="min-w-0 flex-1">
                     <span
                       className={cn(
