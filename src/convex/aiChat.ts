@@ -120,6 +120,125 @@ export const checkAiRateLimit = internalMutation({
   },
 });
 
+/* ------------------------------------------------------------------ */
+/* TỰ KHẮC PHỤC — circuit breaker theo provider/model                   */
+/* Provider lỗi liên tục bị đánh dấu "chết tạm thời" (appMeta key       */
+/* "ai-health") trong 10 phút; listProviders bỏ qua để người dùng không */
+/* phải chờ timeout. Cron aiSelfTest (crons.ts, 10 phút/lần) thử lại:   */
+/* hồi phục thì tự gỡ trạng thái — không cần ai can thiệp.              */
+/* ------------------------------------------------------------------ */
+
+const HEALTH_KEY = "ai-health";
+const HEALTH_TTL_MS = 10 * 60_000;
+
+type HealthEntry = {
+  provider: string;
+  model: string;
+  label: string;
+  deadUntil: number;
+};
+type HealthMap = Record<string, HealthEntry>;
+
+function parseHealth(raw: string | undefined): HealthMap {
+  if (!raw) return {};
+  try {
+    const parsed = JSON.parse(raw) as HealthMap;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Ghi trạng thái chết tạm thời của một provider/model khi gặp lỗi. */
+async function markProviderFailure(
+  ctx: ActionCtx,
+  provider: string,
+  model: string,
+  reason: string,
+): Promise<void> {
+  try {
+    await ctx.runMutation(internal.aiChat.recordProviderFailure, {
+      provider,
+      model,
+      reason: reason.slice(0, 200),
+    });
+  } catch {
+    /* ghi trạng thái lỗi không được thì bỏ qua — không chặn luồng chính */
+  }
+}
+
+/** Xóa trạng thái chết khi provider/model hoạt động trở lại (hồi phục). */
+async function clearProviderFailure(
+  ctx: ActionCtx,
+  provider: string,
+  model: string,
+): Promise<void> {
+  try {
+    await ctx.runMutation(internal.aiChat.clearProviderFailure, {
+      provider,
+      model,
+    });
+  } catch {
+    /* bỏ qua */
+  }
+}
+
+/** internalMutation: hợp nhất trạng thái chết tạm thời vào appMeta. */
+export const recordProviderFailure = internalMutation({
+  args: {
+    provider: v.string(),
+    model: v.string(),
+    reason: v.string(),
+  },
+  handler: async (ctx, { provider, model, reason }) => {
+    const row = await ctx.db
+      .query("appMeta")
+      .withIndex("by_key", (q) => q.eq("key", HEALTH_KEY))
+      .unique();
+    const map = parseHealth(row?.releaseNotes);
+    map[`${provider}/${model}`] = {
+      provider,
+      model,
+      label: reason,
+      deadUntil: Date.now() + HEALTH_TTL_MS,
+    };
+    const notes = JSON.stringify(map);
+    if (row) {
+      await ctx.db.patch(row._id, {
+        latestVersion: "1",
+        releaseNotes: notes,
+        releasedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("appMeta", {
+        key: HEALTH_KEY,
+        latestVersion: "1",
+        releaseNotes: notes,
+        releasedAt: Date.now(),
+      });
+    }
+  },
+});
+
+/** internalMutation: gỡ trạng thái chết của một provider/model. */
+export const clearProviderFailure = internalMutation({
+  args: { provider: v.string(), model: v.string() },
+  handler: async (ctx, { provider, model }) => {
+    const row = await ctx.db
+      .query("appMeta")
+      .withIndex("by_key", (q) => q.eq("key", HEALTH_KEY))
+      .unique();
+    if (!row?.releaseNotes) return;
+    const map = parseHealth(row.releaseNotes);
+    if (!map[`${provider}/${model}`]) return;
+    delete map[`${provider}/${model}`];
+    await ctx.db.patch(row._id, {
+      releaseNotes: JSON.stringify(map),
+      releasedAt: Date.now(),
+    });
+  },
+});
+
 const HISTORY_LIMIT = 4; // ngữ cảnh gọn → phản hồi nhanh hơn
 const MAX_TOKENS = 4096; // cho phép câu trả lời dài hơn, tránh bị cắt giữa chừng
 const AI_TIMEOUT_MS = 60_000; // cho phép Gemini đủ thời gian sinh câu trả lời dài
@@ -176,11 +295,11 @@ export const providerStatus = action({
 });
 
 /**
- * Danh sách nhà cung cấp AI — GROQ LÀ CHÍNH (nhanh, hạn mức rộng),
- * Gemini là dự phòng khi Groq lỗi/hết hạn mức. Với ảnh (vision),
- * thử Groq vision trước rồi mới Gemini.
+ * Danh sách provider khả dụng theo khóa cấu hình — GROQ LÀ CHÍNH (nhanh,
+ * hạn mức rộng), Gemini là dự phòng. Model llama-3.3-70b ĐÃ BỊ Groq
+ * decommission → dùng model mới đang hỗ trợ (đã test tiếng Việt tốt).
  */
-function listProviders(needVision: boolean): ProviderChoice[] {
+function listAllProviders(needVision: boolean): ProviderChoice[] {
   const groqKey = process.env.GROQ_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
   const out: ProviderChoice[] = [];
@@ -194,8 +313,6 @@ function listProviders(needVision: boolean): ProviderChoice[] {
           baseURL: GROQ_BASE_URL,
           apiKey: groqKey,
         }),
-      // Model llama-3.3-70b ĐÃ BỊ Groq decommission → dùng model mới đang
-      // hỗ trợ (đã test tiếng Việt tốt). Vision ảnh: Gemini đảm nhiệm.
       model: "openai/gpt-oss-120b",
     });
   }
@@ -215,6 +332,103 @@ function listProviders(needVision: boolean): ProviderChoice[] {
 
   return out;
 }
+
+/**
+ * Danh sách provider thực tế sẽ gọi: loại provider/model đang trong thời
+ * gian "chết tạm thời" (circuit breaker) để người dùng không chờ timeout
+ * vào một provider đang hỏng. Provider còn lại vẫn giữ làm đường chính.
+ */
+async function listProviders(
+  ctx: ActionCtx,
+  needVision: boolean,
+): Promise<ProviderChoice[]> {
+  let dead: HealthMap = {};
+  try {
+    const row = await ctx.runQuery(internal.library.getAppMetaInternal, {
+      key: HEALTH_KEY,
+    });
+    const now = Date.now();
+    for (const [k, e] of Object.entries(parseHealth(row?.releaseNotes))) {
+      if (e && typeof e.deadUntil === "number" && e.deadUntil > now) {
+        dead[k] = e;
+      }
+    }
+  } catch {
+    /* không đọc được trạng thái — coi như không có provider chết */
+  }
+
+  return listAllProviders(needVision).filter(
+    (p) => !dead[`${p.label}/${p.model}`],
+  );
+}
+
+/**
+ * TỰ KIỂM TRA ĐỊNH KỲ (cron 10 phút/lần — crons.ts): kiểm tra khóa và
+ * model của từng provider qua danh sách model chính thức (không tốn hạn
+ * mức chat). Provider/model hồi phục được gỡ trạng thái chết ngay; hệ
+ * thống tự chữa mà không cần ai can thiệp.
+ */
+export const aiSelfTest = action({
+  args: {},
+  handler: async (ctx) => {
+    const notes: string[] = [];
+
+    const groqKey = process.env.GROQ_API_KEY;
+    const groqModel = "openai/gpt-oss-120b";
+    if (groqKey) {
+      let ok = false;
+      let note = "sống";
+      try {
+        const res = await fetch(`${GROQ_BASE_URL}/models`, {
+          headers: { Authorization: `Bearer ${groqKey}` },
+        });
+        if (res.ok) {
+          const json = (await res.json()) as { data?: { id?: string }[] };
+          const ids = (json.data ?? []).map((m) => m.id ?? "");
+          ok = ids.includes(groqModel);
+          if (!ok) note = `model ${groqModel} không còn trong danh sách Groq`;
+        } else {
+          note = `HTTP ${res.status}`;
+        }
+      } catch (err) {
+        note = err instanceof Error ? err.message : String(err);
+      }
+      if (ok) await clearProviderFailure(ctx, "Groq", groqModel);
+      else await markProviderFailure(ctx, "Groq", groqModel, note);
+      notes.push(`Groq: ${note}`);
+    }
+
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const geminiModel = "gemini-3.5-flash-lite";
+    if (geminiKey) {
+      let ok = false;
+      let note = "sống";
+      try {
+        const res = await fetch(
+          "https://generativelanguage.googleapis.com/v1beta/models",
+          { headers: { "x-goog-api-key": geminiKey } },
+        );
+        if (res.ok) {
+          const json = (await res.json()) as { models?: { name?: string }[] };
+          const names = (json.models ?? []).map((m) => m.name ?? "");
+          ok = names.some(
+            (n) => n === `models/${geminiModel}` || n.endsWith(`/${geminiModel}`),
+          );
+          if (!ok) note = `model ${geminiModel} không còn trong danh sách Gemini`;
+        } else {
+          note = `HTTP ${res.status}`;
+        }
+      } catch (err) {
+        note = err instanceof Error ? err.message : String(err);
+      }
+      if (ok) await clearProviderFailure(ctx, "Gemini", geminiModel);
+      else await markProviderFailure(ctx, "Gemini", geminiModel, note);
+      notes.push(`Gemini: ${note}`);
+    }
+
+    return notes.length ? notes.join(" | ") : "Chưa cấu hình khóa AI nào.";
+  },
+});
 
 /**
  * Gửi hội thoại tới AI trực tuyến và trả về câu trả lời.
@@ -264,7 +478,7 @@ export const ask = action({
       throw new ConvexError("Ảnh quá lớn (tối đa khoảng 6MB).");
     }
 
-    const providers = listProviders(Boolean(imageBase64));
+    const providers = await listProviders(ctx, Boolean(imageBase64));
     if (providers.length === 0) {
       throw new ConvexError(
         "Trợ lý Phật học chưa kết nối được máy chủ AI. Vui lòng thử lại sau ít phút hoặc báo lỗi qua mục Góp ý.",
@@ -322,17 +536,27 @@ export const ask = action({
           ),
         ]);
         const reply = result.text.trim();
-        if (reply) return reply;
+        if (reply) {
+          // Thành công — provider vừa hồi phục thì gỡ trạng thái chết tạm thời.
+          await clearProviderFailure(ctx, provider.label, provider.model);
+          return reply;
+        }
         // Giải thích rõ vì sao rỗng thay vì chỉ "trả lời rỗng"
         const finish = (result as { finishReason?: unknown }).finishReason;
-        errors.push(
-          `${provider.label}: trả lời rỗng${
-            finish ? ` (finishReason=${String(finish)})` : ""
-          }`,
-        );
+        const emptyNote = `trả lời rỗng${
+          finish ? ` (finishReason=${String(finish)})` : ""
+        }`;
+        errors.push(`${provider.label}: ${emptyNote}`);
+        await markProviderFailure(ctx, provider.label, provider.model, emptyNote);
       } catch (err) {
         const msg = err instanceof Error ? `${err.name}: ${err.message}\n${err.stack ?? ""}` : String(err);
         errors.push(`${provider.label}: ${msg}`);
+        await markProviderFailure(
+          ctx,
+          provider.label,
+          provider.model,
+          msg.split("\n")[0] ?? msg,
+        );
       }
     }
     throw new ConvexError(

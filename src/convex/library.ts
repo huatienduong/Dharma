@@ -1,7 +1,14 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { ConvexError } from "convex/values";
 import { v } from "convex/values";
-import { internalMutation, mutation, query } from "./_generated/server";
+import {
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+} from "./_generated/server";
+import type { MutationCtx } from "./_generated/server";
+import { LEGAL_DOC_VERSION, LEGAL_DOCS } from "./legalContent";
 
 /* ------------------------------------------------------------------ */
 /* Góp ý & báo cáo lỗi                                                 */
@@ -200,4 +207,63 @@ export const seedAppVersion = mutation({
     });
     return "inserted";
   },
+});
+
+/* ------------------------------------------------------------------ */
+/* TỰ CẬP NHẬT ĐIỀU KHOẢN & CHÍNH SÁCH TỪ MÃ NGUỒN                     */
+/* Nội dung chuẩn nằm trong src/convex/legalContent.ts (một nguồn duy   */
+/* nhất). Cron hằng ngày (crons.ts) gọi syncLegalDocsInternal; khi      */
+/* content/version khác máy chủ thì tự ghi đè — mọi thiết bị nhận bản   */
+/* mới ngay nhờ query reactive.                                         */
+/* ------------------------------------------------------------------ */
+
+async function syncLegalDocsImpl(ctx: MutationCtx): Promise<string> {
+  let changed = 0;
+  for (const doc of LEGAL_DOCS) {
+    const existing = await ctx.db
+      .query("appMeta")
+      .withIndex("by_key", (q) => q.eq("key", doc.key))
+      .unique();
+    if (
+      existing &&
+      existing.latestVersion === doc.version &&
+      existing.releaseNotes === doc.content
+    ) {
+      continue; // đã khớp bản mới nhất — không ghi
+    }
+    const fields = {
+      latestVersion: doc.version,
+      releaseNotes: doc.content,
+      releasedAt: Date.now(),
+    };
+    if (existing) await ctx.db.patch(existing._id, fields);
+    else await ctx.db.insert("appMeta", { key: doc.key, ...fields });
+    changed++;
+  }
+  return changed === 0
+    ? `Đã đồng bộ: không thay đổi (v${LEGAL_DOC_VERSION}).`
+    : `Đã đồng bộ ${changed} tài liệu lên v${LEGAL_DOC_VERSION}.`;
+}
+
+/** Chạy tay từ CLI/dashboard: bunx convex run library:syncLegalDocs.
+ * An toàn để công khai: nội dung lấy từ mã nguồn, client không gửi gì. */
+export const syncLegalDocs = mutation({
+  args: {},
+  handler: async (ctx) => syncLegalDocsImpl(ctx),
+});
+
+/** Đích của cron hằng ngày trong crons.ts. */
+export const syncLegalDocsInternal = internalMutation({
+  args: {},
+  handler: async (ctx) => syncLegalDocsImpl(ctx),
+});
+
+/** internalQuery: đọc một hàng appMeta theo key (dùng bởi circuit breaker). */
+export const getAppMetaInternal = internalQuery({
+  args: { key: v.string() },
+  handler: async (ctx, { key }) =>
+    (await ctx.db
+      .query("appMeta")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique()) ?? null,
 });
