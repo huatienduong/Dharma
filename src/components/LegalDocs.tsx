@@ -180,11 +180,6 @@ export function LegalDocs() {
       <div className="max-h-[420px] overflow-y-auto rounded-2xl border border-border/60 bg-background/60 p-4">
         <LegalText text={content} />
       </div>
-
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
-        Nội dung được tải trực tiếp từ máy chủ — khi nhà phát triển cập nhật
-        chính sách, bản mới nhất hiển thị tại đây mà không cần cập nhật ứng dụng.
-      </p>
     </div>
   );
 }

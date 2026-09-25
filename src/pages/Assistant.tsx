@@ -923,7 +923,7 @@ function AssistantMessage({ content, ts }: { content: string; ts: number }) {
   return (
     <div className="flex items-start gap-3">
       <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
-        <Sparkles className="h-4.5 w-4.5" />
+        <Bot className="h-4.5 w-4.5" />
       </span>
       <div className="min-w-0 flex-1">
         <div className="whitespace-pre-wrap text-[17px] leading-[1.85] text-foreground/95 sm:text-lg">
@@ -971,7 +971,7 @@ function AssistantThinking() {
   return (
     <div className="flex items-start gap-3">
       <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
-        <Sparkles className="h-4 w-4" />
+        <Bot className="h-4 w-4" />
       </span>
       <div className="flex h-10 items-center gap-1.5">
         {[0, 1, 2].map((i) => (
