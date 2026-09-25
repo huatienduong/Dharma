@@ -355,10 +355,63 @@ type ProviderChoice = {
 };
 
 const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
-const GROQ_TEXT_MODEL = "openai/gpt-oss-120b";
-const GROQ_VISION_MODEL = "qwen/qwen3.8-27b";
 const GEMINI_BASE_URL =
   "https://generativelanguage.googleapis.com/v1beta/openai";
+
+/**
+ * Model Groq theo thứ tự ưu tiên. Groq thường xuyên thu hồi model (llama-3.3-70b,
+ * qwen3-32b... đã bị gỡ khỏi free tier) nên không được hardcode một tên duy
+ * nhất: hàm dòModelGroq sẽ hỏi API /models và lấy tên còn sống đầu tiên.
+ */
+const GROQ_TEXT_PREFERENCE = [
+  "openai/gpt-oss-120b",
+  "openai/gpt-oss-20b",
+  "qwen/qwen3-8b",
+  "llama-3.1-8b-instant",
+  "gemma2-9b-it",
+];
+const GROQ_VISION_PREFERENCE = [
+  "qwen/qwen3.8-27b",
+  "meta-llama/llama-4-scout-17b-16e-instruct",
+  "meta-llama/llama-4-scout-17b",
+];
+/** Model dự phòng cuối cùng nếu danh sách ưu tiên hết — tránh gọi tên chết. */
+const GROQ_ANY_FALLBACK = "openai/gpt-oss-120b";
+
+/**
+ * Hỏi Groq xem model nào đang thật sự khả dụng, rồi chọn theo thứ tự ưu
+ * tiên. Nhờ vậy Groq đổi danh sách model không làm sập trợ lý. Trả null nếu
+ * không gọi được (mạng lỗi) — khi đó dùng tên ưu tiên đầu tiên.
+ */
+async function pickGroqModel(
+  groqKey: string,
+  needVision: boolean,
+): Promise<string> {
+  const preference = needVision ? GROQ_VISION_PREFERENCE : GROQ_TEXT_PREFERENCE;
+  try {
+    const res = await fetch(`${GROQ_BASE_URL}/models`, {
+      headers: { Authorization: `Bearer ${groqKey}` },
+      signal: AbortSignal.timeout(4_000),
+    });
+    if (!res.ok) return preference[0];
+    const json = (await res.json()) as { data?: { id?: string }[] };
+    const live = new Set(
+      (json.data ?? []).map((m) => m.id ?? "").filter(Boolean),
+    );
+    if (live.size === 0) return preference[0];
+    for (const id of preference) {
+      if (live.has(id)) return id;
+    }
+    // Ưu tiên không khớp: với ảnh lấy model đọc ảnh bất kỳ; với chữ lấy model
+    // chat bất kỳ. Không có gì phù hợp thì dùng tên dự phòng.
+    const anyMatch = [...live].find((id) =>
+      needVision ? /vision|vl|scout|qwen/i.test(id) : /gpt|llama|qwen|gemma|mistral/i.test(id),
+    );
+    return anyMatch ?? GROQ_ANY_FALLBACK;
+  } catch {
+    return preference[0];
+  }
+}
 
 /**
  * Chẩn đoán: nhà cung cấp nào đã cấu hình khóa (chỉ trả boolean, không lộ giá trị).
@@ -398,12 +451,52 @@ export const providerStatus = action({
  * hạn mức rộng), Gemini là dự phòng. Model llama-3.3-70b ĐÃ BỊ Groq
  * decommission → dùng model mới đang hỗ trợ (đã test tiếng Việt tốt).
  */
-function listAllProviders(needVision: boolean): ProviderChoice[] {
+/**
+ * Model Gemini theo thứ tự ưu tiên — thử từ mới nhất → cũ nhất. Google
+ * liên tục thu hồi model (gemini-1.5/2.0 đã bị gỡ), nên không hardcode
+ * một tên duy nhất.
+ */
+const GEMINI_TEXT_PREFERENCE = [
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
+  "gemini-2.5-flash-lite",
+  "gemini-2.5-flash",
+];
+
+/** Dò model Gemini còn sống; gọi lỗi thì dùng tên ưu tiên đầu tiên. */
+async function pickGeminiModel(geminiKey: string): Promise<string> {
+  try {
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models",
+      { headers: { "x-goog-api-key": geminiKey }, signal: AbortSignal.timeout(4_000) },
+    );
+    if (!res.ok) return GEMINI_TEXT_PREFERENCE[0];
+    const json = (await res.json()) as { models?: { name?: string }[] };
+    const live = new Set(
+      (json.models ?? [])
+        .map((m) => (m.name ?? "").replace(/^models\//, ""))
+        .filter((n) => n.startsWith("gemini") && !n.includes("tts") && !n.includes("image")),
+    );
+    if (live.size === 0) return GEMINI_TEXT_PREFERENCE[0];
+    for (const id of GEMINI_TEXT_PREFERENCE) {
+      if (live.has(id)) return id;
+    }
+    const anyChat = [...live].find((n) => /flash/i.test(n));
+    return anyChat ?? GEMINI_TEXT_PREFERENCE[0];
+  } catch {
+    return GEMINI_TEXT_PREFERENCE[0];
+  }
+}
+
+async function listAllProviders(needVision: boolean): Promise<ProviderChoice[]> {
   const groqKey = process.env.GROQ_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
   const out: ProviderChoice[] = [];
 
   if (groqKey) {
+    // Groq mô hình văn bản không đọc được ảnh. Khi có ảnh phải chuyển sang
+    // model multimodal theo đúng định dạng image_url của Groq.
+    const model = await pickGroqModel(groqKey, needVision);
     out.push({
       label: "Groq",
       make: () =>
@@ -412,9 +505,7 @@ function listAllProviders(needVision: boolean): ProviderChoice[] {
           baseURL: GROQ_BASE_URL,
           apiKey: groqKey,
         }),
-      // Groq mô hình văn bản không đọc được ảnh. Khi có ảnh phải chuyển sang
-      // Qwen multimodal theo đúng định dạng image_url của Groq.
-      model: needVision ? GROQ_VISION_MODEL : GROQ_TEXT_MODEL,
+      model,
     });
   }
 
@@ -427,7 +518,7 @@ function listAllProviders(needVision: boolean): ProviderChoice[] {
           baseURL: GEMINI_BASE_URL,
           apiKey: geminiKey,
         }),
-      model: "gemini-3.5-flash-lite",
+      model: await pickGeminiModel(geminiKey),
     });
   }
 
@@ -458,7 +549,7 @@ async function listProviders(
     /* không đọc được trạng thái — coi như không có provider chết */
   }
 
-  const configured = listAllProviders(needVision);
+  const configured = await listAllProviders(needVision);
   const available = configured.filter(
     (p) => !dead[`${p.label}/${p.model}`],
   );
@@ -497,8 +588,12 @@ export const aiSelfTest = internalAction({
         note = err instanceof Error ? err.message : String(err);
       }
 
-      const requiredGroqModels = [GROQ_TEXT_MODEL, GROQ_VISION_MODEL];
-      for (const model of requiredGroqModels) {
+      // Kiểm tra theo model THỰC SỰ được chọn (dò từ /models) thay vì so
+      // từng tên trong danh sách ưu tiên — danh sách ưu tiên cố tình chứa
+      // cả các model đã bị thu hồi để dòng dự phòng.
+      const liveText = await pickGroqModel(groqKey, false);
+      const liveVision = await pickGroqModel(groqKey, true);
+      for (const model of [liveText, liveVision]) {
         const ok = availableModels.includes(model);
         const modelNote = ok
           ? "sống"
@@ -508,12 +603,12 @@ export const aiSelfTest = internalAction({
         if (ok) await clearProviderState(ctx, "Groq", model);
         else await markProviderFailure(ctx, "Groq", model, modelNote);
       }
-      notes.push(`Groq: ${note}`);
+      notes.push(`Groq: ${note} (${liveText} / ${liveVision})`);
     }
 
     const geminiKey = process.env.GEMINI_API_KEY;
-    const geminiModel = "gemini-3.5-flash-lite";
     if (geminiKey) {
+      const geminiModel = await pickGeminiModel(geminiKey);
       let ok = false;
       let note = "sống";
       try {
