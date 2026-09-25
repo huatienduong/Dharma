@@ -139,13 +139,15 @@ function RouteSyncer() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    {/* Splash logo chính thức — hiện ngay từ giây đầu khi vào ứng dụng */}
-    <SplashScreen />
     <RootErrorBoundary>
       <ToolbarErrorBoundary>
         <VlyToolbar />
       </ToolbarErrorBoundary>
       <ConvexAuthProvider client={convex}>
+        {/* Splash logo chính thức — hiện ngay từ giây đầu khi vào ứng dụng.
+            PHẢI nằm trong ConvexAuthProvider vì dùng useQuery lấy logo;
+            đặt ngoài provider làm hook ném lỗi → toàn cây bị gỡ → TRẮNG TRANG. */}
+        <SplashScreen />
         <SettingsProvider>
           <UpdateChecker />
           {/* Chặn thiết bị tự động hóa / bị can thiệp — khóa toàn màn hình */}
