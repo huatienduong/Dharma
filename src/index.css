@@ -45,47 +45,47 @@
 }
 
 /* CHANGE VALUES FOR THEME — màu áo y cà sa theo truyền thống Theravāda:
- * nền kem ấm, cam đất y cà sa làm điểm nhấn, thẻ trắng kem bo lớn. */
+ * nền sáng trắng, chữ và điểm nhấn màu nâu ấm, thẻ trắng bo lớn. */
 :root {
   --radius: 1.25rem;
-  --background: #faf6ef; /* kem ấm nền app */
-  --foreground: #2b1d12;
+  --background: #ffffff; /* nền sáng trắng */
+  --foreground: #3b2417; /* nâu đậm cho chữ */
   --card: #ffffff;
-  --card-foreground: #2b1d12;
-  --popover: #fffdf8;
-  --popover-foreground: #2b1d12;
-  --primary: #b45309; /* cam đất y cà sa sẫm — điểm nhấn thương hiệu */
-  --primary-foreground: #fff8ec;
-  --secondary: #f3e5c8; /* vàng saffron nhạt */
-  --secondary-foreground: #5f4630;
-  --muted: #f1e8d8;
-  --muted-foreground: #7a6a55;
-  --accent: #f3e5c8;
-  --accent-foreground: #5f4630;
-  --destructive: #b91c1c;
-  --border: #e5d9c3;
-  --input: #e5d9c3;
-  --ring: #b45309;
-  --chart-1: #b45309;
-  --chart-2: #92400e;
-  --chart-3: #ca8a04;
-  --chart-4: #854d0e;
-  --chart-5: #d97706;
-  --sidebar: #f6efe1;
-  --sidebar-foreground: #2b1d12;
-  --sidebar-primary: #b45309;
-  --sidebar-primary-foreground: #fff8ec;
-  --sidebar-accent: #efe2c9;
-  --sidebar-accent-foreground: #5f4630;
-  --sidebar-border: #e5d9c3;
-  --sidebar-ring: #b45309;
+  --card-foreground: #3b2417;
+  --popover: #ffffff;
+  --popover-foreground: #3b2417;
+  --primary: #6f4226; /* nâu đất làm điểm nhấn */
+  --primary-foreground: #fffaf5;
+  --secondary: #f4e9df; /* nâu cát rất nhạt */
+  --secondary-foreground: #5b3824;
+  --muted: #f4ece5;
+  --muted-foreground: #806451;
+  --accent: #ead7c6;
+  --accent-foreground: #4c2c1b;
+  --destructive: #b42318;
+  --border: #e4d4c5;
+  --input: #e4d4c5;
+  --ring: #6f4226;
+  --chart-1: #6f4226;
+  --chart-2: #8b5535;
+  --chart-3: #a86b43;
+  --chart-4: #4c2c1b;
+  --chart-5: #c1845b;
+  --sidebar: #faf6f2;
+  --sidebar-foreground: #3b2417;
+  --sidebar-primary: #6f4226;
+  --sidebar-primary-foreground: #fffaf5;
+  --sidebar-accent: #ead7c6;
+  --sidebar-accent-foreground: #4c2c1b;
+  --sidebar-border: #e4d4c5;
+  --sidebar-ring: #6f4226;
 
   /* Token phụ trợ — cam đất y cà sa làm điểm nhấn chính */
-  --brown-deep: #2b1d12;
-  --brown-mid: #5f4630;
-  --gold: #b45309; /* cam y cà sa chủ đạo */
-  --gold-soft: #d97706;
-  --lotus: #f3e5c8;
+  --brown-deep: #3b2417;
+  --brown-mid: #6f4226;
+  --gold: #6f4226; /* nâu đất chủ đạo ở chế độ sáng */
+  --gold-soft: #a86b43;
+  --lotus: #f4e9df;
 
   --font-size-scale: 1;
 }
@@ -174,7 +174,7 @@
   }
 }
 
-/* ---------- Nền: xám xanh nhạt — phong cách app dịch vụ ---------- */
+/* ---------- Nền sáng trắng — điểm nhấn màu nâu ---------- */
 
 .fb-bg {
   position: relative;
