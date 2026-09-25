@@ -141,7 +141,9 @@ export default function Assistant() {
   const isHome = location.pathname === "/" || location.pathname === "/home";
   const ask = useAction(api.aiChat.ask);
   // Lời chào hằng ngày — tự đổi mới mỗi ngày (query reactive từ máy chủ)
-  const dailyGreeting = useQuery(api.library.getDailyGreeting, {});
+  // Kệ Pháp Cú ngẫu nhiên cho màn chào mừng — mỗi lần vào app là một lần
+  // đăng ký query mới, thời điểm khác nhau → kệ khác nhau.
+  const dhammapada = useQuery(api.library.getDhammapadaQuote, {});
 
   const [history, setHistory] = useState<Msg[]>([]);
 
@@ -631,13 +633,18 @@ export default function Assistant() {
   /* ================================================================ */
   return (
     <div className="fb-bg flex h-[100dvh] flex-col overflow-hidden">
-      {/* ---------- Header: tiêu đề sát trái, cụm 3 nút sát phải ---------- */}
+      {/* ---------- Header: nút Đàm thoại sát trái, cụm 2 nút sát phải ---------- */}
       <header className="grid h-16 shrink-0 grid-cols-[1fr_auto] items-center gap-1 border-b border-border/60 bg-background px-2 sm:px-4">
-        {/* Trái: Tiêu đề (+ nút Quay lại khi mở từ trang khác) */}
+        {/* Trái: Đàm thoại (+ nút Quay lại khi mở từ trang khác) */}
         <div className="flex items-center gap-1 justify-self-start">
-          <p className="whitespace-nowrap text-sm font-extrabold uppercase tracking-[0.08em] leading-tight text-foreground sm:text-[17px] sm:tracking-[0.16em]">
-            Trợ lý Phật học
-          </p>
+          <Button
+            onClick={openCall}
+            className="h-11 w-11 justify-center rounded-full p-0 shadow-sm sm:w-auto sm:px-4"
+            aria-label="Đàm thoại bằng giọng nói"
+          >
+            <Phone className="h-5 w-5 shrink-0" />
+            <span className="hidden sm:inline">Đàm thoại</span>
+          </Button>
           {!isHome && (
             <button
               type="button"
@@ -649,16 +656,8 @@ export default function Assistant() {
             </button>
           )}
         </div>
-        {/* Phải: Đàm thoại (1) + Xóa hội thoại (2) + Cài đặt (3) — icon sát nhau, sát lề phải */}
+        {/* Phải: Xóa hội thoại + Cài đặt — icon sát nhau, sát lề phải */}
         <div className="flex items-center gap-0 justify-self-end">
-          <Button
-            onClick={openCall}
-            className="h-11 w-11 justify-center rounded-full p-0 shadow-sm sm:w-auto sm:px-4"
-            aria-label="Đàm thoại bằng giọng nói"
-          >
-            <Phone className="h-5 w-5 shrink-0" />
-            <span className="hidden sm:inline">Đàm thoại</span>
-          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -686,13 +685,18 @@ export default function Assistant() {
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
         {isEmpty ? (
           <div className="flex min-h-full flex-col items-center justify-center px-4 py-8 text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              Xin chào 🙏
-            </h2>
-            {/* Lời chào hằng ngày — tự đổi mới mỗi ngày từ máy chủ */}
-            <p className="mt-2 max-w-md text-base font-medium leading-relaxed text-foreground/85">
-              {dailyGreeting ?? "Chúc bạn một ngày an lạc."}
-            </p>
+            {/* Kệ Pháp Cú ngẫu nhiên — tâm điểm màn chào mừng, tinh gọn */}
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gold/15 text-gold">
+              <Sparkles className="h-5 w-5" />
+            </span>
+            <blockquote className="mt-5 max-w-md">
+              <p className="text-xl font-semibold leading-relaxed tracking-tight text-foreground sm:text-2xl">
+                {dhammapada?.text ?? "Tâm dẫn dắt mọi pháp. Tâm là chủ, tâm tạo tác."}
+              </p>
+              <footer className="mt-3 text-[13px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                Kinh Pháp Cú — Kệ số {dhammapada?.ref ?? 1}
+              </footer>
+            </blockquote>
             <p className="mt-2 max-w-md text-[15px] leading-relaxed text-muted-foreground">
               Hôm nay tôi có thể giúp gì cho bạn trên con đường Phật pháp?
             </p>

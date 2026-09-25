@@ -73,6 +73,31 @@ export const getDailyGreeting = query({
   },
 });
 
+/* ------------------------------------------------------------------ */
+/* Trích dẫn Kinh Pháp Cú — màn chào mừng                              */
+/* Tám kệ kinh điển (đúng số hiệu); mỗi lần người dùng vào ứng dụng là  */
+/* một lần đăng ký query mới, rơi vào thời điểm khác nhau → kệ khác.    */
+/* ------------------------------------------------------------------ */
+
+const DHAMMAPADA_VERSES: { ref: number; text: string }[] = [
+  { ref: 1, text: "Tâm dẫn dắt mọi pháp. Tâm là chủ, tâm tạo tác." },
+  { ref: 5, text: "Hận thù không thể dập tắt hận thù; chỉ lòng không hận mới dập tắt được hận thù." },
+  { ref: 103, text: "Người thắng ngàn vạn quân trong chiến trận, chưa bằng người tự thắng được chính mình." },
+  { ref: 129, text: "Mọi chúng sinh đều run sợ trước bạo lực, đều quý mạng sống của mình; lấy tự mình mà so sánh, chớ giết, chớ khiến người giết." },
+  { ref: 160, text: "Tự mình là nơi nương tựa của chính mình, tự mình là chủ của chính mình." },
+  { ref: 204, text: "Sức khỏe là lợi ích cao nhất, lòng không tham là giàu có nhất, Niết-bàn là hạnh phúc cao nhất." },
+  { ref: 273, text: "Tám con đường chánh là con đường tối thượng." },
+  { ref: 276, text: "Như Lai chỉ chỉ cho con đường; con đường ấy phải do tự mình đi." },
+];
+
+export const getDhammapadaQuote = query({
+  args: {},
+  handler: async () => {
+    const idx = Date.now() % DHAMMAPADA_VERSES.length;
+    return DHAMMAPADA_VERSES[idx] as { ref: number; text: string };
+  },
+});
+
 export const getAppVersion = query({
   args: {},
   handler: async (ctx) => {
