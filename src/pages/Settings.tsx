@@ -415,12 +415,7 @@ export default function Settings() {
               </p>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-2xl bg-muted/50 px-4 py-3">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold">Cài ứng dụng</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Mở nhanh, độc lập và giữ nguyên giao diện riêng
-                </p>
-              </div>
+              <p className="min-w-0 text-sm font-semibold">Cài ứng dụng</p>
               <Button
                 size="sm"
                 variant={appInstalled ? "secondary" : "default"}
