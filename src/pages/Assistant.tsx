@@ -632,8 +632,8 @@ export default function Assistant() {
         <p className="justify-self-center whitespace-nowrap text-sm font-extrabold uppercase tracking-[0.08em] leading-tight text-foreground sm:text-[17px] sm:tracking-[0.16em]">
           Trợ lý Phật học
         </p>
-        {/* Phải: Xóa hội thoại (1) + Cài đặt (2) — cả hai sát lề phải */}
-        <div className="flex items-center gap-1 justify-self-end">
+        {/* Phải: Xóa hội thoại (1) + Cài đặt (2) — icon sát nhau, sát lề phải */}
+        <div className="flex items-center gap-0 justify-self-end">
           <Button
             variant="ghost"
             size="icon"
@@ -650,7 +650,7 @@ export default function Assistant() {
             onClick={() => navigate("/settings?section=about")}
             title="Cài đặt & cập nhật ứng dụng"
             aria-label="Cài đặt và cập nhật ứng dụng"
-            className="h-11 w-11 rounded-full"
+            className="-ml-1.5 h-11 w-11 rounded-full"
           >
             <Settings className="h-5 w-5" />
           </Button>
