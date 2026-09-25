@@ -3,7 +3,7 @@ import { useQuery } from "convex/react";
 import { useEffect } from "react";
 
 const FALLBACK_LOGO_URL =
-  "https://determined-rabbit-619.convex.cloud/api/storage/kg28vmks2ffwhk14575s6jnvws8f3n8z";
+  "https://determined-rabbit-619.convex.site/logo";
 
 type AppLogoProps = {
   className?: string;

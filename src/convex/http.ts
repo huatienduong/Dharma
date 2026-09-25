@@ -4,9 +4,8 @@ import { auth } from "./auth";
 
 const http = httpRouter();
 
-// Storage ID của logo mới trong Convex File Storage. URL /logo được dùng
-// thay cho hardcode URL /api/storage/<id> vì Convex yêu cầu URL được tạo
-// từ storage.getUrl() để truy cập file hợp lệ.
+// Convex Storage yêu cầu URL được tạo từ storage.getUrl(). Endpoint này
+// chuyển hướng tới đúng URL của logo mới trong Storage.
 const APP_LOGO_STORAGE_ID = "kg28vmks2ffwhk14575s6jnvws8f3n8z";
 
 auth.addHttpRoutes(http);
