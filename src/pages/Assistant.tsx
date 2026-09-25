@@ -35,7 +35,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 
-type Msg = { role: "user" | "assistant"; content: string; ts: number };
+type Msg = {
+  role: "user" | "assistant";
+  content: string;
+  ts: number;
+  /** Ảnh đi kèm tin nhắn (base64) — chỉ hiển thị, không gửi lại AI */
+  image?: { base64: string; mime: string };
+};
 
 const SUGGESTIONS: { icon: typeof BookOpen; text: string }[] = [
   { icon: Sparkles, text: "Tứ Diệu Đế là gì?" },
@@ -264,7 +270,16 @@ export default function Assistant() {
       if (!q || busy) return;
 
       const base: Msg[] = [...history, ...pending];
-      const userMsg: Msg = { role: "user", content: q, ts: Date.now() };
+      const userMsg: Msg = {
+        role: "user",
+        content: q,
+        ts: Date.now(),
+        // Lưu ảnh đi kèm tin nhắn để hiển thị lại trong hội thoại
+        image:
+          !opts?.fromCall && image
+            ? { base64: image.base64, mime: image.mime }
+            : undefined,
+      };
 
       if (!opts?.fromCall) {
         setInput("");
@@ -301,7 +316,13 @@ export default function Assistant() {
         setPending((p) => p.filter((m) => m !== userMsg));
         setHistory((h) => {
           const next = [...h, userMsg, replyMsg];
-          void saveLocalChatSecure(next);
+          // Ảnh base64 nặng: chỉ giữ ảnh trong 40 tin nhắn gần nhất, tin cũ
+          // hơn bỏ ảnh (giữ chữ) để lịch sử lưu trữ không phình to.
+          const cut = Math.max(0, next.length - 40);
+          const trimmed = next.map((m, idx) =>
+            idx < cut && m.image ? { ...m, image: undefined } : m,
+          );
+          void saveLocalChatSecure(trimmed);
           return next;
         });
         if (opts?.fromCall) {
@@ -668,7 +689,13 @@ export default function Assistant() {
               // Nhóm tin nhắn liên tiếp cùng người gửi — kiểu Messenger
               const grouped = i > 0 && messages[i - 1].role === m.role;
               return m.role === "user" ? (
-                <UserMessage key={i} content={m.content} ts={m.ts} grouped={grouped} />
+                <UserMessage
+                  key={i}
+                  content={m.content}
+                  ts={m.ts}
+                  grouped={grouped}
+                  image={m.image}
+                />
               ) : (
                 <AssistantMessage key={i} content={m.content} ts={m.ts} grouped={grouped} />
               );
@@ -924,8 +951,9 @@ function AssistantMessage({
   grouped?: boolean;
 }) {
   return (
-    <div className={cn("flex items-end gap-2", grouped ? "mt-1.5" : "mt-5")}>
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
+    <div className={cn("flex items-start gap-2", grouped ? "mt-1.5" : "mt-5")}>
+      {/* Avatar robot ở TRÊN — thẳng hàng đầu bong bóng trả lời */}
+      <span className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
         <Bot className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-1 sm:max-w-[75%]">
@@ -942,24 +970,40 @@ function UserMessage({
   content,
   ts,
   grouped,
+  image,
 }: {
   content: string;
   ts: number;
   grouped?: boolean;
+  image?: { base64: string; mime: string };
 }) {
   return (
     <div className={cn("flex justify-end", grouped ? "mt-1.5" : "mt-5")}>
       <div className="flex max-w-[86%] flex-col items-end sm:max-w-[78%]">
-        <div className="inline-block max-w-full whitespace-pre-wrap break-words rounded-3xl rounded-br-md bg-primary px-4 py-2.5 text-[18px] leading-[1.8] text-primary-foreground shadow-sm sm:text-[19px]">
-          {content}
-        </div>
+        {/* Ảnh đi kèm — nằm ngay trên bong bóng tin nhắn, bo góc mềm */}
+        {image && (
+          <img
+            src={`data:${image.mime};base64,${image.base64}`}
+            alt="Ảnh người dùng gửi kèm"
+            className="mb-1.5 max-h-64 w-auto max-w-full rounded-2xl border border-border/60 object-cover shadow-sm"
+          />
+        )}
+        {content && (
+          <div className="inline-block max-w-full whitespace-pre-wrap break-words rounded-3xl rounded-br-md bg-primary px-4 py-2.5 text-[18px] leading-[1.8] text-primary-foreground shadow-sm sm:text-[19px]">
+            {content}
+          </div>
+        )}
         <p className="mt-1 pr-2 text-[12px] text-muted-foreground/70">{formatTs(ts)}</p>
       </div>
     </div>
   );
 }
 
-/** Định dạng thời gian tin nhắn: "14:05" hôm nay, "14:05 · 24/09" hôm trước. */
+/**
+ * Định dạng thời gian tin nhắn — LUÔN có ngày tháng cạnh giờ:
+ * hôm nay → "14:05 · Hôm nay"; hôm trước → "14:05 · 24/09";
+ * khác năm → "14:05 · 24/09/2025".
+ */
 function formatTs(ts: number): string {
   if (!ts) return "";
   const d = new Date(ts);
@@ -972,11 +1016,15 @@ function formatTs(ts: number): string {
     d.getDate() === now.getDate() &&
     d.getMonth() === now.getMonth() &&
     d.getFullYear() === now.getFullYear();
-  if (sameDay) return time;
-  const date = d.toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-  });
+  if (sameDay) return `${time} · Hôm nay`;
+  const sameYear = d.getFullYear() === now.getFullYear();
+  const date = sameYear
+    ? d.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })
+    : d.toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
   return `${time} · ${date}`;
 }
 
@@ -1013,8 +1061,9 @@ function convexErrMessage(err: unknown): string {
 
 function AssistantThinking() {
   return (
-    <div className="mt-5 flex items-end gap-2">
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
+    <div className="mt-5 flex items-start gap-2">
+      {/* Avatar robot ở TRÊN, đồng hàng với bong bóng chờ */}
+      <span className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
         <Bot className="h-4 w-4" />
       </span>
       <div className="inline-flex items-center gap-1.5 rounded-3xl rounded-bl-md border border-border/50 bg-card px-4 py-3.5 shadow-sm">
