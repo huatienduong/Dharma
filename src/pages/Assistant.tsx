@@ -749,14 +749,15 @@ export default function Assistant() {
       <header className="grid h-16 shrink-0 grid-cols-[1fr_auto] items-center gap-1 border-b border-border/60 bg-background px-2 sm:px-4">
         {/* Trái: Đàm thoại (+ nút Quay lại khi mở từ trang khác) */}
         <div className="flex items-center gap-1 justify-self-start">
-          <Button
+          <button
+            type="button"
             onClick={openCall}
-            className="h-11 w-11 justify-center rounded-full p-0 shadow-sm sm:w-auto sm:px-4"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-foreground transition hover:bg-accent hover:text-accent-foreground"
             aria-label="Đàm thoại bằng giọng nói"
+            title="Đàm thoại bằng giọng nói"
           >
             <Phone className="h-5 w-5 shrink-0" />
-            <span className="hidden sm:inline">Đàm thoại</span>
-          </Button>
+          </button>
           {!isHome && (
             <button
               type="button"
