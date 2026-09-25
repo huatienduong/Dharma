@@ -208,6 +208,9 @@ export default function Assistant() {
     prime: primeSpeechAudio,
   } = useVietnameseTTS();
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Khi đang hiện chữ từng phần, không tự cuộn toàn bộ vùng chat xuống đáy.
+  const suppressNextAutoScrollRef = useRef(false);
+  const [streamingReply, setStreamingReply] = useState<string | null>(null);
 
   /* ----- Giọng đọc người dùng chọn (lưu cục bộ, dùng cho chat + đàm thoại) ----- */
   const [voiceId, setVoiceId] = useState<string>(loadVoicePref);
@@ -304,8 +307,13 @@ export default function Assistant() {
   /* ----- Gộp lịch sử cục bộ + tin nhắn phiên ----- */
   const messages: Msg[] = [...history, ...pending];
 
-  // Tự cuộn xuống cuối
+  // Tự cuộn khi có tin nhắn mới, nhưng không cuộn trong lúc câu trả lời đang
+  // được hiện dần; người dùng vẫn có thể tự cuộn để đọc từ đầu.
   useEffect(() => {
+    if (suppressNextAutoScrollRef.current) {
+      suppressNextAutoScrollRef.current = false;
+      return;
+    }
     scrollRef.current?.scrollTo({
       top: scrollRef.current.scrollHeight,
       behavior: "smooth",
@@ -409,24 +417,31 @@ export default function Assistant() {
       try {
         const reply = await askWithRetry();
         const replyMsg: Msg = { role: "assistant", content: reply, ts: Date.now() };
-        pendingRef.current = pendingRef.current.filter((m) => m !== userMsg);
-        setPending(pendingRef.current);
-        if (recalledMessagesRef.current.has(userMsg)) return;
-        const messageToSave =
-          userMsg.image && recalledImagesRef.current.has(userMsg)
-            ? { ...userMsg, image: undefined }
-            : userMsg;
-        const nextHistory = [...historyRef.current, messageToSave, replyMsg];
-        historyRef.current = nextHistory;
-        setHistory(nextHistory);
-        // Ảnh base64 nặng: chỉ giữ ảnh trong 40 tin nhắn gần nhất, tin cũ
-        // hơn bỏ ảnh (giữ chữ) để lịch sử lưu trữ không phình to.
-        const cut = Math.max(0, nextHistory.length - 40);
-        const trimmed = nextHistory.map((m, idx) =>
-          idx < cut && m.image ? { ...m, image: undefined } : m,
-        );
-        void saveLocalChatSecure(trimmed);
+        // Gom thao tác lưu tin nhắn về một nơi để cả chữ và chế độ đàm thoại
+        // dùng chung cùng một quy tắc thu hồi tin nhắn.
+        const finishReply = () => {
+          pendingRef.current = pendingRef.current.filter((m) => m !== userMsg);
+          setPending(pendingRef.current);
+          if (recalledMessagesRef.current.has(userMsg)) return false;
+          const messageToSave =
+            userMsg.image && recalledImagesRef.current.has(userMsg)
+              ? { ...userMsg, image: undefined }
+              : userMsg;
+          const nextHistory = [...historyRef.current, messageToSave, replyMsg];
+          historyRef.current = nextHistory;
+          setHistory(nextHistory);
+          // Ảnh base64 nặng: chỉ giữ ảnh trong 40 tin nhắn gần nhất, tin cũ
+          // hơn bỏ ảnh (giữ chữ) để lịch sử lưu trữ không phình to.
+          const cut = Math.max(0, nextHistory.length - 40);
+          const trimmed = nextHistory.map((m, idx) =>
+            idx < cut && m.image ? { ...m, image: undefined } : m,
+          );
+          void saveLocalChatSecure(trimmed);
+          return true;
+        };
+
         if (opts?.fromCall) {
+          if (!finishReply()) return;
           // Trong cuộc gọi: đọc to bằng giọng người dùng đã chọn — server TTS
           // trước (Gemini/OpenAI), quá 4s hoặc lỗi thì tự rơi về giọng trình
           // duyệt; đọc xong tự nghe tiếp → đàm thoại 2 chiều liền mạch.
@@ -448,10 +463,29 @@ export default function Assistant() {
             },
           });
         } else {
-          // CHAT: ĐÃ LOẠI BỎ tự động đọc âm thanh — chỉ trả lời văn bản;
-          // muốn nghe thì bấm nút loa ở từng câu trả lời.
+          // Backend trả về câu trả lời đầy đủ; hiển thị từng phần để người dùng
+          // đọc tự nhiên, không bị kéo xuống đáy liên tục khi chữ đang hiện.
+          suppressNextAutoScrollRef.current = true;
+          await new Promise<void>((resolve) => {
+            const chars = Array.from(reply);
+            let shown = 0;
+            setStreamingReply("");
+            const tick = () => {
+              if (shown >= chars.length) {
+                setStreamingReply(null);
+                resolve();
+                return;
+              }
+              shown = Math.min(chars.length, shown + 3);
+              setStreamingReply(chars.slice(0, shown).join(""));
+              window.setTimeout(tick, 24);
+            };
+            tick();
+          });
+          finishReply();
         }
       } catch (err) {
+        setStreamingReply(null);
         const errorMessage = convexErrMessage(err);
         const userMsg =
           /\[convex|server error|called by client|request id/i.test(errorMessage)
@@ -862,7 +896,10 @@ export default function Assistant() {
                 <AssistantMessage key={i} content={m.content} ts={m.ts} grouped={grouped} />
               );
             })}
-            {busy && (stalled ? (
+            {streamingReply !== null && streamingReply.length > 0 && (
+              <AssistantMessage content={streamingReply} ts={Date.now()} grouped={false} />
+            )}
+            {busy && streamingReply === null && (stalled ? (
               <div className="flex items-start gap-3">
                 <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
                   <Sparkles className="h-4 w-4" />
