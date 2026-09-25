@@ -1,4 +1,3 @@
-import { AppLogo } from "@/components/AppLogo";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
@@ -864,7 +863,6 @@ export default function Assistant() {
       >
         {isEmpty ? (
           <div className="mx-auto flex min-h-full w-full max-w-lg flex-col items-center justify-center text-center">
-            <AppLogo className="mb-5 h-24 w-24 rounded-3xl object-contain shadow-sm sm:h-28 sm:w-28" />
             <p className="max-w-md text-lg font-semibold leading-relaxed tracking-tight text-foreground sm:text-xl">
               Hôm nay tôi có thể giúp gì cho bạn trên con đường Phật pháp?
             </p>
