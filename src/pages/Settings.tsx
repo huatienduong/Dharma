@@ -42,7 +42,7 @@ import {
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 
 const FEEDBACK_BUG_MESSAGE =
-  "Chúng tôi đã nhận được yêu cầu hỗ trợ của bạn và sẽ tiến hành kiểm tra và khắc phục. Xin trân thành cảm ơn!";
+  "Chúng tôi đã ghi nhận yêu cầu hỗ trợ khắc phục sự cố và sẽ tiến hành kiểm tra khắc phục. Xin trân thành cảm ơn!";
 const FEEDBACK_IDEA_MESSAGE =
   "Chúng tôi đã ghi nhận và sẽ xem xét để cải thiện, cảm ơn bạn đã góp ý cho Trợ lý Phật học!";
 
