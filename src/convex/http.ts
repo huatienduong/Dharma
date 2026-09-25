@@ -4,7 +4,24 @@ import { auth } from "./auth";
 
 const http = httpRouter();
 
+// Storage ID của logo mới trong Convex File Storage. URL /logo được dùng
+// thay cho hardcode URL /api/storage/<id> vì Convex yêu cầu URL được tạo
+// từ storage.getUrl() để truy cập file hợp lệ.
+const APP_LOGO_STORAGE_ID = "kg28vmks2ffwhk14575s6jnvws8f3n8z";
+
 auth.addHttpRoutes(http);
+
+http.route({
+  path: "/logo",
+  method: "GET",
+  handler: httpAction(async (ctx) => {
+    const storageUrl = await ctx.storage.getUrl(APP_LOGO_STORAGE_ID);
+    if (!storageUrl) {
+      return new Response("Logo not found", { status: 404 });
+    }
+    return Response.redirect(storageUrl, 302);
+  }),
+});
 
 http.route({
   path: "/",
