@@ -884,7 +884,7 @@ export default function Assistant() {
                 e.target.value = "";
               }}
             />
-            <div className="flex shrink-0 flex-col items-center">
+            <div className="flex shrink-0 items-center">
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
