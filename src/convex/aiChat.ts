@@ -532,8 +532,9 @@ export const aiSelfTest = internalAction({
 });
 
 /* ------------------------------------------------------------------ */
-/* TẠO ẢNH — dùng chính khóa Gemini đang có, không cần thêm khóa mới   */
-/* ------------------------------------------------------------------ */
+/* TẠO ẢNH — dùng chính khóa Gemini đang có, không cần thêm khóa mới   *//* ------------------------------------------------------------------ */
+/* Nhận diện ý định tạo ảnh — dùng chung client & server (src/lib/imageIntent) */
+import { wantsImage } from "../lib/imageIntent";
 
 /** Thứ tự ưu tiên: model Nano Banana mới nhất trước, bản cũ làm dự phòng. */
 const GEMINI_IMAGE_MODELS = [
@@ -549,27 +550,6 @@ function deaccent(text: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/đ/g, "d")
     .toLowerCase();
-}
-
-/**
- * Nhận diện ý định “hãy tạo/vẽ hình cho tôi” (tiếng Việt + tiếng Anh).
- * Bỏ dấu trước khi so khớp nên không bỏ sót “vẽ / tạo / sinh / phác họa”.
- * Chỉ bắt câu yêu cầu tạo ảnh rõ ràng; câu hỏi thuần văn bản vẫn đi qua
- * luồng trả lời chữ như trước.
- */
-function wantsImage(text: string): boolean {
-  const t = deaccent(text);
-  const hasImageNoun =
-    /\b(anh|hinh|tranh|tranh ve|buc tranh|anh minh hoa|minh hoa|hoa van|logo|hoc)\b/.test(
-      t,
-    );
-  const hasImageVerb =
-    /\b(ve|tao|sinh|dung|hoa|phong hoa|phac hoa|minh hoa|thiet ke|ve ra|tao ra|sinh ra|draw|create|generate|make|design|render|illustrate|paint)\b/.test(
-      t,
-    );
-  // Cần cả danh từ "ảnh" lẫn động từ "vẽ/tạo" — tránh bắt nhầm câu hỏi
-  // thường có chữ "anh" (danh từ tự nhiên trong tiếng Việt).
-  return hasImageNoun && hasImageVerb;
 }
 
 /**
@@ -625,6 +605,48 @@ async function generateImage(
   }
   return null;
 }
+
+/* ------------------------------------------------------------------ */
+/* TẠO ẢNH — action riêng để client hiện thanh tiến trình %              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Sinh ảnh từ yêu cầu của người dùng. Trả về ảnh base64; client tự hiện
+ * thanh phần trăm trong lúc chờ (máy chủ không stream được tiến độ).
+ * Lỗi trả về có cấu trúc để client báo đúng thông điệp.
+ */
+export const createImage = action({
+  args: {
+    prompt: v.string(),
+    /** Dấu vân tay thiết bị — phục vụ giới hạn tốc độ */
+    deviceId: v.optional(v.string()),
+    integrity: v.optional(v.string()),
+  },
+  handler: async (ctx, { prompt, deviceId, integrity }) => {
+    const denied = await checkRateLimit(ctx, "image", deviceId, integrity);
+    if (denied) {
+      return { ok: false as const, code: "rate_limited", message: denied };
+    }
+    const clean = prompt.trim().slice(0, 1500);
+    if (!clean) {
+      return {
+        ok: false as const,
+        code: "empty",
+        message: "Chưa có nội dung để tạo hình.",
+      };
+    }
+    const image = await generateImage(clean);
+    if (!image) {
+      return {
+        ok: false as const,
+        code: "image_unavailable",
+        message:
+          "Hiện chưa tạo được hình. Vui lòng thử lại sau ít phút hoặc đổi cách diễn đạt yêu cầu.",
+      };
+    }
+    return { ok: true as const, image };
+  },
+});
 
 /**
  * Gửi hội thoại tới AI trực tuyến và trả về câu trả lời.
@@ -755,20 +777,6 @@ export const ask = action({
         if (reply) {
           // Thành công — provider vừa hồi phục thì gỡ trạng thái chết tạm thời.
           await clearProviderState(ctx, provider.label, provider.model);
-          // Người dùng yêu cầu tạo hình → sinh ảnh kèm câu trả lời.
-          const lastUser = [...recent].reverse().find((m) => m.role === "user");
-          if (!imageBase64 && lastUser && wantsImage(lastUser.content)) {
-            const deniedImage = await checkRateLimit(
-              ctx,
-              "image",
-              deviceId,
-              integrity,
-            );
-            if (!deniedImage) {
-              const generated = await generateImage(lastUser.content);
-              if (generated) return { ok: true as const, reply, image: generated };
-            }
-          }
           return { ok: true as const, reply };
         }
         // Giải thích rõ vì sao rỗng thay vì chỉ "trả lời rỗng"

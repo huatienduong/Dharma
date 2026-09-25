@@ -3,6 +3,7 @@ import { api } from "@/convex/_generated/api";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 import { loadVoicePref } from "@/lib/aiVoices";
+import { wantsImage } from "@/lib/imageIntent";
 import { getDeviceMeta } from "@/lib/deviceSecurity";
 import {
   CHAT_STORAGE_KEY as CHAT_KEY,
@@ -174,6 +175,7 @@ export default function Assistant() {
   const location = useLocation();
   const isHome = location.pathname === "/" || location.pathname === "/home";
   const ask = useAction(api.aiChat.ask);
+  const createImage = useAction(api.aiChat.createImage);
 
   const [history, setHistory] = useState<Msg[]>([]);
   const historyRef = useRef<Msg[]>([]);
@@ -214,6 +216,11 @@ export default function Assistant() {
   // Khi đang hiện chữ từng phần, không tự cuộn toàn bộ vùng chat xuống đáy.
   const suppressNextAutoScrollRef = useRef(false);
   const [streamingReply, setStreamingReply] = useState<string | null>(null);
+  // Tiến trình tạo ảnh: null = không tạo, số 0–100 = phần trăm đang chạy.
+  const [imageProgress, setImageProgress] = useState<number | null>(null);
+  const imageProgressRef = useRef<number | null>(null);
+  // Nhịp tăng phần trăm giả lập cho tới khi máy chủ trả ảnh về.
+  const imageTickRef = useRef<number | null>(null);
 
   /* ----- Giọng đọc người dùng chọn (lưu cục bộ, dùng cho chat + đàm thoại) ----- */
   const [voiceId, setVoiceId] = useState<string>(loadVoicePref);
@@ -323,6 +330,43 @@ export default function Assistant() {
     });
   }, [messages.length, busy]);
 
+  /* ----- Tiến trình tạo ảnh: phần trăm tăng dần tới 92% rồi chờ server ---- */
+  const startImageProgress = useCallback(() => {
+    if (imageTickRef.current !== null) window.clearInterval(imageTickRef.current);
+    imageProgressRef.current = 0;
+    setImageProgress(0);
+    // Tăng chậm dần và bão hòa ở 92% — ảnh thật sự về là nhảy lên 100%.
+    imageTickRef.current = window.setInterval(() => {
+      const cur = imageProgressRef.current ?? 0;
+      const next = cur >= 92 ? 92 : cur + (cur < 30 ? 4 : cur < 70 ? 2 : 1);
+      imageProgressRef.current = next;
+      setImageProgress(next);
+    }, 350);
+  }, []);
+
+  const finishImageProgress = useCallback(() => {
+    if (imageTickRef.current !== null) {
+      window.clearInterval(imageTickRef.current);
+      imageTickRef.current = null;
+    }
+    if (imageProgressRef.current === null) return;
+    imageProgressRef.current = null;
+    setImageProgress(100);
+    window.setTimeout(() => {
+      if (imageProgressRef.current === null) setImageProgress(null);
+    }, 700);
+  }, []);
+
+  // Dọn nhịp khi rời trang để không rò rỉ timer.
+  useEffect(
+    () => () => {
+      if (imageTickRef.current !== null) {
+        window.clearInterval(imageTickRef.current);
+      }
+    },
+    [],
+  );
+
   /* ----- Gửi câu hỏi (chat + đàm thoại dùng chung) ----- */
   const send = useCallback(
     async (text: string, opts?: { fromCall?: boolean }) => {
@@ -418,9 +462,30 @@ export default function Assistant() {
       };
 
       try {
+        // Người dùng yêu cầu tạo hình → chạy TẠO ẢNH trước (có thanh tiến
+        // trình), sau đó mới lấy lời giải thích ngắn từ trợ lý.
+        const wantsArt = !attachedImage && wantsImage(question);
+        let generatedImage: { base64: string; mime: string } | undefined;
+        if (wantsArt) {
+          startImageProgress();
+          try {
+            const res = await createImage({
+              prompt: question,
+              ...getDeviceMeta(),
+            });
+            if (res.ok) generatedImage = res.image;
+            else {
+              finishImageProgress();
+              toast.error(res.message);
+            }
+          } catch {
+            finishImageProgress();
+          }
+        }
+
         const answer = await askWithRetry();
         const reply = answer.reply;
-        const generatedImage = answer.image;
+        if (wantsArt) finishImageProgress();
         const replyMsg: Msg = {
           role: "assistant",
           content: reply,
@@ -496,6 +561,7 @@ export default function Assistant() {
         }
       } catch (err) {
         setStreamingReply(null);
+        finishImageProgress();
         const errorMessage = convexErrMessage(err);
         const userMsg =
           /\[convex|server error|called by client|request id/i.test(errorMessage)
@@ -514,6 +580,7 @@ export default function Assistant() {
           }
         }
       } finally {
+        finishImageProgress();
         busyRef.current = false;
         setBusy(false);
         // Trả lời xong → tự gửi câu hỏi đang xếp hàng bằng callback mới nhất,
@@ -528,7 +595,7 @@ export default function Assistant() {
         }
       }
     },
-    [ask, image],
+    [ask, createImage, image],
   );
 
   useEffect(() => {
@@ -917,7 +984,37 @@ export default function Assistant() {
             {streamingReply !== null && streamingReply.length > 0 && (
               <AssistantMessage content={streamingReply} ts={Date.now()} grouped={false} />
             )}
-            {busy && streamingReply === null && (stalled ? (
+            {imageProgress !== null && (
+              <div className="mt-4 flex items-start gap-2">
+                <span className="mt-1 flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
+                  <Bot className="h-6 w-6" />
+                </span>
+                <div className="min-w-0 flex-1 sm:max-w-[75%]">
+                  <div className="rounded-3xl rounded-bl-md border border-border/50 bg-card px-4 py-3 shadow-sm">
+                    <div className="flex items-center justify-between text-sm font-medium">
+                      <span>
+                        {imageProgress >= 100
+                          ? "Đã tạo xong hình"
+                          : "Đang vẽ hình theo yêu cầu của bạn"}
+                      </span>
+                      <span className="tabular-nums text-primary">
+                        {imageProgress}%
+                      </span>
+                    </div>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-primary to-gold transition-[width] duration-300 ease-out"
+                        style={{ width: `${imageProgress}%` }}
+                      />
+                    </div>
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      Trợ lý đang phác họa — vui lòng chờ thêm ít giây.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {busy && streamingReply === null && imageProgress === null && (stalled ? (
               <div className="flex items-start gap-3">
                 <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
                   <Sparkles className="h-4 w-4" />
