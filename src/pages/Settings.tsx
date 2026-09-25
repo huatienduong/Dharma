@@ -46,7 +46,7 @@ import {
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 
 const FEEDBACK_RECEIVED_MESSAGE =
-  "Hứa Tiến Dương đã nhận được yêu cầu hỗ trợ của bạn. Hãy theo dõi phiếu hỗ trợ để cập nhật thêm thông tin. Xin cảm ơn!";
+  "Đã tạo phiếu hỗ trợ. Hứa Tiến Dương đã nhận được yêu cầu hỗ trợ của bạn. Hãy theo dõi phiếu hỗ trợ để cập nhật thêm thông tin. Xin cảm ơn!";
 
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
