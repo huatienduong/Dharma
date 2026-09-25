@@ -1,5 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { LegalDocs } from "@/components/LegalDocs";
+import { AppLogo } from "@/components/AppLogo";
 import { wipeSecureStorage } from "@/lib/secureStorage";
 import {
   APP_DEVELOPER,
@@ -413,6 +414,10 @@ export default function Settings() {
           onClick={() => toggle("about")}
         >
           <div className="space-y-3 pt-1">
+            {/* Logo chính thức của ứng dụng (Convex Storage) */}
+            <div className="flex justify-center">
+              <AppLogo className="h-20 w-20 rounded-3xl object-contain shadow-sm" />
+            </div>
             {/* Đồng bộ với chân trang Trang chủ: nhà phát triển + phiên bản */}
             <div className="rounded-2xl bg-muted/50 px-4 py-4 text-center">
               <p className="text-[13px] font-semibold text-foreground/90">

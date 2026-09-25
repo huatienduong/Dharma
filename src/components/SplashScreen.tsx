@@ -1,9 +1,10 @@
-import { AppLogo } from "@/components/AppLogo";
 import { useEffect, useState } from "react";
+import { APP_NAME } from "@/lib/version";
 
 /**
- * Splash screen — hiện LOGO CHÍNH THỨC của ứng dụng (lưu trên Convex
- * Storage, quản lý qua `library.getAppLogo`) trong lúc tải dữ liệu ban đầu.
+ * Splash screen — chỉ hiện tên ứng dụng trong lúc tải dữ liệu ban đầu.
+ * Không hiện ảnh logo ở màn hình chờ đầu tiên; logo chính thức vẫn dùng
+ * trong phần Giới thiệu (Cài đặt) và cho favicon/PWA icon.
  * Tự ẩn khi app sẵn sàng hoặc tối đa 2.5s để không chặn người dùng.
  */
 export function SplashScreen() {
@@ -28,7 +29,9 @@ export function SplashScreen() {
         fading ? "pointer-events-none opacity-0" : "opacity-100"
       }`}
     >
-      <AppLogo className="h-48 w-48 rounded-3xl object-contain shadow-lg sm:h-64 sm:w-64" />
+      <p className="text-lg font-extrabold uppercase tracking-[0.2em] text-foreground sm:text-xl sm:tracking-[0.28em]">
+        {APP_NAME}
+      </p>
     </div>
   );
 }
