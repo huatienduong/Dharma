@@ -714,22 +714,16 @@ export default function Assistant() {
               Hôm nay tôi có thể giúp gì cho bạn trên con đường Phật pháp?
             </p>
             <div className="mt-7 grid w-full max-w-lg grid-cols-1 gap-2.5 sm:grid-cols-2">
-              {suggestions.map((s) => {
-                const Icon = s.icon;
-                return (
-                  <button
-                    key={s.text}
-                    type="button"
-                    onClick={() => void send(s.text)}
-                    className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 py-4 text-left text-base leading-snug text-foreground/90 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/50"
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold">
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0">{s.text}</span>
-                  </button>
-                );
-              })}
+              {suggestions.map((s) => (
+                <button
+                  key={s.text}
+                  type="button"
+                  onClick={() => void send(s.text)}
+                  className="rounded-2xl border border-border/60 bg-card px-4 py-4 text-left text-base leading-snug text-foreground/90 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/50"
+                >
+                  {s.text}
+                </button>
+              ))}
             </div>
           </div>
         ) : (
