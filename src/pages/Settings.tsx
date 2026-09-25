@@ -384,8 +384,8 @@ export default function Settings() {
                   className={cn(
                     "flex w-full items-center gap-3 rounded-full border py-3 px-4 text-left backdrop-blur-sm transition",
                     active
-                      ? "border-gold/40 bg-white/10"
-                      : "border-white/10 bg-white/5 hover:bg-white/10",
+                      ? "border-primary/40 bg-accent/60"
+                      : "border-border/70 bg-muted/35 hover:bg-accent/60",
                   )}
                 >
                   <span className="min-w-0 flex-1">

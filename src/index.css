@@ -47,7 +47,7 @@
 /* CHANGE VALUES FOR THEME — màu áo y cà sa theo truyền thống Theravāda:
  * nền sáng trắng, chữ và điểm nhấn màu nâu ấm, thẻ trắng bo lớn. */
 :root {
-  --radius: 1.25rem;
+  --radius: 1.5rem;
   --background: #ffffff; /* nền sáng trắng */
   --foreground: #3b2417; /* nâu đậm cho chữ */
   --card: #ffffff;
@@ -63,8 +63,8 @@
   --accent: #ead7c6;
   --accent-foreground: #4c2c1b;
   --destructive: #b42318;
-  --border: #e4d4c5;
-  --input: #e4d4c5;
+  --border: #e8d8c9; /* viền nâu nhạt cho khung giao diện sáng */
+  --input: #e8d8c9;
   --ring: #6f4226;
   --chart-1: #6f4226;
   --chart-2: #8b5535;
@@ -77,7 +77,7 @@
   --sidebar-primary-foreground: #fffaf5;
   --sidebar-accent: #ead7c6;
   --sidebar-accent-foreground: #4c2c1b;
-  --sidebar-border: #e4d4c5;
+  --sidebar-border: #e8d8c9;
   --sidebar-ring: #6f4226;
 
   /* Token phụ trợ — cam đất y cà sa làm điểm nhấn chính */

@@ -815,7 +815,7 @@ export default function Assistant() {
           <button
             type="button"
             onClick={openCall}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-foreground transition hover:bg-accent hover:text-accent-foreground"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-foreground transition hover:bg-accent hover:text-accent-foreground"
             aria-label="Đàm thoại bằng giọng nói"
             title="Đàm thoại bằng giọng nói"
           >
@@ -825,7 +825,7 @@ export default function Assistant() {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-foreground transition hover:bg-accent"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-foreground transition hover:bg-accent"
               aria-label="Quay lại"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -844,7 +844,7 @@ export default function Assistant() {
           <button
             type="button"
             onClick={() => navigate("/settings?section=about")}
-            className="flex h-10 w-10 items-center justify-center rounded-md text-foreground transition hover:bg-accent hover:text-accent-foreground"
+            className="flex h-10 w-10 items-center justify-center rounded-2xl text-foreground transition hover:bg-accent hover:text-accent-foreground"
             title="Cài đặt và cập nhật ứng dụng"
             aria-label="Cài đặt và cập nhật ứng dụng"
           >
@@ -965,7 +965,7 @@ export default function Assistant() {
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+                className="flex h-8 w-8 items-center justify-center rounded-2xl text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
                 aria-label="Gửi ảnh cho trợ lý"
                 title="Tải lên hình ảnh"
               >
@@ -974,7 +974,7 @@ export default function Assistant() {
               <button
                 type="button"
                 onClick={() => void clearAll()}
-                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+                className="flex h-8 w-8 items-center justify-center rounded-2xl text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
                 title="Xóa hội thoại"
                 aria-label="Xóa hội thoại"
               >
