@@ -128,7 +128,13 @@ export const emailFeedback = action({
       message?: string;
     };
     if (!response.ok) {
-      throw new Error(payload.message || `Không gửi được email (HTTP ${response.status}).`);
+      return {
+        ok: false as const,
+        code: "resend_error",
+        message:
+          payload.message ||
+          `Không gửi được email (HTTP ${response.status}).`,
+      };
     }
     return { ok: true as const, id: payload.id ?? null };
   },
