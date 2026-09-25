@@ -322,6 +322,8 @@ type ProviderChoice = {
 };
 
 const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
+const GROQ_TEXT_MODEL = "openai/gpt-oss-120b";
+const GROQ_VISION_MODEL = "qwen/qwen3.8-27b";
 const GEMINI_BASE_URL =
   "https://generativelanguage.googleapis.com/v1beta/openai";
 
@@ -356,7 +358,9 @@ function listAllProviders(needVision: boolean): ProviderChoice[] {
           baseURL: GROQ_BASE_URL,
           apiKey: groqKey,
         }),
-      model: "openai/gpt-oss-120b",
+      // Groq mô hình văn bản không đọc được ảnh. Khi có ảnh phải chuyển sang
+      // Qwen multimodal theo đúng định dạng image_url của Groq.
+      model: needVision ? GROQ_VISION_MODEL : GROQ_TEXT_MODEL,
     });
   }
 
@@ -417,9 +421,8 @@ export const aiSelfTest = internalAction({
     const notes: string[] = [];
 
     const groqKey = process.env.GROQ_API_KEY;
-    const groqModel = "openai/gpt-oss-120b";
     if (groqKey) {
-      let ok = false;
+      let availableModels: string[] = [];
       let note = "sống";
       try {
         const res = await fetch(`${GROQ_BASE_URL}/models`, {
@@ -427,17 +430,25 @@ export const aiSelfTest = internalAction({
         });
         if (res.ok) {
           const json = (await res.json()) as { data?: { id?: string }[] };
-          const ids = (json.data ?? []).map((m) => m.id ?? "");
-          ok = ids.includes(groqModel);
-          if (!ok) note = `model ${groqModel} không còn trong danh sách Groq`;
+          availableModels = (json.data ?? []).map((m) => m.id ?? "");
         } else {
           note = `HTTP ${res.status}`;
         }
       } catch (err) {
         note = err instanceof Error ? err.message : String(err);
       }
-      if (ok) await clearProviderState(ctx, "Groq", groqModel);
-      else await markProviderFailure(ctx, "Groq", groqModel, note);
+
+      const requiredGroqModels = [GROQ_TEXT_MODEL, GROQ_VISION_MODEL];
+      for (const model of requiredGroqModels) {
+        const ok = availableModels.includes(model);
+        const modelNote = ok
+          ? "sống"
+          : note === "sống"
+            ? `model ${model} không còn trong danh sách Groq`
+            : note;
+        if (ok) await clearProviderState(ctx, "Groq", model);
+        else await markProviderFailure(ctx, "Groq", model, modelNote);
+      }
       notes.push(`Groq: ${note}`);
     }
 
