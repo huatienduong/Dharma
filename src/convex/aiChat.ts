@@ -70,7 +70,12 @@ const SYSTEM_PROMPT = `Bạn là "Trợ lý Phật học" — một PHẬT TỬ 
 - Câu hỏi ngắn → trả lời ngắn gọn ấm áp; câu hỏi sâu → có cấu trúc rõ ràng (gạch đầu dòng, đánh số) nhưng không máy móc.
 - Trung thực: không biết thì nói không biết; không hành xử như bậc đạo hạnh thực thụ (không ban giới, không "chứng đắc" hộ ai, không thay thế thầy giảng); câu hỏi thực hành sâu thì khuyến nghị tìm người hướng dẫn có kinh nghiệm.
 - Không chẩn đoán y khoa/tâm lý; người dùng đang khủng hoảng thì đồng cảm trước, khuyên tìm hỗ trợ chuyên môn và thầy hướng dẫn thiền; trường hợp nguy hiểm tính mạng → khuyến khích liên hệ người thân hoặc đường dây nóng hỗ trợ tâm lý gần nhất ngay.
-- Trả lời bằng TIẾNG VIỆT luôn luôn.`;
+- Trả lời bằng TIẾNG VIỆT luôn luôn.
+
+## KHI NGƯỜI DÙNG YÊU CẦU TẠO HÌNH
+- Nếu người dùng yêu cầu vẽ / tạo / sinh / phác họa một hình ảnh (kể cả hình minh họa Phật pháp: hoa sen, chánh niệm, tăng bảo, Bát Chánh Đạo...): hệ thống sẽ tự sinh ảnh và hiển thị kèm câu trả lời của bạn.
+- Vì vậy: trả lời NGẮN, tối đa 2–3 câu giới thiệu ngắn gọn nội dung hình sẽ được tạo (chủ đề, bối cảnh, ý nghĩa Phật học nếu có). TUYỆT ĐỐI không mô tả chi tiết từng chi tiết thị giác của bức hình, không dùng emoji, không hứa sẽ vẽ gì — chỉ nói ngắn.
+- Nếu không thể tạo hình (không có dịch vụ vẽ), chỉ cần nói thẳng là hiện chưa tạo được hình và trả lời bằng chữ.`;
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -530,81 +535,95 @@ export const aiSelfTest = internalAction({
 /* TẠO ẢNH — dùng chính khóa Gemini đang có, không cần thêm khóa mới   */
 /* ------------------------------------------------------------------ */
 
-const GEMINI_IMAGE_MODEL = "gemini-2.5-flash-image";
+/** Thứ tự ưu tiên: model Nano Banana mới nhất trước, bản cũ làm dự phòng. */
+const GEMINI_IMAGE_MODELS = [
+  "gemini-3.1-flash-image",
+  "gemini-2.5-flash-image",
+] as const;
 const IMAGE_TIMEOUT_MS = 90_000;
 
-/**
- * Nhận diện ý định “hãy tạo/vẽ hình cho tôi” (tiếng Việt + tiếng Anh).
- * Chỉ bắt các câu yêu cầu tạo ảnh rõ ràng; câu hỏi thuần văn bản vẫn đi qua
- * luồng trả lời chữ như trước.
- */
-function wantsImage(text: string): boolean {
-  const t = text.toLowerCase();
-  const hasImageNoun =
-    /\b(anh|hinh|hin|tranh|tranh vẽ|bum|mo|minh hoa|minh hoạ|hình ảnh|ảnh)\b/.test(
-      t,
-    );
-  if (!hasImageNoun) return false;
-  const hasVerb =
-    /\b(tao|tao ra|ve|ve ra|sinh|sinh ra|dung|ve cho|hoa|phong hoa|draw|create|generate|make|design)\b/.test(
-      t,
-    ) || /\bvẽ\b|\btạo\b|\bsinh\b|\bphác họa\b/.test(t);
-  return hasVerb;
+/** Bỏ dấu tiếng Việt + hạ chữ thường để so khớp ổn định. */
+function deaccent(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .toLowerCase();
 }
 
 /**
- * Sinh ảnh bằng Gemini (mô hình đa phương tiện tạo ảnh). Trả về base64
- * hoặc null khi không có khóa / model lỗi — caller bỏ qua, không báo lỗi.
+ * Nhận diện ý định “hãy tạo/vẽ hình cho tôi” (tiếng Việt + tiếng Anh).
+ * Bỏ dấu trước khi so khớp nên không bỏ sót “vẽ / tạo / sinh / phác họa”.
+ * Chỉ bắt câu yêu cầu tạo ảnh rõ ràng; câu hỏi thuần văn bản vẫn đi qua
+ * luồng trả lời chữ như trước.
+ */
+function wantsImage(text: string): boolean {
+  const t = deaccent(text);
+  const hasImageNoun =
+    /\b(anh|hinh|tranh|tranh ve|buc tranh|anh minh hoa|minh hoa|hoa van|logo|hoc)\b/.test(
+      t,
+    );
+  const hasImageVerb =
+    /\b(ve|tao|sinh|dung|hoa|phong hoa|phac hoa|minh hoa|thiet ke|ve ra|tao ra|sinh ra|draw|create|generate|make|design|render|illustrate|paint)\b/.test(
+      t,
+    );
+  // Cần cả danh từ "ảnh" lẫn động từ "vẽ/tạo" — tránh bắt nhầm câu hỏi
+  // thường có chữ "anh" (danh từ tự nhiên trong tiếng Việt).
+  return hasImageNoun && hasImageVerb;
+}
+
+/**
+ * Sinh ảnh bằng Gemini (mô hình Nano Banana). Trả về base64 hoặc null khi
+ * không có khóa / mọi model đều lỗi — caller bỏ qua, không báo lỗi.
  */
 async function generateImage(
   prompt: string,
 ): Promise<{ base64: string; mime: string } | null> {
   const geminiKey = process.env.GEMINI_API_KEY;
   if (!geminiKey) return null;
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": geminiKey,
+  for (const model of GEMINI_IMAGE_MODELS) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": geminiKey,
+          },
+          signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS),
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: `Tạo hình theo yêu cầu sau. Ưu tiên phong cách trang nghiêm, trang trí, hài hòa với tinh thần Phật giáo Theravāda khi chủ đề liên quan. Không chữ trong ảnh.\n\nYêu cầu: ${prompt}`,
+                  },
+                ],
+              },
+            ],
+            generationConfig: { responseModalities: ["IMAGE"] },
+          }),
         },
-        signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS),
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                {
-                  text:
-                    `Vẽ hình theo yêu cầu sau, phong cách trang nghiêm, trang trí, phù hợp tinh thần Phật giáo Theravāda nếu chủ đề liên quan: ${prompt}`,
-                },
-              ],
-            },
-          ],
-          generationConfig: { responseModalities: ["IMAGE"] },
-        }),
-      },
-    );
-    if (!res.ok) return null;
-    const json = (await res.json()) as {
-      candidates?: {
-        content?: {
-          parts?: { inlineData?: { data?: string; mimeType?: string } }[];
-        };
-      }[];
-    };
-    const part = json.candidates?.[0]?.content?.parts?.find(
-      (p) => p.inlineData?.data,
-    )?.inlineData;
-    if (!part?.data) return null;
-    return {
-      base64: part.data,
-      mime: part.mimeType ?? "image/png",
-    };
-  } catch {
-    return null;
+      );
+      if (!res.ok) continue;
+      const json = (await res.json()) as {
+        candidates?: {
+          content?: {
+            parts?: { inlineData?: { data?: string; mimeType?: string } }[];
+          };
+        }[];
+      };
+      const part = json.candidates?.[0]?.content?.parts?.find(
+        (p) => p.inlineData?.data,
+      )?.inlineData;
+      if (!part?.data) continue;
+      return { base64: part.data, mime: part.mimeType ?? "image/png" };
+    } catch {
+      /* thử model tiếp theo */
+    }
   }
+  return null;
 }
 
 /**
