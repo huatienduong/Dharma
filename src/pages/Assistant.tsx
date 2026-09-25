@@ -11,7 +11,7 @@ import {
   encryptString,
 } from "@/lib/secureStorage";
 import { cn } from "@/lib/utils";
-import { useAction, useQuery } from "convex/react";
+import { useAction } from "convex/react";
 import {
   ArrowLeft,
   AudioLines,
@@ -164,10 +164,6 @@ export default function Assistant() {
   const location = useLocation();
   const isHome = location.pathname === "/" || location.pathname === "/home";
   const ask = useAction(api.aiChat.ask);
-  // Lời chào hằng ngày — tự đổi mới mỗi ngày (query reactive từ máy chủ)
-  // Kệ Pháp Cú ngẫu nhiên cho màn chào mừng — mỗi lần vào app là một lần
-  // đăng ký query mới, thời điểm khác nhau → kệ khác nhau.
-  const dhammapada = useQuery(api.library.getDhammapadaQuote, {});
 
   const [history, setHistory] = useState<Msg[]>([]);
   // Đề xuất câu hỏi — chọn ngẫu nhiên MỘT LẦN mỗi lần vào ứng dụng.
@@ -711,19 +707,7 @@ export default function Assistant() {
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
         {isEmpty ? (
           <div className="flex min-h-full flex-col items-center justify-center px-4 py-8 text-center">
-            {/* Kệ Pháp Cú ngẫu nhiên — tâm điểm màn chào mừng, tinh gọn */}
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gold/15 text-gold">
-              <Sparkles className="h-5 w-5" />
-            </span>
-            <blockquote className="mt-5 max-w-md">
-              <p className="text-xl font-semibold leading-relaxed tracking-tight text-foreground sm:text-2xl">
-                {dhammapada?.text ?? "Tâm dẫn dắt mọi pháp. Tâm là chủ, tâm tạo tác."}
-              </p>
-              <footer className="mt-3 text-[13px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                Kinh Pháp Cú — Kệ số {dhammapada?.ref ?? 1}
-              </footer>
-            </blockquote>
-            <p className="mt-2 max-w-md text-[15px] leading-relaxed text-muted-foreground">
+            <p className="max-w-md text-[15px] leading-relaxed text-muted-foreground">
               Hôm nay tôi có thể giúp gì cho bạn trên con đường Phật pháp?
             </p>
             <div className="mt-7 grid w-full max-w-lg grid-cols-1 gap-2.5 sm:grid-cols-2">
