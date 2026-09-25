@@ -376,7 +376,7 @@ export default function Settings() {
 
         {/* ---------- Lựa chọn giọng nói ---------- */}
         <RowCard
-          label="Lựa chọn giọng nói"
+          label="Giọng nói"
           open={openCard === "voice"}
           onClick={() => toggle("voice")}
         >
