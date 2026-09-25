@@ -5,6 +5,7 @@ import { ConvexHealth } from "@/components/ConvexHealth";
 import { DeviceGuard } from "@/components/DeviceGuard";
 import { ServiceNotice } from "@/components/ServiceNotice";
 import { SplashScreen } from "@/components/SplashScreen";
+import { LegalConsentGate } from "@/components/LegalConsentGate";
 import { UpdateChecker } from "@/components/UpdateChecker";
 import { SettingsProvider } from "@/lib/settings";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
@@ -159,6 +160,7 @@ createRoot(document.getElementById("root")!).render(
             đặt ngoài provider làm hook ném lỗi → toàn cây bị gỡ → TRẮNG TRANG. */}
         <SplashScreen />
         <SettingsProvider>
+          <LegalConsentGate />
           <UpdateChecker />
           {/* Chặn thiết bị tự động hóa / bị can thiệp — khóa toàn màn hình */}
           <DeviceGuard />
