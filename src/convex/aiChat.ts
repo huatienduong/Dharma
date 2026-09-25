@@ -498,34 +498,49 @@ export const ask = action({
     // Dùng ConvexError (không phải Error) — production mới truyền được thông
     // điệp tiếng Việt tới client thay vì chuỗi "Server Error" trống.
     const denied = await checkRateLimit(ctx, "ask", deviceId, integrity);
-    if (denied) throw new ConvexError(denied);
+    if (denied) return { ok: false as const, code: "rate_limited", message: denied };
 
     const userId = await getAuthUserId(ctx);
     void userId;
 
     if (messages.length === 0 && !imageBase64) {
-      throw new ConvexError("Câu hỏi trống.");
+      return { ok: false as const, code: "empty", message: "Câu hỏi trống." };
     }
 
     // Chống tấn công: giới hạn kích thước đầu vào — bot gửi payload khổng lồ
     // sẽ bị từ chối ngay trước khi chạm provider AI.
     if (messages.length > 60) {
-      throw new ConvexError("Hội thoại quá dài. Hãy xóa hội thoại và bắt đầu lại.");
+      return {
+        ok: false as const,
+        code: "history_too_long",
+        message: "Hội thoại quá dài. Hãy xóa hội thoại và bắt đầu lại.",
+      };
     }
     for (const m of messages) {
       if (typeof m.content !== "string" || m.content.length > 8000) {
-        throw new ConvexError("Tin nhắn vượt quá độ dài cho phép.");
+        return {
+          ok: false as const,
+          code: "message_too_long",
+          message: "Tin nhắn vượt quá độ dài cho phép.",
+        };
       }
     }
     if (imageBase64 && imageBase64.length > 9_000_000) {
-      throw new ConvexError("Ảnh quá lớn (tối đa khoảng 6MB).");
+      return {
+        ok: false as const,
+        code: "image_too_large",
+        message: "Ảnh quá lớn (tối đa khoảng 6MB).",
+      };
     }
 
     const providers = await listProviders(ctx, Boolean(imageBase64));
     if (providers.length === 0) {
-      throw new ConvexError(
-        "Trợ lý Phật học chưa kết nối được máy chủ AI. Vui lòng thử lại sau ít phút hoặc báo lỗi qua mục Góp ý.",
-      );
+      return {
+        ok: false as const,
+        code: "no_provider",
+        message:
+          "Trợ lý Phật học chưa kết nối được máy chủ AI. Vui lòng thử lại sau ít phút hoặc báo lỗi qua mục Góp ý.",
+      };
     }
 
     const recent: ChatMessage[] = messages.slice(-HISTORY_LIMIT);
@@ -582,7 +597,7 @@ export const ask = action({
         if (reply) {
           // Thành công — provider vừa hồi phục thì gỡ trạng thái chết tạm thời.
           await clearProviderState(ctx, provider.label, provider.model);
-          return reply;
+          return { ok: true as const, reply };
         }
         // Giải thích rõ vì sao rỗng thay vì chỉ "trả lời rỗng"
         const finish = (result as { finishReason?: unknown }).finishReason;
@@ -602,12 +617,15 @@ export const ask = action({
         );
       }
     }
-    throw new ConvexError(
-      `Trợ lý Phật học tạm chưa trả lời được. Vui lòng thử lại sau ít phút.` +
+    return {
+      ok: false as const,
+      code: "ai_unavailable",
+      message:
+        `Trợ lý Phật học tạm chưa trả lời được. Vui lòng thử lại sau ít phút.` +
         (imageBase64
           ? " (Gửi ảnh cần máy chủ AI hỗ trợ thị giác — có thể thử lại bằng câu hỏi chữ.)"
           : ""),
-    );
+    };
   },
 });
 

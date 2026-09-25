@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { showServiceNotice } from "@/components/ServiceNotice";
 import { api } from "@/convex/_generated/api";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
@@ -166,6 +165,8 @@ export default function Assistant() {
   const ask = useAction(api.aiChat.ask);
 
   const [history, setHistory] = useState<Msg[]>([]);
+  const historyRef = useRef<Msg[]>([]);
+  const pendingRef = useRef<Msg[]>([]);
   // Đề xuất câu hỏi — chọn ngẫu nhiên MỘT LẦN mỗi lần vào ứng dụng.
   const [suggestions] = useState(() => pickSuggestions());
 
@@ -173,7 +174,10 @@ export default function Assistant() {
   useEffect(() => {
     let alive = true;
     void loadLocalChatSecure().then((msgs) => {
-      if (alive && msgs) setHistory(msgs);
+      if (alive && msgs) {
+        historyRef.current = msgs;
+        setHistory(msgs);
+      }
     });
     return () => {
       alive = false;
@@ -220,14 +224,13 @@ export default function Assistant() {
   // bỏ im lặng mà xếp hàng; trả lời xong tự gửi tiếp (khắc phục lỗi
   // "AI không trả lời câu hỏi tiếp trong cuộc trò chuyện").
   const queueRef = useRef<string[]>([]);
+  const sendRef = useRef<
+    (text: string, opts?: { fromCall?: boolean }) => Promise<void>
+  >(async () => {});
   const lastAiWordAtRef = useRef(0);
   const lastAssistantEventAtRef = useRef(0);
   const recRef = useRef<RecLike | null>(null);
   const startListeningRef = useRef<() => void>(() => {});
-
-  useEffect(() => {
-    busyRef.current = busy;
-  }, [busy]);
 
   /* ----- Watchdog đàm thoại 2 chiều: nếu phiên nghe mic rơi/treo quá 12s
    * (trình duyệt âm thầm dừng SpeechRecognition, tab bị treo ngắn…) thì tự
@@ -312,7 +315,7 @@ export default function Assistant() {
         return;
       }
 
-      const base: Msg[] = [...history, ...pending];
+      const base: Msg[] = [...historyRef.current, ...pendingRef.current];
       const userMsg: Msg = {
         role: "user",
         content: q,
@@ -328,8 +331,12 @@ export default function Assistant() {
         setInput("");
         setImage(null);
       }
-      // Luôn thêm vào phiên (kể cả call) để giữ ngữ cảnh và không mất lịch sử
-      setPending((p) => [...p, userMsg]);
+      // Luôn thêm vào phiên (kể cả call) để giữ ngữ cảnh và không mất lịch sử.
+      // Đánh dấu busy đồng bộ ngay để chặn hai request chồng nhau trước khi
+      // useEffect kịp cập nhật — nguyên nhân gửi tiếp bị kẹt ở trạng thái busy.
+      pendingRef.current = [...pendingRef.current, userMsg];
+      setPending(pendingRef.current);
+      busyRef.current = true;
       setBusy(true);
 
       // Tự phục hồi khi kết nối chập chờn: thử lại tối đa 3 lần với khoảng
@@ -348,15 +355,25 @@ export default function Assistant() {
         let lastError: unknown = new Error("Không gửi được câu hỏi.");
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
-            return await askOnce();
+            const result = await askOnce();
+            if (result.ok) return result.reply;
+            // Lỗi nghiệp vụ đã được backend phân loại: trả về client thay vì
+            // ném ConvexError (production thường che thành "Server Error").
+            const expectedError = Object.assign(new Error(result.message), {
+              expectedAiFailure: true,
+              code: result.code,
+            });
+            throw expectedError;
           } catch (err) {
             lastError = err;
             const msg = convexErrMessage(err);
+            const expected = (err as { expectedAiFailure?: boolean })
+              .expectedAiFailure;
             const transient =
               /hết giờ|timeout|network|fetch|rate|429|5\d\d|ECONN|tạm chưa trả lời|server error|called by client|request id|websocket|disconnect|mất kết nối/i.test(
                 msg,
               );
-            if (!transient || attempt === 2) throw err;
+            if (expected || !transient || attempt === 2) throw err;
             await new Promise((resolve) =>
               window.setTimeout(resolve, 600 * (attempt + 1)),
             );
@@ -368,18 +385,18 @@ export default function Assistant() {
       try {
         const reply = await askWithRetry();
         const replyMsg: Msg = { role: "assistant", content: reply, ts: Date.now() };
-        setPending((p) => p.filter((m) => m !== userMsg));
-        setHistory((h) => {
-          const next = [...h, userMsg, replyMsg];
-          // Ảnh base64 nặng: chỉ giữ ảnh trong 40 tin nhắn gần nhất, tin cũ
-          // hơn bỏ ảnh (giữ chữ) để lịch sử lưu trữ không phình to.
-          const cut = Math.max(0, next.length - 40);
-          const trimmed = next.map((m, idx) =>
-            idx < cut && m.image ? { ...m, image: undefined } : m,
-          );
-          void saveLocalChatSecure(trimmed);
-          return next;
-        });
+        pendingRef.current = pendingRef.current.filter((m) => m !== userMsg);
+        setPending(pendingRef.current);
+        const nextHistory = [...historyRef.current, userMsg, replyMsg];
+        historyRef.current = nextHistory;
+        setHistory(nextHistory);
+        // Ảnh base64 nặng: chỉ giữ ảnh trong 40 tin nhắn gần nhất, tin cũ
+        // hơn bỏ ảnh (giữ chữ) để lịch sử lưu trữ không phình to.
+        const cut = Math.max(0, nextHistory.length - 40);
+        const trimmed = nextHistory.map((m, idx) =>
+          idx < cut && m.image ? { ...m, image: undefined } : m,
+        );
+        void saveLocalChatSecure(trimmed);
         if (opts?.fromCall) {
           // Trong cuộc gọi: đọc to bằng giọng người dùng đã chọn — server TTS
           // trước (Gemini/OpenAI), quá 12s hoặc lỗi thì tự rơi về giọng trình
@@ -406,19 +423,17 @@ export default function Assistant() {
           // muốn nghe thì bấm nút loa ở từng câu trả lời.
         }
       } catch (err) {
-        const userMsg = convexErrMessage(err);
+        const errorMessage = convexErrMessage(err);
+        const userMsg =
+          /\[convex|server error|called by client|request id/i.test(errorMessage)
+            ? "Kết nối máy chủ chưa ổn định. Bạn hãy gửi lại câu này sau ít giây."
+            : errorMessage;
         if (!opts?.fromCall) {
           toast.error(userMsg || "Không gửi được câu hỏi.");
         } else {
           toast.error(userMsg || "Không kết nối được trợ lý.");
-          // CHỈ khi lỗi lặp lại cả 2 lần (sự cố thật, không phải lỗi nhất
-          // thời) → hiện thông báo dịch vụ; tránh banner sai do 429/timeout.
-          const isTransient = /quá nhanh|giới hạn|429|hết giờ|timeout|ECONN|fetch|tạm chưa trả lời/i.test(
-            userMsg,
-          );
-          if (!isTransient && /chưa kết nối được|máy chủ AI/i.test(userMsg)) {
-            showServiceNotice("upgrade");
-          }
+          // Không mở màn "đang nâng cấp" chỉ vì một request AI lỗi: màn che toàn
+          // màn hình khiến người dùng tưởng mất kết nối và không gửi tiếp được.
           sendingRef.current = false;
           if (callActiveRef.current) {
             setCallStatus("listening");
@@ -426,20 +441,26 @@ export default function Assistant() {
           }
         }
       } finally {
+        busyRef.current = false;
         setBusy(false);
-        // Trả lời xong → tự gửi câu hỏi đang xếp hàng (giữ mạch hội thoại).
+        // Trả lời xong → tự gửi câu hỏi đang xếp hàng bằng callback mới nhất,
+        // để lượt tiếp theo nhận đủ vừa được câu trả lời vừa lưu vào lịch sử.
         if (!opts?.fromCall) {
           window.setTimeout(() => {
             const next = queueRef.current.shift();
             if (!next) return;
             if (busyRef.current) queueRef.current.unshift(next);
-            else void send(next);
+            else void sendRef.current(next);
           }, 80);
         }
       }
     },
-    [ask, history, image, pending],
+    [ask, image],
   );
+
+  useEffect(() => {
+    sendRef.current = send;
+  }, [send]);
 
   /* ----- Đàm thoại: xử lý một câu người dùng vừa nói ----- */
   const handleUtterance = useCallback(
@@ -546,6 +567,10 @@ export default function Assistant() {
   }, [startListening]);
 
   const openCall = useCallback(() => {
+    if (busyRef.current) {
+      toast("Trợ lý đang trả lời — hãy đợi câu trả lời hiện tại xong.");
+      return;
+    }
     if (!micSupported) {
       toast.error(
         "Trình duyệt không hỗ trợ micro. Hãy dùng Chrome/Safari mới nhất.",
@@ -557,7 +582,6 @@ export default function Assistant() {
     mutedRef.current = false;
     sendingRef.current = false;
     aiSpeakingRef.current = false;
-    busyRef.current = false;
     setInterim("");
     setCallStatus("listening");
     setCallOpen(true);
@@ -644,6 +668,9 @@ export default function Assistant() {
   }, []);
 
   const clearAll = async () => {
+    queueRef.current = [];
+    pendingRef.current = [];
+    historyRef.current = [];
     setPending([]);
     setHistory([]);
     try {

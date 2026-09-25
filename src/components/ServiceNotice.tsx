@@ -4,13 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
 /* ------------------------------------------------------------------ */
-/* THÔNG BÁO DỊCH VỤ — hiển thị khi ứng dụng mất kết nối, bị treo,      */
-/* hoặc hệ thống đang được nâng cấp.                                    */
+/* THÔNG BÁO DỊCH VỤ — hiển thị khi ứng dụng mất kết nối hoặc được    */
+/* yêu cầu thông báo.                                                  */
 /*                                                                     */
 /* Nguồn kích hoạt:                                                     */
 /*   • Trình duyệt mất mạng (offline)                                   */
-/*   • Lỗi runtime lặp lại nhiều lần trong thời gian ngắn              */
-/*   • Bất kỳ tính năng nào phát sự kiện window "dharma:service-notice" */
+/*   • Tính năng chủ động phát sự kiện service-notice                  */
+/*   • Lỗi runtime tự phục hồi không được chặn toàn màn hình           */
 /* ------------------------------------------------------------------ */
 
 export const SERVICE_NOTICE_EVENT = "dharma:service-notice";
@@ -50,26 +50,9 @@ export function ServiceNotice() {
     };
   }, []);
 
-  /* Lỗi runtime lặp lại (≥3 lần trong 20 giây) → coi như dịch vụ có sự cố */
-  useEffect(() => {
-    let hits = 0;
-    let firstAt = 0;
-    const onProblem = () => {
-      const now = Date.now();
-      if (!firstAt || now - firstAt > 20_000) {
-        firstAt = now;
-        hits = 0;
-      }
-      hits += 1;
-      if (hits >= 3) setReason("error");
-    };
-    window.addEventListener("error", onProblem);
-    window.addEventListener("unhandledrejection", onProblem);
-    return () => {
-      window.removeEventListener("error", onProblem);
-      window.removeEventListener("unhandledrejection", onProblem);
-    };
-  }, []);
+  /* Không chặn cả màn hình chỉ vì vài lỗi runtime/unhandled rejection có thể
+     tự phục hồi (Convex tự kết nối lại, request AI retry...). Màn hình này chỉ
+     hiện khi mất mạng thật hoặc một tính năng chủ động yêu cầu thông báo. */
 
   /* Tính năng tự báo sự cố */
   useEffect(() => {
