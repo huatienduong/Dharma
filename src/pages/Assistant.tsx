@@ -608,7 +608,7 @@ export default function Assistant() {
       {/* ---------- Header mảnh, cân đối ---------- */}
       {/* ---------- Header cân đối: lưới 3 cột — tiêu đề LUÔN nằm giữa thật ---------- */}
       <header className="grid h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-1 border-b border-border/60 bg-background px-2 sm:px-4">
-        {/* Trái: Đàm thoại (+ nút quay lại khi mở từ trang khác) */}
+        {/* Trái: Đàm thoại + Cài đặt (+ nút quay lại khi mở từ trang khác) */}
         <div className="flex items-center gap-1 justify-self-start">
           {!isHome && (
             <button
@@ -628,12 +628,6 @@ export default function Assistant() {
             <Phone className="h-5 w-5 shrink-0" />
             <span className="hidden sm:inline">Đàm thoại</span>
           </Button>
-        </div>
-        <p className="justify-self-center whitespace-nowrap text-sm font-extrabold uppercase tracking-[0.08em] leading-tight text-foreground sm:text-[17px] sm:tracking-[0.16em]">
-          Trợ lý Phật học
-        </p>
-        {/* Phải: Cài đặt + Xóa hội thoại */}
-        <div className="flex items-center gap-1 justify-self-end">
           <Button
             variant="ghost"
             size="icon"
@@ -644,6 +638,12 @@ export default function Assistant() {
           >
             <Settings className="h-5 w-5" />
           </Button>
+        </div>
+        <p className="justify-self-center whitespace-nowrap text-sm font-extrabold uppercase tracking-[0.08em] leading-tight text-foreground sm:text-[17px] sm:tracking-[0.16em]">
+          Trợ lý Phật học
+        </p>
+        {/* Phải: Xóa hội thoại */}
+        <div className="flex items-center gap-1 justify-self-end">
           <Button
             variant="ghost"
             size="icon"
@@ -660,7 +660,7 @@ export default function Assistant() {
       {/* ---------- Khu hội thoại: chiếm toàn bộ phần còn lại ---------- */}
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
         {isEmpty ? (
-          <div className="flex h-full flex-col items-center justify-center px-4 text-center">
+          <div className="flex min-h-full flex-col items-center justify-center px-4 py-8 text-center">
             <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
               Xin chào 🙏
             </h2>
