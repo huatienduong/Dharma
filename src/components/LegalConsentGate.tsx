@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { LegalDocs } from "@/components/LegalDocs";
 import { Button } from "@/components/ui/button";
 import { Check, FileText, Scale, ShieldCheck } from "lucide-react";
@@ -13,6 +14,10 @@ export function LegalConsentGate() {
   const [accepted, setAccepted] = useState<boolean | null>(null);
   const [checked, setChecked] = useState(false);
   const [showLegal, setShowLegal] = useState(false);
+  const [readDocuments, setReadDocuments] = useState({
+    "privacy-policy": false,
+    "terms-of-service": false,
+  });
 
   useEffect(() => {
     try {
@@ -24,8 +29,18 @@ export function LegalConsentGate() {
 
   if (accepted) return null;
 
+  const hasReadAll = readDocuments["privacy-policy"] && readDocuments["terms-of-service"];
+
+  const markDocumentRead = (key: "privacy-policy" | "terms-of-service") => {
+    setReadDocuments((current) => ({ ...current, [key]: true }));
+  };
+
+  const openLegal = () => {
+    setShowLegal(true);
+  };
+
   const accept = () => {
-    if (!checked) return;
+    if (!checked || !hasReadAll) return;
     try {
       localStorage.setItem(CONSENT_KEY, "accepted");
     } catch {
@@ -50,7 +65,7 @@ export function LegalConsentGate() {
 
         {showLegal ? (
           <div className="mt-5">
-            <LegalDocs />
+            <LegalDocs onReachEnd={markDocumentRead} />
             <Button
               type="button"
               variant="outline"
@@ -65,24 +80,35 @@ export function LegalConsentGate() {
             <div className="mt-5 grid gap-2 sm:grid-cols-2">
               <button
                 type="button"
-                onClick={() => setShowLegal(true)}
+                onClick={openLegal}
                 className="flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-muted/45 px-3 py-3 text-sm font-semibold transition hover:bg-accent"
               >
                 <FileText className="size-4 text-primary" /> Chính sách quyền riêng tư
               </button>
               <button
                 type="button"
-                onClick={() => setShowLegal(true)}
+                onClick={openLegal}
                 className="flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-muted/45 px-3 py-3 text-sm font-semibold transition hover:bg-accent"
               >
                 <Scale className="size-4 text-primary" /> Điều khoản sử dụng
               </button>
             </div>
 
-            <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-border/60 bg-muted/35 p-3 text-sm leading-relaxed">
+            <p className="mt-4 text-center text-xs text-muted-foreground">
+              {hasReadAll
+                ? "Bạn đã đọc đến cuối cả hai tài liệu."
+                : "Hãy mở và đọc đến cuối cả hai tài liệu trước khi tích đồng ý."}
+            </p>
+            <label
+              className={cn(
+                "mt-2 flex items-start gap-3 rounded-2xl border border-border/60 bg-muted/35 p-3 text-sm leading-relaxed",
+                hasReadAll ? "cursor-pointer" : "cursor-not-allowed opacity-60",
+              )}
+            >
               <input
                 type="checkbox"
                 checked={checked}
+                disabled={!hasReadAll}
                 onChange={(event) => setChecked(event.target.checked)}
                 className="mt-0.5 size-4 accent-[var(--primary)]"
               />
@@ -95,7 +121,7 @@ export function LegalConsentGate() {
             <Button
               type="button"
               onClick={accept}
-              disabled={!checked}
+              disabled={!checked || !hasReadAll}
               className="mt-4 w-full gap-2 rounded-full"
             >
               <Check className="size-4" /> Đồng ý và tiếp tục

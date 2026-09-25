@@ -1,5 +1,5 @@
 import { LEGAL_DOCS } from "@/convex/legalContent";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FileText, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,12 +39,24 @@ function LegalText({ text }: { text: string }) {
   );
 }
 
-export function LegalDocs() {
+type LegalDocsProps = {
+  onReachEnd?: (key: LegalKey) => void;
+};
+
+export function LegalDocs({ onReachEnd }: LegalDocsProps = {}) {
   const [tab, setTab] = useState<LegalKey>("privacy-policy");
+  const contentRef = useRef<HTMLDivElement>(null);
   const active = DOCS.find((d) => d.key === tab)!;
   // Dùng trực tiếp bản chuẩn trong ứng dụng để nội dung sửa đổi có hiệu lực
   // ngay và không bị thay thế bởi dữ liệu cũ đã lưu trước đây.
   const sourceDoc = LEGAL_DOCS.find((d) => d.key === tab)!;
+
+  useEffect(() => {
+    const element = contentRef.current;
+    if (element && element.scrollHeight <= element.clientHeight + 4) {
+      onReachEnd?.(tab);
+    }
+  }, [tab]);
 
   return (
     <div className="space-y-3 pt-1">
@@ -82,7 +94,16 @@ export function LegalDocs() {
       </div>
 
       {/* Nội dung */}
-      <div className="max-h-[420px] overflow-y-auto rounded-2xl border border-border/60 bg-background/60 p-4">
+      <div
+        ref={contentRef}
+        onScroll={(event) => {
+          const element = event.currentTarget;
+          if (element.scrollTop + element.clientHeight >= element.scrollHeight - 8) {
+            onReachEnd?.(tab);
+          }
+        }}
+        className="max-h-[420px] overflow-y-auto rounded-2xl border border-border/60 bg-background/60 p-4"
+      >
         <LegalText text={sourceDoc.content} />
       </div>
     </div>
