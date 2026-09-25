@@ -1246,12 +1246,12 @@ function AssistantMessage({
           <button
             type="button"
             onClick={handleCopy}
-            className="inline-flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:bg-primary/85 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex items-center justify-center rounded px-1 py-0.5 transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Sao chép câu trả lời"
             title={copied ? "Đã sao chép" : "Sao chép"}
           >
             {copied ? (
-              <Check className="h-3.5 w-3.5" />
+              <Check className="h-3.5 w-3.5 text-gold" />
             ) : (
               <Copy className="h-3.5 w-3.5" />
             )}
@@ -1259,7 +1259,7 @@ function AssistantMessage({
           <button
             type="button"
             onClick={handleShare}
-            className="inline-flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:bg-primary/85 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex items-center justify-center rounded px-1 py-0.5 transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Chia sẻ câu trả lời"
             title="Chia sẻ"
           >
