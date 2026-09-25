@@ -7,7 +7,6 @@ import {
   APP_VERSION,
 } from "@/lib/version";
 import {
-  FONT_SCALES,
   useSettings,
   type ThemeMode,
 } from "@/lib/settings";
@@ -49,7 +48,6 @@ export default function Settings() {
     settings,
     t,
     setTheme,
-    setFontScale,
     setNotifications,
   } = useSettings();
   const meta = useQuery(api.library.getAppVersion, {});
@@ -270,36 +268,7 @@ export default function Settings() {
             ))}
           </div>
 
-          {/* Cỡ chữ — dành cho người lớn tuổi: tối đa 1.45x nền 17.5px */}
-          <div className="pt-3">
-            <p className="mb-2 text-sm font-semibold">{t("fontSize")}</p>
-            <div className="grid grid-cols-4 gap-2">
-              {FONT_SCALES.map((f) => (
-                <button
-                  key={f.value}
-                  type="button"
-                  onClick={() => setFontScale(f.value)}
-                  aria-pressed={settings.fontScale === f.value}
-                  className={cn(
-                    "rounded-2xl border py-3 text-center transition",
-                    settings.fontScale === f.value
-                      ? "border-primary/60 bg-primary/10 text-primary"
-                      : "border-border/60 bg-muted/50 text-foreground/80 hover:bg-accent",
-                  )}
-                >
-                  <span
-                    className="block font-bold leading-none"
-                    style={{ fontSize: `${0.875 * f.value}rem` }}
-                  >
-                    Aa
-                  </span>
-                  <span className="mt-1.5 block text-[11px] font-medium text-muted-foreground">
-                    {t(f.labelKey as "fontMedium")}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
+
         </RowCard>
 
         {/* ---------- Thông báo (toggle ngay trên hàng) ---------- */}

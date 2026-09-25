@@ -11,23 +11,17 @@ import {
 export type ThemeMode = "light" | "dark";
 export type Language = "vi" | "en";
 
+/** Cỡ chữ cố định — KHÔNG cho điều chỉnh trong ứng dụng (thiết kế tối ưu sẵn). */
+export const FIXED_FONT_SCALE = 1;
+
 export type AppSettings = {
   theme: ThemeMode;
-  fontScale: number; // 1 | 1.15 | 1.3 | 1.45 — người lớn tuổi chọn cỡ to
   language: Language;
   notifications: boolean;
 };
 
-export const FONT_SCALES = [
-  { value: 1, labelKey: "fontMedium" },
-  { value: 1.15, labelKey: "fontLarge" },
-  { value: 1.3, labelKey: "fontXl" },
-  { value: 1.45, labelKey: "fontXxl" },
-] as const;
-
 const DEFAULTS: AppSettings = {
   theme: "light",
-  fontScale: 1,
   language: "vi",
   notifications: true,
 };
@@ -38,9 +32,13 @@ function loadLocal(): AppSettings {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as Partial<AppSettings>;
-      // Ứng dụng mặc định chỉ dùng Tiếng Việt — ghi đè mọi lựa chọn cũ
-      const merged = { ...DEFAULTS, ...parsed };
+      const parsed = JSON.parse(raw) as Partial<AppSettings> & {
+        fontScale?: unknown;
+      };
+      // Ứng dụng mặc định chỉ dùng Tiếng Việt — ghi đè mọi lựa chọn cũ.
+      // Dọn dữ liệu cũ: cỡ chữ không còn cho điều chỉnh → bỏ khóa.
+      const { fontScale: _legacy, ...rest } = parsed;
+      const merged = { ...DEFAULTS, ...rest };
       merged.language = "vi";
       return merged as AppSettings;
     }
@@ -70,11 +68,6 @@ const VI = {
   sectionAppearance: "Giao diện",
   themeLight: "Sáng",
   themeDark: "Tối",
-  fontSize: "Cỡ chữ",
-  fontMedium: "Vừa",
-  fontLarge: "Lớn",
-  fontXl: "Rất lớn",
-  fontXxl: "To nhất",
   notifications: "Thông báo ứng dụng",
 };
 
@@ -86,11 +79,6 @@ const EN: Partial<Record<keyof typeof VI, string>> = {
   sectionAppearance: "Appearance",
   themeLight: "Light",
   themeDark: "Dark",
-  fontSize: "Font size",
-  fontMedium: "Medium",
-  fontLarge: "Large",
-  fontXl: "Extra large",
-  fontXxl: "Largest",
   notifications: "Notifications",
 };
 
@@ -101,8 +89,6 @@ type SettingsContextValue = {
   resolvedTheme: "light" | "dark";
   t: (key: TranslateKey) => string;
   setTheme: (t: ThemeMode) => void;
-  setFontScale: (v: number) => void;
-  setLanguage: (l: Language) => void;
   setNotifications: (v: boolean) => void;
 };
 
@@ -111,11 +97,11 @@ const SettingsContext = createContext<SettingsContextValue | null>(null);
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(loadLocal);
 
-  // Áp dụng chủ đề + cỡ chữ lên <html>
+  // Áp dụng chủ đề lên <html> — cỡ chữ cố định, không set biến điều chỉnh
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle("dark", settings.theme === "dark");
-    root.style.setProperty("--font-size-scale", String(settings.fontScale));
+    root.style.removeProperty("--font-size-scale");
     root.lang = settings.language === "en" ? "en" : "vi";
     saveLocal(settings);
   }, [settings]);
@@ -146,8 +132,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       resolvedTheme: settings.theme,
       t,
       setTheme: (mode) => persist({ theme: mode }),
-      setFontScale: (v) => persist({ fontScale: v }),
-      setLanguage: (l) => persist({ language: l }),
       setNotifications: (v) => persist({ notifications: v }),
     }),
     [settings, persist, t],
@@ -169,8 +153,6 @@ export function useSettings() {
     resolvedTheme: "light" as const,
     t: (key: TranslateKey) => VI[key],
     setTheme: () => {},
-    setFontScale: () => {},
-    setLanguage: () => {},
     setNotifications: () => {},
   };
 }
