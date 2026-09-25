@@ -16,6 +16,8 @@ import {
   AudioLines,
   Bot,
   BookOpen,
+  Check,
+  Copy,
   Eraser,
   Heart,
   ImagePlus,
@@ -25,6 +27,7 @@ import {
   PhoneOff,
   Scale,
   Send,
+  Share2,
   Settings,
   Sparkles,
   Square,
@@ -1174,6 +1177,37 @@ function AssistantMessage({
   ts: number;
   grouped?: boolean;
 }) {
+  const [copied, setCopied] = useState(false);
+  const text = plainText(content);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      return;
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1600);
+  };
+
+  const handleShare = async () => {
+    const payload = `${text}\n\n— Trợ lý Phật học`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Trợ lý Phật học", text: payload });
+        return;
+      }
+    } catch {
+      // Người dùng đã hủy chia sẻ — bỏ qua.
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(payload);
+    } catch {
+      /* bộ nhớ đầy hoặc trình duyệt chặn clipboard */
+    }
+  };
+
   return (
     <div className={cn("flex items-start gap-2", grouped ? "mt-1.5" : "mt-5")}>
       {/* Avatar robot ở TRÊN — thẳng hàng đầu bong bóng trả lời */}
@@ -1182,9 +1216,33 @@ function AssistantMessage({
       </span>
       <div className="min-w-0 flex-1 sm:max-w-[75%]">
         <div className="inline-block max-w-full whitespace-pre-wrap break-words rounded-3xl rounded-bl-md border border-border/50 bg-card px-4 py-2.5 text-[18px] leading-[1.8] text-foreground/95 shadow-sm sm:text-[19px]">
-          {plainText(content)}
+          {text}
         </div>
-        <p className="mt-1 pl-2 text-[12px] text-muted-foreground/70">{formatTs(ts)}</p>
+        <div className="mt-1 flex items-center gap-1 pl-2 text-[12px] text-muted-foreground/70">
+          <span>{formatTs(ts)}</span>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="inline-flex size-7 items-center justify-center rounded-full transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Sao chép câu trả lời"
+            title={copied ? "Đã sao chép" : "Sao chép"}
+          >
+            {copied ? (
+              <Check className="h-3.5 w-3.5 text-gold" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={handleShare}
+            className="inline-flex size-7 items-center justify-center rounded-full transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Chia sẻ câu trả lời"
+            title="Chia sẻ"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
     </div>
   );
