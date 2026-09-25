@@ -336,7 +336,10 @@ export default function Assistant() {
       // chỉ lỗi nghiệp vụ (câu hỏi trống…) mới dừng ngay.
       const askOnce = () =>
         ask({
-          messages: [...base, { role: "user", content: q }],
+          // Chỉ gửi phần ngữ cảnh còn nằm trong giới hạn của action. Lịch sử
+          // cục bộ có thể lưu 100 tin nhắn nhưng server từ chối trên 60;
+          // luôn giữ tin nhắn hiện tại ở cuối để lượt tiếp theo luôn gửi được.
+          messages: [...base, { role: "user" as const, content: q }].slice(-60),
           imageBase64: opts?.fromCall ? undefined : image?.base64,
           imageMime: opts?.fromCall ? undefined : image?.mime,
           ...getDeviceMeta(),
