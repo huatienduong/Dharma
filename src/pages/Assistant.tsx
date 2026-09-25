@@ -43,12 +43,36 @@ type Msg = {
   image?: { base64: string; mime: string };
 };
 
-const SUGGESTIONS: { icon: typeof BookOpen; text: string }[] = [
-  { icon: Sparkles, text: "Tứ Diệu Đế là gì?" },
+/* Kho câu hỏi đề xuất — ƯU TIÊN Bát Chánh Đạo & Tứ Thánh Đế (icon Sparkles
+   đánh dấu nhóm ưu tiên). Mỗi lần vào ứng dụng lấy ngẫu nhiên 4 câu: nhóm
+   ưu tiên luôn đứng đầu, còn lại bổ sung từ nhóm mở rộng. */
+const SUGGESTION_POOLS: { icon: typeof BookOpen; text: string }[] = [
+  // Nhóm ưu tiên — Bát Chánh Đạo & Tứ Thánh Đế
+  { icon: Sparkles, text: "Bát Chánh Đạo gồm những chi nào?" },
+  { icon: Sparkles, text: "Chánh niệm khác chánh định thế nào?" },
+  { icon: Sparkles, text: "Chánh kiến vì sao đứng đầu Bát Chánh Đạo?" },
+  { icon: Sparkles, text: "Chánh ngữ trong thời đại mạng xã hội" },
+  { icon: Sparkles, text: "Chánh mạng: chọn nghề theo Phật pháp" },
+  { icon: Sparkles, text: "Tứ Thánh Đế nghĩa là gì?" },
+  { icon: Sparkles, text: "Khổ Đế hiện lên trong đời sống thế nào?" },
+  { icon: Sparkles, text: "Tập Đế: gốc rễ của khổ nằm ở đâu?" },
+  { icon: Sparkles, text: "Vì sao Diệt Đế chính là Niết-bàn?" },
+  { icon: Sparkles, text: "Đạo Đế dẫn tới chấm dứt khổ ra sao?" },
+  // Nhóm mở rộng — đa dạng chủ đề khác
   { icon: Heart, text: "Hướng dẫn thiền niệm hơi thở cho người mới" },
-  { icon: BookOpen, text: "Kinh Ananda khác Kinh Kim Cang chỗ nào?" },
+  { icon: Heart, text: "Làm sao buông bỏ lo âu trước kỳ thi?" },
+  { icon: BookOpen, text: "Thiền tông khác Theravāda chỗ nào?" },
   { icon: Scale, text: "Mình nên bắt đầu tập tu như thế nào?" },
 ];
+const SUGGESTION_COUNT = 4;
+
+/** Chọn ngẫu nhiên câu hỏi đề xuất — ưu tiên nhóm Bát Chánh Đạo/Tứ Thánh Đế. */
+function pickSuggestions(): typeof SUGGESTION_POOLS {
+  const shuffled = [...SUGGESTION_POOLS].sort(() => Math.random() - 0.5);
+  const priority = shuffled.filter((s) => s.icon === Sparkles);
+  const rest = shuffled.filter((s) => s.icon !== Sparkles);
+  return [...priority, ...rest].slice(0, SUGGESTION_COUNT);
+}
 
 /* ------------------------------------------------------------------ */
 /* Nhận diện giọng nói cho chế độ ĐÀM THOÁI RẢNH TAY (continuous)      */
@@ -146,6 +170,8 @@ export default function Assistant() {
   const dhammapada = useQuery(api.library.getDhammapadaQuote, {});
 
   const [history, setHistory] = useState<Msg[]>([]);
+  // Đề xuất câu hỏi — chọn ngẫu nhiên MỘT LẦN mỗi lần vào ứng dụng.
+  const [suggestions] = useState(() => pickSuggestions());
 
   // Nạp lịch sử ĐÃ MÃ HÓA từ thiết bị (WebCrypto là bất đồng bộ)
   useEffect(() => {
@@ -701,7 +727,7 @@ export default function Assistant() {
               Hôm nay tôi có thể giúp gì cho bạn trên con đường Phật pháp?
             </p>
             <div className="mt-7 grid w-full max-w-lg grid-cols-1 gap-2.5 sm:grid-cols-2">
-              {SUGGESTIONS.map((s) => {
+              {suggestions.map((s) => {
                 const Icon = s.icon;
                 return (
                   <button
@@ -977,6 +1003,18 @@ export default function Assistant() {
 
 /* ------------------------------------------------------------------ */
 
+/**
+ * Vệ sinh hiển thị: đảm bảo không còn ký tự markdown (**, *, ###) trong khung
+ * chat — kể cả tin nhắn cũ lưu trước khi máy chủ tự làm sạch đầu ra.
+ */
+function plainText(s: string): string {
+  return s
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*\n]+)\*/g, "$1")
+    .replace(/^#{1,6}\s*/gm, "")
+    .replace(/^\s*[*•]+\s+/gm, "– ");
+}
+
 function AssistantMessage({
   content,
   ts,
@@ -994,7 +1032,7 @@ function AssistantMessage({
       </span>
       <div className="min-w-0 flex-1 sm:max-w-[75%]">
         <div className="inline-block max-w-full whitespace-pre-wrap break-words rounded-3xl rounded-bl-md border border-border/50 bg-card px-4 py-2.5 text-[18px] leading-[1.8] text-foreground/95 shadow-sm sm:text-[19px]">
-          {content}
+          {plainText(content)}
         </div>
         <p className="mt-1 pl-2 text-[12px] text-muted-foreground/70">{formatTs(ts)}</p>
       </div>

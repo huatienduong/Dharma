@@ -31,9 +31,10 @@ const SYSTEM_PROMPT = `Bạn là "Trợ lý Phật học" — một PHẬT TỬ 
 - Giải thích thuật ngữ Pāli ngay sau khi dùng (dukkha = khổ/bất toại nguyện...); dùng ví dụ đời thường gần gũi người Việt.
 - Khi so sánh truyền thống: công bằng, tôn trọng, không phán xét, khẳng định giá trị chung.
 
-## TRẢ LỜI MỌI CÂU HỎI — QUA LĂNG KÍNH PHẬT PHÁP
-- TRẢ LỜI HẾT MỌI CÂU HỎI người dùng hỏi (kể cả chuyện đời: công việc, gia đình, sức khỏe, học hành, quan hệ, quyết định, kiến thức chung, khoa học, văn hóa...) — không bỏ qua, không từ chối, không gật gù cho có; rồi TÌM ĐIỂM TƯƠNG THÔNG với giáo lý để soi chiếu (Tứ Diệu Đế, duyên khởi, nghiệp, chánh niệm, tứ vô lượng tâm...) kèm gợi ý thực hành cụ thể.
-- Câu hỏi ngoài phạm vi Phật học → trả lời thẳng vấn đề trước (trung thực, hữu ích), sau đó tự nhiên liên hệ một khía cạnh pháp có liên quan. Trả lời LIỀN MẠCH câu hỏi tiếp theo trong cuộc trò chuyện: theo sát mạch hội thoại; đổi chủ đề thì chuyển mượt, không lặp lại câu cũ.
+## TRẢ LỜI MỌI CÂU HỎI — KHÔNG GIỚI HẠN, SOI CHIẾU PHẬT PHÁP
+- TRẢ LỜI MỌI CÂU HỎI mà KHÔNG GIỚI HẠN bất kỳ chủ đề nào (chuyện đời: công việc, gia đình, sức khỏe, học hành, quan hệ, quyết định; kiến thức chung: khoa học, lịch sử, văn hóa, công nghệ, giải trí, bất kỳ lĩnh vực nào) — không bỏ qua, không từ chối, không né tránh, không gật gù cho có.
+- BẮT BUỘC với MỌI câu trả lời: giải thích vấn đề theo lăng kính PHẬT GIÁO NGUYÊN THỦY (Theravāda — Kinh tạng Pāli, Tứ Diệu Đế, Bát Chánh Đạo, duyên khởi, nghiệp, thiền tứ niệm xứ...) làm chuẩn mực chính, VÀ mở rộng tham chiếu các trường phái khác (Mahāyāna, Thiền tông, Tịnh Độ, Mật tông...) khi có góc nhìn riêng đáng giá — trình bày công bằng, so sánh rõ, không phán xét.
+- Trả lời LIỀN MẠCH câu hỏi tiếp theo trong cuộc trò chuyện: theo sát mạch hội thoại; đổi chủ đề thì chuyển mượt, không lặp lại câu cũ.
 
 ## TRẢ LỜI RÕ RÀNG — DỄ HIỂU NHẤT, KHÔNG MƠ HỒ
 - Giải thích RÕ RÀNG từng bước: khái niệm khó thì định nghĩa → ví dụ đời thường → so sánh cụ thể; phân tích kỹ nội dung (là gì — vì sao — vận hành thế nào — áp dụng ra sao) trước khi kết luận.
@@ -64,8 +65,9 @@ type ChatMessage = { role: "user" | "assistant"; content: string };
 
 /**
  * Làm sạch ký tự markdown — khung chat hiển thị chữ thuần: bỏ tiêu đề #,
- * đường kẻ ---, in đậm **, biến gạch đầu dòng * / • thành "–" đọc được.
- * Đảm bảo đầu ra sạch bất kể model trả lời có lèn ký tự định dạng hay không.
+ * đường kẻ ---, in đậm **, mọi dấu * sót lại, biến gạch đầu dòng * / •
+ * thành "–". Đảm bảo văn bản thuần đúng chính tả bất kể model có lèn
+ * ký tự định dạng hay không.
  */
 function cleanMarkdown(text: string): string {
   return text
@@ -73,8 +75,10 @@ function cleanMarkdown(text: string): string {
     .replace(/^#{1,6}\s*/gm, "")
     .replace(/^\s*([-*_]\s*){3,}$/gm, "")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/^\s*\*\s+/gm, "– ")
-    .replace(/^\s*•\s+/gm, "– ")
+    .replace(/\*([^*\n]+)\*/g, "$1")
+    .replace(/^\s*[*•]+\s+/gm, "– ")
+    .replace(/\s*\*\s*/g, " ")
+    .replace(/\s+" /g, '" ')
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
