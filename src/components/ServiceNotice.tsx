@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { AlertTriangle, RotateCw, Settings, WifiOff } from "lucide-react";
+import { Bot, RotateCw, Settings, WifiOff, Wrench } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -25,8 +25,8 @@ export function showServiceNotice(reason: ServiceNoticeReason = "upgrade") {
   );
 }
 
-const MESSAGE =
-  "Đội ngũ kỹ thuật của chúng tôi đang tiến hành nâng cấp hệ thống hoặc nếu bạn thấy thông báo này có thể ứng dụng đang gặp vấn đề sự cố tạm thời, xin vui lòng thoát và đăng nhập lại ứng dụng nếu vấn đề không được cải thiện vui lòng gửi báo cáo lỗi cho chúng tôi. Rất mong bạn thông cảm.";
+const UPGRADE_MESSAGE =
+  "Đội ngũ kỹ thuật đang tiến hành nâng cấp hệ thống hoặc ứng dụng đang gặp vấn đề sự cố tạm thời. Xin vui lòng quay lại sau!";
 
 export function ServiceNotice() {
   const navigate = useNavigate();
@@ -92,7 +92,10 @@ export function ServiceNotice() {
           {offline ? (
             <WifiOff className="h-7 w-7" />
           ) : (
-            <AlertTriangle className="h-7 w-7" />
+            <span className="relative" aria-hidden>
+              <Bot className="h-9 w-9" />
+              <Wrench className="absolute -bottom-1 -right-1 h-4 w-4 animate-pulse text-primary" />
+            </span>
           )}
         </span>
 
@@ -101,7 +104,9 @@ export function ServiceNotice() {
         </h2>
 
         <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-          {MESSAGE}
+          {offline
+            ? "Ứng dụng đang mất kết nối mạng. Vui lòng kiểm tra kết nối rồi quay lại sau."
+            : UPGRADE_MESSAGE}
         </p>
 
         <div className="mt-6 flex flex-col items-center justify-center gap-2.5 sm:flex-row">

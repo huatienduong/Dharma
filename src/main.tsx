@@ -12,6 +12,7 @@ import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
 import React, { StrictMode, useEffect, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
+import { Bot, Wrench } from "lucide-react";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import "./index.css";
 import { startContentProtection } from "@/lib/contentProtection";
@@ -66,15 +67,15 @@ class RootErrorBoundary extends React.Component<
       return (
         <div className="min-h-screen flex items-center justify-center bg-background text-foreground p-6">
           <div className="max-w-lg rounded-3xl border border-border/60 bg-card/90 p-6 text-center shadow-xl">
-            <h2 className="text-lg font-bold tracking-tight">
+            <span className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary" aria-hidden>
+              <Bot className="h-9 w-9" />
+              <Wrench className="absolute bottom-1 right-1 h-4 w-4 animate-pulse" />
+            </span>
+            <h2 className="mt-4 text-lg font-bold tracking-tight">
               Trợ lý Phật học đang được nâng cấp
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-              Đội ngũ kỹ thuật của chúng tôi đang tiến hành nâng cấp hệ thống hoặc
-              nếu bạn thấy thông báo này có thể ứng dụng đang gặp vấn đề sự cố
-              tạm thời, xin vui lòng thoát và đăng nhập lại ứng dụng nếu vấn đề
-              không được cải thiện vui lòng gửi báo cáo lỗi cho chúng tôi. Rất
-              mong bạn thông cảm.
+              Đội ngũ kỹ thuật đang tiến hành nâng cấp hệ thống hoặc ứng dụng đang gặp vấn đề sự cố tạm thời. Xin vui lòng quay lại sau!
             </p>
             <div className="mt-5 flex flex-col items-center justify-center gap-2.5 sm:flex-row">
               <button
