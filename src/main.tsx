@@ -96,7 +96,7 @@ class RootErrorBoundary extends React.Component<
 
 // Deployment HOẠT ĐỘNG ĐÃ XÁC MINH (HTTP 200 + query trả dữ liệu thật).
 // Cố định — không phụ thuộc env của nền tảng vì các URL env cũ đều đã chết.
-const DHARMA_CONVEX_URL = "https://fearless-anteater-216.convex.cloud";
+const DHARMA_CONVEX_URL = "https://determined-rabbit-619.convex.cloud";
 const convex = new ConvexReactClient(DHARMA_CONVEX_URL);
 
 // SỬA LỖI TRẮNG TRANG trên domain riêng: basename phải tự động theo nơi app
