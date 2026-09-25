@@ -1,4 +1,5 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { ConvexError } from "convex/values";
 import { v } from "convex/values";
 import { internalMutation, mutation, query } from "./_generated/server";
 
@@ -16,7 +17,7 @@ export const submitFeedback = mutation({
   handler: async (ctx, { type, message, email, appVersion }) => {
     const userId = await getAuthUserId(ctx);
     const clean = message.trim();
-    if (clean.length < 5) throw new Error("Nội dung góp ý quá ngắn.");
+    if (clean.length < 5) throw new ConvexError("Nội dung góp ý quá ngắn.");
     await ctx.db.insert("feedback", {
       userId: userId ?? undefined,
       type,

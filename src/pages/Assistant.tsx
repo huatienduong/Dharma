@@ -289,9 +289,9 @@ export default function Assistant() {
         try {
           reply = await askOnce();
         } catch (firstErr) {
-          const msg = firstErr instanceof Error ? firstErr.message : String(firstErr);
+          const msg = convexErrMessage(firstErr);
           // Lỗi nhất thời (mạng/giới hạn tốc độ/treo provider) → thử lại 1 lần
-          if (/hết giờ|timeout|network|fetch|rate|429|5\d\d|ECONN/i.test(msg)) {
+          if (/hết giờ|timeout|network|fetch|rate|429|5\d\d|ECONN|tạm chưa trả lời/i.test(msg)) {
             reply = await askOnce();
           } else {
             throw firstErr;
@@ -330,23 +330,17 @@ export default function Assistant() {
           // muốn nghe thì bấm nút loa ở từng câu trả lời.
         }
       } catch (err) {
+        const userMsg = convexErrMessage(err);
         if (!opts?.fromCall) {
-          toast.error(
-            err instanceof Error ? err.message : "Không gửi được câu hỏi.",
-          );
+          toast.error(userMsg || "Không gửi được câu hỏi.");
         } else {
-          toast.error(
-            err instanceof Error ? err.message : "Không kết nối được trợ lý.",
-          );
+          toast.error(userMsg || "Không kết nối được trợ lý.");
           // CHỈ khi lỗi lặp lại cả 2 lần (sự cố thật, không phải lỗi nhất
           // thời) → hiện thông báo dịch vụ; tránh banner sai do 429/timeout.
-          const isTransient = /quá nhanh|giới hạn|429|hết giờ|timeout|ECONN|fetch/i.test(
-            String(err),
+          const isTransient = /quá nhanh|giới hạn|429|hết giờ|timeout|ECONN|fetch|tạm chưa trả lời/i.test(
+            userMsg,
           );
-          if (
-            !isTransient &&
-            /không kết nối được|máy chủ AI|provider/i.test(String(err))
-          ) {
+          if (!isTransient && /chưa kết nối được|máy chủ AI/i.test(userMsg)) {
             showServiceNotice("upgrade");
           }
           sendingRef.current = false;
@@ -984,6 +978,37 @@ function formatTs(ts: number): string {
     month: "2-digit",
   });
   return `${time} · ${date}`;
+}
+
+/**
+ * Bóc thông điệp lỗi từ backend Convex — ConvexError trên production gửi
+ * thông điệp qua thuộc tính `data` (có thể bọc trong Error.message dạng
+ * chuỗi JSON). Trả về chuỗi đọc được cho người dùng.
+ */
+function convexErrMessage(err: unknown): string {
+  if (!err) return "";
+  // ConvexError client-side: { data: "thông điệp" }
+  const direct = (err as { data?: unknown }).data;
+  if (typeof direct === "string" && direct.trim()) return direct;
+  if (direct && typeof direct === "object") {
+    const m = (direct as { message?: unknown }).message;
+    if (typeof m === "string" && m.trim()) return m;
+  }
+  if (err instanceof Error && err.message.trim()) {
+    const raw = err.message;
+    // Chuỗi dạng JSON: {"data":"..."} hoặc {"message":"..."}
+    if (raw.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(raw) as { data?: unknown; message?: unknown };
+        if (typeof parsed.data === "string" && parsed.data.trim()) return parsed.data;
+        if (typeof parsed.message === "string" && parsed.message.trim()) return parsed.message;
+      } catch {
+        /* không phải JSON — dùng nguyên chuỗi */
+      }
+    }
+    return raw;
+  }
+  return String(err);
 }
 
 function AssistantThinking() {
