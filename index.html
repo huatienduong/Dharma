@@ -6,16 +6,17 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b45309'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='white' stroke-width='2.5'/%3E%3Ccircle cx='16' cy='16' r='2.5' fill='white'/%3E%3C/svg%3E" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <title>Trợ lý Phật học</title>
     <style>
-      /* Full màn hình, chống bounce — cho phép pinch-zoom (người lớn tuổi cần
-         phóng to nội dung; chặn zoom là chống lại khả năng tiếp cận). */
+      /* Chặn hoàn toàn thu phóng: khung ứng dụng cố định, không pinch,
+         không double-tap zoom — ngăn công cụ/thiết bị bên thứ ba can thiệp
+         giao diện. Người lớn tuổi dùng Cỡ chữ trong Cài đặt để phóng chữ. */
       html,
       body {
         overscroll-behavior: none;
-        touch-action: manipulation;
+        touch-action: pan-x pan-y;
         margin: 0;
         background: #faf6ef;
       }
@@ -54,9 +55,26 @@
           },
           { passive: false },
         );
+        // Chặn phím tắt zoom (Ctrl +/−/0) — phủ kín mọi đường thu phóng
+        document.addEventListener(
+          "keydown",
+          function (e) {
+            if (
+              (e.ctrlKey || e.metaKey) &&
+              (e.key === "+" ||
+                e.key === "-" ||
+                e.key === "=" ||
+                e.key === "0" ||
+                e.key === "_")
+            ) {
+              e.preventDefault();
+            }
+          },
+          { passive: false },
+        );
       })();
-      // Không còn chặn zoom — người dùng (nhất là người lớn tuổi) được phóng
-      // to nội dung bằng pinch / ctrl+wheel / double-tap tùy ý.
+      // Zoom bị chặn HOÀN TOÀN: viewport user-scalable=no + touch-action
+      // pan-x/pan-y + các listener ở trên (pinch, ctrl+wheel, double-tap).
     </script>
   </head>
   <body>
