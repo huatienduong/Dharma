@@ -710,7 +710,7 @@ export default function Assistant() {
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
         {isEmpty ? (
           <div className="flex min-h-full flex-col items-center justify-center px-4 py-8 text-center">
-            <p className="max-w-md text-xl font-semibold leading-relaxed tracking-tight text-foreground sm:text-2xl">
+            <p className="-translate-y-2 max-w-md text-xl font-semibold leading-relaxed tracking-tight text-foreground sm:text-2xl">
               Hôm nay tôi có thể giúp gì cho bạn trên con đường Phật pháp?
             </p>
             <div className="mt-7 grid w-full max-w-lg grid-cols-1 gap-2.5 sm:grid-cols-2">
