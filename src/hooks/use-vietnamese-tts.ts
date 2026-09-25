@@ -55,6 +55,7 @@ export type SpeakOpts = {
 
 let sharedCtx: AudioContext | null = null;
 let speechPrimed = false;
+let noVietnameseVoiceWarned = false;
 
 function getSharedCtx(): AudioContext | null {
   try {
@@ -97,6 +98,12 @@ function primeBrowserAudio(): void {
 /**
  * Phát audio (data URL) qua Web Audio — đáng tin cậy hơn HTMLAudioElement
  * trong iframe/webview. Promise resolve KHI PHÁT XONG, reject nếu lỗi.
+ *
+ * Có chốt chặn thời gian: nếu AudioContext bị trình duyệt khoá (suspended) —
+ * việc `src.start()` chạy nhưng KHÔNG phát ra tiếng và `onended` không bao
+ * giờ bắn — nếu không chốt chặn, lời gọi treo im lặng vĩnh viễn và các
+ * nhánh dự phòng phía sau không bao giờ được gọi. Từ đây ta luôn reject
+ * khi quá thời gian để rơi tiếp sang HTMLAudio / Web Speech.
  */
 async function playWithWebAudio(dataUrl: string): Promise<void> {
   const ctx = getSharedCtx();
@@ -107,13 +114,33 @@ async function playWithWebAudio(dataUrl: string): Promise<void> {
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
   const buffer = await ctx.decodeAudioData(bytes.buffer as ArrayBuffer);
+
   return new Promise<void>((resolve, reject) => {
+    // Vẫn suspended sau khi resume → không thể phat, trả về ngay để thử
+    // đường khác thay vì chờ mãi.
+    if (ctx.state !== "running") {
+      reject(new Error("audio-context-suspended"));
+      return;
+    }
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     src.connect(ctx.destination);
-    src.onended = () => resolve();
+    // Trừ thêm 3s cho việc giải mã/phát và cộng thêm độ dài âm thanh.
+    const deadlineMs = (buffer.duration + 3) * 1000;
+    const timer = window.setTimeout(() => {
+      try {
+        src.stop();
+      } catch {
+        /* noop */
+      }
+      reject(new Error("webaudio-timeout"));
+    }, deadlineMs);
+    src.onended = () => {
+      window.clearTimeout(timer);
+      resolve();
+    };
     // AudioBufferSourceNode không có onerror — lỗi phát hiện qua việc context
-    // bị đóng giữa chừng: promise không resolve → caller tự có timeout riêng.
+    // bị đóng giữa chừng: promise không resolve → chốt chặn ở trên bắt.
     src.start();
   });
 }
@@ -214,6 +241,21 @@ export function useVietnameseTTS() {
       synth.resume();
       primeBrowserAudio();
       setEngine("browser");
+
+      // Cảnh báo nếu máy không có giọng tiếng Việt: đọc tiếng Việt bằng
+      // giọng nước ngoài nghe rất khó hiểu, và nhiều WebView đọc sai dấu.
+      // Ghi log rõ ràng tốt hơn là im lặng không giải thích.
+      if (!noVietnameseVoiceWarned) {
+        const hasVi = synth
+          .getVoices()
+          .some((v) => v.lang?.toLowerCase().startsWith("vi"));
+        if (!hasVi) {
+          noVietnameseVoiceWarned = true;
+          console.warn(
+            "[TTS] Thiết bị không có giọng tiếng Việt — chất lượng đọc sẽ kém.",
+          );
+        }
+      }
 
       const pref = getVoice(voiceId);
 
@@ -324,7 +366,9 @@ export function useVietnameseTTS() {
       }
 
       let settled = false; // đảm bảo onDone chỉ chạy đúng một lần
+      let audioWatchdog = 0;
       const finishWith = (fn?: () => void) => {
+        window.clearTimeout(audioWatchdog);
         if (settled) return;
         settled = true;
         interruptRef.current = null;
@@ -337,8 +381,10 @@ export function useVietnameseTTS() {
         finishWith(() => opts.onDone?.());
       };
 
-      // 1. Thử server TTS — timeout ngắn để trình duyệt chuyển sang
-      // Web Speech nhanh, không để người dùng tưởng cuộc gọi bị treo.
+      // 1. Thử server TTS. Timeout 9s: máy chủ có thể thử lần lượt nhiều
+      //    model TTS, và lần khởi động đầu tiên hay chậm. Timeout quá ngắn
+      //    (trước đây 4s) khiến hầu hết câu rơi về Web Speech — mà máy
+      //    không có giọng vi-VN thì đàm thoại im lặng hoàn toàn.
       let timeoutId = 0;
       try {
         const res = await Promise.race([
@@ -349,7 +395,7 @@ export function useVietnameseTTS() {
             ...getDeviceMeta(),
           }),
           new Promise<null>((resolve) => {
-            timeoutId = window.setTimeout(() => resolve(null), 4_000);
+            timeoutId = window.setTimeout(() => resolve(null), 9_000);
           }),
         ]);
         window.clearTimeout(timeoutId);
@@ -387,17 +433,34 @@ export function useVietnameseTTS() {
             audio.setAttribute("playsinline", "true");
             audioRef.current = audio;
             audio.onended = () => {
+              window.clearTimeout(audioWatchdog);
               audioRef.current = null;
               finishWith(() => opts.onDone?.());
             };
             audio.onerror = () => {
+              window.clearTimeout(audioWatchdog);
               audioRef.current = null;
               finishWith(() => webSpeak(clean, opts.voice, opts.onDone));
             };
             unlockSharedCtx();
             await audio.play();
+            // Chốt chặn: một số WebView phát xong nhưng không bắn onended —
+            // không có chốt chặn thì vòng đàm thoại kẹt vĩnh viễn ở trạng
+            // thái "đang nói" và người dùng không nghe thấy gì cả.
+            const estMs = Math.max(8_000, clean.length * 90);
+            audioWatchdog = window.setTimeout(() => {
+              if (audioRef.current !== audio) return;
+              audioRef.current = null;
+              try {
+                audio.pause();
+              } catch {
+                /* noop */
+              }
+              finishWith(() => webSpeak(clean, opts.voice, opts.onDone));
+            }, estMs);
             return;
           } catch {
+            window.clearTimeout(audioWatchdog);
             audioRef.current = null;
             /* HTMLAudio cũng lỗi → Web Speech */
           }

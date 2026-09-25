@@ -321,6 +321,18 @@ type ServerVoice = { gemini: string; male: boolean };
  * TTS chỉ dùng Gemini (key sống). Groq đã ngừng TTS (playai-tts bị
  * decommission), OpenAI key đã hết credit — đã loại bỏ các nhánh chết.
  */
+/**
+ * Model TTS, thử từ mới nhất → cũ nhất. Google thu hồi model cũ theo lịch
+ * nên danh sách phải có nhiều bản dự phòng, nếu không một lần đổi tên là
+ * toàn bộ đàm thoại im lặng (client rơi về Web Speech mà máy không có
+ * giọng tiếng Việt).
+ */
+const GEMINI_TTS_MODELS = [
+  "gemini-3.8-flash-tts",
+  "gemini-3.1-flash-tts-preview",
+  "gemini-2.5-flash-preview-tts",
+] as const;
+
 const SERVER_VOICES: Record<string, ServerVoice> = {
   metta: { gemini: "Kore", male: false },
   karuna: { gemini: "Autonoe", male: false },
@@ -861,37 +873,42 @@ export const speak = action({
     const geminiKey = process.env.GEMINI_API_KEY;
 
     if (geminiKey) {
-      try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-goog-api-key": geminiKey,
-            },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: `${toneHint} ${clean}`,
+      // Google đã liên tục thay model TTS (2.5 preview → 3.x). Thử lần lượt
+      // danh sách này: model đầu tiên còn sống sẽ trả audio, model đã bị
+      // thu hồi trả 404 và ta chuyển sang model kế tiếp — nhờ vậy TTS không
+      // chết âm thầm khi Google đổi tên model.
+      for (const model of GEMINI_TTS_MODELS) {
+        try {
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": geminiKey,
+              },
+              body: JSON.stringify({
+                contents: [
+                  {
+                    parts: [
+                      {
+                        text: `${toneHint} ${clean}`,
+                      },
+                    ],
+                  },
+                ],
+                generationConfig: {
+                  responseModalities: ["AUDIO"],
+                  speechConfig: {
+                    voiceConfig: {
+                      prebuiltVoiceConfig: { voiceName: geminiVoice },
                     },
-                  ],
-                },
-              ],
-              generationConfig: {
-                responseModalities: ["AUDIO"],
-                speechConfig: {
-                  voiceConfig: {
-                    prebuiltVoiceConfig: { voiceName: geminiVoice },
                   },
                 },
-              },
-            }),
-          },
-        );
-        if (res.ok) {
+              }),
+            },
+          );
+          if (!res.ok) continue;
           const json = (await res.json()) as {
             candidates?: {
               content?: {
@@ -906,9 +923,9 @@ export const speak = action({
               mime: part.mimeType ?? "audio/L16;rate=24000",
             };
           }
+        } catch {
+          /* thử model tiếp theo */
         }
-      } catch {
-        /* thử nhà cung cấp tiếp theo */
       }
     }
 
