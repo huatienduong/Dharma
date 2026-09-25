@@ -355,13 +355,11 @@ type ProviderChoice = {
 };
 
 const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
-const GEMINI_BASE_URL =
-  "https://generativelanguage.googleapis.com/v1beta/openai";
 
 /**
  * Model Groq theo thứ tự ưu tiên. Groq thường xuyên thu hồi model (llama-3.3-70b,
  * qwen3-32b... đã bị gỡ khỏi free tier) nên không được hardcode một tên duy
- * nhất: hàm dòModelGroq sẽ hỏi API /models và lấy tên còn sống đầu tiên.
+ * nhất: listGroqModels sẽ hỏi API /models và dùng những tên còn sống.
  */
 const GROQ_TEXT_PREFERENCE = [
   "openai/gpt-oss-120b",
@@ -375,62 +373,17 @@ const GROQ_VISION_PREFERENCE = [
   "meta-llama/llama-4-scout-17b-16e-instruct",
   "meta-llama/llama-4-scout-17b",
 ];
-/** Model dự phòng cuối cùng nếu danh sách ưu tiên hết — tránh gọi tên chết. */
-const GROQ_ANY_FALLBACK = "openai/gpt-oss-120b";
 
 /**
  * Cache danh sách model sống trong chính action runtime. Một lần dò mất
  * tối đa 4s — không cache thì mỗi lượt chat đều chờ, gây cảm giác ứng dụng
- * bị treo. TTL 10 phút đủ để vẫn phản ứng khi provider đổi danh sách.
+ * bị treo. TTL 10 phút đủ để vẫn phản ứng khi Groq đổi danh sách model.
  */
 const liveModelsCache = new Map<
   string,
-  { at: number; text: string; vision: string; gemini: string }
+  { at: number; text: string; vision: string }
 >();
 const LIVE_MODELS_TTL_MS = 10 * 60_000;
-
-/**
- * Hỏi Groq xem model nào đang thật sự khả dụng, rồi chọn theo thứ tự ưu
- * tiên. Nhờ vậy Groq đổi danh sách model không làm sập trợ lý.
- */
-async function pickGroqModel(
-  groqKey: string,
-  needVision: boolean,
-): Promise<string> {
-  const preference = needVision ? GROQ_VISION_PREFERENCE : GROQ_TEXT_PREFERENCE;
-  const cached = liveModelsCache.get(groqKey);
-  if (cached && Date.now() - cached.at < LIVE_MODELS_TTL_MS) {
-    return needVision ? cached.vision : cached.text;
-  }
-  try {
-    const res = await fetch(`${GROQ_BASE_URL}/models`, {
-      headers: { Authorization: `Bearer ${groqKey}` },
-      signal: AbortSignal.timeout(4_000),
-    });
-    if (!res.ok) return preference[0];
-    const json = (await res.json()) as { data?: { id?: string }[] };
-    const live = new Set(
-      (json.data ?? []).map((m) => m.id ?? "").filter(Boolean),
-    );
-    if (live.size === 0) return preference[0];
-    const choose = (list: string[], vision: boolean) => {
-      for (const id of list) if (live.has(id)) return id;
-      // Ưu tiên không khớp: lấy model đọc ảnh / model chat bất kỳ.
-      const any = [...live].find((id) =>
-        vision
-          ? /vision|vl|scout|qwen/i.test(id)
-          : /gpt|llama|qwen|gemma|mistral/i.test(id),
-      );
-      return any ?? GROQ_ANY_FALLBACK;
-    };
-    const text = choose(GROQ_TEXT_PREFERENCE, false);
-    const vision = choose(GROQ_VISION_PREFERENCE, true);
-    liveModelsCache.set(groqKey, { at: Date.now(), text, vision, gemini: cached?.gemini ?? "" });
-    return needVision ? vision : text;
-  } catch {
-    return preference[0];
-  }
-}
 
 /**
  * Chẩn đoán: nhà cung cấp nào đã cấu hình khóa (chỉ trả boolean, không lộ giá trị).
@@ -440,7 +393,6 @@ export const providerStatus = action({
   args: {},
   handler: async () => {
     const groqKey = process.env.GROQ_API_KEY;
-    const geminiKey = process.env.GEMINI_API_KEY;
     let groqModels: string[] = [];
     if (groqKey) {
       try {
@@ -457,113 +409,95 @@ export const providerStatus = action({
         /* Chỉ là trạng thái chẩn đoán, không ảnh hưởng luồng chat. */
       }
     }
+    // Chat dùng Groq là nhà cung cấp DUY NHẤT. Gemini chỉ còn phục vụ TTS
+    // (đọc to) và tạo ảnh — hai tính năng Groq không cung cấp.
     return {
       groq: !!groqKey,
-      gemini: !!geminiKey,
+      geminiTts: !!process.env.GEMINI_API_KEY,
       groqModels,
     };
   },
 });
 
 /**
- * Danh sách provider khả dụng theo khóa cấu hình — GROQ LÀ CHÍNH (nhanh,
- * hạn mức rộng), Gemini là dự phòng. Model llama-3.3-70b ĐÃ BỊ Groq
- * decommission → dùng model mới đang hỗ trợ (đã test tiếng Việt tốt).
+ * DANH SÁCH MODEL GROQ dùng làm nhánh dự phòng cho chat. Ứng dụng chỉ dùng
+ * Groq làm nhà cung cấp chat, nên mỗi model được thử lần lượt: model đầu
+ * tiên quá tải / bị thu hồi / trả lỗi sẽ tự chuyển sang model kế tiếp thay
+ * vì để trợ lý ngừng hoạt động.
  */
-/**
- * Model Gemini theo thứ tự ưu tiên — thử từ mới nhất → cũ nhất. Google
- * liên tục thu hồi model (gemini-1.5/2.0 đã bị gỡ), nên không hardcode
- * một tên duy nhất.
- */
-const GEMINI_TEXT_PREFERENCE = [
-  "gemini-3.5-flash-lite",
-  "gemini-3.1-flash-lite",
-  "gemini-2.5-flash-lite",
-  "gemini-2.5-flash",
-];
-
-/** Dò model Gemini còn sống; gọi lỗi thì dùng tên ưu tiên đầu tiên. */
-async function pickGeminiModel(geminiKey: string): Promise<string> {
-  const cached = liveModelsCache.get(geminiKey);
-  if (cached && Date.now() - cached.at < LIVE_MODELS_TTL_MS && cached.gemini) {
-    return cached.gemini;
+async function listGroqModels(
+  groqKey: string,
+  needVision: boolean,
+): Promise<string[]> {
+  const preference = needVision ? GROQ_VISION_PREFERENCE : GROQ_TEXT_PREFERENCE;
+  const cached = liveModelsCache.get(groqKey);
+  if (cached && Date.now() - cached.at < LIVE_MODELS_TTL_MS && cached.text) {
+    return needVision ? [cached.vision] : [cached.text];
   }
+  let live: Set<string>;
   try {
-    const res = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models",
-      { headers: { "x-goog-api-key": geminiKey }, signal: AbortSignal.timeout(4_000) },
-    );
-    if (!res.ok) return GEMINI_TEXT_PREFERENCE[0];
-    const json = (await res.json()) as { models?: { name?: string }[] };
-    const live = new Set(
-      (json.models ?? [])
-        .map((m) => (m.name ?? "").replace(/^models\//, ""))
-        .filter((n) => n.startsWith("gemini") && !n.includes("tts") && !n.includes("image")),
-    );
-    if (live.size === 0) return GEMINI_TEXT_PREFERENCE[0];
-    let picked = GEMINI_TEXT_PREFERENCE[0];
-    for (const id of GEMINI_TEXT_PREFERENCE) {
-      if (live.has(id)) {
-        picked = id;
-        break;
-      }
-    }
-    if (!live.has(picked)) {
-      picked = [...live].find((n) => /flash/i.test(n)) ?? picked;
-    }
-    liveModelsCache.set(geminiKey, {
-      at: Date.now(),
-      text: cached?.text ?? "",
-      vision: cached?.vision ?? "",
-      gemini: picked,
+    const res = await fetch(`${GROQ_BASE_URL}/models`, {
+      headers: { Authorization: `Bearer ${groqKey}` },
+      signal: AbortSignal.timeout(4_000),
     });
-    return picked;
+    if (!res.ok) return [preference[0]];
+    const json = (await res.json()) as { data?: { id?: string }[] };
+    live = new Set((json.data ?? []).map((m) => m.id ?? "").filter(Boolean));
+    if (live.size === 0) return [preference[0]];
   } catch {
-    return GEMINI_TEXT_PREFERENCE[0];
+    return [preference[0]];
   }
+
+  // Ưu tiên: các tên trong danh sách đang sống, theo thứ tự ưu tiên; sau đó
+  // bổ sung model phù hợp còn lại để dự phòng. Loại model chỉ dùng TTS
+  // (audio) vì không trả lời được câu hỏi bằng chữ.
+  const pattern = needVision
+    ? /vision|vl|scout|qwen/i
+    : /gpt|llama|qwen|gemma|mistral|kimi/i;
+  const ordered: string[] = [];
+  for (const id of preference) if (live.has(id)) ordered.push(id);
+  for (const id of live) {
+    if (ordered.includes(id)) continue;
+    if (id.includes("-tts") || id.includes("whisper")) continue;
+    if (pattern.test(id)) ordered.push(id);
+  }
+  if (ordered.length === 0) return [preference[0]];
+
+  const text = live.has(GROQ_TEXT_PREFERENCE[0]) ? GROQ_TEXT_PREFERENCE[0] : ordered[0];
+  const vision = live.has(GROQ_VISION_PREFERENCE[0]) ? GROQ_VISION_PREFERENCE[0] : ordered[0];
+  liveModelsCache.set(groqKey, { at: Date.now(), text, vision });
+  return needVision ? [vision, ...ordered] : [text, ...ordered];
 }
 
 async function listAllProviders(needVision: boolean): Promise<ProviderChoice[]> {
   const groqKey = process.env.GROQ_API_KEY;
-  const geminiKey = process.env.GEMINI_API_KEY;
   const out: ProviderChoice[] = [];
 
   if (groqKey) {
     // Groq mô hình văn bản không đọc được ảnh. Khi có ảnh phải chuyển sang
     // model multimodal theo đúng định dạng image_url của Groq.
-    const model = await pickGroqModel(groqKey, needVision);
-    out.push({
-      label: "Groq",
-      make: () =>
-        createOpenAICompatible({
-          name: "groq",
-          baseURL: GROQ_BASE_URL,
-          apiKey: groqKey,
-        }),
-      model,
-    });
-  }
-
-  if (geminiKey) {
-    out.push({
-      label: "Gemini",
-      make: () =>
-        createOpenAICompatible({
-          name: "gemini",
-          baseURL: GEMINI_BASE_URL,
-          apiKey: geminiKey,
-        }),
-      model: await pickGeminiModel(geminiKey),
-    });
+    const models = await listGroqModels(groqKey, needVision);
+    for (const model of models) {
+      out.push({
+        label: "Groq",
+        make: () =>
+          createOpenAICompatible({
+            name: "groq",
+            baseURL: GROQ_BASE_URL,
+            apiKey: groqKey,
+          }),
+        model,
+      });
+    }
   }
 
   return out;
 }
 
 /**
- * Danh sách provider thực tế sẽ gọi: loại provider/model đang trong thời
- * gian "chết tạm thời" (circuit breaker) để người dùng không chờ timeout
- * vào một provider đang hỏng. Provider còn lại vẫn giữ làm đường chính.
+ * Danh sách model thực tế sẽ gọi: loại model đang trong thời gian "chết
+ * tạm thời" (circuit breaker) để người dùng không chờ timeout vào một
+ * model đang hỏng. Model còn lại trong danh sách vẫn dùng được.
  */
 async function listProviders(
   ctx: ActionCtx,
@@ -588,9 +522,8 @@ async function listProviders(
   const available = configured.filter(
     (p) => !dead[`${p.label}/${p.model}`],
   );
-  // Không để một lỗi tạm thời của circuit breaker khóa hoàn toàn ứng dụng.
-  // Nếu tất cả provider đang bị đánh dấu dead, vẫn thử lại provider đầu tiên
-  // ngay để người dùng không phải chờ hết TTL 10 phút.
+  // Không để circuit breaker khóa hoàn toàn ứng dụng: nếu mọi model đang bị
+  // đánh dấu dead, vẫn thử lại ngay để người dùng không phải chờ hết TTL.
   return available.length > 0 ? available : configured;
 }
 
@@ -623,12 +556,15 @@ export const aiSelfTest = internalAction({
         note = err instanceof Error ? err.message : String(err);
       }
 
-      // Kiểm tra theo model THỰC SỰ được chọn (dò từ /models) thay vì so
+      // Kiểm tra các model chat THỰC SỰ dùng (dò từ /models) thay vì so
       // từng tên trong danh sách ưu tiên — danh sách ưu tiên cố tình chứa
       // cả các model đã bị thu hồi để dòng dự phòng.
-      const liveText = await pickGroqModel(groqKey, false);
-      const liveVision = await pickGroqModel(groqKey, true);
-      for (const model of [liveText, liveVision]) {
+      const [liveText, liveVision] = await Promise.all([
+        listGroqModels(groqKey, false),
+        listGroqModels(groqKey, true),
+      ]);
+      const checkModels = [...new Set([...liveText, ...liveVision])];
+      for (const model of checkModels) {
         const ok = availableModels.includes(model);
         const modelNote = ok
           ? "sống"
@@ -638,13 +574,16 @@ export const aiSelfTest = internalAction({
         if (ok) await clearProviderState(ctx, "Groq", model);
         else await markProviderFailure(ctx, "Groq", model, modelNote);
       }
-      notes.push(`Groq: ${note} (${liveText} / ${liveVision})`);
+      notes.push(
+        `Groq: ${note} (${checkModels.length} model chat: ${checkModels.slice(0, 4).join(", ")})`,
+      );
     }
 
+    // Gemini KHÔNG còn phục vụ chat — chỉ còn TTS (đọc to). Kiểm tra model
+    // TTS thật sự sống để đàm thoại không chết âm thầm khi Google đổi model.
     const geminiKey = process.env.GEMINI_API_KEY;
     if (geminiKey) {
-      const geminiModel = await pickGeminiModel(geminiKey);
-      let ok = false;
+      let liveTts: string | null = null;
       let note = "sống";
       try {
         const res = await fetch(
@@ -653,20 +592,29 @@ export const aiSelfTest = internalAction({
         );
         if (res.ok) {
           const json = (await res.json()) as { models?: { name?: string }[] };
-          const names = (json.models ?? []).map((m) => m.name ?? "");
-          ok = names.some(
-            (n) => n === `models/${geminiModel}` || n.endsWith(`/${geminiModel}`),
+          const names = (json.models ?? []).map((m) =>
+            (m.name ?? "").replace(/^models\//, ""),
           );
-          if (!ok) note = `model ${geminiModel} không còn trong danh sách Gemini`;
+          liveTts = GEMINI_TTS_MODELS.find((id) => names.includes(id)) ?? null;
+          if (!liveTts) note = "không còn model TTS nào trong danh sách";
         } else {
           note = `HTTP ${res.status}`;
         }
       } catch (err) {
         note = err instanceof Error ? err.message : String(err);
       }
-      if (ok) await clearProviderState(ctx, "Gemini", geminiModel);
-      else await markProviderFailure(ctx, "Gemini", geminiModel, note);
-      notes.push(`Gemini: ${note}`);
+      if (liveTts) {
+        for (const id of GEMINI_TTS_MODELS) {
+          if (id === liveTts) await clearProviderState(ctx, "GeminiTTS", id);
+          else await markProviderFailure(ctx, "GeminiTTS", id, "model không còn");
+        }
+        notes.push(`Gemini TTS: ${note} (${liveTts})`);
+      } else {
+        for (const id of GEMINI_TTS_MODELS) {
+          await markProviderFailure(ctx, "GeminiTTS", id, note);
+        }
+        notes.push(`Gemini TTS: ${note}`);
+      }
     }
 
     return notes.length ? notes.join(" | ") : "Chưa cấu hình khóa AI nào.";
@@ -872,6 +820,7 @@ export const ask = action({
 
     const providers = await listProviders(ctx, Boolean(imageBase64));
     if (providers.length === 0) {
+      // Không có model nào cấu hình được — thường là thiếu GROQ_API_KEY.
       return {
         ok: false as const,
         code: "no_provider",
