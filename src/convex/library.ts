@@ -65,7 +65,7 @@ export const submitFeedback = mutation({
 /* Chuyển góp ý / báo lỗi đến email nhà phát triển                     */
 /* ------------------------------------------------------------------ */
 
-const FEEDBACK_TO_EMAIL = "huatienduong@pm.me";
+const FEEDBACK_TO_EMAIL = "huatienduong@protonmail.com";
 
 function escapeHtml(value: string): string {
   return value
