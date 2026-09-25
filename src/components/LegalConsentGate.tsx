@@ -1,52 +1,91 @@
 import { cn } from "@/lib/utils";
 import { LegalDocs } from "@/components/LegalDocs";
 import { Button } from "@/components/ui/button";
+import { LEGAL_DOCS, type LegalDocKey } from "@/convex/legalContent";
 import { Check, FileText, Scale, ShieldCheck } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-const CONSENT_KEY = "dharma-legal-consent-v1";
+const CONSENT_KEY = "dharma-legal-consent-v2";
+
+type ConsentRecord = {
+  version: string;
+  documents: Partial<Record<LegalDocKey, string>>;
+};
+
+const DOC_META: Record<LegalDocKey, { label: string; icon: typeof FileText }> = {
+  "privacy-policy": { label: "Chính sách quyền riêng tư", icon: FileText },
+  "terms-of-service": { label: "Điều khoản sử dụng", icon: Scale },
+};
+
+function readConsent(): ConsentRecord | null {
+  try {
+    const raw = localStorage.getItem(CONSENT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<ConsentRecord>;
+    if (
+      typeof parsed.version !== "string" ||
+      !parsed.documents ||
+      typeof parsed.documents !== "object"
+    ) {
+      return null;
+    }
+    return {
+      version: parsed.version,
+      documents: parsed.documents as Partial<Record<LegalDocKey, string>>,
+    };
+  } catch {
+    return null;
+  }
+}
 
 /**
- * Chỉ hiện một lần trên mỗi thiết bị/phiên cài ứng dụng. Sau khi người dùng
- * đồng ý, lựa chọn được lưu cục bộ và không hỏi lại ở các lần mở sau.
+ * Mỗi lần nội dung pháp lý thay đổi, người dùng phải đọc lại phần thay đổi và
+ * xác nhận đồng ý. Bản đồ nội dung đã đồng ý được giữ cục bộ để không yêu cầu
+ * đọc lại những tài liệu không thay đổi.
  */
 export function LegalConsentGate() {
-  const [accepted, setAccepted] = useState<boolean | null>(null);
+  const [consent, setConsent] = useState<ConsentRecord | null | undefined>(undefined);
   const [checked, setChecked] = useState(false);
   const [showLegal, setShowLegal] = useState(false);
-  const [readDocuments, setReadDocuments] = useState({
+  const [readDocuments, setReadDocuments] = useState<Record<LegalDocKey, boolean>>({
     "privacy-policy": false,
     "terms-of-service": false,
   });
 
   useEffect(() => {
-    try {
-      setAccepted(localStorage.getItem(CONSENT_KEY) === "accepted");
-    } catch {
-      setAccepted(false);
-    }
+    setConsent(readConsent());
   }, []);
 
-  if (accepted) return null;
+  const changedDocuments = useMemo(() => {
+    if (!consent) return LEGAL_DOCS;
+    return LEGAL_DOCS.filter((doc) => consent.documents[doc.key] !== doc.content);
+  }, [consent]);
 
-  const hasReadAll = readDocuments["privacy-policy"] && readDocuments["terms-of-service"];
+  const hasReadAll = changedDocuments.every((doc) => readDocuments[doc.key]);
+  const isFirstUse = consent === null;
+  const hasLegalChanges = !isFirstUse && changedDocuments.length > 0;
 
-  const markDocumentRead = (key: "privacy-policy" | "terms-of-service") => {
+  if (consent !== undefined && changedDocuments.length === 0) return null;
+
+  const markDocumentRead = (key: LegalDocKey) => {
     setReadDocuments((current) => ({ ...current, [key]: true }));
-  };
-
-  const openLegal = () => {
-    setShowLegal(true);
   };
 
   const accept = () => {
     if (!checked || !hasReadAll) return;
+    const nextDocuments = Object.fromEntries(
+      LEGAL_DOCS.map((doc) => [doc.key, doc.content]),
+    ) as Partial<Record<LegalDocKey, string>>;
+    const nextConsent: ConsentRecord = {
+      version: LEGAL_DOCS[0]?.version ?? "unknown",
+      documents: { ...consent?.documents, ...nextDocuments },
+    };
     try {
-      localStorage.setItem(CONSENT_KEY, "accepted");
+      localStorage.setItem(CONSENT_KEY, JSON.stringify(nextConsent));
     } catch {
       // Vẫn cho phép tiếp tục trong phiên hiện tại nếu trình duyệt chặn lưu trữ.
     }
-    setAccepted(true);
+    setConsent(nextConsent);
   };
 
   return (
@@ -56,16 +95,22 @@ export function LegalConsentGate() {
           <ShieldCheck className="size-8" />
         </div>
         <h1 className="mt-4 text-center text-xl font-extrabold tracking-tight">
-          Trước khi sử dụng ứng dụng
+          {isFirstUse ? "Trước khi sử dụng ứng dụng" : "Có bản cập nhật pháp lý"}
         </h1>
         <p className="mt-2 text-center text-sm leading-relaxed text-muted-foreground">
-          Trợ lý Phật học cần bạn đọc và đồng ý với chính sách quyền riêng tư
-          và điều khoản sử dụng trước khi bắt đầu.
+          {isFirstUse
+            ? "Trợ lý Phật học cần bạn đọc và đồng ý với chính sách quyền riêng tư và điều khoản sử dụng trước khi bắt đầu."
+            : "Chính sách quyền riêng tư hoặc điều khoản sử dụng đã được cập nhật. Bạn cần đọc các phần thay đổi và xác nhận đồng ý để tiếp tục sử dụng ứng dụng."}
         </p>
 
         {showLegal ? (
           <div className="mt-5">
-            <LegalDocs onReachEnd={markDocumentRead} />
+            <LegalDocs
+              documents={changedDocuments}
+              baselineContents={consent?.documents}
+              changedOnly={hasLegalChanges}
+              onReachEnd={markDocumentRead}
+            />
             <Button
               type="button"
               variant="outline"
@@ -78,26 +123,30 @@ export function LegalConsentGate() {
         ) : (
           <>
             <div className="mt-5 grid gap-2 sm:grid-cols-2">
-              <button
-                type="button"
-                onClick={openLegal}
-                className="flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-muted/45 px-3 py-3 text-sm font-semibold transition hover:bg-accent"
-              >
-                <FileText className="size-4 text-primary" /> Chính sách quyền riêng tư
-              </button>
-              <button
-                type="button"
-                onClick={openLegal}
-                className="flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-muted/45 px-3 py-3 text-sm font-semibold transition hover:bg-accent"
-              >
-                <Scale className="size-4 text-primary" /> Điều khoản sử dụng
-              </button>
+              {changedDocuments.map((doc) => {
+                const meta = DOC_META[doc.key];
+                const Icon = meta.icon;
+                return (
+                  <button
+                    key={doc.key}
+                    type="button"
+                    onClick={() => setShowLegal(true)}
+                    className="flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-muted/45 px-3 py-3 text-sm font-semibold transition hover:bg-accent"
+                  >
+                    <Icon className="size-4 text-primary" /> {meta.label}
+                  </button>
+                );
+              })}
             </div>
 
             <p className="mt-4 text-center text-xs text-muted-foreground">
               {hasReadAll
-                ? "Bạn đã đọc đến cuối cả hai tài liệu."
-                : "Hãy mở và đọc đến cuối cả hai tài liệu trước khi tích đồng ý."}
+                ? isFirstUse
+                  ? "Bạn đã đọc đến cuối cả hai tài liệu."
+                  : "Bạn đã đọc đến cuối các phần vừa thay đổi."
+                : hasLegalChanges
+                  ? "Hãy mở và đọc đến cuối các phần được đánh dấu thay đổi trước khi tích đồng ý."
+                  : "Hãy mở và đọc đến cuối cả hai tài liệu trước khi tích đồng ý."}
             </p>
             <label
               className={cn(
@@ -113,8 +162,7 @@ export function LegalConsentGate() {
                 className="mt-0.5 size-4 accent-[var(--primary)]"
               />
               <span>
-                Tôi đã đọc và đồng ý với chính sách quyền riêng tư và điều khoản
-                sử dụng của ứng dụng.
+                Tôi đã đọc phần nội dung mới thay đổi và đồng ý tiếp tục sử dụng ứng dụng.
               </span>
             </label>
 
@@ -127,7 +175,9 @@ export function LegalConsentGate() {
               <Check className="size-4" /> Đồng ý và tiếp tục
             </Button>
             <p className="mt-3 text-center text-[11px] text-muted-foreground">
-              Thông báo này chỉ hiển thị một lần khi bạn cài và mở ứng dụng lần đầu.
+              {isFirstUse
+                ? "Thông báo này chỉ hiển thị một lần khi bạn cài và mở ứng dụng lần đầu."
+                : "Chỉ những phần thay đổi mới được yêu cầu đọc lại."}
             </p>
           </>
         )}
