@@ -71,7 +71,7 @@ function listProviders(needVision: boolean): ProviderChoice[] {
           baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
           apiKey: geminiKey,
         }),
-      model: "gemini-3.6-flash",
+      model: "gemini-3.5-flash-lite",
     },
   ];
 }
