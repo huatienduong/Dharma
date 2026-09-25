@@ -589,14 +589,15 @@ export default function Assistant() {
   return (
     <div className="fb-bg flex h-[100dvh] flex-col overflow-hidden">
       {/* ---------- Header mảnh, cân đối ---------- */}
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border/60 bg-background px-2 sm:px-4">
+      {/* ---------- Header cân đối: lưới 3 cột — tiêu đề LUÔN nằm giữa thật ---------- */}
+      <header className="grid h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-1 border-b border-border/60 bg-background px-2 sm:px-4">
         {/* Trái: Đàm thoại (+ nút quay lại khi mở từ trang khác) */}
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex items-center gap-1 justify-self-start">
           {!isHome && (
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-accent"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-accent"
               aria-label="Quay lại"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -604,19 +605,17 @@ export default function Assistant() {
           )}
           <Button
             onClick={openCall}
-            className="h-11 gap-1.5 rounded-full px-3.5 shadow-sm sm:px-4"
+            className="h-11 gap-1.5 rounded-full px-3 shadow-sm sm:px-4"
           >
             <Phone className="h-5 w-5" />
             <span className="hidden sm:inline">Đàm thoại</span>
           </Button>
         </div>
-        <div className="min-w-0 flex-1 text-center">
-          <p className="whitespace-nowrap text-sm font-extrabold uppercase tracking-[0.08em] leading-tight text-foreground sm:text-[17px] sm:tracking-[0.16em]">
-            Trợ lý Phật học
-          </p>
-        </div>
+        <p className="justify-self-center whitespace-nowrap text-sm font-extrabold uppercase tracking-[0.08em] leading-tight text-foreground sm:text-[17px] sm:tracking-[0.16em]">
+          Trợ lý Phật học
+        </p>
         {/* Phải: Cài đặt + Xóa hội thoại */}
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex items-center gap-1 justify-self-end">
           <Button
             variant="ghost"
             size="icon"
@@ -670,7 +669,7 @@ export default function Assistant() {
             </div>
           </div>
         ) : (
-          <div className="mx-auto w-full max-w-3xl px-3 pb-8 pt-3 sm:px-4">
+          <div className="mx-auto w-full max-w-3xl px-3 pb-8 pt-3 sm:px-4 [&>*:first-child]:mt-0">
             {messages.map((m, i) => {
               // Nhóm tin nhắn liên tiếp cùng người gửi — kiểu Messenger
               const grouped = i > 0 && messages[i - 1].role === m.role;
@@ -726,7 +725,7 @@ export default function Assistant() {
             </div>
           )}
 
-          <div className="flex items-end gap-1 rounded-[26px] border border-border/70 bg-card p-2 shadow-lg transition focus-within:border-gold/50 focus-within:ring-2 focus-within:ring-gold/15">
+          <div className="flex items-end gap-1.5 rounded-[26px] border border-border/70 bg-card p-2 shadow-lg transition focus-within:border-gold/50 focus-within:ring-2 focus-within:ring-gold/15">
             <input
               ref={fileRef}
               type="file"
@@ -741,7 +740,7 @@ export default function Assistant() {
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
               aria-label="Gửi ảnh cho AI"
               title="Gửi ảnh (tượng Phật, kinh sách, chữ Pāli…)"
             >
@@ -768,7 +767,7 @@ export default function Assistant() {
                 onClick={() => (listening ? stop() : start(onVoiceChat))}
                 aria-label={listening ? "Dừng nghe" : "Hỏi bằng giọng nói"}
                 className={cn(
-                  "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground",
+                  "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground",
                   listening && "bg-destructive/10 text-destructive",
                 )}
               >
@@ -786,7 +785,7 @@ export default function Assistant() {
               type="submit"
               size="icon"
               disabled={busy || (!input.trim() && !image)}
-              className="h-10 w-10 shrink-0 rounded-full"
+              className="h-11 w-11 shrink-0 rounded-full"
               aria-label="Gửi câu hỏi"
             >
               {busy ? (
@@ -935,8 +934,8 @@ function AssistantMessage({
       <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
         <Bot className="h-4 w-4" />
       </span>
-      <div className="min-w-0 max-w-[86%] sm:max-w-[75%]">
-        <div className="inline-block whitespace-pre-wrap break-words rounded-3xl rounded-bl-md border border-border/50 bg-card px-4 py-2.5 text-[18px] leading-[1.8] text-foreground/95 shadow-sm sm:text-[19px]">
+      <div className="min-w-0 flex-1 sm:max-w-[75%]">
+        <div className="inline-block max-w-full whitespace-pre-wrap break-words rounded-3xl rounded-bl-md border border-border/50 bg-card px-4 py-2.5 text-[18px] leading-[1.8] text-foreground/95 shadow-sm sm:text-[19px]">
           {content}
         </div>
         <p className="mt-1 pl-2 text-[12px] text-muted-foreground/70">{formatTs(ts)}</p>
@@ -956,8 +955,8 @@ function UserMessage({
 }) {
   return (
     <div className={cn("flex justify-end", grouped ? "mt-1.5" : "mt-5")}>
-      <div className="flex max-w-[86%] flex-col items-end sm:max-w-[75%]">
-        <div className="inline-block whitespace-pre-wrap break-words rounded-3xl rounded-br-md bg-primary px-4 py-2.5 text-[18px] leading-[1.8] text-primary-foreground shadow-sm sm:text-[19px]">
+      <div className="flex max-w-[86%] flex-col items-end sm:max-w-[78%]">
+        <div className="inline-block max-w-full whitespace-pre-wrap break-words rounded-3xl rounded-br-md bg-primary px-4 py-2.5 text-[18px] leading-[1.8] text-primary-foreground shadow-sm sm:text-[19px]">
           {content}
         </div>
         <p className="mt-1 pr-2 text-[12px] text-muted-foreground/70">{formatTs(ts)}</p>

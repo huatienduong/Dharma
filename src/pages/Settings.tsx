@@ -205,22 +205,20 @@ export default function Settings() {
 
   return (
     <div className="fb-bg flex min-h-screen flex-col">
-      {/* ---------- Header mảnh đồng bộ với màn Trợ lý Phật học ---------- */}
-      <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b border-border/60 bg-background/95 px-2 backdrop-blur sm:px-4">
+      {/* ---------- Header đồng bộ với màn Trợ lý Phật học: lưới 3 cột ---------- */}
+      <header className="sticky top-0 z-40 grid h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-1 border-b border-border/60 bg-background/95 px-2 backdrop-blur sm:px-4">
         <button
           type="button"
           onClick={() => navigate("/")}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-accent"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-accent justify-self-start"
           aria-label="Quay lại trợ lý"
         >
-          <ArrowLeft />
+          <ArrowLeft className="h-5 w-5" />
         </button>
-        <div className="min-w-0 flex-1 text-center">
-          <p className="truncate text-[15px] font-extrabold uppercase tracking-[0.18em] leading-tight text-foreground">
-            Trợ lý Phật học
-          </p>
-        </div>
-        <span className="h-10 w-10 shrink-0" aria-hidden />
+        <p className="justify-self-center whitespace-nowrap text-sm font-extrabold uppercase tracking-[0.08em] leading-tight text-foreground sm:text-[17px] sm:tracking-[0.16em]">
+          Trợ lý Phật học
+        </p>
+        <span className="h-11 w-11 justify-self-end" aria-hidden />
       </header>
 
       <main className="mx-auto w-full max-w-2xl flex-1 px-3 pb-16 pt-5 sm:px-5">
