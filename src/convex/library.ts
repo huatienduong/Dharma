@@ -25,15 +25,116 @@ export const submitFeedback = mutation({
     const userId = await getAuthUserId(ctx);
     const clean = message.trim();
     if (clean.length < 5) throw new ConvexError("Nội dung góp ý quá ngắn.");
-    await ctx.db.insert("feedback", {
+
+    const now = Date.now();
+    const randomSuffix = Array.from(
+      crypto.getRandomValues(new Uint8Array(4)),
+      (byte) => byte.toString(16).padStart(2, "0"),
+    )
+      .join("")
+      .toUpperCase();
+    const ticketCode = `PH-${now.toString(36).toUpperCase()}-${randomSuffix}`;
+    const subject = clean.split(/\s+/).slice(0, 14).join(" ").slice(0, 120);
+    const fullMessage = clean.slice(0, 4000);
+
+    const feedbackId = await ctx.db.insert("feedback", {
       userId: userId ?? undefined,
       type,
-      message: clean.slice(0, 4000),
+      message: fullMessage,
       email: email?.trim() || undefined,
       appVersion,
       status: "new",
-      createdAt: Date.now(),
+      ticketCode,
+      subject,
+      updatedAt: now,
+      createdAt: now,
     });
+    await ctx.db.insert("supportMessages", {
+      feedbackId,
+      authorRole: "user",
+      message: fullMessage,
+      createdAt: now,
+    });
+
+    return { ticketId: feedbackId, ticketCode };
+  },
+});
+
+/** Danh sách phiếu hỗ trợ và toàn bộ trao đổi của người dùng hiện tại. */
+export const listMyFeedback = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) return [];
+    const rows = await ctx.db
+      .query("feedback")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(20);
+
+    return Promise.all(
+      rows.reverse().map(async (ticket) => ({
+        ...ticket,
+        messages: await ctx.db
+          .query("supportMessages")
+          .withIndex("by_feedback", (q) => q.eq("feedbackId", ticket._id))
+          .collect(),
+      })),
+    );
+  },
+});
+
+/** Người dùng tiếp tục trao đổi trong phiếu hỗ trợ của chính mình. */
+export const replyToFeedback = mutation({
+  args: {
+    feedbackId: v.id("feedback"),
+    message: v.string(),
+  },
+  handler: async (ctx, { feedbackId, message }) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) throw new ConvexError("Bạn cần đăng nhập để tiếp tục phiếu hỗ trợ.");
+    const ticket = await ctx.db.get(feedbackId);
+    if (!ticket || ticket.userId !== userId) {
+      throw new ConvexError("Không tìm thấy phiếu hỗ trợ này.");
+    }
+    const clean = message.trim().slice(0, 2000);
+    if (clean.length < 2) throw new ConvexError("Nội dung phản hồi quá ngắn.");
+    const now = Date.now();
+    await ctx.db.insert("supportMessages", {
+      feedbackId,
+      authorRole: "user",
+      message: clean,
+      createdAt: now,
+    });
+    await ctx.db.patch(feedbackId, { updatedAt: now });
+    return true;
+  },
+});
+
+/** Nhà phát triển trả lời phiếu từ Convex Dashboard hoặc CLI. */
+export const replyToFeedbackInternal = internalMutation({
+  args: {
+    feedbackId: v.id("feedback"),
+    message: v.string(),
+    status: v.optional(v.union(v.literal("reading"), v.literal("resolved"))),
+  },
+  handler: async (ctx, { feedbackId, message, status }) => {
+    const ticket = await ctx.db.get(feedbackId);
+    if (!ticket) throw new ConvexError("Không tìm thấy phiếu hỗ trợ.");
+    const clean = message.trim().slice(0, 4000);
+    if (clean.length < 2) throw new ConvexError("Nội dung trả lời quá ngắn.");
+    const now = Date.now();
+    await ctx.db.insert("supportMessages", {
+      feedbackId,
+      authorRole: "developer",
+      message: clean,
+      createdAt: now,
+    });
+    await ctx.db.patch(feedbackId, {
+      status: status ?? "reading",
+      updatedAt: now,
+    });
+    return true;
   },
 });
 

@@ -48,8 +48,21 @@ const schema = defineSchema(
       email: v.optional(v.string()),
       appVersion: v.string(),
       status: v.string(), // "new" | "reading" | "resolved"
+      ticketCode: v.optional(v.string()),
+      subject: v.optional(v.string()),
+      updatedAt: v.optional(v.number()),
       createdAt: v.number(),
-    }).index("by_createdAt", ["createdAt"]),
+    })
+      .index("by_createdAt", ["createdAt"])
+      .index("by_user", ["userId"]),
+
+    // Trao đổi hai chiều trong từng phiếu hỗ trợ
+    supportMessages: defineTable({
+      feedbackId: v.id("feedback"),
+      authorRole: v.string(), // "user" | "developer"
+      message: v.string(),
+      createdAt: v.number(),
+    }).index("by_feedback", ["feedbackId"]),
 
     // Siêu dữ liệu ứng dụng: phiên bản mới nhất, ghi chú phát hành
     appMeta: defineTable({

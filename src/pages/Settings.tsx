@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useMutation, useQuery } from "convex/react";
+import type { GenericId } from "convex/values";
 import { useMemo } from "react";
 import {
   ArrowLeft,
@@ -22,7 +23,9 @@ import {
   CheckCircle2,
   ChevronRight,
   Download,
+  LifeBuoy,
   Lightbulb,
+  MessageSquare,
   Moon,
   Paperclip,
   RefreshCw,
@@ -59,7 +62,9 @@ export default function Settings() {
     setNotifications,
   } = useSettings();
   const meta = useQuery(api.library.getAppVersion, {});
+  const myTickets = useQuery(api.library.listMyFeedback);
   const submitFeedback = useMutation(api.library.submitFeedback);
+  const replyFeedback = useMutation(api.library.replyToFeedback);
 
   // Mục đang mở rộng (accordion) — mỗi mục một thẻ trắng như app hệ thống.
   // Hỗ trợ deep-link từ Trợ lý: /settings?section=about mở sẵn phần Giới thiệu
@@ -93,6 +98,8 @@ export default function Settings() {
   const [fbDevice, setFbDevice] = useState("");
   const fbFileRef = useRef<HTMLInputElement>(null);
   const [sending, setSending] = useState(false);
+  const [replyingId, setReplyingId] = useState<GenericId<"feedback"> | null>(null);
+  const [ticketReplies, setTicketReplies] = useState<Record<string, string>>({});
 
   // Cài ứng dụng trực tiếp (PWA)
   const [installPrompt, setInstallPrompt] =
@@ -232,17 +239,18 @@ export default function Settings() {
         fbType === "bug" && fbDevice.trim()
           ? `\n[Thiết bị: ${fbDevice.trim()}]`
           : "";
-      await submitFeedback({
+      const result = await submitFeedback({
         type: fbType,
         message: `${fbMessage}${attachmentNote}${deviceNote}`,
         email: fbEmail || undefined,
         appVersion: fbType === "bug" && fbAppVersion.trim() ? fbAppVersion.trim() : APP_VERSION,
       });
-      toast.success(
-        fbType === "bug"
-          ? "Đã gửi báo lỗi. Xin cảm ơn bạn!"
-          : "Đã gửi góp ý. Xin cảm ơn bạn!",
-      );
+      toast.success(`Đã tạo phiếu ${result.ticketCode}. Chúng tôi sẽ phản hồi ngay trong ứng dụng.`, {
+        description:
+          fbType === "bug"
+            ? "Cảm ơn bạn đã báo lỗi."
+            : "Cảm ơn bạn đã góp ý.",
+      });
       setFbMessage("");
       setFbEmail("");
       setFbFile(null);
@@ -250,6 +258,24 @@ export default function Settings() {
       toast.error(err instanceof Error ? err.message : "Gửi thất bại.");
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleTicketReply = async (ticketId: GenericId<"feedback">) => {
+    const message = ticketReplies[ticketId]?.trim() ?? "";
+    if (message.length < 2) {
+      toast.error("Vui lòng nhập nội dung phản hồi.");
+      return;
+    }
+    setReplyingId(ticketId);
+    try {
+      await replyFeedback({ feedbackId: ticketId, message });
+      setTicketReplies((current) => ({ ...current, [ticketId]: "" }));
+      toast.success("Đã gửi phản hồi.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không gửi được phản hồi.");
+    } finally {
+      setReplyingId(null);
     }
   };
 
@@ -610,6 +636,95 @@ export default function Settings() {
               <Send className="h-4 w-4" />
               {sending ? "Đang gửi…" : fbType === "bug" ? "Gửi báo lỗi" : "Gửi góp ý"}
             </Button>
+
+            <div className="space-y-3 border-t border-border/60 pt-4">
+              <div className="flex items-center gap-2">
+                <LifeBuoy className="h-4 w-4 text-primary" />
+                <p className="text-sm font-bold">Phiếu hỗ trợ của bạn</p>
+              </div>
+
+              {myTickets === undefined ? (
+                <p className="text-xs text-muted-foreground">Đang tải phiếu hỗ trợ…</p>
+              ) : myTickets.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Chưa có phiếu hỗ trợ nào.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {myTickets.map((ticket) => (
+                    <div key={ticket._id} className="rounded-2xl bg-muted/45 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold">
+                            {ticket.subject || "Phiếu hỗ trợ"}
+                          </p>
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">
+                            {ticket.ticketCode || `Phiếu ${ticket._creationTime}`}
+                          </p>
+                        </div>
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold",
+                            ticket.status === "resolved"
+                              ? "bg-green-500/10 text-green-700 dark:text-green-400"
+                              : ticket.status === "reading"
+                                ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                                : "bg-primary/10 text-primary",
+                          )}
+                        >
+                          {supportStatusLabel(ticket.status)}
+                        </span>
+                      </div>
+
+                      <div className="mt-3 max-h-52 space-y-2 overflow-y-auto pr-1">
+                        {ticket.messages.map((item) => (
+                          <div
+                            key={item._id}
+                            className={cn(
+                              "rounded-xl px-3 py-2 text-xs leading-relaxed",
+                              item.authorRole === "developer"
+                                ? "bg-primary/10 text-foreground"
+                                : "bg-background/80 text-foreground/85",
+                            )}
+                          >
+                            <p className="mb-1 text-[10px] font-semibold text-muted-foreground">
+                              {item.authorRole === "developer" ? "Hứa Tiến Dương" : "Bạn"}
+                            </p>
+                            <p className="whitespace-pre-wrap">{item.message}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {ticket.status !== "resolved" && (
+                        <div className="mt-3 flex gap-2">
+                          <input
+                            value={ticketReplies[ticket._id] ?? ""}
+                            onChange={(event) =>
+                              setTicketReplies((current) => ({
+                                ...current,
+                                [ticket._id]: event.target.value,
+                              }))
+                            }
+                            placeholder="Phản hồi thêm cho nhà phát triển"
+                            className="min-w-0 flex-1 rounded-full border border-border/60 bg-background px-3 py-2 text-xs outline-none focus:border-primary/50"
+                          />
+                          <Button
+                            type="button"
+                            size="icon"
+                            onClick={() => void handleTicketReply(ticket._id)}
+                            disabled={replyingId === ticket._id}
+                            className="h-9 w-9 shrink-0 rounded-full"
+                            aria-label="Gửi phản hồi"
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </RowCard>
       </div>
@@ -693,6 +808,12 @@ function Switch({
       />
     </button>
   );
+}
+
+function supportStatusLabel(status: string): string {
+  if (status === "resolved") return "Đã xử lý";
+  if (status === "reading") return "Đang xem xét";
+  return "Đã tiếp nhận";
 }
 
 function compareVersions(a: string, b: string): number {
