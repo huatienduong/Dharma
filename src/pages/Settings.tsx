@@ -49,11 +49,6 @@ import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 const FEEDBACK_RECEIVED_MESSAGE =
   "Đã tạo phiếu hỗ trợ. Hứa Tiến Dương đã nhận được yêu cầu hỗ trợ của bạn. Hãy theo dõi phiếu hỗ trợ để cập nhật thêm thông tin. Xin cảm ơn!";
 
-type InstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-};
-
 export default function Settings() {
   const navigate = useNavigate();
   const {
@@ -121,55 +116,6 @@ export default function Settings() {
 
   const latest = meta?.latestVersion ?? APP_VERSION;
   const hasUpdate = compareVersions(latest, APP_VERSION) > 0;
-
-  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
-  const [appInstalled, setAppInstalled] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      (window.matchMedia("(display-mode: standalone)").matches ||
-        (window.navigator as Navigator & { standalone?: boolean }).standalone === true),
-  );
-  const [showIosInstallHelp, setShowIosInstallHelp] = useState(false);
-  const isIos = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);
-
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event as InstallPromptEvent);
-    };
-    const handleInstalled = () => {
-      setAppInstalled(true);
-      setInstallPrompt(null);
-      toast.success("Ứng dụng đã được cài đặt trên thiết bị của bạn.");
-    };
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    window.addEventListener("appinstalled", handleInstalled);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-      window.removeEventListener("appinstalled", handleInstalled);
-    };
-  }, []);
-
-  const handleInstallApp = async () => {
-    if (appInstalled) {
-      toast.success("Ứng dụng đã được cài đặt và sẵn sàng sử dụng.");
-      return;
-    }
-    if (installPrompt) {
-      await installPrompt.prompt();
-      const choice = await installPrompt.userChoice;
-      if (choice.outcome === "accepted") {
-        setInstallPrompt(null);
-        setAppInstalled(true);
-      }
-      return;
-    }
-    if (isIos) {
-      setShowIosInstallHelp(true);
-      return;
-    }
-    toast.info("Hãy mở menu trình duyệt và chọn Cài ứng dụng hoặc Thêm vào màn hình chính.");
-  };
 
   const handleCheckUpdate = async () => {
     setChecking(true);
@@ -477,33 +423,6 @@ export default function Settings() {
               <p className="mt-1 text-xs text-muted-foreground">
                 {APP_NAME} · Phiên bản {APP_VERSION}
               </p>
-            </div>
-            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-              <div className="flex items-start gap-3">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                  <Download className="size-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">Cài ứng dụng lên thiết bị</p>
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    Cài ứng dụng để mở nhanh hơn và sử dụng như một ứng dụng riêng trên điện thoại.
-                  </p>
-                  <Button
-                    type="button"
-                    onClick={handleInstallApp}
-                    className="mt-3 w-full gap-2 rounded-full"
-                    disabled={false}
-                  >
-                    <Download className="size-4" />
-                    {appInstalled ? "Đã cài ứng dụng" : "Cài ứng dụng ngay"}
-                  </Button>
-                  {showIosInstallHelp && (
-                    <p className="mt-2 rounded-xl bg-background/70 p-2.5 text-[11px] leading-relaxed text-muted-foreground">
-                      Trên iPhone, hãy bấm nút Chia sẻ trong Safari, chọn “Thêm vào Màn hình chính”, rồi bấm “Thêm”. Ứng dụng sẽ xuất hiện như một biểu tượng để mở nhanh.
-                    </p>
-                  )}
-                </div>
-              </div>
             </div>
             <div className="flex items-center justify-between rounded-2xl bg-muted/50 px-4 py-3">
               <p className="text-sm font-semibold">Cập nhật ứng dụng</p>
