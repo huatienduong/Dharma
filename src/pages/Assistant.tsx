@@ -784,15 +784,6 @@ export default function Assistant() {
           >
             <Settings className="h-5 w-5" />
           </button>
-          <button
-            type="button"
-            onClick={() => void clearAll()}
-            className="flex h-10 w-10 items-center justify-center rounded-md text-foreground transition hover:bg-accent hover:text-accent-foreground"
-            title="Xóa hội thoại"
-            aria-label="Xóa hội thoại"
-          >
-            <Eraser className="h-5 w-5" />
-          </button>
         </div>
       </header>
 
@@ -893,15 +884,26 @@ export default function Assistant() {
                 e.target.value = "";
               }}
             />
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
-              aria-label="Gửi ảnh cho AI"
-              title="Gửi ảnh (tượng Phật, kinh sách, chữ Pāli…)"
-            >
-              <ImagePlus className="h-[18px] w-[18px]" />
-            </button>
+            <div className="flex shrink-0 flex-col items-center">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+                aria-label="Gửi ảnh cho trợ lý"
+                title="Tải lên hình ảnh"
+              >
+                <ImagePlus className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => void clearAll()}
+                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+                title="Xóa hội thoại"
+                aria-label="Xóa hội thoại"
+              >
+                <Eraser className="h-4 w-4" />
+              </button>
+            </div>
 
             <textarea
               value={input}
