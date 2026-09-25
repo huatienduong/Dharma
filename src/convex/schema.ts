@@ -58,6 +58,17 @@ const schema = defineSchema(
       releaseNotes: v.optional(v.string()),
       releasedAt: v.optional(v.number()),
     }).index("by_key", ["key"]),
+
+    // Giới hạn tốc độ AI theo thiết bị — chặn bot/thiết bị bị can thiệp
+    // đốt hạn mức máy chủ AI. Mỗi hàng = (kênh, thiết bị, khung 1 phút).
+    aiRateLimits: defineTable({
+      bucket: v.string(), // "ask" | "speak"
+      deviceId: v.string(),
+      windowStart: v.number(), // mốc bắt đầu khung 60s
+      count: v.number(), // số request trong khung
+    })
+      .index("by_device", ["deviceId"])
+      .index("by_bucket_device", ["bucket", "deviceId"]),
   },
   {
     schemaValidation: false,

@@ -2,7 +2,9 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { generateText } from "ai";
 import { v } from "convex/values";
-import { action, mutation, query } from "./_generated/server";
+import { action, internalMutation, mutation, query } from "./_generated/server";
+import type { ActionCtx } from "./_generated/server";
+import { api, internal } from "./_generated/api";
 
 /* ------------------------------------------------------------------ */
 /* Hướng dẫn nhân cách của trợ lý Phật pháp (Theravāda)                */
@@ -22,6 +24,86 @@ Phong cách trò chuyện:
 - Trả lời bằng TIẾNG VIỆT luôn luôn.`;
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
+
+/* ------------------------------------------------------------------ */
+/* GIỚI HẠN TỐC ĐỘ THEO THIẾT BỊ — chặn bot/thiết bị bị can thiệp      */
+/* đốt hạn mức AI. Thiết bị hợp lệ: 15 câu hỏi + 20 đọc / phút.        */
+/* Thiết bị nghi ngờ (tín hiệu tự động hóa): chỉ 2 + 3 / phút.         */
+/* ------------------------------------------------------------------ */
+
+const RATE_ASK = { ok: 15, suspicious: 2 } as const;
+const RATE_SPEAK = { ok: 20, suspicious: 3 } as const;
+const RATE_WINDOW_MS = 60_000;
+
+/**
+ * Kiểm tra & cộng bộ đếm giới hạn tốc độ. Actions không truy cập db trực
+ * tiếp nên ủy quyền qua internalMutation. Trả về null nếu được phép,
+ * ngược lại là thông điệp từ chối.
+ */
+async function checkRateLimit(
+  ctx: ActionCtx,
+  bucket: "ask" | "speak",
+  deviceId: string | undefined,
+  integrity: string | undefined,
+): Promise<string | null> {
+  // Chỉ tin thiết bị báo integrity "ok" VÀ có deviceId hợp lệ; mọi trường
+  // hợp khác (bot giả mạo, client cũ bỏ tham số) rơi vào mức nghi ngờ ngặt.
+  const trusted =
+    integrity === "ok" && typeof deviceId === "string" && deviceId.length >= 8;
+  const key = trusted ? deviceId!.slice(0, 64) : "anonymous";
+  const limit = trusted
+    ? bucket === "ask"
+      ? RATE_ASK.ok
+      : RATE_SPEAK.ok
+    : bucket === "ask"
+      ? RATE_ASK.suspicious
+      : RATE_SPEAK.suspicious;
+
+  const res = await ctx.runMutation(internal.aiChat.checkAiRateLimit, {
+    bucket,
+    deviceId: key,
+    limit,
+  });
+  if (res.allowed) return null;
+  return trusted
+    ? "Bạn đang gửi yêu cầu quá nhanh. Vui lòng chờ ít phút rồi thử lại."
+    : "Thiết bị của bạn đang bị giới hạn vì có tín hiệu không bảo đảm. Vui lòng tắt chế độ tự động hóa / công cụ gỡ lỗi rồi thử lại.";
+}
+
+/** internalMutation: cộng bộ đếm giới hạn tốc độ cho action AI. */
+export const checkAiRateLimit = internalMutation({
+  args: {
+    bucket: v.union(v.literal("ask"), v.literal("speak")),
+    deviceId: v.string(),
+    limit: v.number(),
+  },
+  handler: async (ctx, { bucket, deviceId, limit }) => {
+    const now = Date.now();
+    const row = await ctx.db
+      .query("aiRateLimits")
+      .withIndex("by_bucket_device", (q) =>
+        q.eq("bucket", bucket).eq("deviceId", deviceId),
+      )
+      .unique();
+    if (row && now - row.windowStart < RATE_WINDOW_MS) {
+      if (row.count >= limit) return { allowed: false };
+      await ctx.db.patch(row._id, { count: row.count + 1 });
+      return { allowed: true };
+    }
+    // Khung 60s mới — reset bộ đếm (tạo hàng nếu chưa có)
+    if (row) {
+      await ctx.db.patch(row._id, { windowStart: now, count: 1 });
+    } else {
+      await ctx.db.insert("aiRateLimits", {
+        bucket,
+        deviceId,
+        windowStart: now,
+        count: 1,
+      });
+    }
+    return { allowed: true };
+  },
+});
 
 const HISTORY_LIMIT = 4; // ngữ cảnh gọn → phản hồi nhanh hơn
 const MAX_TOKENS = 4096; // cho phép câu trả lời dài hơn, tránh bị cắt giữa chừng
@@ -91,8 +173,16 @@ export const ask = action({
     /** Ảnh người dùng tải lên (base64, chỉ lượt hỏi hiện tại) */
     imageBase64: v.optional(v.string()),
     imageMime: v.optional(v.string()),
+    /** Dấu vân tay thiết bị (từ deviceSecurity) — phục vụ giới hạn tốc độ */
+    deviceId: v.optional(v.string()),
+    /** Trạng thái bảo vệ thiết bị client tự báo cáo: ok | suspicious | blocked */
+    integrity: v.optional(v.string()),
   },
-  handler: async (ctx, { messages, imageBase64, imageMime }) => {
+  handler: async (ctx, { messages, imageBase64, imageMime, deviceId, integrity }) => {
+    // Chặn bot / thiết bị bị can thiệp đốt hạn mức AI trước khi gọi provider
+    const denied = await checkRateLimit(ctx, "ask", deviceId, integrity);
+    if (denied) throw new Error(denied);
+
     const userId = await getAuthUserId(ctx);
     void userId;
 
@@ -192,9 +282,15 @@ export const speak = action({
     voice: v.optional(v.string()),
     /** true = giọng nam, false = giọng nữ, null = mặc định */
     male: v.optional(v.boolean()),
+    /** Dấu vân tay thiết bị — phục vụ giới hạn tốc độ */
+    deviceId: v.optional(v.string()),
+    integrity: v.optional(v.string()),
   },
-  handler: async (ctx, { text, voice, male }) => {
+  handler: async (ctx, { text, voice, male, deviceId, integrity }) => {
     void ctx;
+    // Giới hạn tốc độ cả TTS — chặn bot quay vùng đọc text miễn phí
+    const denied = await checkRateLimit(ctx, "speak", deviceId, integrity);
+    if (denied) throw new Error(denied);
     const clean = text.trim().slice(0, 2400);
     if (!clean) return null;
     // Hướng dẫn giọng đọc theo lựa chọn của người dùng (tiếng Việt)

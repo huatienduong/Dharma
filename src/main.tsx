@@ -1,5 +1,6 @@
 import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
+import { DeviceGuard } from "@/components/DeviceGuard";
 import { ServiceNotice } from "@/components/ServiceNotice";
 import { UpdateChecker } from "@/components/UpdateChecker";
 import { SettingsProvider } from "@/lib/settings";
@@ -144,6 +145,8 @@ createRoot(document.getElementById("root")!).render(
       <ConvexAuthProvider client={convex}>
         <SettingsProvider>
           <UpdateChecker />
+          {/* Chặn thiết bị tự động hóa / bị can thiệp — khóa toàn màn hình */}
+          <DeviceGuard />
           <BrowserRouter basename={ROUTER_BASENAME}>
             <RouteSyncer />
             {/* Thông báo mất kết nối / nâng cấp hệ thống / sự cố tạm thời */}

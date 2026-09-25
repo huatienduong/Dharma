@@ -4,6 +4,7 @@ import { api } from "@/convex/_generated/api";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 import { loadVoicePref } from "@/lib/aiVoices";
+import { getDeviceMeta } from "@/lib/deviceSecurity";
 import { cn } from "@/lib/utils";
 import { useAction } from "convex/react";
 import {
@@ -246,6 +247,7 @@ export default function Assistant() {
           messages: [...base, { role: "user", content: q }],
           imageBase64: opts?.fromCall ? undefined : image?.base64,
           imageMime: opts?.fromCall ? undefined : image?.mime,
+          ...getDeviceMeta(),
         });
 
       try {

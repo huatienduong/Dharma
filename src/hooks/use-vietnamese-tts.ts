@@ -1,5 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { getVoice } from "@/lib/aiVoices";
+import { getDeviceMeta } from "@/lib/deviceSecurity";
 import { useAction } from "convex/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -233,6 +234,7 @@ export function useVietnameseTTS() {
             text: clean.slice(0, 2400),
             voice: opts.voice ?? undefined,
             male: opts.male,
+            ...getDeviceMeta(),
           }),
           new Promise<null>((resolve) =>
             window.setTimeout(() => resolve(null), 12_000),
