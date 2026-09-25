@@ -611,7 +611,7 @@ export default function Assistant() {
           </Button>
         </div>
         <div className="min-w-0 flex-1 text-center">
-          <p className="truncate text-base font-extrabold uppercase tracking-[0.16em] leading-tight text-foreground sm:text-[17px]">
+          <p className="whitespace-nowrap text-sm font-extrabold uppercase tracking-[0.08em] leading-tight text-foreground sm:text-[17px] sm:tracking-[0.16em]">
             Trợ lý Phật học
           </p>
         </div>
@@ -670,14 +670,16 @@ export default function Assistant() {
             </div>
           </div>
         ) : (
-          <div className="mx-auto w-full max-w-3xl space-y-7 px-3 pb-8 pt-3 sm:px-4">
-            {messages.map((m, i) =>
-              m.role === "user" ? (
-                <UserMessage key={i} content={m.content} ts={m.ts} />
+          <div className="mx-auto w-full max-w-3xl px-3 pb-8 pt-3 sm:px-4">
+            {messages.map((m, i) => {
+              // Nhóm tin nhắn liên tiếp cùng người gửi — kiểu Messenger
+              const grouped = i > 0 && messages[i - 1].role === m.role;
+              return m.role === "user" ? (
+                <UserMessage key={i} content={m.content} ts={m.ts} grouped={grouped} />
               ) : (
-                <AssistantMessage key={i} content={m.content} ts={m.ts} />
-              ),
-            )}
+                <AssistantMessage key={i} content={m.content} ts={m.ts} grouped={grouped} />
+              );
+            })}
             {busy && (stalled ? (
               <div className="flex items-start gap-3">
                 <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
@@ -919,29 +921,47 @@ export default function Assistant() {
 
 /* ------------------------------------------------------------------ */
 
-function AssistantMessage({ content, ts }: { content: string; ts: number }) {
+function AssistantMessage({
+  content,
+  ts,
+  grouped,
+}: {
+  content: string;
+  ts: number;
+  grouped?: boolean;
+}) {
   return (
-    <div className="flex items-start gap-3">
-      <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
-        <Bot className="h-4.5 w-4.5" />
+    <div className={cn("flex items-end gap-2", grouped ? "mt-1.5" : "mt-5")}>
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
+        <Bot className="h-4 w-4" />
       </span>
-      <div className="min-w-0 flex-1">
-        <div className="whitespace-pre-wrap text-[18px] leading-[1.9] text-foreground/95 sm:text-[19px]">
+      <div className="min-w-0 max-w-[86%] sm:max-w-[75%]">
+        <div className="inline-block whitespace-pre-wrap break-words rounded-3xl rounded-bl-md border border-border/50 bg-card px-4 py-2.5 text-[18px] leading-[1.8] text-foreground/95 shadow-sm sm:text-[19px]">
           {content}
         </div>
-        <p className="mt-1.5 text-[13px] text-muted-foreground/70">{formatTs(ts)}</p>
+        <p className="mt-1 pl-2 text-[12px] text-muted-foreground/70">{formatTs(ts)}</p>
       </div>
     </div>
   );
 }
 
-function UserMessage({ content, ts }: { content: string; ts: number }) {
+function UserMessage({
+  content,
+  ts,
+  grouped,
+}: {
+  content: string;
+  ts: number;
+  grouped?: boolean;
+}) {
   return (
-    <div className="flex flex-col items-end">
-      <div className="max-w-[85%] whitespace-pre-wrap rounded-3xl rounded-br-lg bg-muted px-4 py-3 text-[18px] leading-[1.8] sm:text-[19px]">
-        {content}
+    <div className={cn("flex justify-end", grouped ? "mt-1.5" : "mt-5")}>
+      <div className="flex max-w-[86%] flex-col items-end sm:max-w-[75%]">
+        <div className="inline-block whitespace-pre-wrap break-words rounded-3xl rounded-br-md bg-primary px-4 py-2.5 text-[18px] leading-[1.8] text-primary-foreground shadow-sm sm:text-[19px]">
+          {content}
+        </div>
+        <p className="mt-1 pr-2 text-[12px] text-muted-foreground/70">{formatTs(ts)}</p>
       </div>
-      <p className="mt-1 pr-2 text-[13px] text-muted-foreground/70">{formatTs(ts)}</p>
     </div>
   );
 }
@@ -969,11 +989,11 @@ function formatTs(ts: number): string {
 
 function AssistantThinking() {
   return (
-    <div className="flex items-start gap-3">
-      <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
+    <div className="mt-5 flex items-end gap-2">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
         <Bot className="h-4 w-4" />
       </span>
-      <div className="flex h-10 items-center gap-1.5">
+      <div className="inline-flex items-center gap-1.5 rounded-3xl rounded-bl-md border border-border/50 bg-card px-4 py-3.5 shadow-sm">
         {[0, 1, 2].map((i) => (
           <span
             key={i}
