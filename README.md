@@ -23,11 +23,15 @@ This project is set up already and running on a cloud environment, as well as a 
 
 ## Environment Variables
 
-The project is set up with project specific CONVEX_DEPLOYMENT and VITE_CONVEX_URL environment variables on the client side.
+Ứng dụng dùng duy nhất deployment production `determined-rabbit-619`:
 
-The convex server has a separate set of environment variables that are accessible by the convex backend.
+- Convex API: `https://determined-rabbit-619.convex.cloud`
+- Convex site: `https://determined-rabbit-619.convex.site`
+- Client được cố định dùng API URL trong `src/main.tsx`; không tham chiếu deployment cũ.
 
-Currently, these variables include auth-specific keys: JWKS, JWT_PRIVATE_KEY, and SITE_URL.
+Biến `CONVEX_DEPLOY_KEY` trong môi trường phải là khóa production thuộc `determined-rabbit-619`. Khóa development cũ của deployment khác không được dùng để đồng bộ.
+
+Backend Convex có các biến môi trường riêng dành cho xác thực và dịch vụ AI. Không lưu các khóa này vào mã nguồn.
 
 
 # Using Authentication (Important!)
