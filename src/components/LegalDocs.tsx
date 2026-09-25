@@ -1,17 +1,9 @@
-import { api } from "@/convex/_generated/api";
 import { LEGAL_DOCS } from "@/convex/legalContent";
-import { useQuery } from "convex/react";
 import { useState } from "react";
 import { FileText, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type LegalKey = "privacy-policy" | "terms-of-service";
-
-type LegalMeta = {
-  latestVersion?: string;
-  releaseNotes?: string;
-  releasedAt?: number;
-} | null | undefined;
 
 const DOCS: {
   key: LegalKey;
@@ -49,20 +41,10 @@ function LegalText({ text }: { text: string }) {
 
 export function LegalDocs() {
   const [tab, setTab] = useState<LegalKey>("privacy-policy");
-  const privacy = useQuery(api.library.getLegalDoc, { key: "privacy-policy" });
-  const terms = useQuery(api.library.getLegalDoc, { key: "terms-of-service" });
-
-  const metaFor = (key: LegalKey): LegalMeta =>
-    key === "privacy-policy" ? privacy : terms;
-
   const active = DOCS.find((d) => d.key === tab)!;
-  const meta = metaFor(tab);
-  // Server là nguồn hiển thị (cron tự đồng bộ theo mã nguồn); server chưa
-  // sẵn sàng thì dùng trực tiếp bản chuẩn trong mã nguồn — cùng một nguồn.
+  // Dùng trực tiếp bản chuẩn trong ứng dụng để nội dung sửa đổi có hiệu lực
+  // ngay và không bị thay thế bởi dữ liệu cũ đã lưu trước đây.
   const sourceDoc = LEGAL_DOCS.find((d) => d.key === tab)!;
-  const content = meta?.releaseNotes?.trim()
-    ? meta.releaseNotes
-    : sourceDoc.content;
 
   return (
     <div className="space-y-3 pt-1">
@@ -95,13 +77,13 @@ export function LegalDocs() {
       <div className="flex items-center justify-between rounded-2xl bg-muted/50 px-4 py-2.5">
         <p className="text-xs font-semibold">Phiên bản tài liệu</p>
         <p className="text-xs text-muted-foreground">
-          {meta?.latestVersion ?? sourceDoc.version}
+          {sourceDoc.version}
         </p>
       </div>
 
       {/* Nội dung */}
       <div className="max-h-[420px] overflow-y-auto rounded-2xl border border-border/60 bg-background/60 p-4">
-        <LegalText text={content} />
+        <LegalText text={sourceDoc.content} />
       </div>
     </div>
   );
