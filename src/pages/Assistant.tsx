@@ -798,16 +798,18 @@ export default function Assistant() {
       <div
         ref={scrollRef}
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto pb-24 pt-16 transition-[padding] duration-200",
-          image && "pb-48",
+          isEmpty
+            ? "fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] top-16 z-10 overflow-y-auto bg-background px-4 py-5"
+            : "min-h-0 flex-1 overflow-y-auto pb-24 pt-16 transition-[padding] duration-200",
+          !isEmpty && image && "pb-48",
         )}
       >
         {isEmpty ? (
-          <div className="flex min-h-full flex-col items-center justify-center px-4 py-8 text-center">
-            <p className="-translate-y-2 max-w-md text-xl font-semibold leading-relaxed tracking-tight text-foreground sm:text-2xl">
+          <div className="mx-auto flex min-h-full w-full max-w-lg flex-col items-center justify-center text-center">
+            <p className="max-w-md text-xl font-semibold leading-relaxed tracking-tight text-foreground sm:text-2xl">
               Hôm nay tôi có thể giúp gì cho bạn trên con đường Phật pháp?
             </p>
-            <div className="mt-7 grid w-full max-w-lg grid-cols-1 gap-2.5 sm:grid-cols-2">
+            <div className="mt-6 grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2">
               {suggestions.map((s) => (
                 <button
                   key={s.text}
