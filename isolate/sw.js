@@ -1,4 +1,4 @@
-const CACHE_NAME = "tro-ly-phat-hoc-shell-v2";
+const CACHE_NAME = "tro-ly-phat-hoc-shell-v3-logo";
 const APP_SHELL = ["./", "./manifest.webmanifest", "./app-icon.svg"];
 
 self.addEventListener("install", (event) => {
