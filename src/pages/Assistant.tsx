@@ -16,6 +16,7 @@ import {
   AudioLines,
   Bot,
   BookOpen,
+  Eraser,
   Heart,
   ImagePlus,
   Mic,
@@ -691,6 +692,20 @@ export default function Assistant() {
     };
   }, []);
 
+  const clearAll = async () => {
+    queueRef.current = [];
+    pendingRef.current = [];
+    historyRef.current = [];
+    setPending([]);
+    setHistory([]);
+    try {
+      localStorage.removeItem(CHAT_KEY);
+    } catch {
+      /* noop */
+    }
+    toast.success("Đã xóa hội thoại.");
+  };
+
   /** Thu hồi một tin nhắn đã gửi; ảnh đi kèm cũng bị gỡ cùng tin nhắn. */
   const recallMessage = useCallback((target: Msg) => {
     if (target.role !== "user") return;
@@ -731,9 +746,18 @@ export default function Assistant() {
   /* ================================================================ */
   return (
     <div className="fb-bg flex h-[100dvh] flex-col overflow-hidden">
-      {/* ---------- Header: tên ứng dụng bên trái, điều khiển bên phải ---------- */}
-      <header className="grid h-16 shrink-0 grid-cols-[1fr_auto] items-center gap-3 border-b border-border/60 bg-background px-3 sm:px-4">
-        <div className="flex min-w-0 items-center gap-1">
+      {/* ---------- Header: gọi bên trái, tên ở giữa, điều khiển bên phải ---------- */}
+      <header className="grid h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-1 border-b border-border/60 bg-background px-2 sm:px-4">
+        <div className="flex min-w-0 items-center gap-1 justify-self-start">
+          <button
+            type="button"
+            onClick={openCall}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-foreground transition hover:bg-accent hover:text-accent-foreground"
+            aria-label="Đàm thoại bằng giọng nói"
+            title="Đàm thoại bằng giọng nói"
+          >
+            <Phone className="h-5 w-5 shrink-0" />
+          </button>
           {!isHome && (
             <button
               type="button"
@@ -744,21 +768,13 @@ export default function Assistant() {
               <ArrowLeft className="h-5 w-5" />
             </button>
           )}
-          <p className="truncate text-sm font-extrabold uppercase tracking-[0.14em] text-foreground sm:text-[15px] sm:tracking-[0.18em]">
-            Trợ lý Phật học
-          </p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            onClick={openCall}
-            className="flex h-10 w-10 items-center justify-center rounded-md text-foreground transition hover:bg-accent hover:text-accent-foreground"
-            aria-label="Đàm thoại bằng giọng nói"
-            title="Đàm thoại bằng giọng nói"
-          >
-            <Phone className="h-5 w-5 shrink-0" />
-          </button>
+        <p className="max-w-[9.5rem] truncate text-center text-[13px] font-extrabold uppercase tracking-[0.12em] text-foreground sm:max-w-none sm:text-[15px] sm:tracking-[0.18em]">
+          Trợ lý Phật học
+        </p>
+
+        <div className="flex shrink-0 items-center gap-1 justify-self-end">
           <button
             type="button"
             onClick={() => navigate("/settings?section=about")}
@@ -767,6 +783,15 @@ export default function Assistant() {
             aria-label="Cài đặt và cập nhật ứng dụng"
           >
             <Settings className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => void clearAll()}
+            className="flex h-10 w-10 items-center justify-center rounded-md text-foreground transition hover:bg-accent hover:text-accent-foreground"
+            title="Xóa hội thoại"
+            aria-label="Xóa hội thoại"
+          >
+            <Eraser className="h-5 w-5" />
           </button>
         </div>
       </header>
