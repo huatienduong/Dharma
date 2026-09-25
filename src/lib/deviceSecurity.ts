@@ -188,7 +188,11 @@ function scanOnce(): ScanResult {
 }
 
 function classify(score: number): DeviceIntegrity {
-  if (score >= BLOCK_SCORE) return "blocked";
+  // Không khóa toàn màn hình dựa trên tín hiệu phía trình duyệt. Nhiều WebView,
+  // trình duyệt nhúng và thiết bị Android hợp pháp có thể thiếu plugins, có
+  // kích thước cửa sổ khác hoặc không có window.chrome. Tín hiệu này chỉ được
+  // dùng để siết giới hạn tốc độ; máy chủ vẫn áp hạn mức độc lập nên không
+  // cần khóa giao diện và làm người dùng mất quyền truy cập Cài đặt.
   if (score >= SUSPICIOUS_SCORE) return "suspicious";
   return "ok";
 }
