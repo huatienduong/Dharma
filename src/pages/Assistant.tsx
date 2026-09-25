@@ -16,7 +16,6 @@ import {
   AudioLines,
   Bot,
   BookOpen,
-  Eraser,
   Heart,
   ImagePlus,
   Mic,
@@ -692,19 +691,6 @@ export default function Assistant() {
     };
   }, []);
 
-  const clearAll = async () => {
-    queueRef.current = [];
-    pendingRef.current = [];
-    historyRef.current = [];
-    setPending([]);
-    setHistory([]);
-    try {
-      localStorage.removeItem(CHAT_KEY);
-    } catch {
-      /* noop */
-    }
-  };
-
   /** Thu hồi một tin nhắn đã gửi; ảnh đi kèm cũng bị gỡ cùng tin nhắn. */
   const recallMessage = useCallback((target: Msg) => {
     if (target.role !== "user") return;
@@ -745,52 +731,43 @@ export default function Assistant() {
   /* ================================================================ */
   return (
     <div className="fb-bg flex h-[100dvh] flex-col overflow-hidden">
-      {/* ---------- Header: nút Đàm thoại sát trái, cụm 2 nút sát phải ---------- */}
-      <header className="grid h-16 shrink-0 grid-cols-[1fr_auto] items-center gap-1 border-b border-border/60 bg-background px-2 sm:px-4">
-        {/* Trái: Đàm thoại (+ nút Quay lại khi mở từ trang khác) */}
-        <div className="flex items-center gap-1 justify-self-start">
-          <button
-            type="button"
-            onClick={openCall}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-foreground transition hover:bg-accent hover:text-accent-foreground"
-            aria-label="Đàm thoại bằng giọng nói"
-            title="Đàm thoại bằng giọng nói"
-          >
-            <Phone className="h-5 w-5 shrink-0" />
-          </button>
+      {/* ---------- Header: tên ứng dụng bên trái, điều khiển bên phải ---------- */}
+      <header className="grid h-16 shrink-0 grid-cols-[1fr_auto] items-center gap-3 border-b border-border/60 bg-background px-3 sm:px-4">
+        <div className="flex min-w-0 items-center gap-1">
           {!isHome && (
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground transition hover:bg-accent"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-foreground transition hover:bg-accent"
               aria-label="Quay lại"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
           )}
+          <p className="truncate text-sm font-extrabold uppercase tracking-[0.14em] text-foreground sm:text-[15px] sm:tracking-[0.18em]">
+            Trợ lý Phật học
+          </p>
         </div>
-        {/* Phải: Xóa hội thoại + Cài đặt — icon sát nhau, sát lề phải */}
-        <div className="flex items-center gap-0 justify-self-end">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => void clearAll()}
-            title="Xóa hội thoại"
-            aria-label="Xóa hội thoại"
-            className="-ml-1.5 h-11 w-11 rounded-full"
+
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={openCall}
+            className="flex h-10 w-10 items-center justify-center rounded-md text-foreground transition hover:bg-accent hover:text-accent-foreground"
+            aria-label="Đàm thoại bằng giọng nói"
+            title="Đàm thoại bằng giọng nói"
           >
-            <Eraser className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
+            <Phone className="h-5 w-5 shrink-0" />
+          </button>
+          <button
+            type="button"
             onClick={() => navigate("/settings?section=about")}
-            title="Cài đặt & cập nhật ứng dụng"
+            className="flex h-10 w-10 items-center justify-center rounded-md text-foreground transition hover:bg-accent hover:text-accent-foreground"
+            title="Cài đặt và cập nhật ứng dụng"
             aria-label="Cài đặt và cập nhật ứng dụng"
-            className="-ml-1.5 h-11 w-11 rounded-full"
           >
             <Settings className="h-5 w-5" />
-          </Button>
+          </button>
         </div>
       </header>
 
