@@ -332,8 +332,8 @@ export default function Assistant() {
       setPending((p) => [...p, userMsg]);
       setBusy(true);
 
-      // FIX "không phản hồi": thử lại 1 lần khi lỗi mạng nhất thời —
-      // chỉ lỗi nghiệp vụ (câu hỏi trống…) mới dừng ngay.
+      // Tự phục hồi khi kết nối chập chờn: thử lại tối đa 3 lần với khoảng
+      // chờ tăng dần. Các lỗi nghiệp vụ vẫn dừng ngay để không gửi sai.
       const askOnce = () =>
         ask({
           // Chỉ gửi phần ngữ cảnh còn nằm trong giới hạn của action. Lịch sử
@@ -344,20 +344,29 @@ export default function Assistant() {
           imageMime: opts?.fromCall ? undefined : image?.mime,
           ...getDeviceMeta(),
         });
-
-      try {
-        let reply: string;
-        try {
-          reply = await askOnce();
-        } catch (firstErr) {
-          const msg = convexErrMessage(firstErr);
-          // Lỗi nhất thời (mạng/giới hạn tốc độ/treo provider) → thử lại 1 lần
-          if (/hết giờ|timeout|network|fetch|rate|429|5\d\d|ECONN|tạm chưa trả lời/i.test(msg)) {
-            reply = await askOnce();
-          } else {
-            throw firstErr;
+      const askWithRetry = async () => {
+        let lastError: unknown = new Error("Không gửi được câu hỏi.");
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            return await askOnce();
+          } catch (err) {
+            lastError = err;
+            const msg = convexErrMessage(err);
+            const transient =
+              /hết giờ|timeout|network|fetch|rate|429|5\d\d|ECONN|tạm chưa trả lời|server error|called by client|request id|websocket|disconnect|mất kết nối/i.test(
+                msg,
+              );
+            if (!transient || attempt === 2) throw err;
+            await new Promise((resolve) =>
+              window.setTimeout(resolve, 600 * (attempt + 1)),
+            );
           }
         }
+        throw lastError;
+      };
+
+      try {
+        const reply = await askWithRetry();
         const replyMsg: Msg = { role: "assistant", content: reply, ts: Date.now() };
         setPending((p) => p.filter((m) => m !== userMsg));
         setHistory((h) => {
