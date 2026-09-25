@@ -1,4 +1,4 @@
-const CACHE_NAME = "tro-ly-phat-hoc-shell-v1";
+const CACHE_NAME = "tro-ly-phat-hoc-shell-v2";
 const APP_SHELL = ["./", "./manifest.webmanifest", "./app-icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -27,32 +27,23 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.endsWith("/convex/http") || url.pathname.includes("/api/")) return;
-
-  if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(async () => (await caches.match(request)) || (await caches.match("./"))),
-    );
-    return;
-  }
 
   event.respondWith(
-    caches.match(request).then(
-      (cached) =>
-        cached ||
-        fetch(request).then((response) => {
-          if (response.ok && response.type === "basic") {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        }),
-    ),
+    fetch(request)
+      .then((response) => {
+        if (response.ok && response.type === "basic") {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        }
+        return response;
+      })
+      .catch(async () => {
+        const cached = await caches.match(request);
+        if (cached) return cached;
+        if (request.mode === "navigate") {
+          return await caches.match("./");
+        }
+        throw new Error("Không có bản sao lưu cục bộ");
+      }),
   );
 });
