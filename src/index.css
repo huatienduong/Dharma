@@ -135,15 +135,20 @@
     @apply border-border outline-ring/50;
   }
   html {
-    font-size: calc(16px * var(--font-size-scale, 1));
+    /* Cỡ chữ cơ bản 17.5px (lớn hơn chuẩn 16px) — dễ đọc cho người lớn tuổi,
+       nhân theo lựa chọn cỡ chữ trong Cài đặt. */
+    font-size: calc(17.5px * var(--font-size-scale, 1));
   }
   body {
     @apply text-foreground;
-    /* Phông chữ rõ ràng: sans-serif chủ đạo cho UI, serif cho nội dung đọc */
+    /* Phông chữ RÕ RÀNG cho người lớn tuổi: sans-serif nét dày vừa, số/token
+       không dễ nhầm (tabular), chống nhòe trên màn thường. */
     font-family:
-      "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      "Inter", "Segoe UI", "SF Pro Text", system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    font-synthesis-weight: none;
+    letter-spacing: 0.005em;
     /* NỀN PHẲNG SẠCH — màu nền ứng dụng, không hoa văn */
     background-color: var(--background);
   }
@@ -151,12 +156,14 @@
     background-color: var(--background);
   }
   h1, h2, h3, h4 {
-    letter-spacing: -0.01em;
+    letter-spacing: -0.005em;
+    font-weight: 750;
   }
-  /* Nội dung đọc Kinh/Luật dùng serif truyền thống cho dễ đọc dài */
-  .prose-dhamma, .readable-serif {
+  /* Nội dung chat đọc dài — serif truyền thống, dòng thoáng dễ đọc */
+  .prose-dhamma,
+  .readable-serif {
     font-family: Georgia, "Times New Roman", ui-serif, serif;
-    line-height: 1.75;
+    line-height: 1.9;
   }
   button:not([disabled]),
   [role="button"]:not([disabled]) {

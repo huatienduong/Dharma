@@ -13,10 +13,17 @@ export type Language = "vi" | "en";
 
 export type AppSettings = {
   theme: ThemeMode;
-  fontScale: number; // 0.9 | 1 | 1.15 | 1.3
+  fontScale: number; // 1 | 1.15 | 1.3 | 1.45 — người lớn tuổi chọn cỡ to
   language: Language;
   notifications: boolean;
 };
+
+export const FONT_SCALES = [
+  { value: 1, labelKey: "fontMedium" },
+  { value: 1.15, labelKey: "fontLarge" },
+  { value: 1.3, labelKey: "fontXl" },
+  { value: 1.45, labelKey: "fontXxl" },
+] as const;
 
 const DEFAULTS: AppSettings = {
   theme: "light",
@@ -63,6 +70,11 @@ const VI = {
   sectionAppearance: "Giao diện",
   themeLight: "Sáng",
   themeDark: "Tối",
+  fontSize: "Cỡ chữ",
+  fontMedium: "Vừa",
+  fontLarge: "Lớn",
+  fontXl: "Rất lớn",
+  fontXxl: "To nhất",
   notifications: "Thông báo ứng dụng",
 };
 
@@ -74,6 +86,11 @@ const EN: Partial<Record<keyof typeof VI, string>> = {
   sectionAppearance: "Appearance",
   themeLight: "Light",
   themeDark: "Dark",
+  fontSize: "Font size",
+  fontMedium: "Medium",
+  fontLarge: "Large",
+  fontXl: "Extra large",
+  fontXxl: "Largest",
   notifications: "Notifications",
 };
 

@@ -589,7 +589,7 @@ export default function Assistant() {
   return (
     <div className="fb-bg flex h-[100dvh] flex-col overflow-hidden">
       {/* ---------- Header mảnh, cân đối ---------- */}
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border/60 bg-background px-2 sm:px-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border/60 bg-background px-2 sm:px-4">
         {/* Trái: Đàm thoại (+ nút quay lại khi mở từ trang khác) */}
         <div className="flex shrink-0 items-center gap-1">
           {!isHome && (
@@ -604,14 +604,14 @@ export default function Assistant() {
           )}
           <Button
             onClick={openCall}
-            className="h-9 gap-1.5 rounded-full px-3 shadow-sm sm:px-4"
+            className="h-11 gap-1.5 rounded-full px-3.5 shadow-sm sm:px-4"
           >
-            <Phone className="h-4 w-4" />
+            <Phone className="h-5 w-5" />
             <span className="hidden sm:inline">Đàm thoại</span>
           </Button>
         </div>
         <div className="min-w-0 flex-1 text-center">
-          <p className="truncate text-[15px] font-extrabold uppercase tracking-[0.18em] leading-tight text-foreground">
+          <p className="truncate text-base font-extrabold uppercase tracking-[0.16em] leading-tight text-foreground sm:text-[17px]">
             Trợ lý Phật học
           </p>
         </div>
@@ -623,9 +623,9 @@ export default function Assistant() {
             onClick={() => navigate("/settings?section=about")}
             title="Cài đặt & cập nhật ứng dụng"
             aria-label="Cài đặt và cập nhật ứng dụng"
-            className="h-9 w-9 rounded-full"
+            className="h-11 w-11 rounded-full"
           >
-            <Settings className="h-4.5 w-4.5" />
+            <Settings className="h-5 w-5" />
           </Button>
           <Button
             variant="ghost"
@@ -633,9 +633,9 @@ export default function Assistant() {
             onClick={() => void clearAll()}
             title="Xóa hội thoại"
             aria-label="Xóa hội thoại"
-            className="h-9 w-9 rounded-full"
+            className="h-11 w-11 rounded-full"
           >
-            <Eraser className="h-4 w-4" />
+            <Eraser className="h-5 w-5" />
           </Button>
         </div>
       </header>
@@ -647,7 +647,7 @@ export default function Assistant() {
             <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
               Xin chào 🙏
             </h2>
-            <p className="mt-2 max-w-md text-[15px] leading-relaxed text-muted-foreground">
+            <p className="mt-2 max-w-md text-base leading-relaxed text-muted-foreground">
               Hôm nay tôi có thể giúp gì cho bạn trên con đường Phật pháp?
             </p>
             <div className="mt-7 grid w-full max-w-lg grid-cols-1 gap-2.5 sm:grid-cols-2">
@@ -658,7 +658,7 @@ export default function Assistant() {
                     key={s.text}
                     type="button"
                     onClick={() => void send(s.text)}
-                    className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 py-3.5 text-left text-[15px] leading-snug text-foreground/90 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/50"
+                    className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 py-4 text-left text-base leading-snug text-foreground/90 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/50"
                   >
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold/15 text-gold">
                       <Icon className="h-4 w-4" />
@@ -757,7 +757,7 @@ export default function Assistant() {
               }}
               rows={1}
               placeholder=""
-              className="max-h-40 min-h-12 flex-1 resize-none self-center bg-transparent py-2.5 text-[17px] outline-none placeholder:text-muted-foreground/60 sm:text-lg"
+              className="max-h-40 min-h-14 flex-1 resize-none self-center bg-transparent py-2.5 text-[18px] leading-relaxed outline-none placeholder:text-muted-foreground/60 sm:text-[19px]"
             />
 
             {micSupported && (
@@ -926,10 +926,10 @@ function AssistantMessage({ content, ts }: { content: string; ts: number }) {
         <Bot className="h-4.5 w-4.5" />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="whitespace-pre-wrap text-[17px] leading-[1.85] text-foreground/95 sm:text-lg">
+        <div className="whitespace-pre-wrap text-[18px] leading-[1.9] text-foreground/95 sm:text-[19px]">
           {content}
         </div>
-        <p className="mt-1.5 text-xs text-muted-foreground/70">{formatTs(ts)}</p>
+        <p className="mt-1.5 text-[13px] text-muted-foreground/70">{formatTs(ts)}</p>
       </div>
     </div>
   );
@@ -938,10 +938,10 @@ function AssistantMessage({ content, ts }: { content: string; ts: number }) {
 function UserMessage({ content, ts }: { content: string; ts: number }) {
   return (
     <div className="flex flex-col items-end">
-      <div className="max-w-[85%] whitespace-pre-wrap rounded-3xl rounded-br-lg bg-muted px-4 py-3 text-[17px] leading-[1.75] sm:text-lg">
+      <div className="max-w-[85%] whitespace-pre-wrap rounded-3xl rounded-br-lg bg-muted px-4 py-3 text-[18px] leading-[1.8] sm:text-[19px]">
         {content}
       </div>
-      <p className="mt-1 pr-2 text-xs text-muted-foreground/70">{formatTs(ts)}</p>
+      <p className="mt-1 pr-2 text-[13px] text-muted-foreground/70">{formatTs(ts)}</p>
     </div>
   );
 }
