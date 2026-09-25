@@ -838,8 +838,8 @@ export default function Assistant() {
           <div className="relative z-10 flex h-full w-full max-w-[1800px] flex-col">
             <div className="flex w-full items-center justify-between px-5 pt-5 sm:px-8">
               <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-sm">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-gold to-amber-700">
-                  <Bot className="h-4 w-4 text-white" />
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-gold to-amber-700">
+                  <Bot className="h-6 w-6 text-white" />
                 </span>
                 <div>
                   <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/50">
@@ -959,8 +959,8 @@ function AssistantMessage({
   return (
     <div className={cn("flex items-start gap-2", grouped ? "mt-1.5" : "mt-5")}>
       {/* Avatar robot ở TRÊN — thẳng hàng đầu bong bóng trả lời */}
-      <span className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
-        <Bot className="h-4 w-4" />
+      <span className="mt-1 flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
+        <Bot className="h-6 w-6" />
       </span>
       <div className="min-w-0 flex-1 sm:max-w-[75%]">
         <div className="inline-block max-w-full whitespace-pre-wrap break-words rounded-3xl rounded-bl-md border border-border/50 bg-card px-4 py-2.5 text-[18px] leading-[1.8] text-foreground/95 shadow-sm sm:text-[19px]">
@@ -1069,8 +1069,8 @@ function AssistantThinking() {
   return (
     <div className="mt-5 flex items-start gap-2">
       {/* Avatar robot ở TRÊN, đồng hàng với bong bóng chờ */}
-      <span className="mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
-        <Bot className="h-4 w-4" />
+      <span className="mt-1 flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
+        <Bot className="h-6 w-6" />
       </span>
       <div className="inline-flex items-center gap-1.5 rounded-3xl rounded-bl-md border border-border/50 bg-card px-4 py-3.5 shadow-sm">
         {[0, 1, 2].map((i) => (

@@ -327,11 +327,25 @@
   }
 }
 
-/* Chống chọn/nhân bản nội dung khi bật chế độ chống chụp màn hình */
+/* Chặn chọn/nhân bản nội dung toàn ứng dụng (cho phép trong ô nhập) */
 body.ds-protect {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+}
+body.ds-protect input,
+body.ds-protect textarea,
+body.ds-protect [contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Khiên chống chụp/quay màn hình khu vực hội thoại: nội dung chat bị làm
+   mù mờ hoàn toàn khi trang rời khỏi màn hình (tab/đa nhiệm — thời điểm
+   công cụ ghi hình hoạt động) — khung hình ghi được chỉ thấy hình mờ. */
+body.ds-shield .fb-bg {
+  filter: blur(18px) grayscale(0.65);
+  transition: filter 60ms linear;
 }
 
 /* ---------- Bánh xe Chuyển Pháp Luân 8 cánh quay (Pháp thoại) ---------- */

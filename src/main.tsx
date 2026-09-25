@@ -1,5 +1,6 @@
 import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
+import { ChatScreenShield } from "@/components/ChatScreenShield";
 import { ConvexHealth } from "@/components/ConvexHealth";
 import { DeviceGuard } from "@/components/DeviceGuard";
 import { ServiceNotice } from "@/components/ServiceNotice";
@@ -13,6 +14,7 @@ import React, { StrictMode, useEffect, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import "./index.css";
+import { startContentProtection } from "@/lib/contentProtection";
 
 // Dharma AI — ứng dụng chỉ còn Trợ lý Phật học (màn chính) + Cài đặt.
 // Lazy load route components for better code splitting
@@ -157,6 +159,8 @@ createRoot(document.getElementById("root")!).render(
             <RouteSyncer />
             {/* Thông báo mất kết nối / nâng cấp hệ thống / sự cố tạm thời */}
             <ServiceNotice />
+            {/* Khiên chống chụp/quay màn hình khu vực hội thoại */}
+            <ChatScreenShield />
             {/* Máy chủ không trả dữ liệu quá lâu (bundle cũ, deployment đổi) →
                 màn phục hồi thay vì treo im lặng "không tra cứu được gì" */}
             <ConvexHealth />
@@ -180,3 +184,7 @@ createRoot(document.getElementById("root")!).render(
 
 // Gỡ màn boot tĩnh trong index.html — React đã render xong
 (window as unknown as { __dsBootDone?: () => void }).__dsBootDone?.();
+
+// KHÓA NỘI DUNG: chặn hoàn toàn sao chép văn bản trong ứng dụng (copy, cut,
+// menu chuột phải, kéo thả, bôi đen, Ctrl+C/X/A). Không đụng tới ô nhập.
+startContentProtection();
