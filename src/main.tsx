@@ -77,17 +77,10 @@ class RootErrorBoundary extends React.Component<
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
               Đội ngũ kỹ thuật đang tiến hành nâng cấp hệ thống hoặc ứng dụng đang gặp vấn đề sự cố tạm thời. Xin vui lòng quay lại sau!
             </p>
-            <div className="mt-5 flex flex-col items-center justify-center gap-2.5 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => window.location.reload()}
-                className="w-full rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 sm:w-auto"
-              >
-                Tải lại trang
-              </button>
+            <div className="mt-5 flex justify-center">
               <a
-                href={`${ROUTER_BASENAME === "/" ? "" : ROUTER_BASENAME}/settings`}
-                className="w-full rounded-full border border-border/70 px-5 py-2.5 text-sm font-medium transition hover:bg-accent sm:w-auto"
+                href={`${ROUTER_BASENAME === "/" ? "" : ROUTER_BASENAME}/settings?section=feedback`}
+                className="rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
               >
                 Báo cáo lỗi
               </a>
