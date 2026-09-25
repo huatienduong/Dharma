@@ -126,32 +126,27 @@ const AI_TIMEOUT_MS = 60_000; // cho phép Gemini đủ thời gian sinh câu tr
 
 /* ------------------------------------------------------------------ */
 /* BẢN ĐỒ GIỌNG TTS — đồng bộ với danh mục client (src/lib/aiVoices.ts). */
-/* Client gửi voice id + male; máy chủ chọn giọng Gemini/OpenAI tương ứng. */
+/* Client gửi voice id + male; máy chủ chọn giọng Gemini tương ứng.      */
 /* ------------------------------------------------------------------ */
 
-type ServerVoice = {
-  gemini: string;
-  groq: string;
-  openai: string;
-  male: boolean;
-};
+type ServerVoice = { gemini: string; male: boolean };
 
 /**
- * Bản đồ giọng đọc — ĐÃ ĐỐI CHIẾN giới tính thật của từng voice:
- * • Gemini NỮ: Kore, Leda, Aoede, Autonoe, Zephyr, Despina…
- *   Gemini NAM: Puck, Charon, Enceladus, Algieba, Alnilam, Iapetus…
- *   (Lỗi cũ: karuna bị map sang "Puck" — giọng NAM → nghe nam hiển thị nữ.)
- * • Groq (PlayAI TTS): dùng key GROQ_API_KEY, đồng bộ lựa chọn giọng.
+ * Bản đồ giọng đọc — ĐÃ ĐỐI CHIẾN giới tính thật của từng voice Gemini:
+ * • NỮ: Kore, Autonoe, Leda, Aoede · NAM: Charon, Enceladus, Algieba,
+ *   Alnilam, Iapetus (lỗi cũ: karuna map "Puck" — giọng nam).
+ * TTS chỉ dùng Gemini (key sống). Groq đã ngừng TTS (playai-tts bị
+ * decommission), OpenAI key đã hết credit — đã loại bỏ các nhánh chết.
  */
 const SERVER_VOICES: Record<string, ServerVoice> = {
-  metta: { gemini: "Kore", groq: "Celeste-PlayAI", openai: "shimmer", male: false },
-  karuna: { gemini: "Autonoe", groq: "Arista-PlayAI", openai: "coral", male: false },
-  panna: { gemini: "Leda", groq: "Gail-PlayAI", openai: "sage", male: false },
-  sati: { gemini: "Aoede", groq: "Deedee-PlayAI", openai: "nova", male: false },
-  mettam: { gemini: "Enceladus", groq: "Mason-PlayAI", openai: "echo", male: true },
-  adosa: { gemini: "Algieba", groq: "Atlas-PlayAI", openai: "onyx", male: true },
-  upekkha: { gemini: "Alnilam", groq: "Calum-PlayAI", openai: "fable", male: true },
-  sila: { gemini: "Iapetus", groq: "Basil-PlayAI", openai: "alloy", male: true },
+  metta: { gemini: "Kore", male: false },
+  karuna: { gemini: "Autonoe", male: false },
+  panna: { gemini: "Leda", male: false },
+  sati: { gemini: "Aoede", male: false },
+  mettam: { gemini: "Enceladus", male: true },
+  adosa: { gemini: "Algieba", male: true },
+  upekkha: { gemini: "Alnilam", male: true },
+  sila: { gemini: "Iapetus", male: true },
 };
 
 /* ------------------------------------------------------------------ */
@@ -199,9 +194,9 @@ function listProviders(needVision: boolean): ProviderChoice[] {
           baseURL: GROQ_BASE_URL,
           apiKey: groqKey,
         }),
-      model: needVision
-        ? "meta-llama/llama-4-scout-17b-16e-instruct"
-        : "llama-3.3-70b-versatile",
+      // Model llama-3.3-70b ĐÃ BỊ Groq decommission → dùng model mới đang
+      // hỗ trợ (đã test tiếng Việt tốt). Vision ảnh: Gemini đảm nhiệm.
+      model: "openai/gpt-oss-120b",
     });
   }
 
@@ -351,8 +346,8 @@ export const ask = action({
 
 /**
  * TTS tiếng Việt chất lượng cao — server tổng hợp âm thanh rồi trả về base64.
- * Thứ tự: Gemini TTS (free tier, giọng vi tự nhiên) → OpenAI TTS.
- * Trả về null khi không có khóa TTS → client dùng Web Speech dự phòng.
+ * Chỉ dùng Gemini TTS (Groq đã ngừng TTS, OpenAI key hết credit — đã bỏ).
+ * Trả về null khi không có khóa → client dùng Web Speech dự phòng.
  */
 export const speak = action({
   args: {
@@ -366,7 +361,6 @@ export const speak = action({
     integrity: v.optional(v.string()),
   },
   handler: async (ctx, { text, voice, male, deviceId, integrity }) => {
-    void ctx;
     // Giới hạn tốc độ cả TTS — chặn bot quay vùng đọc text miễn phí
     const denied = await checkRateLimit(ctx, "speak", deviceId, integrity);
     if (denied) throw new ConvexError(denied);
@@ -381,12 +375,8 @@ export const speak = action({
         : "Đọc bằng tiếng Việt, giọng NỮ nhẹ nhàng, chậm rãi trang nghiêm:";
     const v = SERVER_VOICES[voice ?? ""];
     const geminiVoice = v?.gemini ?? (wantMale ? "Charon" : "Kore");
-    const groqVoice = v?.groq ?? (wantMale ? "Mason-PlayAI" : "Celeste-PlayAI");
-    const openaiVoice = v?.openai ?? (wantMale ? "onyx" : "shimmer");
 
     const geminiKey = process.env.GEMINI_API_KEY;
-    const groqKey = process.env.GROQ_API_KEY;
-    const openaiKey = process.env.OPENAI_API_KEY;
 
     if (geminiKey) {
       try {
@@ -440,40 +430,8 @@ export const speak = action({
       }
     }
 
-    // LƯU Ý: Groq đã ngừng dịch vụ TTS (playai-tts decommissioned) — Groq
-    // chỉ phục vụ chat. TTS chính là Gemini, dự phòng OpenAI.
-    void groqKey;
-    void groqVoice;
-
-    if (openaiKey) {
-      try {
-        const res = await fetch("https://api.openai.com/v1/audio/speech", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${openaiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini-tts",
-            voice: openaiVoice,
-            input: clean,
-            response_format: "mp3",
-          }),
-        });
-        if (res.ok) {
-          const buf = await res.arrayBuffer();
-          let binary = "";
-          const bytes = new Uint8Array(buf);
-          for (let i = 0; i < bytes.length; i++) {
-            binary += String.fromCharCode(bytes[i]);
-          }
-          return { audioBase64: btoa(binary), mime: "audio/mpeg" };
-        }
-      } catch {
-        /* rơi về Web Speech */
-      }
-    }
-
+    // Groq đã ngừng dịch vụ TTS (playai-tts decommissioned) và OpenAI key
+    // đã hết credit — TTS duy nhất là Gemini. Thất bại → client dùng Web Speech.
     return null;
   },
 });
