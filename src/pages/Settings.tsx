@@ -1,4 +1,6 @@
 import { api } from "@/convex/_generated/api";
+import { LegalDocs } from "@/components/LegalDocs";
+import { wipeSecureStorage } from "@/lib/secureStorage";
 import {
   APP_DEVELOPER,
   APP_NAME,
@@ -60,11 +62,12 @@ export default function Settings() {
     sectionParam === "appearance" ||
     sectionParam === "about" ||
     sectionParam === "voice" ||
-    sectionParam === "feedback"
+    sectionParam === "feedback" ||
+    sectionParam === "legal"
       ? sectionParam
       : null;
   const [openCard, setOpenCard] = useState<
-    null | "appearance" | "about" | "voice" | "feedback"
+    null | "appearance" | "about" | "voice" | "feedback" | "legal"
   >(validSection);
   const toggle = (key: typeof openCard) =>
     setOpenCard((cur) => (cur === key ? null : key));
@@ -189,9 +192,10 @@ export default function Settings() {
       return;
     }
     try {
-      // Trợ lý Phật học: dữ liệu cục bộ gồm hội thoại + lựa chọn giọng
-      localStorage.removeItem("ds-assistant-history");
+      // Trợ lý Phật học: dữ liệu cục bộ gồm hội thoại (đÃ MÃ HÓA) + lựa chọn giọng.
+      // wipeSecureStorage xóa cả khóa mã hóa → dữ liệu mã hóa cũ không thể đọc lại.
       localStorage.removeItem("ds-assistant-voice");
+      wipeSecureStorage();
     } catch {
       /* bỏ qua */
     }
@@ -415,6 +419,15 @@ export default function Settings() {
             )}
 
           </div>
+        </RowCard>
+
+        {/* ---------- Chính sách & Điều khoản ---------- */}
+        <RowCard
+          label="Chính sách & Điều khoản"
+          open={openCard === "legal"}
+          onClick={() => toggle("legal")}
+        >
+          <LegalDocs />
         </RowCard>
 
         {/* ---------- Góp ý & Báo lỗi ---------- */}

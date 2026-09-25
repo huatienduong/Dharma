@@ -5,6 +5,11 @@ import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 import { loadVoicePref } from "@/lib/aiVoices";
 import { getDeviceMeta } from "@/lib/deviceSecurity";
+import {
+  CHAT_STORAGE_KEY as CHAT_KEY,
+  decryptString,
+  encryptString,
+} from "@/lib/secureStorage";
 import { cn } from "@/lib/utils";
 import { useAction } from "convex/react";
 import {
@@ -72,37 +77,55 @@ function newRecognition(): RecLike | null {
 }
 
 /* ------------------------------------------------------------------ */
-/* Lịch sử hội thoại lưu CỤC BỘ trên thiết bị (không cần đăng nhập)     */
+/* Lịch sử hội thoại — MÃ HÓA AES-256-GCM trên thiết bị (không cần đăng  */
+/* nhập). Dữ liệu cũ chưa mã hóa được nâng cấp tự động: đọc → mã hóa lại */
+/* → ghi đè bản thô, người dùng không mất dữ liệu hiện có.               */
 /* ------------------------------------------------------------------ */
 
-const CHAT_KEY = "ds-assistant-history";
-
-function loadLocalChat(): Msg[] {
+async function loadLocalChatSecure(): Promise<Msg[] | null> {
   try {
     const raw = localStorage.getItem(CHAT_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as Msg[];
-    if (!Array.isArray(parsed)) return [];
+    if (!raw) return null;
+    let parsed: unknown;
+    if (raw.includes(":")) {
+      // Bản mã có dạng "iv:cipher" — giải mã trước khi đọc
+      const plain = await decryptString(raw);
+      if (!plain) return null;
+      parsed = JSON.parse(plain);
+    } else {
+      // Dữ liệu cũ chưa mã hóa → nâng cấp tự động: mã hóa lại, xóa bản thô
+      parsed = JSON.parse(raw);
+      const upgraded = await encryptString(JSON.stringify(parsed));
+      try {
+        localStorage.setItem(CHAT_KEY, upgraded);
+      } catch {
+        /* không ghi được bản mã → giữ nguyên bản thô */
+      }
+    }
+    const arr = parsed as Msg[];
+    if (!Array.isArray(arr)) return null;
     // Tin nhắn cũ chưa có mốc giờ → gán thời gian lệch nhau theo thứ tự
-    return parsed
+    return arr
       .filter((m) => m && (m.role === "user" || m.role === "assistant"))
-      .map((m, i, arr) => ({
+      .map((m, i, a) => ({
         ...m,
         ts:
           typeof m.ts === "number"
             ? m.ts
-            : Date.now() - (arr.length - i) * 60_000,
+            : Date.now() - (a.length - i) * 60_000,
       }));
   } catch {
-    return [];
+    return null;
   }
 }
 
-function saveLocalChat(msgs: Msg[]) {
+/** Lưu lịch sử — LUÔN mã hóa AES-256-GCM trước khi ghi xuống thiết bị. */
+async function saveLocalChatSecure(msgs: Msg[]) {
   try {
-    localStorage.setItem(CHAT_KEY, JSON.stringify(msgs.slice(-100)));
+    const enc = await encryptString(JSON.stringify(msgs.slice(-100)));
+    localStorage.setItem(CHAT_KEY, enc);
   } catch {
-    /* bộ nhớ đầy — bỏ qua */
+    /* bộ nhớ đầy / WebCrypto lỗi — bỏ qua */
   }
 }
 
@@ -112,7 +135,18 @@ export default function Assistant() {
   const isHome = location.pathname === "/" || location.pathname === "/home";
   const ask = useAction(api.aiChat.ask);
 
-  const [history, setHistory] = useState<Msg[]>(loadLocalChat);
+  const [history, setHistory] = useState<Msg[]>([]);
+
+  // Nạp lịch sử ĐÃ MÃ HÓA từ thiết bị (WebCrypto là bất đồng bộ)
+  useEffect(() => {
+    let alive = true;
+    void loadLocalChatSecure().then((msgs) => {
+      if (alive && msgs) setHistory(msgs);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const [input, setInput] = useState("");
   const [pending, setPending] = useState<Msg[]>([]);
@@ -267,7 +301,7 @@ export default function Assistant() {
         setPending((p) => p.filter((m) => m !== userMsg));
         setHistory((h) => {
           const next = [...h, userMsg, replyMsg];
-          saveLocalChat(next);
+          void saveLocalChatSecure(next);
           return next;
         });
         if (opts?.fromCall) {

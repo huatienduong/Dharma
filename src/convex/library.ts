@@ -1,6 +1,6 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 
 /* ------------------------------------------------------------------ */
 /* Góp ý & báo cáo lỗi                                                 */
@@ -42,6 +42,56 @@ export const getAppVersion = query({
         .withIndex("by_key", (q) => q.eq("key", "app"))
         .unique()) ?? null
     );
+  },
+});
+
+/* ------------------------------------------------------------------ */
+/* Chính sách quyền riêng tư & Điều khoản sử dụng                      */
+/* Nội dung lưu trên server (bảng appMeta) — cập nhật không cần phát   */
+/* hành bản mới; mọi thiết bị nhận bản mới ngay nhờ query reactive.    */
+/* ------------------------------------------------------------------ */
+
+const LEGAL_KEYS = ["privacy-policy", "terms-of-service"] as const;
+
+export const getLegalDoc = query({
+  args: { key: v.union(v.literal("privacy-policy"), v.literal("terms-of-service")) },
+  handler: async (ctx, { key }) => {
+    return (
+      (await ctx.db
+        .query("appMeta")
+        .withIndex("by_key", (q) => q.eq("key", key))
+        .unique()) ?? null
+    );
+  },
+});
+
+/** Chỉ chạy từ CLI/dashboard (internal) — client không thể ghi đè chính sách. */
+export const updateLegalDoc = internalMutation({
+  args: {
+    key: v.union(v.literal("privacy-policy"), v.literal("terms-of-service")),
+    content: v.string(),
+    docVersion: v.string(),
+  },
+  handler: async (ctx, { key, content, docVersion }) => {
+    const existing = await ctx.db
+      .query("appMeta")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique();
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        latestVersion: docVersion,
+        releaseNotes: content,
+        releasedAt: Date.now(),
+      });
+      return "updated";
+    }
+    await ctx.db.insert("appMeta", {
+      key,
+      latestVersion: docVersion,
+      releaseNotes: content,
+      releasedAt: Date.now(),
+    });
+    return "inserted";
   },
 });
 

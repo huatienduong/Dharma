@@ -190,6 +190,20 @@ export const ask = action({
       throw new Error("Câu hỏi trống.");
     }
 
+    // Chống tấn công: giới hạn kích thước đầu vào — bot gửi payload khổng lồ
+    // sẽ bị từ chối ngay trước khi chạm provider AI.
+    if (messages.length > 60) {
+      throw new Error("Hội thoại quá dài. Hãy xóa hội thoại và bắt đầu lại.");
+    }
+    for (const m of messages) {
+      if (typeof m.content !== "string" || m.content.length > 8000) {
+        throw new Error("Tin nhắn vượt quá độ dài cho phép.");
+      }
+    }
+    if (imageBase64 && imageBase64.length > 9_000_000) {
+      throw new Error("Ảnh quá lớn (tối đa khoảng 6MB).");
+    }
+
     const providers = listProviders(Boolean(imageBase64));
     if (providers.length === 0) {
       throw new Error(
@@ -409,6 +423,7 @@ export const appendMessages = mutation({
   handler: async (ctx, { items }) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) return;
+    if (items.length > 30) throw new Error("Quá nhiều tin nhắn cùng lúc.");
 
     const now = Date.now();
     let offset = 0;
