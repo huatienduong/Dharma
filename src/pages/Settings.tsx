@@ -1,4 +1,3 @@
-import { AppLogo } from "@/components/AppLogo";
 import { api } from "@/convex/_generated/api";
 import { LegalDocs } from "@/components/LegalDocs";
 import { wipeSecureStorage } from "@/lib/secureStorage";
@@ -291,8 +290,7 @@ export default function Settings() {
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <div className="flex items-center justify-center gap-2">
-          <AppLogo className="h-8 w-8 shrink-0 rounded-xl object-contain" />
+        <div className="flex items-center justify-center">
           <p className="whitespace-nowrap text-sm font-extrabold uppercase tracking-[0.08em] leading-tight text-foreground sm:text-[17px] sm:tracking-[0.16em]">
             Trợ lý Phật học
           </p>
