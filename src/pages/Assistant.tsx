@@ -192,6 +192,10 @@ export default function Assistant() {
   const mutedRef = useRef(false);
   const micDeniedRef = useRef(false);
   const busyRef = useRef(false);
+  // Hàng đợi câu hỏi — khi trợ lý đang trả lời, câu hỏi gửi tiếp KHÔNG bị
+  // bỏ im lặng mà xếp hàng; trả lời xong tự gửi tiếp (khắc phục lỗi
+  // "AI không trả lời câu hỏi tiếp trong cuộc trò chuyện").
+  const queueRef = useRef<string[]>([]);
   const lastAiWordAtRef = useRef(0);
   const lastAssistantEventAtRef = useRef(0);
   const recRef = useRef<RecLike | null>(null);
@@ -269,7 +273,20 @@ export default function Assistant() {
   const send = useCallback(
     async (text: string, opts?: { fromCall?: boolean }) => {
       const q = text.trim();
-      if (!q || busy) return;
+      if (!q) return;
+      // Đang bận: xếp hàng chờ (chat) hoặc nhắc nhở nhẹ (đàm thoại) thay vì
+      // nuốt im lặng câu hỏi của người dùng.
+      if (busyRef.current) {
+        if (!opts?.fromCall && q.length <= 500) {
+          queueRef.current.push(q);
+          toast("Trợ lý đang trả lời — câu hỏi của bạn đã xếp hàng.", {
+            duration: 2200,
+          });
+        } else {
+          toast.error("Đang trả lời — vui lòng chờ chút rồi nói tiếp.");
+        }
+        return;
+      }
 
       const base: Msg[] = [...history, ...pending];
       const userMsg: Msg = {
@@ -374,9 +391,18 @@ export default function Assistant() {
         }
       } finally {
         setBusy(false);
+        // Trả lời xong → tự gửi câu hỏi đang xếp hàng (giữ mạch hội thoại).
+        if (!opts?.fromCall) {
+          window.setTimeout(() => {
+            const next = queueRef.current.shift();
+            if (!next) return;
+            if (busyRef.current) queueRef.current.unshift(next);
+            else void send(next);
+          }, 80);
+        }
       }
     },
-    [ask, busy, history, image, pending],
+    [ask, history, image, pending],
   );
 
   /* ----- Đàm thoại: xử lý một câu người dùng vừa nói ----- */
@@ -727,7 +753,7 @@ export default function Assistant() {
             e.preventDefault();
             void send(input);
           }}
-          className="mx-auto w-full max-w-3xl shrink-0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-4"
+          className="mx-auto w-full max-w-3xl shrink-0 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 sm:px-4"
         >
           {image && (
             <div className="mb-2 flex items-center gap-2 pl-1">
@@ -752,7 +778,7 @@ export default function Assistant() {
             </div>
           )}
 
-          <div className="flex items-end gap-1.5 rounded-[26px] border border-border/70 bg-card p-2 shadow-lg transition focus-within:border-gold/50 focus-within:ring-2 focus-within:ring-gold/15">
+          <div className="flex items-end gap-1 rounded-[24px] border border-border/70 bg-card p-1.5 shadow-lg transition focus-within:border-gold/50 focus-within:ring-2 focus-within:ring-gold/15">
             <input
               ref={fileRef}
               type="file"
@@ -767,11 +793,11 @@ export default function Assistant() {
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
               aria-label="Gửi ảnh cho AI"
               title="Gửi ảnh (tượng Phật, kinh sách, chữ Pāli…)"
             >
-              <ImagePlus className="h-5 w-5" />
+              <ImagePlus className="h-[18px] w-[18px]" />
             </button>
 
             <textarea
@@ -785,7 +811,7 @@ export default function Assistant() {
               }}
               rows={1}
               placeholder=""
-              className="max-h-40 min-h-14 flex-1 resize-none self-center bg-transparent py-2.5 text-[18px] leading-relaxed outline-none placeholder:text-muted-foreground/60 sm:text-[19px]"
+              className="max-h-32 min-h-9 flex-1 resize-none self-center bg-transparent py-2 text-[16px] leading-relaxed outline-none placeholder:text-muted-foreground/60 sm:text-[17px]"
             />
 
             {micSupported && (
@@ -794,11 +820,11 @@ export default function Assistant() {
                 onClick={() => (listening ? stop() : start(onVoiceChat))}
                 aria-label={listening ? "Dừng nghe" : "Hỏi bằng giọng nói"}
                 className={cn(
-                  "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground",
+                  "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground",
                   listening && "bg-destructive/10 text-destructive",
                 )}
               >
-                <Mic className="h-5 w-5" />
+                <Mic className="h-[18px] w-[18px]" />
                 {listening && (
                   <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
@@ -812,13 +838,13 @@ export default function Assistant() {
               type="submit"
               size="icon"
               disabled={busy || (!input.trim() && !image)}
-              className="h-11 w-11 shrink-0 rounded-full"
+              className="h-10 w-10 shrink-0 rounded-full"
               aria-label="Gửi câu hỏi"
             >
               {busy ? (
-                <AudioLines className="h-5 w-5 animate-pulse" />
+                <AudioLines className="h-[18px] w-[18px] animate-pulse" />
               ) : (
-                <Send className="h-5 w-5" />
+                <Send className="h-[18px] w-[18px]" />
               )}
             </Button>
           </div>
