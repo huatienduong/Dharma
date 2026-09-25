@@ -3,7 +3,13 @@ import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { generateText } from "ai";
 import { ConvexError } from "convex/values";
 import { v } from "convex/values";
-import { action, internalMutation, mutation, query } from "./_generated/server";
+import {
+  action,
+  internalAction,
+  internalMutation,
+  mutation,
+  query,
+} from "./_generated/server";
 import type { ActionCtx } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 
@@ -168,7 +174,7 @@ async function markProviderFailure(
 }
 
 /** Xóa trạng thái chết khi provider/model hoạt động trở lại (hồi phục). */
-async function clearProviderFailure(
+async function clearProviderState(
   ctx: ActionCtx,
   provider: string,
   model: string,
@@ -368,7 +374,7 @@ async function listProviders(
  * mức chat). Provider/model hồi phục được gỡ trạng thái chết ngay; hệ
  * thống tự chữa mà không cần ai can thiệp.
  */
-export const aiSelfTest = action({
+export const aiSelfTest = internalAction({
   args: {},
   handler: async (ctx) => {
     const notes: string[] = [];
@@ -393,7 +399,7 @@ export const aiSelfTest = action({
       } catch (err) {
         note = err instanceof Error ? err.message : String(err);
       }
-      if (ok) await clearProviderFailure(ctx, "Groq", groqModel);
+      if (ok) await clearProviderState(ctx, "Groq", groqModel);
       else await markProviderFailure(ctx, "Groq", groqModel, note);
       notes.push(`Groq: ${note}`);
     }
@@ -421,7 +427,7 @@ export const aiSelfTest = action({
       } catch (err) {
         note = err instanceof Error ? err.message : String(err);
       }
-      if (ok) await clearProviderFailure(ctx, "Gemini", geminiModel);
+      if (ok) await clearProviderState(ctx, "Gemini", geminiModel);
       else await markProviderFailure(ctx, "Gemini", geminiModel, note);
       notes.push(`Gemini: ${note}`);
     }
@@ -538,7 +544,7 @@ export const ask = action({
         const reply = result.text.trim();
         if (reply) {
           // Thành công — provider vừa hồi phục thì gỡ trạng thái chết tạm thời.
-          await clearProviderFailure(ctx, provider.label, provider.model);
+          await clearProviderState(ctx, provider.label, provider.model);
           return reply;
         }
         // Giải thích rõ vì sao rỗng thay vì chỉ "trả lời rỗng"
