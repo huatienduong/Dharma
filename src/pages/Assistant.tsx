@@ -607,7 +607,7 @@ export default function Assistant() {
     <div className="fb-bg flex h-[100dvh] flex-col overflow-hidden">
       {/* ---------- Header: tiêu đề sát trái, cụm 3 nút sát phải ---------- */}
       <header className="grid h-16 shrink-0 grid-cols-[1fr_auto] items-center gap-1 border-b border-border/60 bg-background px-2 sm:px-4">
-        {/* Trái: Tiêu đề + nút Đàm thoại cạnh nhau (+ Quay lại khi mở từ trang khác) */}
+        {/* Trái: Tiêu đề (+ nút Quay lại khi mở từ trang khác) */}
         <div className="flex items-center gap-1 justify-self-start">
           <p className="whitespace-nowrap text-sm font-extrabold uppercase tracking-[0.08em] leading-tight text-foreground sm:text-[17px] sm:tracking-[0.16em]">
             Trợ lý Phật học
@@ -622,6 +622,9 @@ export default function Assistant() {
               <ArrowLeft className="h-5 w-5" />
             </button>
           )}
+        </div>
+        {/* Phải: Đàm thoại (1) + Xóa hội thoại (2) + Cài đặt (3) — icon sát nhau, sát lề phải */}
+        <div className="flex items-center gap-0 justify-self-end">
           <Button
             onClick={openCall}
             className="h-11 w-11 justify-center rounded-full p-0 shadow-sm sm:w-auto sm:px-4"
@@ -630,9 +633,6 @@ export default function Assistant() {
             <Phone className="h-5 w-5 shrink-0" />
             <span className="hidden sm:inline">Đàm thoại</span>
           </Button>
-        </div>
-        {/* Phải: Xóa hội thoại + Cài đặt — icon sát nhau, sát lề phải */}
-        <div className="flex items-center gap-0 justify-self-end">
           <Button
             variant="ghost"
             size="icon"

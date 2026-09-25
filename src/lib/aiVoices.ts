@@ -2,20 +2,20 @@
  * Danh mục GIỌNG NÓI của Trợ lý Phật học — đồng bộ với SERVER_VOICES trong
  * convex/aiChat.ts (máy chủ nhận voice id + male để chọn giọng TTS).
  *
- * Tên giọng theo Pāli theo tông trang nghiêm của ứng dụng Dharma:
- * • Mettā  (từ ái)      — nữ, ấm áp dịu dàng
- * • Karuṇā (bi mẫn)     — nữ, trầm dịu
- * • Paññā  (trí tuệ)    — nữ, sáng rõ
- * • Sati   (chánh niệm) — nữ, thong thả
- * • Metta  (không dấu)  — nam, ấm áp
- * • Adosa  (vô sân)     — nam, trầm trang nghiêm
- * • Upekkhā (xả)        — nam, điềm tĩnh
- * • Sīla   (giới đức)   — nam, sáng rõ
+ * Tên hiển thị tiếng Việt cho người dùng; id giữ nguyên (máy server dùng).
+ *  • metta   — Nữ, từ ái      ấm áp dịu dàng
+ *  • karuna  — Nữ, bi mẫn     trầm dịu
+ *  • panna   — Nữ, trí tuệ    sáng rõ
+ *  • sati    — Nữ, chánh niệm thong thả
+ *  • mettam  — Nam, từ ái     ấm áp thân gần
+ *  • adosa   — Nam, vô sân    trầm trang nghiêm
+ *  • upekkha — Nam, bình xả   điềm tĩnh
+ *  • sila    — Nam, giới đức  sáng rõ
  */
 
 export type AiVoice = {
   id: string;
-  name: string; // tên hiển thị
+  name: string; // tên hiển thị (tiếng Việt)
   male: boolean;
   desc: string;
   /** Từ khóa ưu tiên khi chọn giọng Web Speech (tiếng Việt) */
@@ -25,63 +25,63 @@ export type AiVoice = {
 export const AI_VOICES: Record<string, AiVoice> = {
   metta: {
     id: "metta",
-    name: "Mettā",
+    name: "Nữ — Từ Ái",
     male: false,
-    desc: "Nữ · ấm áp, dịu dàng",
+    desc: "Giọng nữ · ấm áp, dịu dàng",
     browser: /female|nữ|hoa|linh|google\s*vi/i,
   },
   karuna: {
     id: "karuna",
-    name: "Karuṇā",
+    name: "Nữ — Bi Mẫn",
     male: false,
-    desc: "Nữ · trầm dịu, từ bi",
+    desc: "Giọng nữ · trầm dịu, từ bi",
     browser: /female|nữ|google\s*vi/i,
   },
   panna: {
     id: "panna",
-    name: "Paññā",
+    name: "Nữ — Trí Tuệ",
     male: false,
-    desc: "Nữ · sáng rõ, tỉnh táo",
+    desc: "Giọng nữ · sáng rõ, tỉnh táo",
     browser: /female|nữ|google\s*vi/i,
   },
   sati: {
     id: "sati",
-    name: "Sati",
+    name: "Nữ — Chánh Niệm",
     male: false,
-    desc: "Nữ · thong thả, an trú",
+    desc: "Giọng nữ · thong thả, an trú",
     browser: /female|nữ|google\s*vi/i,
   },
   mettam: {
     id: "mettam",
-    name: "Metta",
+    name: "Nam — Từ Ái",
     male: true,
-    desc: "Nam · ấm áp, thân gần",
+    desc: "Giọng nam · ấm áp, thân gần",
     browser: /male|nam|google\s*vi/i,
   },
   adosa: {
     id: "adosa",
-    name: "Adosa",
+    name: "Nam — Vô Sân",
     male: true,
-    desc: "Nam · trầm ấm, trang nghiêm",
+    desc: "Giọng nam · trầm ấm, trang nghiêm",
     browser: /male|nam|google\s*vi/i,
   },
   upekkha: {
     id: "upekkha",
-    name: "Upekkhā",
+    name: "Nam — Bình Xả",
     male: true,
-    desc: "Nam · điềm tĩnh, bình xả",
+    desc: "Giọng nam · điềm tĩnh, bình xả",
     browser: /male|nam|google\s*vi/i,
   },
   sila: {
     id: "sila",
-    name: "Sīla",
+    name: "Nam — Giới Đức",
     male: true,
-    desc: "Nam · sáng rõ, minh mẫn",
+    desc: "Giọng nam · sáng rõ, minh mẫn",
     browser: /male|nam|google\s*vi/i,
   },
 };
 
-/** Giọng mặc định khi người dùng chưa chọn: nữ Mettā. */
+/** Giọng mặc định khi người dùng chưa chọn: nữ Từ Ái. */
 export const DEFAULT_VOICE_ID = "metta";
 
 export function getVoice(voiceId?: string | null): AiVoice {

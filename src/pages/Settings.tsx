@@ -17,6 +17,7 @@ import { useMemo } from "react";
 import {
   ArrowLeft,
   Bell,
+  Bot,
   Bug,
   Check,
   CheckCircle2,
@@ -28,7 +29,6 @@ import {
   RefreshCw,
   Send,
   Sun,
-  Volume2,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -285,12 +285,7 @@ export default function Settings() {
           open={openCard === "voice"}
           onClick={() => toggle("voice")}
         >
-          <div className="space-y-1 pt-1">
-            {/* Giọng đang chọn — dòng tổng quan gọn */}
-            <div className="mb-2.5 flex items-center justify-between rounded-2xl bg-muted/50 px-4 py-3">
-              <p className="text-sm font-semibold">{currentVoice.name}</p>
-              <p className="text-xs text-muted-foreground">{currentVoice.desc}</p>
-            </div>
+          <div className="space-y-2.5 pt-1">
             {VOICE_LIST.map((v) => {
               const active = v.id === voiceId;
               return (
@@ -308,27 +303,27 @@ export default function Settings() {
                     });
                   }}
                   className={cn(
-                    "flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition",
+                    "flex w-full items-center gap-3 rounded-full border py-2 pl-2 pr-4 text-left backdrop-blur-sm transition",
                     active
-                      ? "bg-primary/10"
-                      : "hover:bg-accent",
+                      ? "border-gold/40 bg-white/10"
+                      : "border-white/10 bg-white/5 hover:bg-white/10",
                   )}
                 >
                   <span
                     className={cn(
-                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white",
                       active
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "bg-muted text-muted-foreground",
+                        ? "bg-gradient-to-br from-gold to-amber-700 shadow-sm"
+                        : "bg-gradient-to-br from-zinc-600 to-zinc-800",
                     )}
                   >
-                    <Volume2 className="h-4 w-4" />
+                    <Bot className="h-6 w-6" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span
                       className={cn(
                         "block truncate text-sm font-semibold",
-                        active ? "text-primary" : "text-foreground",
+                        active ? "text-gold" : "text-foreground",
                       )}
                     >
                       {v.name}
@@ -337,14 +332,7 @@ export default function Settings() {
                       {v.desc}
                     </span>
                   </span>
-                  {active ? (
-                    <Check className="h-4.5 w-4.5 shrink-0 text-primary" />
-                  ) : (
-                    <Volume2
-                      className="h-4 w-4 shrink-0 text-muted-foreground/50"
-                      aria-hidden
-                    />
-                  )}
+                  {active && <Check className="h-4.5 w-4.5 shrink-0 text-gold" />}
                 </button>
               );
             })}
