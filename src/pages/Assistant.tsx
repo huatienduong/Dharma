@@ -391,7 +391,7 @@ export default function Assistant() {
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
             const result = await askOnce();
-            if (result.ok) return result.reply;
+            if (result.ok) return result;
             // Lỗi nghiệp vụ đã được backend phân loại: trả về client thay vì
             // ném ConvexError (production thường che thành "Server Error").
             const expectedError = Object.assign(new Error(result.message), {
@@ -418,8 +418,15 @@ export default function Assistant() {
       };
 
       try {
-        const reply = await askWithRetry();
-        const replyMsg: Msg = { role: "assistant", content: reply, ts: Date.now() };
+        const answer = await askWithRetry();
+        const reply = answer.reply;
+        const generatedImage = answer.image;
+        const replyMsg: Msg = {
+          role: "assistant",
+          content: reply,
+          ts: Date.now(),
+          ...(generatedImage ? { image: generatedImage } : {}),
+        };
         // Gom thao tác lưu tin nhắn về một nơi để cả chữ và chế độ đàm thoại
         // dùng chung cùng một quy tắc thu hồi tin nhắn.
         const finishReply = () => {
@@ -898,7 +905,13 @@ export default function Assistant() {
                   onRecallImage={m.image ? () => recallImage(m) : undefined}
                 />
               ) : (
-                <AssistantMessage key={i} content={m.content} ts={m.ts} grouped={grouped} />
+                <AssistantMessage
+                  key={i}
+                  content={m.content}
+                  ts={m.ts}
+                  grouped={grouped}
+                  image={m.image}
+                />
               );
             })}
             {streamingReply !== null && streamingReply.length > 0 && (
@@ -1172,10 +1185,13 @@ function AssistantMessage({
   content,
   ts,
   grouped,
+  image,
 }: {
   content: string;
   ts: number;
   grouped?: boolean;
+  /** Ảnh AI tự sinh theo yêu cầu của người dùng */
+  image?: { base64: string; mime: string };
 }) {
   const [copied, setCopied] = useState(false);
   const text = plainText(content);
@@ -1215,6 +1231,13 @@ function AssistantMessage({
         <Bot className="h-6 w-6" />
       </span>
       <div className="min-w-0 flex-1 sm:max-w-[75%]">
+        {image && (
+          <img
+            src={`data:${image.mime};base64,${image.base64}`}
+            alt="Hình ảnh Trợ lý Phật học tạo theo yêu cầu"
+            className="mb-2 block max-h-80 w-auto max-w-full rounded-3xl rounded-bl-md border border-border/50 object-cover shadow-sm"
+          />
+        )}
         <div className="inline-block max-w-full whitespace-pre-wrap break-words rounded-3xl rounded-bl-md border border-border/50 bg-card px-4 py-2.5 text-[18px] leading-[1.8] text-foreground/95 shadow-sm sm:text-[19px]">
           {text}
         </div>

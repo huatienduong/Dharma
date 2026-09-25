@@ -102,6 +102,7 @@ function cleanMarkdown(text: string): string {
 
 const RATE_ASK = { ok: 15, suspicious: 2 } as const;
 const RATE_SPEAK = { ok: 20, suspicious: 3 } as const;
+const RATE_IMAGE = { ok: 4, suspicious: 1 } as const;
 const RATE_WINDOW_MS = 60_000;
 
 /**
@@ -111,7 +112,7 @@ const RATE_WINDOW_MS = 60_000;
  */
 async function checkRateLimit(
   ctx: ActionCtx,
-  bucket: "ask" | "speak",
+  bucket: "ask" | "speak" | "image",
   deviceId: string | undefined,
   integrity: string | undefined,
 ): Promise<string | null> {
@@ -123,10 +124,14 @@ async function checkRateLimit(
   const limit = trusted
     ? bucket === "ask"
       ? RATE_ASK.ok
-      : RATE_SPEAK.ok
+      : bucket === "image"
+        ? RATE_IMAGE.ok
+        : RATE_SPEAK.ok
     : bucket === "ask"
       ? RATE_ASK.suspicious
-      : RATE_SPEAK.suspicious;
+      : bucket === "image"
+        ? RATE_IMAGE.suspicious
+        : RATE_SPEAK.suspicious;
 
   const res = await ctx.runMutation(internal.aiChat.checkAiRateLimit, {
     bucket,
@@ -142,7 +147,7 @@ async function checkRateLimit(
 /** internalMutation: cộng bộ đếm giới hạn tốc độ cho action AI. */
 export const checkAiRateLimit = internalMutation({
   args: {
-    bucket: v.union(v.literal("ask"), v.literal("speak")),
+    bucket: v.union(v.literal("ask"), v.literal("speak"), v.literal("image")),
     deviceId: v.string(),
     limit: v.number(),
   },
@@ -521,6 +526,87 @@ export const aiSelfTest = internalAction({
   },
 });
 
+/* ------------------------------------------------------------------ */
+/* TẠO ẢNH — dùng chính khóa Gemini đang có, không cần thêm khóa mới   */
+/* ------------------------------------------------------------------ */
+
+const GEMINI_IMAGE_MODEL = "gemini-2.5-flash-image";
+const IMAGE_TIMEOUT_MS = 90_000;
+
+/**
+ * Nhận diện ý định “hãy tạo/vẽ hình cho tôi” (tiếng Việt + tiếng Anh).
+ * Chỉ bắt các câu yêu cầu tạo ảnh rõ ràng; câu hỏi thuần văn bản vẫn đi qua
+ * luồng trả lời chữ như trước.
+ */
+function wantsImage(text: string): boolean {
+  const t = text.toLowerCase();
+  const hasImageNoun =
+    /\b(anh|hinh|hin|tranh|tranh vẽ|bum|mo|minh hoa|minh hoạ|hình ảnh|ảnh)\b/.test(
+      t,
+    );
+  if (!hasImageNoun) return false;
+  const hasVerb =
+    /\b(tao|tao ra|ve|ve ra|sinh|sinh ra|dung|ve cho|hoa|phong hoa|draw|create|generate|make|design)\b/.test(
+      t,
+    ) || /\bvẽ\b|\btạo\b|\bsinh\b|\bphác họa\b/.test(t);
+  return hasVerb;
+}
+
+/**
+ * Sinh ảnh bằng Gemini (mô hình đa phương tiện tạo ảnh). Trả về base64
+ * hoặc null khi không có khóa / model lỗi — caller bỏ qua, không báo lỗi.
+ */
+async function generateImage(
+  prompt: string,
+): Promise<{ base64: string; mime: string } | null> {
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (!geminiKey) return null;
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_IMAGE_MODEL}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": geminiKey,
+        },
+        signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS),
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text:
+                    `Vẽ hình theo yêu cầu sau, phong cách trang nghiêm, trang trí, phù hợp tinh thần Phật giáo Theravāda nếu chủ đề liên quan: ${prompt}`,
+                },
+              ],
+            },
+          ],
+          generationConfig: { responseModalities: ["IMAGE"] },
+        }),
+      },
+    );
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      candidates?: {
+        content?: {
+          parts?: { inlineData?: { data?: string; mimeType?: string } }[];
+        };
+      }[];
+    };
+    const part = json.candidates?.[0]?.content?.parts?.find(
+      (p) => p.inlineData?.data,
+    )?.inlineData;
+    if (!part?.data) return null;
+    return {
+      base64: part.data,
+      mime: part.mimeType ?? "image/png",
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Gửi hội thoại tới AI trực tuyến và trả về câu trả lời.
  * Khách chưa đăng nhập vẫn hỏi được (chỉ không lưu lịch sử).
@@ -650,6 +736,20 @@ export const ask = action({
         if (reply) {
           // Thành công — provider vừa hồi phục thì gỡ trạng thái chết tạm thời.
           await clearProviderState(ctx, provider.label, provider.model);
+          // Người dùng yêu cầu tạo hình → sinh ảnh kèm câu trả lời.
+          const lastUser = [...recent].reverse().find((m) => m.role === "user");
+          if (!imageBase64 && lastUser && wantsImage(lastUser.content)) {
+            const deniedImage = await checkRateLimit(
+              ctx,
+              "image",
+              deviceId,
+              integrity,
+            );
+            if (!deniedImage) {
+              const generated = await generateImage(lastUser.content);
+              if (generated) return { ok: true as const, reply, image: generated };
+            }
+          }
           return { ok: true as const, reply };
         }
         // Giải thích rõ vì sao rỗng thay vì chỉ "trả lời rỗng"
