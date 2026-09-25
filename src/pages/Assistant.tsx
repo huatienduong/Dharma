@@ -747,7 +747,7 @@ export default function Assistant() {
   return (
     <div className="fb-bg flex h-[100dvh] flex-col overflow-hidden">
       {/* ---------- Header: gọi bên trái, tên ở giữa, điều khiển bên phải ---------- */}
-      <header className="grid h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-1 border-b border-border/60 bg-background px-2 sm:px-4">
+      <header className="fixed inset-x-0 top-0 z-40 grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-1 border-b border-border/60 bg-background/95 px-2 backdrop-blur-md sm:px-4">
         <div className="flex min-w-0 items-center gap-1 justify-self-start">
           <button
             type="button"
@@ -791,7 +791,7 @@ export default function Assistant() {
       <div
         ref={scrollRef}
         className={cn(
-          "min-h-0 flex-1 overflow-y-auto pb-24 transition-[padding] duration-200",
+          "min-h-0 flex-1 overflow-y-auto pb-24 pt-16 transition-[padding] duration-200",
           image && "pb-48",
         )}
       >
