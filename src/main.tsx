@@ -111,8 +111,21 @@ const ROUTER_BASENAME = window.location.pathname.startsWith("/dharma")
   ? "/dharma"
   : "/";
 
-
-
+// Đăng ký service worker để ứng dụng có thể cài trực tiếp và mở lại nhanh hơn.
+if ("serviceWorker" in navigator) {
+  const appBase = ROUTER_BASENAME === "/" ? "/" : `${ROUTER_BASENAME}/`;
+  window.addEventListener(
+    "load",
+    () => {
+      void navigator.serviceWorker
+        .register(`${appBase}sw.js`, { scope: appBase })
+        .catch(() => {
+          /* Trình duyật không hỗ trợ cài đặt vẫn sử dụng ứng dụng bình thường. */
+        });
+    },
+    { once: true },
+  );
+}
 
 
 function RouteSyncer() {
