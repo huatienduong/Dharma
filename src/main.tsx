@@ -2,6 +2,7 @@ import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
 import { DeviceGuard } from "@/components/DeviceGuard";
 import { ServiceNotice } from "@/components/ServiceNotice";
+import { SplashScreen } from "@/components/SplashScreen";
 import { UpdateChecker } from "@/components/UpdateChecker";
 import { SettingsProvider } from "@/lib/settings";
 import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
@@ -67,10 +68,10 @@ class RootErrorBoundary extends React.Component<
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
               Đội ngũ kỹ thuật của chúng tôi đang tiến hành nâng cấp hệ thống hoặc
-              nếu bạn thấy thông báo này có thể ứng dụng Trợ lý Phật học đang gặp sự cố lỗi
-              tạm thời. Hãy thử tải lại trang này nếu tình trạng không được giải
-              quyết hãy sử dụng tính năng báo cáo lỗi trong phần cài đặt của ứng
-              dụng. Rất xin lỗi vì sự bất tiện gây ra cho bạn!
+              nếu bạn thấy thông báo này có thể ứng dụng đang gặp vấn đề sự cố
+              tạm thời, xin vui lòng thoát và đăng nhập lại ứng dụng nếu vấn đề
+              không được cải thiện vui lòng gửi báo cáo lỗi cho chúng tôi. Rất
+              mong bạn thông cảm.
             </p>
             <div className="mt-5 flex flex-col items-center justify-center gap-2.5 sm:flex-row">
               <button
@@ -138,6 +139,8 @@ function RouteSyncer() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
+    {/* Splash logo chính thức — hiện ngay từ giây đầu khi vào ứng dụng */}
+    <SplashScreen />
     <RootErrorBoundary>
       <ToolbarErrorBoundary>
         <VlyToolbar />

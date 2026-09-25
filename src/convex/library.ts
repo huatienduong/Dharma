@@ -52,7 +52,52 @@ export const getAppVersion = query({
 /* hành bản mới; mọi thiết bị nhận bản mới ngay nhờ query reactive.    */
 /* ------------------------------------------------------------------ */
 
-const LEGAL_KEYS = ["privacy-policy", "terms-of-service"] as const;
+/**
+ * Logo chính thức của ứng dụng — lưu trong Convex File Storage.
+ * Trả về URL trực tiếp để client hiển thị (splash screen, v.v.).
+ */
+export const getAppLogo = query({
+  args: {},
+  handler: async (ctx) => {
+    const meta = await ctx.db
+      .query("appMeta")
+      .withIndex("by_key", (q) => q.eq("key", "app-logo"))
+      .unique();
+    const storageId = meta?.releaseNotes?.trim();
+    if (!storageId) return null;
+    const url = await ctx.storage.getUrl(storageId);
+    return url;
+  },
+});
+
+/** Đặt/đổi logo ứng dụng (internal — chỉ chạy từ CLI/dashboard). */
+export const setAppLogo = internalMutation({
+  args: { storageId: v.string() },
+  handler: async (ctx, { storageId }) => {
+    const existing = await ctx.db
+      .query("appMeta")
+      .withIndex("by_key", (q) => q.eq("key", "app-logo"))
+      .unique();
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        latestVersion: "1",
+        releaseNotes: storageId,
+        releasedAt: Date.now(),
+      });
+      return "updated";
+    }
+    await ctx.db.insert("appMeta", {
+      key: "app-logo",
+      latestVersion: "1",
+      releaseNotes: storageId,
+      releasedAt: Date.now(),
+    });
+    return "inserted";
+  },
+});
+
+/* ------------------------------------------------------------------ */
+/* Chính sách quyền riêng tư & Điều khoản sử dụng                      */
 
 export const getLegalDoc = query({
   args: { key: v.union(v.literal("privacy-policy"), v.literal("terms-of-service")) },

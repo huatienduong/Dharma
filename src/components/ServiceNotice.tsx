@@ -26,7 +26,7 @@ export function showServiceNotice(reason: ServiceNoticeReason = "upgrade") {
 }
 
 const MESSAGE =
-  "Đội ngũ kỹ thuật của chúng tôi đang tiến hành nâng cấp hệ thống hoặc nếu bạn thấy thông báo này có thể ứng dụng Trợ lý Phật học đang gặp sự cố lỗi tạm thời. Hãy thử tải lại trang này nếu tình trạng không được giải quyết hãy sử dụng tính năng báo cáo lỗi trong phần cài đặt của ứng dụng. Rất xin lỗi vì sự bất tiện gây ra cho bạn!";
+  "Đội ngũ kỹ thuật của chúng tôi đang tiến hành nâng cấp hệ thống hoặc nếu bạn thấy thông báo này có thể ứng dụng đang gặp vấn đề sự cố tạm thời, xin vui lòng thoát và đăng nhập lại ứng dụng nếu vấn đề không được cải thiện vui lòng gửi báo cáo lỗi cho chúng tôi. Rất mong bạn thông cảm.";
 
 export function ServiceNotice() {
   const navigate = useNavigate();
@@ -129,7 +129,7 @@ export function ServiceNotice() {
             className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60 sm:w-auto"
           >
             <RotateCw className={cn("h-4 w-4", reloading && "animate-spin")} />
-            Tải lại trang
+            Thoát & vào lại
           </button>
           <button
             type="button"
