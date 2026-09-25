@@ -1,5 +1,4 @@
-import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
+import { AppLogo } from "@/components/AppLogo";
 import { useEffect, useState } from "react";
 
 /**
@@ -8,7 +7,6 @@ import { useEffect, useState } from "react";
  * Tự ẩn khi app sẵn sàng hoặc tối đa 2.5s để không chặn người dùng.
  */
 export function SplashScreen() {
-  const logoUrl = useQuery(api.library.getAppLogo, {});
   const [visible, setVisible] = useState(true);
   const [fading, setFading] = useState(false);
 
@@ -30,14 +28,7 @@ export function SplashScreen() {
         fading ? "pointer-events-none opacity-0" : "opacity-100"
       }`}
     >
-      {/* Chỉ hiển thị logo chính thức từ Convex Storage */}
-      {logoUrl && (
-        <img
-          src={logoUrl}
-          alt="Logo ứng dụng"
-          className="h-48 w-48 rounded-3xl object-contain shadow-lg sm:h-64 sm:w-64"
-        />
-      )}
+      <AppLogo className="h-48 w-48 rounded-3xl object-contain shadow-lg sm:h-64 sm:w-64" />
     </div>
   );
 }

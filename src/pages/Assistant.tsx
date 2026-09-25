@@ -1,3 +1,4 @@
+import { AppLogo } from "@/components/AppLogo";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
@@ -832,9 +833,12 @@ export default function Assistant() {
           )}
         </div>
 
-        <p className="max-w-[9.5rem] truncate text-center text-[13px] font-extrabold uppercase tracking-[0.12em] text-foreground sm:max-w-none sm:text-[15px] sm:tracking-[0.18em]">
-          Trợ lý Phật học
-        </p>
+        <div className="flex min-w-0 items-center justify-center gap-2">
+          <AppLogo className="h-8 w-8 shrink-0 rounded-xl object-contain" />
+          <p className="max-w-[9.5rem] truncate text-center text-[13px] font-extrabold uppercase tracking-[0.12em] text-foreground sm:max-w-none sm:text-[15px] sm:tracking-[0.18em]">
+            Trợ lý Phật học
+          </p>
+        </div>
 
         <div className="flex shrink-0 items-center gap-1 justify-self-end">
           <button
