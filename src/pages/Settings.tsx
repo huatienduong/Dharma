@@ -504,7 +504,7 @@ export default function Settings() {
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   <div className="rounded-2xl bg-muted/40 px-3 py-2.5">
                     <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Phiên bản ứng dụng (tự động)
+                      Phiên bản ứng dụng
                     </span>
                     <span className="mt-0.5 block w-full text-sm text-foreground/90">
                       {APP_VERSION}
@@ -512,7 +512,7 @@ export default function Settings() {
                   </div>
                   <div className="rounded-2xl bg-muted/40 px-3 py-2.5">
                     <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Thiết bị / hệ điều hành (tự động)
+                      Thiết bị / hệ điều hành
                     </span>
                     <span className="mt-0.5 block w-full text-sm text-foreground/90">
                       {detectedDevice}
