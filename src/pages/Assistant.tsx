@@ -799,23 +799,23 @@ export default function Assistant() {
         ref={scrollRef}
         className={cn(
           isEmpty
-            ? "fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] top-16 z-10 overflow-y-auto bg-background px-4 py-5"
+            ? "fixed inset-x-0 bottom-[calc(5.75rem+env(safe-area-inset-bottom))] top-[4.75rem] z-10 overflow-hidden bg-background px-4 py-3"
             : "min-h-0 flex-1 overflow-y-auto pb-24 pt-16 transition-[padding] duration-200",
           !isEmpty && image && "pb-48",
         )}
       >
         {isEmpty ? (
           <div className="mx-auto flex min-h-full w-full max-w-lg flex-col items-center justify-center text-center">
-            <p className="max-w-md text-xl font-semibold leading-relaxed tracking-tight text-foreground sm:text-2xl">
+            <p className="max-w-md text-lg font-semibold leading-relaxed tracking-tight text-foreground sm:text-xl">
               Hôm nay tôi có thể giúp gì cho bạn trên con đường Phật pháp?
             </p>
-            <div className="mt-6 grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2">
+            <div className="mt-4 grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
               {suggestions.map((s) => (
                 <button
                   key={s.text}
                   type="button"
                   onClick={() => void send(s.text)}
-                  className="rounded-2xl border border-border/60 bg-card px-4 py-4 text-left text-base leading-snug text-foreground/90 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/50"
+                  className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-left text-sm leading-snug text-foreground/90 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/50 sm:text-base"
                 >
                   {s.text}
                 </button>
