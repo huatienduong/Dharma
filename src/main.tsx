@@ -1,5 +1,6 @@
 import '@vly-ai/integrations';
 import { Toaster } from "@/components/ui/sonner";
+import { ConvexHealth } from "@/components/ConvexHealth";
 import { DeviceGuard } from "@/components/DeviceGuard";
 import { ServiceNotice } from "@/components/ServiceNotice";
 import { SplashScreen } from "@/components/SplashScreen";
@@ -156,6 +157,9 @@ createRoot(document.getElementById("root")!).render(
             <RouteSyncer />
             {/* Thông báo mất kết nối / nâng cấp hệ thống / sự cố tạm thời */}
             <ServiceNotice />
+            {/* Máy chủ không trả dữ liệu quá lâu (bundle cũ, deployment đổi) →
+                màn phục hồi thay vì treo im lặng "không tra cứu được gì" */}
+            <ConvexHealth />
             <Suspense fallback={<RouteLoading />}>
               <Routes>
                 {/* Dharma AI: màn chính là Trợ lý Phật học */}
