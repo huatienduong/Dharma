@@ -379,15 +379,29 @@ const GROQ_VISION_PREFERENCE = [
 const GROQ_ANY_FALLBACK = "openai/gpt-oss-120b";
 
 /**
+ * Cache danh sách model sống trong chính action runtime. Một lần dò mất
+ * tối đa 4s — không cache thì mỗi lượt chat đều chờ, gây cảm giác ứng dụng
+ * bị treo. TTL 10 phút đủ để vẫn phản ứng khi provider đổi danh sách.
+ */
+const liveModelsCache = new Map<
+  string,
+  { at: number; text: string; vision: string; gemini: string }
+>();
+const LIVE_MODELS_TTL_MS = 10 * 60_000;
+
+/**
  * Hỏi Groq xem model nào đang thật sự khả dụng, rồi chọn theo thứ tự ưu
- * tiên. Nhờ vậy Groq đổi danh sách model không làm sập trợ lý. Trả null nếu
- * không gọi được (mạng lỗi) — khi đó dùng tên ưu tiên đầu tiên.
+ * tiên. Nhờ vậy Groq đổi danh sách model không làm sập trợ lý.
  */
 async function pickGroqModel(
   groqKey: string,
   needVision: boolean,
 ): Promise<string> {
   const preference = needVision ? GROQ_VISION_PREFERENCE : GROQ_TEXT_PREFERENCE;
+  const cached = liveModelsCache.get(groqKey);
+  if (cached && Date.now() - cached.at < LIVE_MODELS_TTL_MS) {
+    return needVision ? cached.vision : cached.text;
+  }
   try {
     const res = await fetch(`${GROQ_BASE_URL}/models`, {
       headers: { Authorization: `Bearer ${groqKey}` },
@@ -399,15 +413,20 @@ async function pickGroqModel(
       (json.data ?? []).map((m) => m.id ?? "").filter(Boolean),
     );
     if (live.size === 0) return preference[0];
-    for (const id of preference) {
-      if (live.has(id)) return id;
-    }
-    // Ưu tiên không khớp: với ảnh lấy model đọc ảnh bất kỳ; với chữ lấy model
-    // chat bất kỳ. Không có gì phù hợp thì dùng tên dự phòng.
-    const anyMatch = [...live].find((id) =>
-      needVision ? /vision|vl|scout|qwen/i.test(id) : /gpt|llama|qwen|gemma|mistral/i.test(id),
-    );
-    return anyMatch ?? GROQ_ANY_FALLBACK;
+    const choose = (list: string[], vision: boolean) => {
+      for (const id of list) if (live.has(id)) return id;
+      // Ưu tiên không khớp: lấy model đọc ảnh / model chat bất kỳ.
+      const any = [...live].find((id) =>
+        vision
+          ? /vision|vl|scout|qwen/i.test(id)
+          : /gpt|llama|qwen|gemma|mistral/i.test(id),
+      );
+      return any ?? GROQ_ANY_FALLBACK;
+    };
+    const text = choose(GROQ_TEXT_PREFERENCE, false);
+    const vision = choose(GROQ_VISION_PREFERENCE, true);
+    liveModelsCache.set(groqKey, { at: Date.now(), text, vision, gemini: cached?.gemini ?? "" });
+    return needVision ? vision : text;
   } catch {
     return preference[0];
   }
@@ -465,6 +484,10 @@ const GEMINI_TEXT_PREFERENCE = [
 
 /** Dò model Gemini còn sống; gọi lỗi thì dùng tên ưu tiên đầu tiên. */
 async function pickGeminiModel(geminiKey: string): Promise<string> {
+  const cached = liveModelsCache.get(geminiKey);
+  if (cached && Date.now() - cached.at < LIVE_MODELS_TTL_MS && cached.gemini) {
+    return cached.gemini;
+  }
   try {
     const res = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models",
@@ -478,11 +501,23 @@ async function pickGeminiModel(geminiKey: string): Promise<string> {
         .filter((n) => n.startsWith("gemini") && !n.includes("tts") && !n.includes("image")),
     );
     if (live.size === 0) return GEMINI_TEXT_PREFERENCE[0];
+    let picked = GEMINI_TEXT_PREFERENCE[0];
     for (const id of GEMINI_TEXT_PREFERENCE) {
-      if (live.has(id)) return id;
+      if (live.has(id)) {
+        picked = id;
+        break;
+      }
     }
-    const anyChat = [...live].find((n) => /flash/i.test(n));
-    return anyChat ?? GEMINI_TEXT_PREFERENCE[0];
+    if (!live.has(picked)) {
+      picked = [...live].find((n) => /flash/i.test(n)) ?? picked;
+    }
+    liveModelsCache.set(geminiKey, {
+      at: Date.now(),
+      text: cached?.text ?? "",
+      vision: cached?.vision ?? "",
+      gemini: picked,
+    });
+    return picked;
   } catch {
     return GEMINI_TEXT_PREFERENCE[0];
   }
