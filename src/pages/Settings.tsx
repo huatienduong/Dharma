@@ -248,25 +248,21 @@ export default function Settings() {
         appVersion: fbType === "bug" && fbAppVersion.trim() ? fbAppVersion.trim() : APP_VERSION,
       });
 
-      let emailSent = false;
       try {
-        const emailResult = await sendFeedbackEmail({
+        await sendFeedbackEmail({
           type: fbType,
           message: ticketMessage,
           email: fbEmail || undefined,
           appVersion: fbType === "bug" && fbAppVersion.trim() ? fbAppVersion.trim() : APP_VERSION,
           ticketCode: result.ticketCode,
         });
-        emailSent = emailResult.ok;
       } catch {
-        // Phiếu vẫn được lưu an toàn; không xóa nội dung khi chưa cấu hình email.
+        // Phiếu vẫn được lưu an toàn nếu chưa thể gửi email.
       }
 
-      toast.success(`Đã tạo phiếu ${result.ticketCode}. Chúng tôi sẽ phản hồi ngay trong ứng dụng.`, {
-        description: emailSent
-          ? "Nội dung đã được chuyển đến email nhà phát triển."
-          : "Phiếu đã được lưu. Email sẽ tự gửi sau khi hoàn tất cấu hình dịch vụ.",
-      });
+      toast.success(
+        "Hứa Tiến Dương đã nhận được yêu cầu hỗ trợ của bạn. Hãy theo dõi phiếu hỗ trợ để cập nhật thêm thông tin. Xin cảm ơn!",
+      );
       setFbMessage("");
       setFbEmail("");
       setFbFile(null);
