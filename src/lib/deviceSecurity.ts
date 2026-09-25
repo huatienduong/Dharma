@@ -136,6 +136,40 @@ function scanOnce(): ScanResult {
     res.reasons.push("devtools-open");
   }
 
+  // 7. THIẾT BỊ ROOT/JAILBREAK · GIẢ LẬP — tín hiệu qua môi trường web.
+  // Web không đọc được sâu vào hệ điều hành, nhưng các phần mềm giả lập
+  // (BlueStacks, LDPlayer, Nox, Genymotion…) và phần lớn ROM can thiệp
+  // để lại dấu vết trong UA/platform/đặc tính trình duyệt:
+  const emulatorHit =
+    /bluestacks|ldplayer|nox|memu|genymotion|andy|droid4x|smartgaga/i.test(ua) ||
+    /generic|emulator|sdk_gphone|ranchu|vbox|qemu/i.test(ua) ||
+    /generic/i.test(platform);
+  if (emulatorHit) {
+    res.score += 80;
+    res.reasons.push("emulator-ua");
+  }
+  // Kiến trúc giả lập trên Android (x86/x86_64 ROM can thiệp)
+  const archHit =
+    /x86_64|x86;/i.test(ua) || (/arm/i.test(platform) === false && /Android/i.test(ua));
+  if (archHit && !emulatorHit) {
+    res.score += 60;
+    res.reasons.push("android-x86");
+  }
+  // Chrome desktop "thật" luôn có window.chrome — thiếu là môi trường bị vá
+  if (
+    desktopChrome &&
+    typeof window !== "undefined" &&
+    !(window as unknown as { chrome?: unknown }).chrome
+  ) {
+    res.score += 30;
+    res.reasons.push("chrome-missing");
+  }
+  // Màn hình rỗng/treo (môi trường headless can thiệp sâu)
+  if (typeof screen !== "undefined" && (!screen.width || !screen.height)) {
+    res.score += 40;
+    res.reasons.push("empty-screen");
+  }
+
   return res;
 }
 

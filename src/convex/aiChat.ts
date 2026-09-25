@@ -137,25 +137,61 @@ type ProviderChoice = {
   model: string;
 };
 
-function listProviders(needVision: boolean): ProviderChoice[] {
-  const geminiKey = process.env.GEMINI_API_KEY;
+const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
+const GEMINI_BASE_URL =
+  "https://generativelanguage.googleapis.com/v1beta/openai";
 
-  if (!geminiKey) {
-    return [];
+/**
+ * Chẩn đoán: nhà cung cấp nào đã cấu hình khóa (chỉ trả boolean, không lộ giá trị).
+ * Dùng để xác minh nhanh "AI không hoạt động" là do thiếu khóa hay do provider.
+ */
+export const providerStatus = action({
+  args: {},
+  handler: async () => ({
+    groq: !!process.env.GROQ_API_KEY,
+    gemini: !!process.env.GEMINI_API_KEY,
+  }),
+});
+
+/**
+ * Danh sách nhà cung cấp AI — GROQ LÀ CHÍNH (nhanh, hạn mức rộng),
+ * Gemini là dự phòng khi Groq lỗi/hết hạn mức. Với ảnh (vision),
+ * thử Groq vision trước rồi mới Gemini.
+ */
+function listProviders(needVision: boolean): ProviderChoice[] {
+  const groqKey = process.env.GROQ_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
+  const out: ProviderChoice[] = [];
+
+  if (groqKey) {
+    out.push({
+      label: "Groq",
+      make: () =>
+        createOpenAICompatible({
+          name: "groq",
+          baseURL: GROQ_BASE_URL,
+          apiKey: groqKey,
+        }),
+      model: needVision
+        ? "meta-llama/llama-4-scout-17b-16e-instruct"
+        : "llama-3.3-70b-versatile",
+    });
   }
 
-  return [
-    {
+  if (geminiKey) {
+    out.push({
       label: "Gemini",
       make: () =>
         createOpenAICompatible({
           name: "gemini",
-          baseURL: "https://generativelanguage.googleapis.com/v1beta/openai",
+          baseURL: GEMINI_BASE_URL,
           apiKey: geminiKey,
         }),
       model: "gemini-3.5-flash-lite",
-    },
-  ];
+    });
+  }
+
+  return out;
 }
 
 /**
@@ -207,7 +243,7 @@ export const ask = action({
     const providers = listProviders(Boolean(imageBase64));
     if (providers.length === 0) {
       throw new Error(
-        "Trợ lý Phật học chưa kết nối được máy chủ AI. Vui lòng thử lại sau ít phút hoặc báo lỗi qua mục Góp ý.",
+        "Trợ lý Phật học chưa kết nối được máy chủ AI (thiếu khóa Groq/Gemini). Vui lòng báo lỗi qua mục Góp ý.",
       );
     }
 
