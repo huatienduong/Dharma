@@ -31,7 +31,6 @@ import {
   RefreshCw,
   Send,
   ShieldCheck,
-  Smartphone,
   Sun,
   X,
 } from "lucide-react";
@@ -48,14 +47,6 @@ import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 
 const FEEDBACK_RECEIVED_MESSAGE =
   "Đã tạo phiếu hỗ trợ. Hứa Tiến Dương đã nhận được yêu cầu hỗ trợ của bạn. Hãy theo dõi phiếu hỗ trợ để cập nhật thêm thông tin. Xin cảm ơn!";
-
-type InstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{
-    outcome: "accepted" | "dismissed";
-    platform: string;
-  }>;
-};
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -113,67 +104,6 @@ export default function Settings() {
   const isDeveloper =
     currentUser?.email?.trim().toLowerCase() === "huatienduong@protonmail.com" ||
     currentUser?.role === "admin";
-
-  // Cài ứng dụng trực tiếp (PWA)
-  const [installPrompt, setInstallPrompt] =
-    useState<InstallPromptEvent | null>(null);
-  const [appInstalled, setAppInstalled] = useState(false);
-  const [installing, setInstalling] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia("(display-mode: standalone)");
-    const isStandalone = () =>
-      media.matches ||
-      Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
-
-    const syncInstalledState = () => setAppInstalled(isStandalone());
-    const handleBeforeInstall = (event: Event) => {
-      event.preventDefault();
-      setInstallPrompt(event as InstallPromptEvent);
-    };
-    const handleInstalled = () => {
-      setInstallPrompt(null);
-      setAppInstalled(true);
-      toast.success("Ứng dụng đã được cài đặt trên thiết bị.");
-    };
-
-    syncInstalledState();
-    window.addEventListener("beforeinstallprompt", handleBeforeInstall);
-    window.addEventListener("appinstalled", handleInstalled);
-    media.addEventListener("change", syncInstalledState);
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
-      window.removeEventListener("appinstalled", handleInstalled);
-      media.removeEventListener("change", syncInstalledState);
-    };
-  }, []);
-
-  const handleInstall = async () => {
-    if (appInstalled) {
-      toast("Ứng dụng đã được cài đặt trên thiết bị.");
-      return;
-    }
-    if (!installPrompt) {
-      toast("Mở menu trình duyệt và chọn Cài ứng dụng hoặc Thêm vào màn hình chính.", {
-        description: "Trên iPhone, dùng Chia sẻ → Thêm vào Màn hình chính.",
-      });
-      return;
-    }
-
-    setInstalling(true);
-    try {
-      await installPrompt.prompt();
-      const choice = await installPrompt.userChoice;
-      if (choice.outcome === "accepted") {
-        toast.success("Đang mở ứng dụng trên thiết bị của bạn.");
-      }
-      setInstallPrompt(null);
-    } catch {
-      toast.error("Không thể cài ứng dụng lúc này. Vui lòng thử lại.");
-    } finally {
-      setInstalling(false);
-    }
-  };
 
   // Kiểm tra cập nhật: chỉ chạy khi bấm nút, hiển thị kết quả
   const [checking, setChecking] = useState(false);
@@ -489,23 +419,6 @@ export default function Settings() {
               <p className="mt-1 text-xs text-muted-foreground">
                 {APP_NAME} · Phiên bản {APP_VERSION}
               </p>
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-2xl bg-muted/50 px-4 py-3">
-              <p className="min-w-0 text-sm font-semibold">Cài ứng dụng</p>
-              <Button
-                size="sm"
-                variant={appInstalled ? "secondary" : "default"}
-                onClick={() => void handleInstall()}
-                disabled={appInstalled || installing}
-                className="shrink-0 gap-1.5 rounded-full"
-              >
-                {appInstalled ? (
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                ) : (
-                  <Smartphone className="h-3.5 w-3.5" />
-                )}
-                {appInstalled ? "Đã cài" : installing ? "Đang cài…" : "Cài ngay"}
-              </Button>
             </div>
             <div className="flex items-center justify-between rounded-2xl bg-muted/50 px-4 py-3">
               <p className="text-sm font-semibold">Cập nhật ứng dụng</p>
