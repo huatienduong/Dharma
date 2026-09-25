@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * Bọc PCM thô (audio/L16 — định dạng Gemini TTS trả về) vào container WAV
- * để trình duyệt phát được — trước đây Audio không phát PCM → im lặng.
+ * để decode được — trước đây Audio không phát PCM → im lặng.
  */
 function pcmToWav(base64Pcm: string, sampleRate = 24000): string {
   const bin = atob(base64Pcm);
@@ -47,49 +47,100 @@ export type SpeakOpts = {
   onDone?: () => void;
 };
 
-/**
- * Mở khóa autoplay (resume AudioContext) rồi phát audio — FIX "im lặng":
- * trình duyệt chặn phát âm thanh nếu chưa có tương tác; resume context
- * + bấm play ngay trong chuỗi promise giúp đa số trình duyệt cho phép.
- */
-async function unlockAudioAndPlay(audio: HTMLMediaElement): Promise<void> {
+/* ------------------------------------------------------------------ */
+/* AudioContext DÙNG CHUNG — cú chạm/bấm đầu tiên tạo + resume context */
+/* này để phát sau đó (vượt autoplay policy kể cả trong iframe/webview */
+/* — nguyên nhân chính của "đàm thoại im lặng").                       */
+/* ------------------------------------------------------------------ */
+
+let sharedCtx: AudioContext | null = null;
+
+function getSharedCtx(): AudioContext | null {
   try {
     const AC =
       window.AudioContext ??
       (window as unknown as { webkitAudioContext?: typeof AudioContext })
         .webkitAudioContext;
-    if (AC) {
-      const ctx = new AC();
-      if (ctx.state === "suspended") await ctx.resume();
-      void ctx.close();
-    }
+    if (!AC) return null;
+    if (!sharedCtx) sharedCtx = new AC();
+    return sharedCtx;
   } catch {
-    /* bỏ qua — chỉ là mở khóa phụ */
+    return null;
   }
-  await audio.play();
+}
+
+/** Gọi trong cú chạm/bấm đầu tiên — mở khóa vĩnh viễn context chung. */
+function unlockSharedCtx(): void {
+  const ctx = getSharedCtx();
+  if (ctx && ctx.state === "suspended") void ctx.resume().catch(() => {});
 }
 
 /**
- * TTS tiếng Việt hai tầng cho Trợ lý Pháp:
+ * Phát audio (data URL) qua Web Audio — đáng tin cậy hơn HTMLAudioElement
+ * trong iframe/webview. Promise resolve KHI PHÁT XONG, reject nếu lỗi.
+ */
+async function playWithWebAudio(dataUrl: string): Promise<void> {
+  const ctx = getSharedCtx();
+  if (!ctx) throw new Error("no-webaudio");
+  if (ctx.state === "suspended") await ctx.resume();
+  const b64 = dataUrl.split(",")[1] ?? "";
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const buffer = await ctx.decodeAudioData(bytes.buffer as ArrayBuffer);
+  return new Promise<void>((resolve, reject) => {
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(ctx.destination);
+    src.onended = () => resolve();
+    // AudioBufferSourceNode không có onerror — lỗi phát hiện qua việc context
+    // bị đóng giữa chừng: promise không resolve → caller tự có timeout riêng.
+    src.start();
+  });
+}
+
+/**
+ * TTS tiếng Việt hai tầng cho Trợ lý Phật học:
  * 1. SERVER TTS (ưu tiên): Gemini TTS / OpenAI TTS trả về audio base64 →
- *    phát qua <Audio> — giọng tiếng Việt tự nhiên bất kể máy người dùng,
- *    đúng giọng người dùng đã chọn. Có TIMEOUT 12s: máy chủ chậm/treo →
- *    chuyển ngay sang giọng trình duyệt, đàm thoại không bị khựng.
+ *    phát qua Web Audio (dự phòng HTMLAudio) — giọng tiếng Việt tự nhiên
+ *    bất kể máy người dùng, đúng giọng người dùng đã chọn. TIMEOUT 12s:
+ *    máy chủ chậm/treo → chuyển ngay sang giọng trình duyệt.
  * 2. FALLBACK: Web Speech API cải tiến — chunk câu dài, chờ voices tải,
  *    chọn giọng vi khớp giới tính người dùng chọn (Google vi-VN nếu có).
+ *
+ * FIX "đàm thoại không phát ra tiếng / đứng im":
+ * - Phát qua AudioContext dùng chung đã mở khóa bằng cú chạm (iframe/webview).
+ * - Mọi nhánh kết thúc (phát xong / hủy / timeout / lỗi) đều gọi onDone ĐÚNG
+ *   MỘT LẦN → vòng nghe-nói của đàm thoại không bao giờ treo.
  */
 export function useVietnameseTTS() {
   const speakAction = useAction(api.aiChat.speak);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const stopFlagRef = useRef(false);
+  /** Hủy có kiểm soát: stop() giữa chừng vẫn báo onDone cho vòng đàm thoại. */
+  const interruptRef = useRef<(() => void) | null>(null);
   const [speaking, setSpeaking] = useState(false);
   const [engine, setEngine] = useState<"server" | "browser" | null>(null);
+
+  // Mở khóa AudioContext chung ở cú chạm/bấm đầu tiên (đàm thoại luôn bắt
+  // đầu bằng một cú chạm nút gọi → context sẵn sàng phát).
+  useEffect(() => {
+    const unlock = () => unlockSharedCtx();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
 
   // Dọn audio element khi unmount
   useEffect(() => {
     return () => {
       stopFlagRef.current = true;
+      interruptRef.current?.();
+      interruptRef.current = null;
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
@@ -112,10 +163,23 @@ export function useVietnameseTTS() {
       }
       audioRef.current = null;
     }
+    // Cắt buffer đang phát qua Web Audio: đóng context (nguồn gắn với nó
+    // im ngay) — lượt phát sau tự tạo context mới.
+    if (sharedCtx) {
+      try {
+        void sharedCtx.close();
+      } catch {
+        /* noop */
+      }
+      sharedCtx = null;
+    }
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
     }
     setSpeaking(false);
+    // Nếu đang có lượt phát dở → báo kết thúc ngay để vòng nghe-nói tiếp tục
+    interruptRef.current?.();
+    interruptRef.current = null;
   }, []);
 
   /* --------------------- Web Speech fallback --------------------- */
@@ -196,7 +260,10 @@ export function useVietnameseTTS() {
       setSpeaking(true);
       // Voices có thể tải trễ (Chrome) — thử phát sau 250ms nếu rỗng
       const tryStart = (attempt: number) => {
-        if (stopFlagRef.current) return;
+        if (stopFlagRef.current) {
+          onDone?.();
+          return;
+        }
         if (synth.getVoices().length === 0 && attempt < 8) {
           window.setTimeout(() => tryStart(attempt + 1), 250);
           return;
@@ -223,11 +290,22 @@ export function useVietnameseTTS() {
         return;
       }
 
+      let settled = false; // đảm bảo onDone chỉ chạy đúng một lần
+      const finishWith = (fn?: () => void) => {
+        if (settled) return;
+        settled = true;
+        interruptRef.current = null;
+        setSpeaking(false);
+        fn?.();
+      };
+      // Đăng ký hủy có kiểm soát: stop() giữa chừng sẽ gọi onDone một lần
+      interruptRef.current = () => {
+        if (settled) return;
+        finishWith(() => opts.onDone?.());
+      };
+
       // 1. Thử server TTS — timeout 12s, chậm/treo thì rời về Web Speech.
-      // FIX "đàm thoại im lặng": dùng cờ settled để KẾT QUẢ MUỘN của action
-      // (trả sau khi timeout đã rơi về Web Speech) không phát chồng 2 tiếng;
-      // và mở khóa AudioContext trước khi play để vượt autoplay policy.
-      let settled = false;
+      let timeoutId = 0;
       try {
         const res = await Promise.race([
           speakAction({
@@ -236,57 +314,75 @@ export function useVietnameseTTS() {
             male: opts.male,
             ...getDeviceMeta(),
           }),
-          new Promise<null>((resolve) =>
-            window.setTimeout(() => resolve(null), 12_000),
-          ),
+          new Promise<null>((resolve) => {
+            timeoutId = window.setTimeout(() => resolve(null), 12_000);
+          }),
         ]);
-        if (res && !stopFlagRef.current && !settled) {
+        window.clearTimeout(timeoutId);
+
+        if (res && !stopFlagRef.current) {
           // Gemini trả PCM thô → bọc WAV; mp3/WAV dùng nguyên bản
           const src = /L16|pcm/i.test(res.mime)
             ? `data:audio/wav;base64,${pcmToWav(res.audioBase64)}`
             : `data:${res.mime};base64,${res.audioBase64}`;
-          const audio = new Audio(src);
-          audioRef.current = audio;
           setEngine("server");
           setSpeaking(true);
-          audio.onended = () => {
-            setSpeaking(false);
-            audioRef.current = null;
-            opts.onDone?.();
-          };
-          audio.onerror = () => {
-            setSpeaking(false);
-            audioRef.current = null;
-            if (settled) return;
-            settled = true;
-            // Server audio lỗi → rơi về Web Speech
-            webSpeak(clean, opts.voice, opts.onDone);
-          };
+
+          // 1a. ƯU TIÊN: Web Audio — resolve khi phát xong
           try {
-            await unlockAudioAndPlay(audio);
-            if (!settled) settled = true;
+            await playWithWebAudio(src);
+            if (stopFlagRef.current) {
+              finishWith(() => opts.onDone?.());
+            } else {
+              finishWith(() => opts.onDone?.());
+            }
             return;
           } catch {
-            setSpeaking(false);
-            audioRef.current = null;
-            if (!settled) {
-              settled = true;
-              webSpeak(clean, opts.voice, opts.onDone);
-            }
+            /* Web Audio lỗi → thử HTMLAudio */
           }
+
+          // 1b. DỰ PHÒNG: HTMLAudioElement
+          if (stopFlagRef.current) {
+            finishWith(() => opts.onDone?.());
+            return;
+          }
+          try {
+            const audio = new Audio(src);
+            audioRef.current = audio;
+            audio.onended = () => {
+              audioRef.current = null;
+              finishWith(() => opts.onDone?.());
+            };
+            audio.onerror = () => {
+              audioRef.current = null;
+              finishWith(() => webSpeak(clean, opts.voice, opts.onDone));
+            };
+            unlockSharedCtx();
+            await audio.play();
+            return;
+          } catch {
+            audioRef.current = null;
+            /* HTMLAudio cũng lỗi → Web Speech */
+          }
+          finishWith(() => webSpeak(clean, opts.voice, opts.onDone));
           return;
         }
-      } catch {
-        /* không có khóa TTS hoặc lỗi server → fallback */
-      }
 
-      // 2. Fallback Web Speech
-      if (!stopFlagRef.current && !settled) {
-        settled = true;
-        webSpeak(clean, opts.voice, opts.onDone);
-      } else if (!settled) {
-        settled = true;
-        opts.onDone?.();
+        // res = null (timeout / không có khóa TTS) — kết thúc có kiểm soát:
+        // đang dừng thì báo xong, không thì rời về giọng trình duyệt.
+        if (stopFlagRef.current) {
+          finishWith(() => opts.onDone?.());
+        } else {
+          finishWith(() => webSpeak(clean, opts.voice, opts.onDone));
+        }
+      } catch {
+        window.clearTimeout(timeoutId);
+        // Lỗi server/rate-limit → không ngắt vòng đàm thoại: rời về Web Speech
+        if (stopFlagRef.current) {
+          finishWith(() => opts.onDone?.());
+        } else {
+          finishWith(() => webSpeak(clean, opts.voice, opts.onDone));
+        }
       }
     },
     [speakAction, webSpeak],

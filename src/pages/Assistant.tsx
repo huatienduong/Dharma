@@ -338,8 +338,15 @@ export default function Assistant() {
           toast.error(
             err instanceof Error ? err.message : "Không kết nối được trợ lý.",
           );
-          // Tính năng không phản hồi do sự cố kết nối → hiện thông báo dịch vụ
-          if (/không kết nối|hết giờ|timeout|network|fetch/i.test(String(err))) {
+          // CHỈ khi lỗi lặp lại cả 2 lần (sự cố thật, không phải lỗi nhất
+          // thời) → hiện thông báo dịch vụ; tránh banner sai do 429/timeout.
+          const isTransient = /quá nhanh|giới hạn|429|hết giờ|timeout|ECONN|fetch/i.test(
+            String(err),
+          );
+          if (
+            !isTransient &&
+            /không kết nối được|máy chủ AI|provider/i.test(String(err))
+          ) {
             showServiceNotice("upgrade");
           }
           sendingRef.current = false;
