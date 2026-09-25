@@ -370,7 +370,21 @@ export const getAppLogo = query({
       .query("appMeta")
       .withIndex("by_key", (q) => q.eq("key", "app-logo"))
       .unique();
-    const storageId = meta?.releaseNotes?.trim();
+    const configuredStorageId = meta?.releaseNotes?.trim();
+
+    // Nếu logo mới vừa được tải lên Storage nhưng chưa kịp cập nhật bản ghi
+    // appMeta, dùng ảnh image/* mới nhất làm nguồn dự phòng. Nhờ vậy logo
+    // mới được áp dụng ngay cả khi thao tác cập nhật metadata diễn ra sau.
+    const storageId =
+      configuredStorageId ||
+      (
+        await ctx.db.system
+          .query("_storage")
+          .order("desc")
+          .take(20)
+      )
+        .filter((file) => file.contentType?.startsWith("image/"))[0]?._id;
+
     if (!storageId) return null;
     const url = await ctx.storage.getUrl(storageId);
     return url;
