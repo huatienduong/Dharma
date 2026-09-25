@@ -28,6 +28,7 @@ import {
   Settings,
   Sparkles,
   Square,
+  Undo2,
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -231,6 +232,10 @@ export default function Assistant() {
   // bỏ im lặng mà xếp hàng; trả lời xong tự gửi tiếp (khắc phục lỗi
   // "AI không trả lời câu hỏi tiếp trong cuộc trò chuyện").
   const queueRef = useRef<string[]>([]);
+  // Ghi nhớ tin đã thu hồi để nếu AI đang trả lời, phản hồi về sau không thêm
+  // lại tin nhắn/ảnh vừa bị người dùng gỡ.
+  const recalledMessagesRef = useRef(new WeakSet<Msg>());
+  const recalledImagesRef = useRef(new WeakSet<Msg>());
   const sendRef = useRef<
     (text: string, opts?: { fromCall?: boolean }) => Promise<void>
   >(async () => {});
@@ -307,11 +312,15 @@ export default function Assistant() {
   const send = useCallback(
     async (text: string, opts?: { fromCall?: boolean }) => {
       const q = text.trim();
-      if (!q) return;
+      const attachedImage = !opts?.fromCall ? image : null;
+      if (!q && !attachedImage) return;
+      const question = q || "Hãy mô tả và giải thích hình ảnh này trong phạm vi Phật học.";
       // Đang bận: xếp hàng chờ (chat) hoặc nhắc nhở nhẹ (đàm thoại) thay vì
       // nuốt im lặng câu hỏi của người dùng.
       if (busyRef.current) {
-        if (!opts?.fromCall && q.length <= 500) {
+        if (attachedImage) {
+          toast.error("Hãy đợi câu trả lời hiện tại xong rồi gửi hình ảnh.");
+        } else if (!opts?.fromCall && q.length <= 500) {
           queueRef.current.push(q);
           toast("Trợ lý đang trả lời — câu hỏi của bạn đã xếp hàng.", {
             duration: 2200,
@@ -325,13 +334,12 @@ export default function Assistant() {
       const base: Msg[] = [...historyRef.current, ...pendingRef.current];
       const userMsg: Msg = {
         role: "user",
-        content: q,
+        content: question,
         ts: Date.now(),
         // Lưu ảnh đi kèm tin nhắn để hiển thị lại trong hội thoại
-        image:
-          !opts?.fromCall && image
-            ? { base64: image.base64, mime: image.mime }
-            : undefined,
+        image: attachedImage
+          ? { base64: attachedImage.base64, mime: attachedImage.mime }
+          : undefined,
       };
 
       if (!opts?.fromCall) {
@@ -353,14 +361,14 @@ export default function Assistant() {
           // Chỉ gửi 4 lượt gần nhất đúng với ngữ cảnh backend sử dụng. Cắt bớt
           // ký tự phòng khi lịch sử cũ chứa câu trả lời rất dài để lượt hỏi
           // sau không bị từ chối; tin nhắn hiện tại luôn nằm cuối.
-          messages: [...base, { role: "user" as const, content: q }]
+          messages: [...base, { role: "user" as const, content: question }]
             .slice(-4)
             .map((m) => ({
               role: m.role,
               content: m.content.slice(0, 7500),
             })),
-          imageBase64: opts?.fromCall ? undefined : image?.base64,
-          imageMime: opts?.fromCall ? undefined : image?.mime,
+          imageBase64: attachedImage?.base64,
+          imageMime: attachedImage?.mime,
           ...getDeviceMeta(),
         });
       const askWithRetry = async () => {
@@ -399,7 +407,12 @@ export default function Assistant() {
         const replyMsg: Msg = { role: "assistant", content: reply, ts: Date.now() };
         pendingRef.current = pendingRef.current.filter((m) => m !== userMsg);
         setPending(pendingRef.current);
-        const nextHistory = [...historyRef.current, userMsg, replyMsg];
+        if (recalledMessagesRef.current.has(userMsg)) return;
+        const messageToSave =
+          userMsg.image && recalledImagesRef.current.has(userMsg)
+            ? { ...userMsg, image: undefined }
+            : userMsg;
+        const nextHistory = [...historyRef.current, messageToSave, replyMsg];
         historyRef.current = nextHistory;
         setHistory(nextHistory);
         // Ảnh base64 nặng: chỉ giữ ảnh trong 40 tin nhắn gần nhất, tin cũ
@@ -692,6 +705,32 @@ export default function Assistant() {
     }
   };
 
+  /** Thu hồi một tin nhắn đã gửi; ảnh đi kèm cũng bị gỡ cùng tin nhắn. */
+  const recallMessage = useCallback((target: Msg) => {
+    if (target.role !== "user") return;
+    recalledMessagesRef.current.add(target);
+    historyRef.current = historyRef.current.filter((m) => m !== target);
+    pendingRef.current = pendingRef.current.filter((m) => m !== target);
+    setHistory(historyRef.current);
+    setPending(pendingRef.current);
+    void saveLocalChatSecure(historyRef.current);
+    toast.success("Đã thu hồi tin nhắn.");
+  }, []);
+
+  /** Chỉ gỡ ảnh, vẫn giữ lại nội dung chữ của tin nhắn. */
+  const recallImage = useCallback((target: Msg) => {
+    if (!target.image) return;
+    recalledImagesRef.current.add(target);
+    const stripImage = (m: Msg): Msg =>
+      m === target ? { ...m, image: undefined } : m;
+    historyRef.current = historyRef.current.map(stripImage);
+    pendingRef.current = pendingRef.current.map(stripImage);
+    setHistory(historyRef.current);
+    setPending(pendingRef.current);
+    void saveLocalChatSecure(historyRef.current);
+    toast.success("Đã thu hồi hình ảnh.");
+  }, []);
+
   const onVoiceChat = useCallback(
     (text: string) => {
       void send(text);
@@ -786,6 +825,8 @@ export default function Assistant() {
                   ts={m.ts}
                   grouped={grouped}
                   image={m.image}
+                  onRecall={() => recallMessage(m)}
+                  onRecallImage={m.image ? () => recallImage(m) : undefined}
                 />
               ) : (
                 <AssistantMessage key={i} content={m.content} ts={m.ts} grouped={grouped} />
@@ -1074,29 +1115,58 @@ function UserMessage({
   ts,
   grouped,
   image,
+  onRecall,
+  onRecallImage,
 }: {
   content: string;
   ts: number;
   grouped?: boolean;
   image?: { base64: string; mime: string };
+  onRecall: () => void;
+  onRecallImage?: () => void;
 }) {
   return (
     <div className={cn("flex justify-end", grouped ? "mt-1.5" : "mt-5")}>
       <div className="flex max-w-[86%] flex-col items-end sm:max-w-[78%]">
-        {/* Ảnh đi kèm — nằm ngay trên bong bóng tin nhắn, bo góc mềm */}
+        {/* Ảnh đi kèm — có nút thu hồi riêng, không cần xóa cả tin nhắn. */}
         {image && (
-          <img
-            src={`data:${image.mime};base64,${image.base64}`}
-            alt="Ảnh người dùng gửi kèm"
-            className="mb-1.5 max-h-64 w-auto max-w-full rounded-2xl border border-border/60 object-cover shadow-sm"
-          />
+          <div className="relative mb-1.5 max-w-full">
+            <img
+              src={`data:${image.mime};base64,${image.base64}`}
+              alt="Ảnh người dùng gửi kèm"
+              className="block max-h-64 w-auto max-w-full rounded-2xl border border-border/60 object-cover shadow-sm"
+            />
+            {onRecallImage && (
+              <button
+                type="button"
+                onClick={onRecallImage}
+                className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur transition hover:bg-black/85 active:scale-95"
+                aria-label="Thu hồi hình ảnh"
+                title="Thu hồi hình ảnh"
+              >
+                <Undo2 className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         )}
         {content && (
           <div className="inline-block max-w-full whitespace-pre-wrap break-words rounded-3xl rounded-br-md bg-primary px-4 py-2.5 text-[18px] leading-[1.8] text-primary-foreground shadow-sm sm:text-[19px]">
             {content}
           </div>
         )}
-        <p className="mt-1 pr-2 text-[12px] text-muted-foreground/70">{formatTs(ts)}</p>
+        <div className="mt-1 flex items-center gap-2 pr-1 text-[12px] text-muted-foreground/70">
+          <span>{formatTs(ts)}</span>
+          <button
+            type="button"
+            onClick={onRecall}
+            className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-medium transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Thu hồi tin nhắn"
+            title="Thu hồi tin nhắn"
+          >
+            <Undo2 className="h-3.5 w-3.5" />
+            Thu hồi
+          </button>
+        </div>
       </div>
     </div>
   );
