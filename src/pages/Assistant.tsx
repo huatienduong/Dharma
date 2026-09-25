@@ -11,7 +11,7 @@ import {
   encryptString,
 } from "@/lib/secureStorage";
 import { cn } from "@/lib/utils";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import {
   ArrowLeft,
   AudioLines,
@@ -43,8 +43,10 @@ type Msg = {
   role: "user" | "assistant";
   content: string;
   ts: number;
-  /** Ảnh đi kèm tin nhắn (base64) — chỉ hiển thị, không gửi lại AI */
+  /** Ảnh người dùng tải lên (base64) — chỉ hiển thị, không gửi lại AI */
   image?: { base64: string; mime: string };
+  /** storageId ảnh AI tạo — nạp URL từ Convex File Storage khi hiển thị */
+  imageStorageId?: string;
 };
 
 /* Kho câu hỏi đề xuất — ƯU TIÊN Bát Chánh Đạo & Tứ Thánh Đế (icon Sparkles
@@ -465,7 +467,7 @@ export default function Assistant() {
         // Người dùng yêu cầu tạo hình → chạy TẠO ẢNH trước (có thanh tiến
         // trình), sau đó mới lấy lời giải thích ngắn từ trợ lý.
         const wantsArt = !attachedImage && wantsImage(question);
-        let generatedImage: { base64: string; mime: string } | undefined;
+        let generatedImageId: string | undefined;
         if (wantsArt) {
           startImageProgress();
           try {
@@ -473,13 +475,19 @@ export default function Assistant() {
               prompt: question,
               ...getDeviceMeta(),
             });
-            if (res.ok) generatedImage = res.image;
+            if (res.ok) generatedImageId = res.storageId;
             else {
               finishImageProgress();
               toast.error(res.message);
             }
-          } catch {
+          } catch (err) {
             finishImageProgress();
+            if (!opts?.fromCall) {
+              toast.error(
+                convexErrMessage(err) ||
+                  "Chưa tạo được hình. Vui lòng thử lại sau.",
+              );
+            }
           }
         }
 
@@ -490,7 +498,7 @@ export default function Assistant() {
           role: "assistant",
           content: reply,
           ts: Date.now(),
-          ...(generatedImage ? { image: generatedImage } : {}),
+          ...(generatedImageId ? { imageStorageId: generatedImageId } : {}),
         };
         // Gom thao tác lưu tin nhắn về một nơi để cả chữ và chế độ đàm thoại
         // dùng chung cùng một quy tắc thu hồi tin nhắn.
@@ -978,6 +986,7 @@ export default function Assistant() {
                   ts={m.ts}
                   grouped={grouped}
                   image={m.image}
+                  imageStorageId={m.imageStorageId}
                 />
               );
             })}
@@ -1283,15 +1292,23 @@ function AssistantMessage({
   ts,
   grouped,
   image,
+  imageStorageId,
 }: {
   content: string;
   ts: number;
   grouped?: boolean;
-  /** Ảnh AI tự sinh theo yêu cầu của người dùng */
+  /** Ảnh người dùng tải lên (chưa dùng ở bong bóng trợ lý) */
   image?: { base64: string; mime: string };
+  /** storageId ảnh AI tạo trong Convex File Storage */
+  imageStorageId?: string;
 }) {
   const [copied, setCopied] = useState(false);
   const text = plainText(content);
+  // Nạp URL ảnh từ storage — URL ổn định nên lịch sử cũ vẫn xem lại được.
+  const imageUrl = useQuery(
+    api.aiChat.getImageUrl,
+    imageStorageId ? { storageId: imageStorageId } : "skip",
+  );
 
   const handleCopy = async () => {
     try {
@@ -1331,6 +1348,13 @@ function AssistantMessage({
         {image && (
           <img
             src={`data:${image.mime};base64,${image.base64}`}
+            alt="Hình ảnh Trợ lý Phật học tạo theo yêu cầu"
+            className="mb-2 block max-h-80 w-auto max-w-full rounded-3xl rounded-bl-md border border-border/50 object-cover shadow-sm"
+          />
+        )}
+        {imageUrl && (
+          <img
+            src={imageUrl}
             alt="Hình ảnh Trợ lý Phật học tạo theo yêu cầu"
             className="mb-2 block max-h-80 w-auto max-w-full rounded-3xl rounded-bl-md border border-border/50 object-cover shadow-sm"
           />

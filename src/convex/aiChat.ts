@@ -544,12 +544,18 @@ const GEMINI_IMAGE_MODELS = [
 const IMAGE_TIMEOUT_MS = 90_000;
 
 /**
- * Sinh ảnh bằng Gemini (mô hình Nano Banana). Trả về base64 hoặc null khi
- * không có khóa / mọi model đều lỗi — caller bỏ qua, không báo lỗi.
+ * Sinh ảnh bằng Gemini (mô hình Nano Banana).
+ *
+ * QUAN TRỌNG: KHÔNG trả base64 về client — mọi giá trị Convex bị giới hạn
+ * 1MB, còn ảnh Gemini thường 1–2MB base64 nên sẽ khiến action lỗi và không
+ * hiện được ảnh. Thay vào đó lưu vào File Storage rồi trả storageId.
+ *
+ * Trả về null khi không có khóa / mọi model đều lỗi — caller báo lỗi.
  */
 async function generateImage(
+  ctx: { storage: { store: (blob: Blob) => Promise<string> } },
   prompt: string,
-): Promise<{ base64: string; mime: string } | null> {
+): Promise<{ storageId: string } | null> {
   const geminiKey = process.env.GEMINI_API_KEY;
   if (!geminiKey) return null;
   for (const model of GEMINI_IMAGE_MODELS) {
@@ -589,7 +595,12 @@ async function generateImage(
         (p) => p.inlineData?.data,
       )?.inlineData;
       if (!part?.data) continue;
-      return { base64: part.data, mime: part.mimeType ?? "image/png" };
+      // Chuyển base64 → bytes rồi lưu vào File Storage.
+      const bytes = Uint8Array.from(atob(part.data), (c) => c.charCodeAt(0));
+      const storageId = await ctx.storage.store(
+        new Blob([bytes], { type: part.mimeType ?? "image/png" }),
+      );
+      return { storageId };
     } catch {
       /* thử model tiếp theo */
     }
@@ -626,7 +637,7 @@ export const createImage = action({
         message: "Chưa có nội dung để tạo hình.",
       };
     }
-    const image = await generateImage(clean);
+    const image = await generateImage(ctx, clean);
     if (!image) {
       return {
         ok: false as const,
@@ -635,7 +646,22 @@ export const createImage = action({
           "Hiện chưa tạo được hình. Vui lòng thử lại sau ít phút hoặc đổi cách diễn đạt yêu cầu.",
       };
     }
-    return { ok: true as const, image };
+    return { ok: true as const, storageId: image.storageId };
+  },
+});
+
+/**
+ * Lấy URL tải ảnh đã tạo từ File Storage. Ảnh nằm trong storage nên URL
+ * ổn định — lịch sử hội thoại lưu cục bộ vẫn xem lại được sau này.
+ */
+export const getImageUrl = query({
+  args: { storageId: v.string() },
+  handler: async (ctx, { storageId }) => {
+    try {
+      return await ctx.storage.getUrl(storageId);
+    } catch {
+      return null;
+    }
   },
 });
 
