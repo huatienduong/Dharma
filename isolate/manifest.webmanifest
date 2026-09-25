@@ -1,10 +1,30 @@
 {
-  "name": "Dharma AI — Trợ lý Phật học",
-  "short_name": "Dharma AI",
-  "description": "Trợ lý Phật học Theravāda — hỏi đáp giáo lý, thiền, kinh điển",
-  "start_url": "/",
+  "id": "./",
+  "name": "Trợ lý Phật học",
+  "short_name": "Trợ lý Phật học",
+  "description": "Ứng dụng hỗ trợ học Phật, tra cứu giáo lý Theravāda và đàm thoại bằng giọng nói.",
+  "lang": "vi",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
-  "icons": []
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#faf6ef",
+  "theme_color": "#6b3f1d",
+  "categories": ["education", "lifestyle"],
+  "icons": [
+    {
+      "src": "./app-icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./app-icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }

@@ -333,10 +333,31 @@ const GEMINI_BASE_URL =
  */
 export const providerStatus = action({
   args: {},
-  handler: async () => ({
-    groq: !!process.env.GROQ_API_KEY,
-    gemini: !!process.env.GEMINI_API_KEY,
-  }),
+  handler: async () => {
+    const groqKey = process.env.GROQ_API_KEY;
+    const geminiKey = process.env.GEMINI_API_KEY;
+    let groqModels: string[] = [];
+    if (groqKey) {
+      try {
+        const res = await fetch(`${GROQ_BASE_URL}/models`, {
+          headers: { Authorization: `Bearer ${groqKey}` },
+        });
+        if (res.ok) {
+          const json = (await res.json()) as { data?: { id?: string }[] };
+          groqModels = (json.data ?? [])
+            .map((m) => m.id ?? "")
+            .filter((id) => id.includes("qwen") || id.includes("vision") || id.includes("llama-4"));
+        }
+      } catch {
+        /* Chỉ là trạng thái chẩn đoán, không ảnh hưởng luồng chat. */
+      }
+    }
+    return {
+      groq: !!groqKey,
+      gemini: !!geminiKey,
+      groqModels,
+    };
+  },
 });
 
 /**
@@ -404,9 +425,14 @@ async function listProviders(
     /* không đọc được trạng thái — coi như không có provider chết */
   }
 
-  return listAllProviders(needVision).filter(
+  const configured = listAllProviders(needVision);
+  const available = configured.filter(
     (p) => !dead[`${p.label}/${p.model}`],
   );
+  // Không để một lỗi tạm thời của circuit breaker khóa hoàn toàn ứng dụng.
+  // Nếu tất cả provider đang bị đánh dấu dead, vẫn thử lại provider đầu tiên
+  // ngay để người dùng không phải chờ hết TTL 10 phút.
+  return available.length > 0 ? available : configured;
 }
 
 /**
@@ -557,9 +583,12 @@ export const ask = action({
       };
     }
 
+    // generateText nhận ModelMessage của AI SDK, không nhận trực tiếp
+    // OpenAI image_url. Provider OpenAI-compatible sẽ tự chuyển image thành
+    // image_url khi gọi Groq.
     type ContentPart =
       | { type: "text"; text: string }
-      | { type: "image_url"; image_url: { url: string } };
+      | { type: "image"; image: Uint8Array; mediaType: string };
     const withImage: Array<{
       role: "user" | "assistant";
       content: string | ContentPart[];
@@ -573,11 +602,11 @@ export const ask = action({
               "Hãy mô tả và giải thích về hình ảnh này trong phạm vi Phật học.",
           },
         ];
+        const mime = imageMime ?? "image/jpeg";
         parts.push({
-          type: "image_url",
-          image_url: {
-            url: `data:${imageMime ?? "image/jpeg"};base64,${imageBase64}`,
-          },
+          type: "image",
+          image: Uint8Array.from(atob(imageBase64), (char) => char.charCodeAt(0)),
+          mediaType: mime,
         });
         return { ...m, content: parts };
       }

@@ -671,20 +671,41 @@ export default function Assistant() {
       toast.error("Chỉ hỗ trợ file ảnh.");
       return;
     }
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("Ảnh vượt quá 20 MB. Hãy chọn ảnh nhỏ hơn.");
+      return;
+    }
     const reader = new FileReader();
+    reader.onerror = () => toast.error("Không thể đọc ảnh trên thiết bị.");
     reader.onload = () => {
       const img = new Image();
+      img.onerror = () =>
+        toast.error("Trình duyệt không mở được ảnh này. Hãy thử lại bằng JPG hoặc PNG.");
       img.onload = () => {
+        if (!img.width || !img.height) {
+          toast.error("Ảnh không hợp lệ. Hãy chọn ảnh khác.");
+          return;
+        }
+        // Groq nhận ảnh base64 trong image_url. Thu nhỏ vừa đủ để nhận diện
+        // chữ và vật thể, đồng thời tránh vượt giới hạn request và tiết kiệm dữ liệu.
         const max = 1024;
         const scale = Math.min(1, max / Math.max(img.width, img.height));
         const canvas = document.createElement("canvas");
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
         const ctx = canvas.getContext("2d");
-        if (!ctx) return;
+        if (!ctx) {
+          toast.error("Không thể xử lý ảnh trên thiết bị.");
+          return;
+        }
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
-        setImage({ base64: dataUrl.split(",")[1] ?? "", mime: "image/jpeg" });
+        const base64 = dataUrl.split(",")[1];
+        if (!base64) {
+          toast.error("Không thể chuyển ảnh sang định dạng phù hợp.");
+          return;
+        }
+        setImage({ base64, mime: "image/jpeg" });
       };
       img.src = reader.result as string;
     };
