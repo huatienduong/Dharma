@@ -135,7 +135,14 @@ async function loadLocalChatSecure(): Promise<Msg[] | null> {
     if (!Array.isArray(arr)) return null;
     // Tin nhắn cũ chưa có mốc giờ → gán thời gian lệch nhau theo thứ tự
     return arr
-      .filter((m) => m && (m.role === "user" || m.role === "assistant"))
+      .filter(
+        (m): m is Msg =>
+          Boolean(
+            m &&
+              (m.role === "user" || m.role === "assistant") &&
+              typeof m.content === "string",
+          ),
+      )
       .map((m, i, a) => ({
         ...m,
         ts:
@@ -343,10 +350,15 @@ export default function Assistant() {
       // chờ tăng dần. Các lỗi nghiệp vụ vẫn dừng ngay để không gửi sai.
       const askOnce = () =>
         ask({
-          // Chỉ gửi phần ngữ cảnh còn nằm trong giới hạn của action. Lịch sử
-          // cục bộ có thể lưu 100 tin nhắn nhưng server từ chối trên 60;
-          // luôn giữ tin nhắn hiện tại ở cuối để lượt tiếp theo luôn gửi được.
-          messages: [...base, { role: "user" as const, content: q }].slice(-60),
+          // Chỉ gửi 4 lượt gần nhất đúng với ngữ cảnh backend sử dụng. Cắt bớt
+          // ký tự phòng khi lịch sử cũ chứa câu trả lời rất dài để lượt hỏi
+          // sau không bị từ chối; tin nhắn hiện tại luôn nằm cuối.
+          messages: [...base, { role: "user" as const, content: q }]
+            .slice(-4)
+            .map((m) => ({
+              role: m.role,
+              content: m.content.slice(0, 7500),
+            })),
           imageBase64: opts?.fromCall ? undefined : image?.base64,
           imageMime: opts?.fromCall ? undefined : image?.mime,
           ...getDeviceMeta(),

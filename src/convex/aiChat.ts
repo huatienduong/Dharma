@@ -495,8 +495,8 @@ export const ask = action({
   },
   handler: async (ctx, { messages, imageBase64, imageMime, deviceId, integrity }) => {
     // Chặn bot / thiết bị bị can thiệp đốt hạn mức AI trước khi gọi provider.
-    // Dùng ConvexError (không phải Error) — production mới truyền được thông
-    // điệp tiếng Việt tới client thay vì chuỗi "Server Error" trống.
+    // Các lỗi nghiệp vụ trả về có cấu trúc để production không bị che thành
+    // "Server Error"; lỗi hạ tầng/action thật sự vẫn để client tự retry.
     const denied = await checkRateLimit(ctx, "ask", deviceId, integrity);
     if (denied) return { ok: false as const, code: "rate_limited", message: denied };
 
@@ -516,7 +516,10 @@ export const ask = action({
         message: "Hội thoại quá dài. Hãy xóa hội thoại và bắt đầu lại.",
       };
     }
-    for (const m of messages) {
+    // Chỉ kiểm tra ngữ cảnh thực sự được gửi cho AI. Một tin nhắn cũ quá dài
+    // nằm ngoài 4 lượt gần nhất không được phép làm hỏng mọi lượt hỏi sau.
+    const recent: ChatMessage[] = messages.slice(-HISTORY_LIMIT);
+    for (const m of recent) {
       if (typeof m.content !== "string" || m.content.length > 8000) {
         return {
           ok: false as const,
@@ -543,7 +546,6 @@ export const ask = action({
       };
     }
 
-    const recent: ChatMessage[] = messages.slice(-HISTORY_LIMIT);
     type ContentPart =
       | { type: "text"; text: string }
       | { type: "image_url"; image_url: { url: string } };
