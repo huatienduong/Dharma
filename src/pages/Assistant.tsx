@@ -608,7 +608,7 @@ export default function Assistant() {
       {/* ---------- Header mảnh, cân đối ---------- */}
       {/* ---------- Header cân đối: lưới 3 cột — tiêu đề LUÔN nằm giữa thật ---------- */}
       <header className="grid h-16 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-1 border-b border-border/60 bg-background px-2 sm:px-4">
-        {/* Trái: Đàm thoại + Cài đặt (+ nút quay lại khi mở từ trang khác) */}
+        {/* Trái: Đàm thoại (+ nút quay lại khi mở từ trang khác) */}
         <div className="flex items-center gap-1 justify-self-start">
           {!isHome && (
             <button
@@ -628,21 +628,11 @@ export default function Assistant() {
             <Phone className="h-5 w-5 shrink-0" />
             <span className="hidden sm:inline">Đàm thoại</span>
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/settings?section=about")}
-            title="Cài đặt & cập nhật ứng dụng"
-            aria-label="Cài đặt và cập nhật ứng dụng"
-            className="h-11 w-11 rounded-full"
-          >
-            <Settings className="h-5 w-5" />
-          </Button>
         </div>
         <p className="justify-self-center whitespace-nowrap text-sm font-extrabold uppercase tracking-[0.08em] leading-tight text-foreground sm:text-[17px] sm:tracking-[0.16em]">
           Trợ lý Phật học
         </p>
-        {/* Phải: Xóa hội thoại */}
+        {/* Phải: Xóa hội thoại (1) + Cài đặt (2) — cả hai sát lề phải */}
         <div className="flex items-center gap-1 justify-self-end">
           <Button
             variant="ghost"
@@ -653,6 +643,16 @@ export default function Assistant() {
             className="h-11 w-11 rounded-full"
           >
             <Eraser className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/settings?section=about")}
+            title="Cài đặt & cập nhật ứng dụng"
+            aria-label="Cài đặt và cập nhật ứng dụng"
+            className="h-11 w-11 rounded-full"
+          >
+            <Settings className="h-5 w-5" />
           </Button>
         </div>
       </header>
