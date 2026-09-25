@@ -788,7 +788,13 @@ export default function Assistant() {
       </header>
 
       {/* ---------- Khu hội thoại: chiếm toàn bộ phần còn lại ---------- */}
-      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        ref={scrollRef}
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto pb-24 transition-[padding] duration-200",
+          image && "pb-48",
+        )}
+      >
         {isEmpty ? (
           <div className="flex min-h-full flex-col items-center justify-center px-4 py-8 text-center">
             <p className="-translate-y-2 max-w-md text-xl font-semibold leading-relaxed tracking-tight text-foreground sm:text-2xl">
@@ -847,7 +853,7 @@ export default function Assistant() {
             e.preventDefault();
             void send(input);
           }}
-          className="mx-auto w-full max-w-3xl shrink-0 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 sm:px-4"
+          className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-3xl bg-background/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md sm:px-4"
         >
           {image && (
             <div className="mb-2 flex items-center gap-2 pl-1">
