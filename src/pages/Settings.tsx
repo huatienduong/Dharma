@@ -18,7 +18,6 @@ import {
   ArrowLeft,
   Bell,
   Bug,
-  Check,
   CheckCircle2,
   ChevronRight,
   Download,
@@ -33,13 +32,6 @@ import {
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router";
-import {
-  getVoice,
-  loadVoicePref,
-  saveVoicePref,
-  VOICE_LIST,
-} from "@/lib/aiVoices";
-import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 
 const FEEDBACK_BUG_MESSAGE =
   "Chúng tôi đã ghi nhận yêu cầu hỗ trợ khắc phục sự cố và sẽ tiến hành kiểm tra khắc phục. Xin trân thành cảm ơn!";
@@ -66,21 +58,15 @@ export default function Settings() {
   const validSection =
     sectionParam === "appearance" ||
     sectionParam === "about" ||
-    sectionParam === "voice" ||
     sectionParam === "feedback" ||
     sectionParam === "legal"
       ? sectionParam
       : null;
   const [openCard, setOpenCard] = useState<
-    null | "appearance" | "about" | "voice" | "feedback" | "legal"
+    null | "appearance" | "about" | "feedback" | "legal"
   >(validSection);
   const toggle = (key: typeof openCard) =>
     setOpenCard((cur) => (cur === key ? null : key));
-
-  // Giọng đọc trợ lý — chọn + nghe thử ngay tại đây
-  const [voiceId, setVoiceId] = useState<string>(loadVoicePref);
-  const { speak: speakVI, stop: stopSpeaking } = useVietnameseTTS();
-  const currentVoice = getVoice(voiceId);
 
   const [fbType, setFbType] = useState<"idea" | "bug">("idea");
   const [fbMessage, setFbMessage] = useState("");
@@ -290,56 +276,6 @@ export default function Settings() {
             label="Thông báo"
           />
         </div>
-
-        {/* ---------- Lựa chọn giọng nói ---------- */}
-        <RowCard
-          label="Giọng nói"
-          open={openCard === "voice"}
-          onClick={() => toggle("voice")}
-        >
-          <div className="space-y-2.5 pt-1">
-            {VOICE_LIST.map((v) => {
-              const active = v.id === voiceId;
-              return (
-                <button
-                  key={v.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => {
-                    setVoiceId(v.id);
-                    saveVoicePref(v.id);
-                    stopSpeaking();
-                    void speakVI("Xin chào, tôi là trợ lý Phật học của bạn.", {
-                      voice: v.id,
-                    });
-                  }}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-full border py-3 px-4 text-left backdrop-blur-sm transition",
-                    active
-                      ? "border-primary/40 bg-accent/60"
-                      : "border-border/70 bg-muted/35 hover:bg-accent/60",
-                  )}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className={cn(
-                        "block truncate text-sm font-semibold",
-                        active ? "text-gold" : "text-foreground",
-                      )}
-                    >
-                      {v.name}
-                    </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {v.desc}
-                    </span>
-                  </span>
-                  {active && <Check className="h-4.5 w-4.5 shrink-0 text-gold" />}
-                </button>
-              );
-            })}
-          </div>
-        </RowCard>
 
         {/* ---------- Giới thiệu / Phiên bản ---------- */}
         <RowCard

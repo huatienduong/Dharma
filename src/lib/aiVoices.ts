@@ -81,8 +81,8 @@ export const AI_VOICES: Record<string, AiVoice> = {
   },
 };
 
-/** Giọng mặc định khi người dùng chưa chọn: nữ Từ Ái. */
-export const DEFAULT_VOICE_ID = "metta";
+/** Giọng mặc định khi người dùng chưa chọn: nam Từ Ái. */
+export const DEFAULT_VOICE_ID = "mettam";
 
 export function getVoice(voiceId?: string | null): AiVoice {
   return AI_VOICES[voiceId ?? ""] ?? AI_VOICES[DEFAULT_VOICE_ID];
