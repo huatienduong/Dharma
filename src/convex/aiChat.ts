@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { generateText } from "ai";
+import { ConvexError } from "convex/values";
 import { v } from "convex/values";
 import { action, internalMutation, mutation, query } from "./_generated/server";
 import type { ActionCtx } from "./_generated/server";
@@ -229,35 +230,37 @@ export const ask = action({
     integrity: v.optional(v.string()),
   },
   handler: async (ctx, { messages, imageBase64, imageMime, deviceId, integrity }) => {
-    // Chặn bot / thiết bị bị can thiệp đốt hạn mức AI trước khi gọi provider
+    // Chặn bot / thiết bị bị can thiệp đốt hạn mức AI trước khi gọi provider.
+    // Dùng ConvexError (không phải Error) — production mới truyền được thông
+    // điệp tiếng Việt tới client thay vì chuỗi "Server Error" trống.
     const denied = await checkRateLimit(ctx, "ask", deviceId, integrity);
-    if (denied) throw new Error(denied);
+    if (denied) throw new ConvexError(denied);
 
     const userId = await getAuthUserId(ctx);
     void userId;
 
     if (messages.length === 0 && !imageBase64) {
-      throw new Error("Câu hỏi trống.");
+      throw new ConvexError("Câu hỏi trống.");
     }
 
     // Chống tấn công: giới hạn kích thước đầu vào — bot gửi payload khổng lồ
     // sẽ bị từ chối ngay trước khi chạm provider AI.
     if (messages.length > 60) {
-      throw new Error("Hội thoại quá dài. Hãy xóa hội thoại và bắt đầu lại.");
+      throw new ConvexError("Hội thoại quá dài. Hãy xóa hội thoại và bắt đầu lại.");
     }
     for (const m of messages) {
       if (typeof m.content !== "string" || m.content.length > 8000) {
-        throw new Error("Tin nhắn vượt quá độ dài cho phép.");
+        throw new ConvexError("Tin nhắn vượt quá độ dài cho phép.");
       }
     }
     if (imageBase64 && imageBase64.length > 9_000_000) {
-      throw new Error("Ảnh quá lớn (tối đa khoảng 6MB).");
+      throw new ConvexError("Ảnh quá lớn (tối đa khoảng 6MB).");
     }
 
     const providers = listProviders(Boolean(imageBase64));
     if (providers.length === 0) {
-      throw new Error(
-        "Trợ lý Phật học chưa kết nối được máy chủ AI (thiếu khóa Groq/Gemini). Vui lòng báo lỗi qua mục Góp ý.",
+      throw new ConvexError(
+        "Trợ lý Phật học chưa kết nối được máy chủ AI. Vui lòng thử lại sau ít phút hoặc báo lỗi qua mục Góp ý.",
       );
     }
 
@@ -325,10 +328,10 @@ export const ask = action({
         errors.push(`${provider.label}: ${msg}`);
       }
     }
-    throw new Error(
-      `Không kết nối được Trợ lý Phật học. Chi tiết: ${errors.join(" | ")}` +
-        (imageBase64 && providers.every((p) => p.label !== "Cổng AI nền tảng")
-          ? " — Gửi ảnh cần máy chủ AI hỗ trợ thị giác, vui lòng thử lại sau."
+    throw new ConvexError(
+      `Trợ lý Phật học tạm chưa trả lời được. Vui lòng thử lại sau ít phút.` +
+        (imageBase64
+          ? " (Gửi ảnh cần máy chủ AI hỗ trợ thị giác — có thể thử lại bằng câu hỏi chữ.)"
           : ""),
     );
   },
@@ -354,7 +357,7 @@ export const speak = action({
     void ctx;
     // Giới hạn tốc độ cả TTS — chặn bot quay vùng đọc text miễn phí
     const denied = await checkRateLimit(ctx, "speak", deviceId, integrity);
-    if (denied) throw new Error(denied);
+    if (denied) throw new ConvexError(denied);
     const clean = text.trim().slice(0, 2400);
     if (!clean) return null;
     // Hướng dẫn giọng đọc theo lựa chọn của người dùng (tiếng Việt)
@@ -473,7 +476,7 @@ export const appendMessages = mutation({
   handler: async (ctx, { items }) => {
     const userId = await getAuthUserId(ctx);
     if (userId === null) return;
-    if (items.length > 30) throw new Error("Quá nhiều tin nhắn cùng lúc.");
+    if (items.length > 30) throw new ConvexError("Quá nhiều tin nhắn cùng lúc.");
 
     const now = Date.now();
     let offset = 0;
