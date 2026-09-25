@@ -15,15 +15,15 @@
   "categories": ["education", "lifestyle"],
   "icons": [
     {
-      "src": "./app-icon.svg",
+      "src": "https://determined-rabbit-619.convex.cloud/api/storage/kg28vmks2ffwhk14575s6jnvws8f3n8z",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./app-icon.svg",
+      "src": "https://determined-rabbit-619.convex.cloud/api/storage/kg28vmks2ffwhk14575s6jnvws8f3n8z",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

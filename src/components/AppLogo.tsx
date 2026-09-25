@@ -2,6 +2,9 @@ import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useEffect } from "react";
 
+const FALLBACK_LOGO_URL =
+  "https://determined-rabbit-619.convex.cloud/api/storage/kg28vmks2ffwhk14575s6jnvws8f3n8z";
+
 type AppLogoProps = {
   className?: string;
   alt?: string;
@@ -21,10 +24,10 @@ type ManifestIcon = {
  */
 export function AppLogo({ className, alt = "Logo Trợ lý Phật học" }: AppLogoProps) {
   const logoUrl = useQuery(api.library.getAppLogo, {});
-  const src = logoUrl ?? "/app-icon.svg";
+  const src = logoUrl ?? FALLBACK_LOGO_URL;
 
   useEffect(() => {
-    if (!logoUrl || typeof document === "undefined") return;
+    if (typeof document === "undefined") return;
 
     for (const rel of ["icon", "apple-touch-icon"]) {
       let link = document.querySelector<HTMLLinkElement>(`link[rel="${rel}"]`);
@@ -33,7 +36,7 @@ export function AppLogo({ className, alt = "Logo Trợ lý Phật học" }: AppL
         link.rel = rel;
         document.head.appendChild(link);
       }
-      link.href = logoUrl;
+      link.href = src;
       link.type = "";
     }
 
@@ -54,19 +57,19 @@ export function AppLogo({ className, alt = "Logo Trợ lý Phật học" }: AppL
           : [];
         const icons = existingIcons.length
           ? existingIcons.map((icon) => ({
-              src: logoUrl,
+              src,
               sizes: icon.sizes,
               purpose: icon.purpose,
             }))
           : [
               {
-                src: logoUrl,
+                src,
                 sizes: "192x192",
                 type: "image/png",
                 purpose: "any",
               },
               {
-                src: logoUrl,
+                src,
                 sizes: "512x512",
                 type: "image/png",
                 purpose: "any maskable",
@@ -94,7 +97,7 @@ export function AppLogo({ className, alt = "Logo Trợ lý Phật học" }: AppL
       .catch(() => {
         // Manifest tĩnh vẫn giữ icon dự phòng nếu trình duyệt chặn blob manifest.
       });
-  }, [logoUrl]);
+  }, [src]);
 
   return <img src={src} alt={alt} className={className} />;
 }
