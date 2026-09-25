@@ -30,6 +30,7 @@ import {
   Paperclip,
   RefreshCw,
   Send,
+  ShieldCheck,
   Smartphone,
   Sun,
   X,
@@ -65,10 +66,13 @@ export default function Settings() {
     setNotifications,
   } = useSettings();
   const meta = useQuery(api.library.getAppVersion, {});
+  const currentUser = useQuery(api.users.currentUser, {});
   const myTickets = useQuery(api.library.listMyFeedback);
+  const adminTickets = useQuery(api.library.listAllFeedback);
   const submitFeedback = useMutation(api.library.submitFeedback);
   const sendFeedbackEmail = useAction(api.library.emailFeedback);
   const replyFeedback = useMutation(api.library.replyToFeedback);
+  const replyAsDeveloper = useMutation(api.library.replyToFeedbackAsDeveloper);
 
   // Mục đang mở rộng (accordion) — mỗi mục một thẻ trắng như app hệ thống.
   // Hỗ trợ deep-link từ Trợ lý: /settings?section=about mở sẵn phần Giới thiệu
@@ -104,6 +108,11 @@ export default function Settings() {
   const [sending, setSending] = useState(false);
   const [replyingId, setReplyingId] = useState<GenericId<"feedback"> | null>(null);
   const [ticketReplies, setTicketReplies] = useState<Record<string, string>>({});
+  const [adminReplyingId, setAdminReplyingId] = useState<GenericId<"feedback"> | null>(null);
+  const [adminReplies, setAdminReplies] = useState<Record<string, string>>({});
+  const isDeveloper =
+    currentUser?.email?.trim().toLowerCase() === "huatienduong@protonmail.com" ||
+    currentUser?.role === "admin";
 
   // Cài ứng dụng trực tiếp (PWA)
   const [installPrompt, setInstallPrompt] =
@@ -289,6 +298,34 @@ export default function Settings() {
       toast.error(error instanceof Error ? error.message : "Không gửi được phản hồi.");
     } finally {
       setReplyingId(null);
+    }
+  };
+
+  const handleDeveloperReply = async (
+    ticketId: GenericId<"feedback">,
+    status: "reading" | "resolved" = "reading",
+  ) => {
+    const message =
+      status === "resolved"
+        ? adminReplies[ticketId]?.trim() || "Đã xử lý yêu cầu hỗ trợ."
+        : adminReplies[ticketId]?.trim() ?? "";
+    if (message.length < 2) {
+      toast.error("Vui lòng nhập nội dung phản hồi.");
+      return;
+    }
+    setAdminReplyingId(ticketId);
+    try {
+      await replyAsDeveloper({ feedbackId: ticketId, message, status });
+      setAdminReplies((current) => ({ ...current, [ticketId]: "" }));
+      toast.success(
+        status === "resolved"
+          ? "Đã đóng phiếu hỗ trợ."
+          : "Đã gửi phản hồi tới người dùng.",
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không gửi được phản hồi.");
+    } finally {
+      setAdminReplyingId(null);
     }
   };
 
@@ -735,6 +772,101 @@ export default function Settings() {
                       )}
                     </div>
                   ))}
+                </div>
+              )}
+
+              {isDeveloper && (
+                <div className="space-y-3 border-t border-border/60 pt-4">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-primary" />
+                    <p className="text-sm font-bold">Bảng quản trị phiếu hỗ trợ</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Chỉ Hứa Tiến Dương được nhìn thấy và phản hồi các phiếu từ người dùng.
+                  </p>
+                  {adminTickets === undefined ? (
+                    <p className="text-xs text-muted-foreground">Đang tải phiếu hỗ trợ…</p>
+                  ) : adminTickets.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Chưa có phiếu hỗ trợ nào.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {adminTickets.map((ticket) => (
+                        <div key={ticket._id} className="rounded-2xl border border-primary/20 bg-primary/5 p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold">
+                                {ticket.subject || "Phiếu hỗ trợ"}
+                              </p>
+                              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                {ticket.ticketCode || `Phiếu ${ticket._creationTime}`} · {ticket.type === "bug" ? "Báo lỗi" : "Góp ý"}
+                              </p>
+                            </div>
+                            <span className="shrink-0 rounded-full bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">
+                              {supportStatusLabel(ticket.status)}
+                            </span>
+                          </div>
+                          <p className="mt-2 whitespace-pre-wrap rounded-xl bg-background/70 p-3 text-xs leading-relaxed">
+                            {ticket.message}
+                          </p>
+                          <div className="mt-2 max-h-40 space-y-2 overflow-y-auto">
+                            {ticket.messages.map((item) => (
+                              <div
+                                key={item._id}
+                                className={cn(
+                                  "rounded-xl px-3 py-2 text-xs leading-relaxed",
+                                  item.authorRole === "developer"
+                                    ? "bg-primary/15"
+                                    : "bg-background/70",
+                                )}
+                              >
+                                <p className="mb-1 text-[10px] font-semibold text-muted-foreground">
+                                  {item.authorRole === "developer" ? "Bạn" : "Người dùng"}
+                                </p>
+                                <p className="whitespace-pre-wrap">{item.message}</p>
+                              </div>
+                            ))}
+                          </div>
+                          {ticket.status !== "resolved" && (
+                            <div className="mt-3 space-y-2">
+                              <div className="flex gap-2">
+                                <input
+                                  value={adminReplies[ticket._id] ?? ""}
+                                  onChange={(event) =>
+                                    setAdminReplies((current) => ({
+                                      ...current,
+                                      [ticket._id]: event.target.value,
+                                    }))
+                                  }
+                                  placeholder="Nhận phản hồi cho người dùng"
+                                  className="min-w-0 flex-1 rounded-full border border-border/60 bg-background px-3 py-2 text-xs outline-none focus:border-primary/50"
+                                />
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  onClick={() => void handleDeveloperReply(ticket._id)}
+                                  disabled={adminReplyingId === ticket._id}
+                                  className="h-9 w-9 shrink-0 rounded-full"
+                                  aria-label="Gửi phản hồi"
+                                >
+                                  <Send className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => void handleDeveloperReply(ticket._id, "resolved")}
+                                disabled={adminReplyingId === ticket._id}
+                                className="w-full gap-2 rounded-full"
+                              >
+                                <CheckCircle2 className="h-4 w-4" /> Đánh dấu đã xử lý
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -66,6 +66,7 @@ export const submitFeedback = mutation({
 /* ------------------------------------------------------------------ */
 
 const FEEDBACK_TO_EMAIL = "huatienduong@protonmail.com";
+const DEVELOPER_EMAIL = "huatienduong@protonmail.com";
 
 function escapeHtml(value: string): string {
   return value
@@ -187,6 +188,67 @@ export const replyToFeedback = mutation({
       createdAt: now,
     });
     await ctx.db.patch(feedbackId, { updatedAt: now });
+    return true;
+  },
+});
+
+/** Danh sách phiếu dành riêng cho nhà phát triển đã đăng nhập. */
+export const listAllFeedback = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) return [];
+    const user = await ctx.db.get(userId);
+    const email = user?.email?.trim().toLowerCase();
+    if (email !== DEVELOPER_EMAIL && user?.role !== "admin") return [];
+
+    const rows = await ctx.db
+      .query("feedback")
+      .withIndex("by_createdAt")
+      .order("desc")
+      .take(100);
+    return Promise.all(
+      rows.map(async (ticket) => ({
+        ...ticket,
+        messages: await ctx.db
+          .query("supportMessages")
+          .withIndex("by_feedback", (q) => q.eq("feedbackId", ticket._id))
+          .collect(),
+      })),
+    );
+  },
+});
+
+/** Nhà phát triển gửi phản hồi ngay trong ứng dụng. */
+export const replyToFeedbackAsDeveloper = mutation({
+  args: {
+    feedbackId: v.id("feedback"),
+    message: v.string(),
+    status: v.optional(v.union(v.literal("reading"), v.literal("resolved"))),
+  },
+  handler: async (ctx, { feedbackId, message, status }) => {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) throw new ConvexError("Bạn cần đăng nhập để phản hồi.");
+    const user = await ctx.db.get(userId);
+    const email = user?.email?.trim().toLowerCase();
+    if (email !== DEVELOPER_EMAIL && user?.role !== "admin") {
+      throw new ConvexError("Bạn không có quyền phản hồi phiếu hỗ trợ.");
+    }
+    const ticket = await ctx.db.get(feedbackId);
+    if (!ticket) throw new ConvexError("Không tìm thấy phiếu hỗ trợ.");
+    const clean = message.trim().slice(0, 4000);
+    if (clean.length < 2) throw new ConvexError("Nội dung phản hồi quá ngắn.");
+    const now = Date.now();
+    await ctx.db.insert("supportMessages", {
+      feedbackId,
+      authorRole: "developer",
+      message: clean,
+      createdAt: now,
+    });
+    await ctx.db.patch(feedbackId, {
+      status: status ?? "reading",
+      updatedAt: now,
+    });
     return true;
   },
 });
