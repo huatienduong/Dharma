@@ -30,7 +30,7 @@ import {
   Sun,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router";
 import {
@@ -86,8 +86,6 @@ export default function Settings() {
   const [fbMessage, setFbMessage] = useState("");
   const [fbEmail, setFbEmail] = useState("");
   const [fbFile, setFbFile] = useState<File | null>(null);
-  const [fbAppVersion, setFbAppVersion] = useState(APP_VERSION);
-  const [fbDevice, setFbDevice] = useState("");
   const fbFileRef = useRef<HTMLInputElement>(null);
   const [sending, setSending] = useState(false);
 
@@ -147,11 +145,6 @@ export default function Settings() {
     return `${os} · ${browser}`;
   }, []);
 
-  // Tự điền thiết bị nếu ô nhập còn trống
-  useEffect(() => {
-    setFbDevice((d) => d || detectedDevice);
-  }, [detectedDevice]);
-
   const handleSend = async () => {
     if (fbMessage.trim().length < 5) {
       toast.error("Nội dung góp ý quá ngắn.");
@@ -165,15 +158,15 @@ export default function Settings() {
           ? `\n\n[Đính kèm: ${fbFile.name} — ${(fbFile.size / 1024).toFixed(0)}KB]`
           : "";
       const deviceNote =
-        fbType === "bug" && fbDevice.trim()
-          ? `\n[Thiết bị: ${fbDevice.trim()}]`
+        fbType === "bug" && detectedDevice
+          ? `\n[Thiết bị: ${detectedDevice}]`
           : "";
       const ticketMessage = `${fbMessage}${attachmentNote}${deviceNote}`;
       const result = await submitFeedback({
         type: fbType,
         message: ticketMessage,
         email: fbEmail || undefined,
-        appVersion: fbType === "bug" && fbAppVersion.trim() ? fbAppVersion.trim() : APP_VERSION,
+        appVersion: APP_VERSION,
       });
 
       try {
@@ -181,7 +174,7 @@ export default function Settings() {
           type: fbType,
           message: ticketMessage,
           email: fbEmail || undefined,
-          appVersion: fbType === "bug" && fbAppVersion.trim() ? fbAppVersion.trim() : APP_VERSION,
+          appVersion: APP_VERSION,
           ticketCode: result.ticketCode,
         });
       } catch {
@@ -509,28 +502,22 @@ export default function Settings() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <label className="rounded-2xl bg-muted/40 px-3 py-2.5">
+                  <div className="rounded-2xl bg-muted/40 px-3 py-2.5">
                     <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Phiên bản ứng dụng
+                      Phiên bản ứng dụng (tự động)
                     </span>
-                    <input
-                      value={fbAppVersion}
-                      onChange={(e) => setFbAppVersion(e.target.value)}
-                      placeholder=""
-                      className="mt-0.5 w-full bg-transparent text-sm outline-none"
-                    />
-                  </label>
-                  <label className="rounded-2xl bg-muted/40 px-3 py-2.5">
+                    <span className="mt-0.5 block w-full text-sm text-foreground/90">
+                      {APP_VERSION}
+                    </span>
+                  </div>
+                  <div className="rounded-2xl bg-muted/40 px-3 py-2.5">
                     <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Thiết bị / hệ điều hành
+                      Thiết bị / hệ điều hành (tự động)
                     </span>
-                    <input
-                      value={fbDevice}
-                      onChange={(e) => setFbDevice(e.target.value)}
-                      placeholder=""
-                      className="mt-0.5 w-full bg-transparent text-sm outline-none"
-                    />
-                  </label>
+                    <span className="mt-0.5 block w-full text-sm text-foreground/90">
+                      {detectedDevice}
+                    </span>
+                  </div>
                 </div>
               </>
             )}
