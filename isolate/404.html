@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Đang mở Trợ lý Phật học</title>
+    <script>
+      // GitHub Pages phục vụ 404.html khi mở trực tiếp /settings hoặc
+      // /assistant. Đưa người dùng về entrypoint để BrowserRouter xử lý route.
+      const appBase = window.location.pathname.startsWith("/dharma") ? "/dharma/" : "/";
+      if (window.location.pathname !== appBase) {
+        window.location.replace(appBase);
+      }
+    </script>
+  </head>
+  <body>
+    <p>Đang mở Trợ lý Phật học…</p>
+  </body>
+</html>
