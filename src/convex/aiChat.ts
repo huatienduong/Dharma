@@ -543,15 +543,6 @@ const GEMINI_IMAGE_MODELS = [
 ] as const;
 const IMAGE_TIMEOUT_MS = 90_000;
 
-/** Bỏ dấu tiếng Việt + hạ chữ thường để so khớp ổn định. */
-function deaccent(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .toLowerCase();
-}
-
 /**
  * Sinh ảnh bằng Gemini (mô hình Nano Banana). Trả về base64 hoặc null khi
  * không có khóa / mọi model đều lỗi — caller bỏ qua, không báo lỗi.
