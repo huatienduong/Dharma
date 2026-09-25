@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import {
   internalMutation,
   internalQuery,
+  action,
   mutation,
   query,
 } from "./_generated/server";
@@ -57,6 +58,79 @@ export const submitFeedback = mutation({
     });
 
     return { ticketId: feedbackId, ticketCode };
+  },
+});
+
+/* ------------------------------------------------------------------ */
+/* Chuyển góp ý / báo lỗi đến email nhà phát triển                     */
+/* ------------------------------------------------------------------ */
+
+const FEEDBACK_TO_EMAIL = "huatienduong@pm.me";
+
+function escapeHtml(value: string): string {
+  return value
+    .split("&").join("&amp;")
+    .split("<").join("&lt;")
+    .split(">").join("&gt;")
+    .split('"').join("&quot;")
+    .split("'").join("&#039;");
+}
+
+export const emailFeedback = action({
+  args: {
+    type: v.union(v.literal("idea"), v.literal("bug")),
+    message: v.string(),
+    email: v.optional(v.string()),
+    appVersion: v.string(),
+    ticketCode: v.string(),
+  },
+  handler: async (_ctx, { type, message, email, appVersion, ticketCode }) => {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) return { ok: false as const, code: "missing_api_key" };
+
+    const kind = type === "bug" ? "Báo lỗi" : "Góp ý";
+    const cleanMessage = escapeHtml(message.trim().slice(0, 4000));
+    const cleanEmail = email?.trim().slice(0, 200) || "Không cung cấp";
+    const safeTicketCode = escapeHtml(ticketCode.slice(0, 80));
+    const safeVersion = escapeHtml(appVersion.slice(0, 40));
+    const from =
+      process.env.FEEDBACK_FROM_EMAIL ??
+      "Trợ lý Phật học <onboarding@resend.dev>";
+
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [FEEDBACK_TO_EMAIL],
+        subject: `[Trợ lý Phật học] ${kind} ${ticketCode}`,
+        reply_to: email?.trim() || undefined,
+        html: `
+          <div style="font-family:Arial,sans-serif;line-height:1.6;color:#2f241b;max-width:640px">
+            <h2 style="color:#8a4b1d">${kind} mới từ ứng dụng</h2>
+            <p><strong>Mã phiếu:</strong> ${safeTicketCode}</p>
+            <p><strong>Loại:</strong> ${kind}</p>
+            <p><strong>Phiên bản ứng dụng:</strong> ${safeVersion}</p>
+            <p><strong>Email người gửi:</strong> ${escapeHtml(cleanEmail)}</p>
+            <hr style="border:none;border-top:1px solid #ead8c2;margin:20px 0" />
+            <p style="white-space:pre-wrap">${cleanMessage}</p>
+          </div>
+        `,
+        text: `${kind} mới\nMã phiếu: ${ticketCode}\nPhiên bản: ${appVersion}\nEmail: ${cleanEmail}\n\n${message.trim()}`,
+      }),
+    });
+
+    const payload = (await response.json().catch(() => ({}))) as {
+      id?: string;
+      message?: string;
+    };
+    if (!response.ok) {
+      throw new Error(payload.message || `Không gửi được email (HTTP ${response.status}).`);
+    }
+    return { ok: true as const, id: payload.id ?? null };
   },
 });
 

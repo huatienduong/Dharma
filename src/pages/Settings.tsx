@@ -12,7 +12,7 @@ import {
 } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import type { GenericId } from "convex/values";
 import { useMemo } from "react";
 import {
@@ -64,6 +64,7 @@ export default function Settings() {
   const meta = useQuery(api.library.getAppVersion, {});
   const myTickets = useQuery(api.library.listMyFeedback);
   const submitFeedback = useMutation(api.library.submitFeedback);
+  const sendFeedbackEmail = useAction(api.library.emailFeedback);
   const replyFeedback = useMutation(api.library.replyToFeedback);
 
   // Mục đang mở rộng (accordion) — mỗi mục một thẻ trắng như app hệ thống.
@@ -239,17 +240,32 @@ export default function Settings() {
         fbType === "bug" && fbDevice.trim()
           ? `\n[Thiết bị: ${fbDevice.trim()}]`
           : "";
+      const ticketMessage = `${fbMessage}${attachmentNote}${deviceNote}`;
       const result = await submitFeedback({
         type: fbType,
-        message: `${fbMessage}${attachmentNote}${deviceNote}`,
+        message: ticketMessage,
         email: fbEmail || undefined,
         appVersion: fbType === "bug" && fbAppVersion.trim() ? fbAppVersion.trim() : APP_VERSION,
       });
+
+      let emailSent = false;
+      try {
+        const emailResult = await sendFeedbackEmail({
+          type: fbType,
+          message: ticketMessage,
+          email: fbEmail || undefined,
+          appVersion: fbType === "bug" && fbAppVersion.trim() ? fbAppVersion.trim() : APP_VERSION,
+          ticketCode: result.ticketCode,
+        });
+        emailSent = emailResult.ok;
+      } catch {
+        // Phiếu vẫn được lưu an toàn; không xóa nội dung khi chưa cấu hình email.
+      }
+
       toast.success(`Đã tạo phiếu ${result.ticketCode}. Chúng tôi sẽ phản hồi ngay trong ứng dụng.`, {
-        description:
-          fbType === "bug"
-            ? "Cảm ơn bạn đã báo lỗi."
-            : "Cảm ơn bạn đã góp ý.",
+        description: emailSent
+          ? "Nội dung đã được chuyển đến email nhà phát triển."
+          : "Phiếu đã được lưu. Email sẽ tự gửi sau khi hoàn tất cấu hình dịch vụ.",
       });
       setFbMessage("");
       setFbEmail("");
