@@ -11,7 +11,7 @@ import {
   encryptString,
 } from "@/lib/secureStorage";
 import { cn } from "@/lib/utils";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import {
   ArrowLeft,
   AudioLines,
@@ -140,6 +140,8 @@ export default function Assistant() {
   const location = useLocation();
   const isHome = location.pathname === "/" || location.pathname === "/home";
   const ask = useAction(api.aiChat.ask);
+  // Lời chào hằng ngày — tự đổi mới mỗi ngày (query reactive từ máy chủ)
+  const dailyGreeting = useQuery(api.library.getDailyGreeting, {});
 
   const [history, setHistory] = useState<Msg[]>([]);
 
@@ -620,9 +622,10 @@ export default function Assistant() {
           )}
           <Button
             onClick={openCall}
-            className="h-11 gap-1.5 rounded-full px-3 shadow-sm sm:px-4"
+            className="h-11 w-11 justify-center rounded-full p-0 shadow-sm sm:w-auto sm:px-4"
+            aria-label="Đàm thoại bằng giọng nói"
           >
-            <Phone className="h-5 w-5" />
+            <Phone className="h-5 w-5 shrink-0" />
             <span className="hidden sm:inline">Đàm thoại</span>
           </Button>
         </div>
@@ -661,7 +664,11 @@ export default function Assistant() {
             <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
               Xin chào 🙏
             </h2>
-            <p className="mt-2 max-w-md text-base leading-relaxed text-muted-foreground">
+            {/* Lời chào hằng ngày — tự đổi mới mỗi ngày từ máy chủ */}
+            <p className="mt-2 max-w-md text-base font-medium leading-relaxed text-foreground/85">
+              {dailyGreeting ?? "Chúc bạn một ngày an lạc."}
+            </p>
+            <p className="mt-2 max-w-md text-[15px] leading-relaxed text-muted-foreground">
               Hôm nay tôi có thể giúp gì cho bạn trên con đường Phật pháp?
             </p>
             <div className="mt-7 grid w-full max-w-lg grid-cols-1 gap-2.5 sm:grid-cols-2">

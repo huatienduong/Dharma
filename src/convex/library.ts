@@ -34,6 +34,38 @@ export const submitFeedback = mutation({
 /* Kiểm tra phiên bản mới nhất                                         */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Lời chào hằng ngày — tự đổi mới theo từng ngày (ổn định trong ngày,
+ * mỗi ngày một lời chào mới). Không tốn token AI: sinh từ kho lời chào
+ * được soạn sẵn theo tinh thần Phật pháp.
+ */
+export const getDailyGreeting = query({
+  args: {},
+  handler: async () => {
+    const GREETINGS = [
+      "Chúc bạn một ngày an lạc, tâm an giữa dòng đời vội vã.",
+      "Ngày mới bình an — mỗi hơi thở hôm nay là một món quà.",
+      "Chúc bạn hôm nay nhẹ nhàng như lá, tỉnh thức như dòng sông chảy.",
+      "Mong hôm nay bạn gặp nhiều duyên lành, tâm luôn sáng soi.",
+      "Chúc bạn một ngày đầy chánh niệm — bước nào cũng an, việc nào cũng lạc.",
+      "Hôm nay là ngày mới — cơ hội để bắt đầu lại, đúng như pháp.",
+      "Chúc bạn hôm nay buông được lo toan, giữ được bình an.",
+      "Ngày an lành bắt đầu từ một tâm hướng thiện — chúc bạn hôm nay an nhiên.",
+      "Chúc bạn hôm nay là nguồn vui — hạt mầm an lạc cho mình và người.",
+      "Mỗi bình minh là một sự sống mới — chúc bạn hôm nay tỉnh thức và nhẹ nhõm.",
+      "Chúc bạn hôm nay gặp nhiều điều đẹp, kể cả trong những chuyện nhỏ bé.",
+      "Hôm nay tâm bạn an, mọi việc đều nhẹ — chúc một ngày an trú.",
+      "Chúc bạn hôm nay sáng suốt, chuyện đời thuận, chuyện pháp sáng.",
+      "Mong hôm nay bạn được nghỉ ngơi đúng lúc, cười thật tươi, ngủ thật sâu.",
+    ];
+    const now = new Date();
+    const dayIndex = Math.floor(
+      Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86_400_000,
+    );
+    return GREETINGS[dayIndex % GREETINGS.length] as string;
+  },
+});
+
 export const getAppVersion = query({
   args: {},
   handler: async (ctx) => {

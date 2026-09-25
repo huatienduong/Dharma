@@ -196,25 +196,23 @@ export function useVietnameseTTS() {
 
       const pref = getVoice(voiceId);
 
-      // Chọn giọng vi khớp giọng người dùng chọn, chờ voices tải nếu chưa
+      // Chọn giọng vi ĐÚNG GIỚI TÍNH người dùng chọn, chờ voices tải nếu chưa
       const pickVoice = () => {
         const voices = synth.getVoices();
         const viVoices = voices.filter((v) =>
           v.lang?.toLowerCase().startsWith("vi"),
         );
         const pool = viVoices.length > 0 ? viVoices : voices;
-        // Ưu tiên: giọng khớp mẫu của giọng đã chọn → Google vi → đúng giới
-        // tính → giọng vi đầu tiên.
-        return (
-          pool.find((v) => pref.browser.test(v.name)) ??
-          pool.find((v) => /google/i.test(v.name) && /vi/i.test(v.lang)) ??
-          pool.find((v) =>
-            pref.male
-              ? /male|nam|nam-phong/i.test(v.name)
-              : /female|nữ/i.test(v.name),
-          ) ??
-          pool[0]
+        // ƯU TIÊN GIỚI TÍNH TRƯỚC TIÊN — fix "chọn nam nghe nữ":
+        const genderFirst = pool.find((v) =>
+          pref.male
+            ? /male|nam(?!h)|nam-phong/i.test(v.name) &&
+              !/female|nữ/i.test(v.name)
+            : /female|nữ|hoa|linh/i.test(v.name),
         );
+        if (genderFirst) return genderFirst;
+        // Sau đó mới đến giọng khớp mẫu tên của giọng đã chọn
+        return pool.find((v) => pref.browser.test(v.name)) ?? pool[0];
       };
 
       // Chia chunk ≤ 180 ký tự, cắt ở dấu câu để đọc liền mạch
