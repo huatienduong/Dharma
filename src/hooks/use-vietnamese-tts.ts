@@ -54,6 +54,7 @@ export type SpeakOpts = {
 /* ------------------------------------------------------------------ */
 
 let sharedCtx: AudioContext | null = null;
+let speechPrimed = false;
 
 function getSharedCtx(): AudioContext | null {
   try {
@@ -73,6 +74,24 @@ function getSharedCtx(): AudioContext | null {
 function unlockSharedCtx(): void {
   const ctx = getSharedCtx();
   if (ctx && ctx.state === "suspended") void ctx.resume().catch(() => {});
+}
+
+/** Mở khóa cả Web Audio và Web Speech ngay trong cú chạm bắt đầu cuộc gọi. */
+function primeBrowserAudio(): void {
+  unlockSharedCtx();
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const synth = window.speechSynthesis;
+  synth.resume();
+  if (speechPrimed) return;
+  try {
+    const warmup = new SpeechSynthesisUtterance(" ");
+    warmup.lang = "vi-VN";
+    warmup.volume = 0;
+    synth.speak(warmup);
+    speechPrimed = true;
+  } catch {
+    /* Một số trình duyệt vẫn cho phép phát sau khi ctx đã resume. */
+  }
 }
 
 /**
@@ -103,7 +122,7 @@ async function playWithWebAudio(dataUrl: string): Promise<void> {
  * TTS tiếng Việt hai tầng cho Trợ lý Phật học:
  * 1. SERVER TTS (ưu tiên): Gemini TTS / OpenAI TTS trả về audio base64 →
  *    phát qua Web Audio (dự phòng HTMLAudio) — giọng tiếng Việt tự nhiên
- *    bất kể máy người dùng, đúng giọng người dùng đã chọn. TIMEOUT 12s:
+ *    bất kể máy người dùng, đúng giọng người dùng đã chọn. TIMEOUT 4s:
  *    máy chủ chậm/treo → chuyển ngay sang giọng trình duyệt.
  * 2. FALLBACK: Web Speech API cải tiến — chunk câu dài, chờ voices tải,
  *    chọn giọng vi khớp giới tính người dùng chọn (Google vi-VN nếu có).
@@ -126,7 +145,7 @@ export function useVietnameseTTS() {
   // Mở khóa AudioContext chung ở cú chạm/bấm đầu tiên (đàm thoại luôn bắt
   // đầu bằng một cú chạm nút gọi → context sẵn sàng phát).
   useEffect(() => {
-    const unlock = () => unlockSharedCtx();
+    const unlock = () => primeBrowserAudio();
     window.addEventListener("pointerdown", unlock, { once: true });
     window.addEventListener("keydown", unlock, { once: true });
     return () => {
@@ -192,6 +211,8 @@ export function useVietnameseTTS() {
       }
       const synth = window.speechSynthesis;
       synth.cancel();
+      synth.resume();
+      primeBrowserAudio();
       setEngine("browser");
 
       const pref = getVoice(voiceId);
@@ -241,18 +262,31 @@ export function useVietnameseTTS() {
           onDone?.();
           return;
         }
-        const u = new SpeechSynthesisUtterance(chunks[idx++]);
+        const chunk = chunks[idx++];
+        let errorRetries = 0;
+        const u = new SpeechSynthesisUtterance(chunk);
         u.lang = "vi-VN";
         u.rate = 0.95;
         u.pitch = pref.male ? 0.85 : 1.05;
+        u.volume = 1;
         const vi = pickVoice();
         if (vi) u.voice = vi;
         u.onend = () => speakNext();
         u.onerror = () => {
+          if (errorRetries < 1) {
+            errorRetries++;
+            idx--;
+            synth.cancel();
+            synth.resume();
+            window.setTimeout(speakNext, 180);
+            return;
+          }
           setSpeaking(false);
           onDone?.();
         };
         synth.speak(u);
+        // Một số WebView Android tạm dừng synth sau khi nhận mic.
+        synth.resume();
       };
 
       setSpeaking(true);
@@ -266,7 +300,8 @@ export function useVietnameseTTS() {
           window.setTimeout(() => tryStart(attempt + 1), 250);
           return;
         }
-        speakNext();
+        // Chrome/WebView đôi khi bỏ qua lệnh ngay sau cancel().
+        window.setTimeout(speakNext, 80);
       };
       tryStart(0);
     },
@@ -302,7 +337,8 @@ export function useVietnameseTTS() {
         finishWith(() => opts.onDone?.());
       };
 
-      // 1. Thử server TTS — timeout 12s, chậm/treo thì rời về Web Speech.
+      // 1. Thử server TTS — timeout ngắn để trình duyệt chuyển sang
+      // Web Speech nhanh, không để người dùng tưởng cuộc gọi bị treo.
       let timeoutId = 0;
       try {
         const res = await Promise.race([
@@ -313,7 +349,7 @@ export function useVietnameseTTS() {
             ...getDeviceMeta(),
           }),
           new Promise<null>((resolve) => {
-            timeoutId = window.setTimeout(() => resolve(null), 12_000);
+            timeoutId = window.setTimeout(() => resolve(null), 4_000);
           }),
         ]);
         window.clearTimeout(timeoutId);
@@ -346,6 +382,9 @@ export function useVietnameseTTS() {
           }
           try {
             const audio = new Audio(src);
+            audio.preload = "auto";
+            audio.volume = 1;
+            audio.setAttribute("playsinline", "true");
             audioRef.current = audio;
             audio.onended = () => {
               audioRef.current = null;
@@ -386,5 +425,5 @@ export function useVietnameseTTS() {
     [speakAction, webSpeak],
   );
 
-  return { speak, speakBrowser: webSpeak, stop, speaking, engine };
+  return { speak, speakBrowser: webSpeak, stop, prime: primeBrowserAudio, speaking, engine };
 }

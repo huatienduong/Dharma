@@ -202,7 +202,11 @@ export default function Assistant() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { supported: micSupported, listening, start, stop } = useVoiceSearch();
-  const { speak: speakVI, stop: stopSpeaking } = useVietnameseTTS();
+  const {
+    speak: speakVI,
+    stop: stopSpeaking,
+    prime: primeSpeechAudio,
+  } = useVietnameseTTS();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   /* ----- Giọng đọc người dùng chọn (lưu cục bộ, dùng cho chat + đàm thoại) ----- */
@@ -424,7 +428,7 @@ export default function Assistant() {
         void saveLocalChatSecure(trimmed);
         if (opts?.fromCall) {
           // Trong cuộc gọi: đọc to bằng giọng người dùng đã chọn — server TTS
-          // trước (Gemini/OpenAI), quá 12s hoặc lỗi thì tự rơi về giọng trình
+          // trước (Gemini/OpenAI), quá 4s hoặc lỗi thì tự rơi về giọng trình
           // duyệt; đọc xong tự nghe tiếp → đàm thoại 2 chiều liền mạch.
           if (!callActiveRef.current) return;
           aiSpeakingRef.current = true;
@@ -603,6 +607,9 @@ export default function Assistant() {
       return;
     }
     stopSpeaking();
+    // Mở khóa phát âm ngay trong cú bấm Call. stopSpeaking có thể đóng
+    // AudioContext cũ, vì vậy phải prime lại sau khi dừng.
+    primeSpeechAudio();
     micDeniedRef.current = false;
     mutedRef.current = false;
     sendingRef.current = false;
@@ -613,7 +620,7 @@ export default function Assistant() {
     callActiveRef.current = true;
     lastAssistantEventAtRef.current = Date.now();
     window.setTimeout(() => startListeningRef.current(), 400);
-  }, [micSupported, stopSpeaking]);
+  }, [micSupported, primeSpeechAudio, stopSpeaking]);
 
   const endCall = useCallback(() => {
     callActiveRef.current = false;
