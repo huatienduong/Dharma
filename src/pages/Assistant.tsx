@@ -168,6 +168,40 @@ async function loadLocalChatSecure(): Promise<Msg[] | null> {
 }
 
 /** Lưu lịch sử — LUÔN mã hóa AES-256-GCM trước khi ghi xuống thiết bị. */
+/**
+ * Lời chào / cảm ơn thuần túy — trả lời ngay tại máy, không gọi AI.
+ *
+ * Khi đang đàm thoại, chờ chép xong + gọi AI mất 1–2 giây, nghe rất chậm so
+ * với một câu chào. Ở đây chỉ nhận câu NGẮN và không có ý hỏi Phật học nào
+ * (tối đa 5 từ, không có dấu hỏi, không chứa từ khoá hỏi han), nên không
+ * có rủi ro bỏ sót ý người dùng. Trả về null nếu không phải lời chào.
+ */
+function smallTalkReply(raw: string): string | null {
+  const t = raw
+    .toLowerCase()
+    .replace(/[.,!?;:…“”"']+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!t) return null;
+  const words = t.split(" ").filter(Boolean);
+  if (words.length > 5) return null;
+  // Có dấu hỏi hoặc từ khoá hỏi han → đó là câu hỏi thật, phải gửi AI.
+  if (/[?]/u.test(raw)) return null;
+  if (/(giải thích|cho biết|hỏi|về|là gì|thế nào|như thế|tại sao|giúp|tư vấn|có nên|bao giờ|ở đâu|ai là)/.test(t)) {
+    return null;
+  }
+  if (/^(xin |xin! )?(chao|chào|hello|hi|hey|alo|alô|good (morning|afternoon|evening|day))/.test(t)) {
+    return "Xin chào bạn. Mình ở đây, cùng tìm hiểu Phật pháp nhé.";
+  }
+  if (/^(cam on|cảm ơn|thanks|thank you|thank)/.test(t)) {
+    return "Không có gì bạn nhé. Cứ hỏi bất cứ điều gì bạn muốn biết.";
+  }
+  if (/^(vâng|va|ok|okay|duoc|được|ung|ừ|hm|ừm|hmm|bloop|test)/.test(t)) {
+    return "Mình đang nghe đây. Bạn muốn tìm hiểu điều gì hôm nay?";
+  }
+  return null;
+}
+
 async function saveLocalChatSecure(msgs: Msg[]) {
   try {
     const enc = await encryptString(JSON.stringify(msgs.slice(-100)));
@@ -253,6 +287,11 @@ export default function Assistant() {
     "listening" | "thinking" | "speaking" | "muted"
   >("listening");
   const [interim, setInterim] = useState("");
+
+  /** Im lặng bao lâu thì coi là nói xong (ms) — chống cắt cụt "Xin chào". */
+  const CALL_SILENCE_MS = 1000;
+  /** Trần chờ cho một lượt nói (ms) — câu dài không bị treo. */
+  const CALL_MAX_UTTERANCE_MS = 6000;
 
   const callActiveRef = useRef(false);
   const aiSpeakingRef = useRef(false);
@@ -623,6 +662,35 @@ export default function Assistant() {
     sendRef.current = send;
   }, [send]);
 
+  /* ----- Đàm thoại: trả lời tại chỗ cho lời chào (không gọi AI) ----- */
+  const handleLocalReply = useCallback(
+    (userText: string, reply: string) => {
+      const userMsg: Msg = { role: "user", content: userText, ts: Date.now() };
+      const replyMsg: Msg = { role: "assistant", content: reply, ts: Date.now() };
+      const nextHistory = [...historyRef.current, userMsg, replyMsg];
+      historyRef.current = nextHistory;
+      setHistory(nextHistory);
+      void saveLocalChatSecure(nextHistory);
+      if (!callActiveRef.current) return;
+      aiSpeakingRef.current = true;
+      setInterim("");
+      setCallStatus("speaking");
+      lastAssistantEventAtRef.current = Date.now();
+      void speakVI(reply, {
+        voice: voiceIdRef.current,
+        onDone: () => {
+          aiSpeakingRef.current = false;
+          lastAiWordAtRef.current = Date.now();
+          lastAssistantEventAtRef.current = Date.now();
+          if (!callActiveRef.current) return;
+          setCallStatus("listening");
+          startListeningRef.current();
+        },
+      });
+    },
+    [speakVI],
+  );
+
   /* ----- Đàm thoại: xử lý một câu người dùng vừa nói ----- */
   const handleUtterance = useCallback(
     (text: string) => {
@@ -637,13 +705,19 @@ export default function Assistant() {
         window.setTimeout(() => startListeningRef.current(), 600);
         return;
       }
+      // Lời chào/cảm ơn thuần → đáp ngay, khỏi chờ chép lại rồi gọi AI.
+      const fast = smallTalkReply(text);
+      if (fast) {
+        handleLocalReply(text, fast);
+        return;
+      }
       setInterim("");
       sendingRef.current = true;
       setCallStatus("thinking");
       lastAssistantEventAtRef.current = Date.now();
       void send(text, { fromCall: true });
     },
-    [send],
+    [handleLocalReply, send],
   );
 
   /* ----- Đàm thoại: bắt đầu một phiên nghe liên tục ----- */
@@ -673,39 +747,105 @@ export default function Assistant() {
     rec.interimResults = true;
 
     let finalBuf = "";
+    let pendingBuf = "";
+    let lastSpeechAt = 0;
+    let speechStartedAt = 0;
+    let commitTimer: number | null = null;
+    let committed = false;
+
+    const cancelCommit = () => {
+      if (commitTimer !== null) {
+        window.clearTimeout(commitTimer);
+        commitTimer = null;
+      }
+    };
+
+    // Chốt câu: dừng ghi âm rồi chép lại bằng Whisper (chính xác hơn bản nghe
+    // trực tiếp của trình duyệt). Lỗi thì giữ nguyên bản gốc.
+    const commit = () => {
+      cancelCommit();
+      if (committed || !callActiveRef.current) return;
+      const heard = (finalBuf + " " + pendingBuf)
+        .replace(/\s+/g, " ")
+        .trim();
+      if (heard.length < 2) return;
+      committed = true;
+      finalBuf = "";
+      pendingBuf = "";
+      recRef.current = null;
+      try {
+        rec.onend = null;
+        rec.stop();
+      } catch {
+        /* noop */
+      }
+      setInterim(heard);
+      // Lời chào/cảm ơn thuần: đáp ngay, khỏi chờ chép lại (tiết kiệm 1–2 giây).
+      if (smallTalkReply(heard)) {
+        void stopMicRecording();
+        handleUtterance(heard);
+        return;
+      }
+      setCallStatus("thinking");
+      void stopMicRecording().then((clip) =>
+        transcribeClip(clip, heard).then((better) => handleUtterance(better)),
+      );
+    };
+
+    // KHÔNG gửi ngay khi vừa nghe được vài chữ. Web Speech chốt từng từ rất
+    // sớm, nên "Xin chào" từng bị cắt còn "Xin". Chỉ gửi khi đã im lặng đủ
+    // lâu (người dùng nói xong), có trần chờ để câu dài không bị treo.
+    const scheduleCommit = () => {
+      cancelCommit();
+      if (committed) return;
+      if (
+        aiSpeakingRef.current ||
+        sendingRef.current ||
+        Date.now() - lastAiWordAtRef.current < 350
+      ) {
+        return;
+      }
+      const heard = (finalBuf + " " + pendingBuf)
+        .replace(/\s+/g, " ")
+        .trim();
+      if (heard.length < 2) return;
+      const now = Date.now();
+      const silentMs = now - lastSpeechAt;
+      const waitedMs = now - speechStartedAt;
+      if (silentMs < CALL_SILENCE_MS && waitedMs < CALL_MAX_UTTERANCE_MS) {
+        commitTimer = window.setTimeout(
+          scheduleCommit,
+          Math.max(
+            100,
+            Math.min(
+              CALL_SILENCE_MS - silentMs,
+              CALL_MAX_UTTERANCE_MS - waitedMs,
+            ),
+          ),
+        );
+        return;
+      }
+      commit();
+    };
+
     rec.onstart = () => {
       lastAssistantEventAtRef.current = Date.now();
       if (callActiveRef.current) setCallStatus("listening");
     };
     rec.onresult = (e) => {
+      let pending = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i];
-        if (r.isFinal) finalBuf += r[0].transcript;
-        else setInterim(r[0].transcript);
+        if (r.isFinal) finalBuf += `${r[0].transcript} `;
+        else pending += `${r[0].transcript} `;
       }
-      const t = finalBuf.trim();
-      if (
-        t.length >= 2 &&
-        !aiSpeakingRef.current &&
-        !sendingRef.current &&
-        Date.now() - lastAiWordAtRef.current > 350
-      ) {
-        finalBuf = "";
-        recRef.current = null;
-        try {
-          rec.onend = null;
-          rec.stop();
-        } catch {
-          /* noop */
-        }
-        // Dừng ghi âm rồi chép lại: văn bản chính xác hơn nhiều so với bản
-        // nghe trực tiếp của trình duyệt. Lỗi thì giữ nguyên bản gốc.
-        setCallStatus("thinking");
-        setInterim(t);
-        void stopMicRecording().then((clip) =>
-          transcribeClip(clip, t).then((better) => handleUtterance(better)),
-        );
-      }
+      pendingBuf = pending;
+      const now = Date.now();
+      if (!lastSpeechAt) speechStartedAt = now;
+      lastSpeechAt = now;
+      // Nối dấu thay vì ghi đè, để câu hiện ra đúng như đang nói.
+      setInterim(`${finalBuf} ${pending}`.replace(/\s+/g, " ").trim());
+      scheduleCommit();
     };
     rec.onerror = (e) => {
       if (e.error === "not-allowed" || e.error === "service-not-allowed") {
@@ -716,12 +856,16 @@ export default function Assistant() {
     };
     rec.onend = () => {
       recRef.current = null;
+      cancelCommit();
+      // Trình duyệt tự kết thúc phiên nghe: vẫn chốt câu đang dở nếu có.
+      if (!committed) commit();
       if (
         callActiveRef.current &&
         !mutedRef.current &&
         !micDeniedRef.current &&
         !aiSpeakingRef.current &&
-        !sendingRef.current
+        !sendingRef.current &&
+        !committed
       ) {
         window.setTimeout(() => {
           if (callActiveRef.current) startListeningRef.current();

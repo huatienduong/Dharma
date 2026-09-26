@@ -141,9 +141,10 @@ export function stopMicRecording(): Promise<MicClip | null> {
       const type = rec.mimeType || "audio/webm";
       const blob = new Blob(chunks, { type });
       chunks = [];
-      // Đoạn cực ngắn (dưới ~0.3s) gần như chỉ là tiếng bật mic — bỏ qua
-      // để không gửi câu rỗng lên máy chủ.
-      if (!blob.size || blob.size < 1200) {
+      // Đoạn cực ngắn (dưới ~0.4s) gần như chỉ là tiếng bật mic — bỏ qua
+      // để không gửi câu rỗng lên máy chủ. Ngưỡng thấp vì lời chào ngắn
+      // ("Xin chào") cũng phải chép được.
+      if (!blob.size || blob.size < 700) {
         resolve(null);
         return;
       }

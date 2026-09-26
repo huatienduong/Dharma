@@ -929,7 +929,7 @@ export const transcribe = action({
     } catch {
       return { ok: false as const, message: "Dữ liệu âm thanh không hợp lệ." };
     }
-    if (bytes.length < 900) {
+    if (bytes.length < 600) {
       return { ok: false as const, message: "Bạn nói hơi ngắn, hãy thử lại." };
     }
     if (bytes.length > 18_000_000) {
@@ -990,7 +990,11 @@ export const transcribe = action({
           lastError = `${model}: nghe ra toàn tiếng ồn`;
           continue;
         }
-        if (skipPolish) return { ok: true as const, text, polished: false };
+        // Câu cực ngắn ("Xin chào") gần như không sai dấu — bỏ qua bước gọi
+        // mô hình để câu trả lời về nhanh hơn trong chế độ đàm thoại.
+        if (skipPolish || text.length <= 28) {
+          return { ok: true as const, text, polished: false };
+        }
         const polished = await polishVietnamese(text);
         return { ok: true as const, text: polished, polished: polished !== text };
       } catch (err) {
