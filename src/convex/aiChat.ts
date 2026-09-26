@@ -825,6 +825,23 @@ const GEMINI_IMAGE_PREFERENCE = [
 ];
 const IMAGE_TIMEOUT_MS = 90_000;
 
+/**
+ * PHONG CÁCH ẢNH — cố định theo Phật giáo Nguyên thủy (Theravāda).
+ *
+ * Cần ràng buộc rõ vì nếu để model ảnh tự do, phần lớn kéo sang chùa Phật giáo
+ * Đông Á, tượng Bồ Tát, tay định ấn Bắc truyền hoặc tranh sơn dầu hào nhoáng —
+ * đều lệch hẳn tinh thần Kinh tạng Pāli mà ứng dụng đại diện.
+ */
+const IMAGE_STYLE_GUIDE = [
+  "Phong cách: tranh minh họa Phật giáo Nguyên thủy (Theravāda), bám sát Kinh tạng Pāli.",
+  "Chủ thể gợi ý khi hợp đề tài: vườn tịnh (vihāra), tu sĩ mặc áo cà sa nâu đất đang tịnh tọa, bát cơ bày, cây Bồ đề, hoa sen nở, tháp chedi, lá dừa ghi chép kinh bằng chữ Pāli.",
+  "Màu sắc: nâu đất, vàng cát, xanh lá trầm; ánh sáng dịu dàng, không chói.",
+  "Tuyệt đối không dùng: tượng Bồ Tát, Quan Âm, Phật Bảo Đế, tay định ấn hay các tượng Phật Bắc truyền; không dùng kiến trúc chùa Đông Á.",
+  "Không chữ Hán, không chữ Latin trong ảnh; nếu cần chữ thì chỉ dùng chữ Pāli viết trên lá dỹa.",
+  "Không phong cách anime, không kim loại vàng, không rực rỡ.",
+  "Nếu yêu cầu không liên quan Phật pháp thì chỉ giữ tông màu và quy tắc không chữ, không thêm chủ thể tôn giáo.",
+].join(" ");
+
 const imageModelsCache = new Map<string, { at: number; models: string[] }>();
 const IMAGE_MODELS_TTL_MS = 10 * 60_000;
 
@@ -954,7 +971,7 @@ async function generateImage(
   const geminiKey = process.env.GEMINI_API_KEY;
   if (!geminiKey) return { error: "thiếu khóa GEMINI_API_KEY" };
   const models = await listGeminiImageModels(geminiKey);
-  const instruction = `Tạo hình theo yêu cầu sau. Ưu tiên phong cách trang nghiêm, trang trí, hài hòa với tinh thần Phật giáo Theravāda khi chủ đề liên quan. Không chữ trong ảnh.\n\nYêu cầu: ${prompt}`;
+  const instruction = `Tạo hình theo yêu cầu sau.\n\n${IMAGE_STYLE_GUIDE}\n\nYêu cầu của người dùng: ${prompt}`;
   const tried: string[] = [];
   let lastError = "không rõ";
   for (const model of models) {
