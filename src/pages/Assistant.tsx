@@ -706,18 +706,23 @@ export default function Assistant() {
         // trả về cũng chẳng có kết quả — cứ gọi song song cho chắc.
         const fallback = async (): Promise<AskResult | null> => {
           try {
-            const fb = await callConvexAction<AskResult>(
+            return await callConvexAction<AskResult>(
               "chatFallback:chatFallback",
               { messages: payloadMessages, ...getDeviceMeta() },
             );
-            return fb.ok ? fb : null;
           } catch {
             return null;
           }
         };
         try {
           const fb = await fallback();
-          if (fb) return fb;
+          if (fb?.ok) return fb;
+          // Hạn mức của nhà cung cấp và bộ đếm tốc độ phía máy chủ là
+          // CHUNG cho cả hai nhánh. Khi đã cạn thì gọi tiếp nhánh chính chỉ
+          // làm hao thêm hạn mức của những người đang dùng thật — báo luôn.
+          if (fb && (fb.code === "provider_busy" || fb.code === "rate_limited")) {
+            return fb;
+          }
         } catch {
           /* bỏ qua, thử nhánh chính */
         }
@@ -728,7 +733,7 @@ export default function Assistant() {
           // `ask` ném lỗi (Server Error / mất kết nối) — thử nhánh dự phòng
           // một lần nữa trước khi báo cho người dùng.
           const fb = await fallback();
-          if (fb) return fb;
+          if (fb?.ok) return fb;
           throw err;
         }
         return { ok: false, code: "ai_unavailable", message: "Trợ lý Phật học tạm chưa trả lời được. Vui lòng thử lại sau ít phút." };

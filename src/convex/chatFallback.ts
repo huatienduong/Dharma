@@ -22,11 +22,67 @@ const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 /** Thứ tự thử: model nhanh trước, model mạnh sau. */
 const GROQ_MODELS = [
   "qwen/qwen3.8-27b",
-  "llama-3.3-70b-versatile",
   "openai/gpt-oss-120b",
   "moonshotai/kimi-k2-instruct",
 ];
 const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
+
+/* ------------------------------------------------------------------ */
+/* HẠN MỨC NHÀ CUNG CẤP — nguyên nhân gốc của "không trả lời được"     */
+/* ------------------------------------------------------------------ */
+/*
+ * Hạn mức Groq tính CHUNG cho cả tổ chức, không riêng từng model: kho
+ * vực của gói miễn phí chỉ chịu được khoảng 10 lượt/phút. Khi đã vượt,
+ * Groq trả 429 NGAY LẬP TỨ (khoảng 0,4s) — nên nếu cứ thử lần lượt 4
+ * model thì mỗi lượt hỏi hỏng lại đốt thêm 4 lượt gọi vô ích, càng làm
+ * hạn mức kiệt hơn. Hai việc sửa ở đây:
+ *   1. Gặp 429 thì DỪNG ngay vòng lặp của nhà cung cấp đó, chuyển sang
+ *      nhà cung cấp kia, thay vì đâm tiếp vào chỗ vừa bị từ chối.
+ *   2. Ghi nhớ thời điểm hết hạn mức để các lượt hỏi kế tiếp bỏ qua hẳn
+ *      nhà cung cấp đang bị chặn, không đốt thêm request nào.
+ * Ngoài ra cache lại câu hỏi đơn lặp lại trong 10 phút: người dùng hay
+ * bấm "Gửi lại" hoặc hỏi lại đúng câu vừa hỏi, và mỗi lần lặp lại đều
+ * tốn hạn mức của những người đang dùng thật.
+ */
+const COOLDOWN_MS = 25_000;
+let groqCooldownUntil = 0;
+let geminiCooldownUntil = 0;
+
+const CACHE_TTL_MS = 10 * 60_000;
+const CACHE_MAX = 40;
+const answerCache = new Map<string, { reply: string; provider: string; at: number }>();
+
+/** Chỉ cache câu hỏi đơn lẻ, ngắn gọn — không cache hội thoại nhiều lượt. */
+function cacheKeyFor(messages: ChatMsg[]): string | null {
+  if (messages.length !== 1) return null;
+  const text = (messages[0]?.content ?? "").trim();
+  if (!text || text.length > 300) return null;
+  return text.toLowerCase().replace(/\s+/g, " ");
+}
+
+function readCache(key: string | null): { reply: string; provider: string } | null {
+  if (!key) return null;
+  const hit = answerCache.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.at > CACHE_TTL_MS) {
+    answerCache.delete(key);
+    return null;
+  }
+  return { reply: hit.reply, provider: hit.provider };
+}
+
+function writeCache(
+  key: string | null,
+  reply: string,
+  provider: string,
+): void {
+  if (!key) return;
+  if (answerCache.size >= CACHE_MAX) {
+    const oldest = answerCache.keys().next().value;
+    if (oldest !== undefined) answerCache.delete(oldest);
+  }
+  answerCache.set(key, { reply, provider, at: Date.now() });
+}
 
 /**
  * System prompt rút gọn — giữ đúng nhân cách, cách trả lời và các quy tắc
@@ -86,12 +142,27 @@ export const chatFallback = action({
       };
     }
 
+    const cacheKey = cacheKeyFor(messages);
+    const cached = readCache(cacheKey);
+    if (cached) {
+      return {
+        ok: true as const,
+        reply: cached.reply,
+        provider: cached.provider,
+        cached: true,
+      };
+    }
+
     const recent = messages.slice(-24);
     const errors: string[] = [];
+    /** true = mọi lỗi đều do hết hạn mức (429), thông báo sẽ dịu hơn */
+    let allRateLimited = true;
 
     // 1) Groq REST — không qua AI SDK nên không cùng lỗi với nhánh chính.
     const groqKey = process.env.GROQ_API_KEY;
-    if (groqKey) {
+    if (groqKey && Date.now() < groqCooldownUntil) {
+      errors.push("groq: đang nghỉ sau lần bị giới hạn gần nhất");
+    } else if (groqKey) {
       for (const model of GROQ_MODELS) {
         try {
           const httpRes = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
@@ -107,19 +178,31 @@ export const chatFallback = action({
                 ...recent.slice(-12),
               ],
               temperature: 0.35,
-              max_tokens: 1200,
+              max_tokens: 900,
             }),
             signal: AbortSignal.timeout(40_000),
           });
           if (!httpRes.ok) {
             const detail = await httpRes.text().catch(() => "");
             errors.push(`${model}: HTTP ${httpRes.status} ${detail.slice(0, 140)}`);
+            if (httpRes.status === 429) {
+              // Hết hạn mức chung của tổ chức: dừng vòng lặp, nghỉ một nhịp
+              // rồi thử nhà cung cấp khác. Gọi tiếp chỉ làm tệ hơn.
+              allRateLimited = false;
+              groqCooldownUntil = Date.now() + COOLDOWN_MS;
+              break;
+            }
             continue;
           }
           const text = firstText(await httpRes.json());
-          if (text) return { ok: true as const, reply: text, provider: model };
+          if (text) {
+            writeCache(cacheKey, text, model);
+            return { ok: true as const, reply: text, provider: model };
+          }
+          allRateLimited = false;
           errors.push(`${model}: trả lời rỗng`);
         } catch (err) {
+          allRateLimited = false;
           errors.push(`${model}: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
@@ -127,7 +210,9 @@ export const chatFallback = action({
 
     // 2) Gemini — hạ tầng khác hẳn Groq, chỉ cần một trong hai là đủ.
     const geminiKey = process.env.GEMINI_API_KEY;
-    if (geminiKey) {
+    if (geminiKey && Date.now() < geminiCooldownUntil) {
+      errors.push("gemini: đang nghỉ sau lần bị giới hạn gần nhất");
+    } else if (geminiKey) {
       const contents = recent
         .map((m) => ({
           role: m.role === "assistant" ? "model" : "user",
@@ -153,6 +238,11 @@ export const chatFallback = action({
           if (!httpRes.ok) {
             const detail = await httpRes.text().catch(() => "");
             errors.push(`${model}: HTTP ${httpRes.status} ${detail.slice(0, 140)}`);
+            if (httpRes.status === 429 || httpRes.status === 503) {
+              allRateLimited = false;
+              geminiCooldownUntil = Date.now() + COOLDOWN_MS;
+              break;
+            }
             continue;
           }
           const json = (await httpRes.json()) as {
@@ -162,15 +252,30 @@ export const chatFallback = action({
             .map((p) => p.text ?? "")
             .join("")
             .trim();
-          if (text) return { ok: true as const, reply: text, provider: model };
+          if (text) {
+            writeCache(cacheKey, text, model);
+            return { ok: true as const, reply: text, provider: model };
+          }
+          allRateLimited = false;
           errors.push(`${model}: trả lời rỗng`);
         } catch (err) {
+          allRateLimited = false;
           errors.push(`${model}: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
     }
 
     console.error(`[chatFallback] mọi nhánh đều lỗi: ${errors.join(" || ")}`);
+    // Hết hạn mức là chuyện tạm thời và người dùng không làm gì sai — nói rõ
+    // điều đó thay vì dùng chung một câu "tạm chưa trả lời được" như lỗi hệ thống.
+    if (allRateLimited) {
+      return {
+        ok: false as const,
+        code: "provider_busy" as const,
+        message:
+          "Máy chủ AI đang phục vụ nhiều người nên tạm thời quá tải. Bạn chờ khoảng một phút rồi bấm “Gửi lại” là được nhé.",
+      };
+    }
     return {
       ok: false as const,
       code: "ai_unavailable" as const,

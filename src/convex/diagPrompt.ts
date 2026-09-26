@@ -14,9 +14,9 @@ import { action } from "./_generated/server";
 import { featuresPrompt } from "../lib/appFeatures";
 
 const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
+const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const GROQ_MODELS = [
   "qwen/qwen3.8-27b",
-  "llama-3.3-70b-versatile",
   "openai/gpt-oss-120b",
 ];
 
@@ -97,5 +97,101 @@ export const diagPrompt = action({
       });
     }
     return { ok: true, results };
+  },
+});
+
+/**
+ * ĐO HẠN MỨC THẬT của nhà cung cấp.
+ *
+ * Lỗi "không trả lời được" gần đây không phải do model chết mà do HẠN MỨC:
+ * Groq trả 429 sau khoảng chục lượt/phút, Gemini cũng vậy. Action này gọi
+ * đúng một lượt mỗi nhà cung cấp rồi trả về nguyên header hạn mức
+ * (`x-ratelimit-*`, `retry-after`) cùng mã lỗi — để biết chính xác trần
+ * mỗi phút thay vì suy đoán từ số lần gọi.
+ */
+export const diagProviders = action({
+  args: {},
+  handler: async () => {
+    const out: Record<string, unknown> = {};
+    const groqKey = process.env.GROQ_API_KEY;
+    if (groqKey) {
+      const started = Date.now();
+      try {
+        const res = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${groqKey}`,
+          },
+          body: JSON.stringify({
+            model: "qwen/qwen3.8-27b",
+            messages: [{ role: "user", content: "Trả lời đúng một chữ: ok" }],
+            max_tokens: 16,
+          }),
+          signal: AbortSignal.timeout(30_000),
+        });
+        const body = await res.text();
+        out.groq = {
+          status: res.status,
+          ok: res.ok,
+          ms: Date.now() - started,
+          headers: {
+            limitRequests: res.headers.get("x-ratelimit-limit-requests"),
+            remainingRequests: res.headers.get("x-ratelimit-remaining-requests"),
+            limitTokens: res.headers.get("x-ratelimit-limit-tokens"),
+            remainingTokens: res.headers.get("x-ratelimit-remaining-tokens"),
+            retryAfter: res.headers.get("retry-after"),
+          },
+          body: body.slice(0, 240),
+        };
+      } catch (err) {
+        out.groq = { error: err instanceof Error ? err.message : String(err) };
+      }
+    } else {
+      out.groq = { error: "Thiếu GROQ_API_KEY" };
+    }
+
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const geminiOut: Record<string, unknown> = {};
+    if (geminiKey) {
+      for (const model of ["gemini-2.5-flash", "gemini-2.5-flash-lite"]) {
+        const started = Date.now();
+        try {
+          const res = await fetch(
+            `${GEMINI_BASE}/models/${model}:generateContent`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": geminiKey,
+              },
+              body: JSON.stringify({
+                contents: [
+                  { role: "user", parts: [{ text: "Trả lời đúng một chữ: ok" }] },
+                ],
+                generationConfig: { maxOutputTokens: 16 },
+              }),
+              signal: AbortSignal.timeout(30_000),
+            },
+          );
+          const body = await res.text();
+          geminiOut[model] = {
+            status: res.status,
+            ok: res.ok,
+            ms: Date.now() - started,
+            retryAfter: res.headers.get("retry-after"),
+            body: body.slice(0, 240),
+          };
+        } catch (err) {
+          geminiOut[model] = {
+            error: err instanceof Error ? err.message : String(err),
+          };
+        }
+      }
+    } else {
+      geminiOut.error = "Thiếu GEMINI_API_KEY";
+    }
+    out.gemini = geminiOut;
+    return out;
   },
 });
