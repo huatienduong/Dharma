@@ -259,23 +259,31 @@ export function useVietnameseTTS() {
 
       const pref = getVoice(voiceId);
 
-      // Chọn giọng vi ĐÚNG GIỚI TÍNH người dùng chọn, chờ voices tải nếu chưa
-      const pickVoice = () => {
+      // Chọn giọng vi ĐÚNG GIỚI TÍNH người dùng chọn, chờ voices tải nếu chưa.
+      // VẤN ĐỀ: trước đây hàm này được gọi LẠI cho từng chunk trong cùng
+      // một lượt đọc, mỗi lần `getVoices()` trả về một thứ tự khác nhau
+      // (Chrome sắp xếp không ổn định) → câu đầu nghe giọng A, câu sau đổi
+      // sang giọng B, nghe như "tự thay đổi giọng". Chốt giọng MỘT LẦN rồi
+      // dùng lại cho cả lượt đọc.
+      let pinnedVoice: SpeechSynthesisVoice | null = null;
+      const pickVoice = (): SpeechSynthesisVoice | null => {
+        if (pinnedVoice) return pinnedVoice;
         const voices = synth.getVoices();
         const viVoices = voices.filter((v) =>
           v.lang?.toLowerCase().startsWith("vi"),
         );
         const pool = viVoices.length > 0 ? viVoices : voices;
-        // ƯU TIÊN GIỚI TÍNH TRƯỚC TIÊN — fix "chọn nam nghe nữ":
+        if (pool.length === 0) return null;
+        // ƯU TIÊN GIỚI TÍNH — fix "chọn nam nghe nữ":
         const genderFirst = pool.find((v) =>
           pref.male
             ? /male|nam(?!h)|nam-phong/i.test(v.name) &&
               !/female|nữ/i.test(v.name)
             : /female|nữ|hoa|linh/i.test(v.name),
         );
-        if (genderFirst) return genderFirst;
         // Sau đó mới đến giọng khớp mẫu tên của giọng đã chọn
-        return pool.find((v) => pref.browser.test(v.name)) ?? pool[0];
+        pinnedVoice = genderFirst ?? pool.find((v) => pref.browser.test(v.name)) ?? pool[0];
+        return pinnedVoice;
       };
 
       // Chia chunk ≤ 180 ký tự, cắt ở dấu câu để đọc liền mạch
@@ -325,8 +333,11 @@ export function useVietnameseTTS() {
         let errorRetries = 0;
         const u = new SpeechSynthesisUtterance(chunk);
         u.lang = "vi-VN";
-        u.rate = 0.95;
-        u.pitch = pref.male ? 0.85 : 1.05;
+        // Cao độ/pace RIÊNG cho từng mẫu giọng (xem AI_VOICES) — trước đây
+        // dùng công thức cứng nên 4 mẫu nữ nghe y hệt nhau, người dùng tưởng
+        // giọng không đổi.
+        u.rate = pref.rate;
+        u.pitch = pref.pitch;
         u.volume = 1;
         const vi = pickVoice();
         if (vi) u.voice = vi;

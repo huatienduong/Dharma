@@ -9,7 +9,7 @@ import { api } from "@/convex/_generated/api";
 import { useCallSession } from "@/hooks/useCallSession";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
-import { loadVoicePref } from "@/lib/aiVoices";
+import { loadVoicePref, VOICE_PREF_EVENT } from "@/lib/aiVoices";
 import { MAX_IMAGES_PER_MESSAGE } from "@/lib/appFeatures";
 import { readFileAttachments, readImageAttachment } from "@/lib/attachments";
 import {
@@ -128,6 +128,27 @@ export default function Assistant() {
 
   /* ----- Giọng đọc người dùng chọn (lưu cục bộ, dùng cho chat + đàm thoại) ----- */
   const voiceIdRef = useRef<string>(loadVoicePref());
+
+  // Người dùng có thể đổi giọng ở trang Cài đặt rồi quay lại mà trang này
+  // KHÔNG remount (điều hướng giữ nguyên) → ref sẽ giữ giọng cũ và đọc sai
+  // so với lựa chọn mới. Nghe sự kiện đổi giọng để cập nhật tại chỗ.
+  useEffect(() => {
+    const sync = (e: Event) => {
+      const next = (e as CustomEvent<string>).detail;
+      if (next) voiceIdRef.current = next;
+    };
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "ds-assistant-voice" && e.newValue) {
+        voiceIdRef.current = e.newValue;
+      }
+    };
+    window.addEventListener(VOICE_PREF_EVENT, sync);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(VOICE_PREF_EVENT, sync);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
 
   /* ================= TRẠNG THÁI DÙNG CHUNG ============== */
   const busyRef = useRef(false);

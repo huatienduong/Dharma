@@ -94,20 +94,28 @@ export default function Settings() {
   };
 
   const previewVoice = async (v: AiVoice) => {
-    if (previewing) {
+    // Bấm lại đúng giọng đang phát → dừng. Bấm giọng KHÁC → cắt giọng cũ và
+    // phát giọng mới ngay. Trước đây mọi lượt bấm đều chỉ dừng, nên bấm thử
+    // giọng thứ hai không bao giờ ra tiếng — người dùng tưởng mẫu giọng bị
+    // treo hoặc đọc sai.
+    if (previewing === v.id) {
       stop();
       setPreviewing(null);
       return;
     }
+    if (previewing) stop();
     setPreviewing(v.id);
+    const myId = v.id;
     try {
       await speak(VOICE_PREVIEW_TEXT, {
         voice: v.id,
         male: v.male,
-        onDone: () => setPreviewing(null),
+        // Chỉ mở nút của đúng lượt này khi nó kết thúc — nếu không, onDone
+        // của lượt cũ sẽ tắt luôn nút của lượt mới đang phát.
+        onDone: () => setPreviewing((cur) => (cur === myId ? null : cur)),
       });
     } catch {
-      setPreviewing(null);
+      setPreviewing((cur) => (cur === myId ? null : cur));
     }
   };
 
