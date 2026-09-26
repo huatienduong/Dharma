@@ -149,6 +149,77 @@ function fitQuota(images: VisionImage[]): { kept: VisionImage[]; dropped: number
   return { kept, dropped: images.length - kept.length };
 }
 
+const OPENAI_BASE = "https://api.openai.com/v1/chat/completions";
+
+/** Model đọc ảnh của nhà cung cấp thứ hai, thử theo thứ tự. */
+const OPENAI_VISION_MODELS = ["gpt-4o-mini", "gpt-4.1-mini"];
+
+/**
+ * NHÀ CUNG CẤP THỊ GIÁC THỨ HAI.
+ *
+ * VÌ SAO CẦN: toàn bộ nhánh đọc ảnh phụ thuộc một khoá Gemini. Gói miễn phí
+ * hết hạn mức là CHẾT NGAY tính năng thị giác — người dùng gửi ảnh lên rồi
+ * không được gì. Khi có khoá OpenAI, hệ thống tự lùi sang đây và ảnh vẫn
+ * được phân tích.
+ *
+ * Chỉ chạy khi `OPENAI_API_KEY` có mặt; không có khoá thì hành vi giữ nguyên
+ * như cũ (báo lỗi rõ ràng cho người dùng).
+ */
+async function analyzeWithOpenAi(
+  apiKey: string,
+  contents: {
+    role: "user" | "model";
+    parts: ({ text?: string } | { inlineData: { mimeType: string; data: string } })[];
+  }[],
+): Promise<string | null> {
+  const messages = [
+    { role: "system", content: SYSTEM_PROMPT },
+    ...contents.map((c) => ({
+      role: c.role === "model" ? ("assistant" as const) : ("user" as const),
+      content: c.parts.map((p) => {
+        const part = p as {
+          text?: string;
+          inlineData?: { mimeType: string; data: string };
+        };
+        return part.text !== undefined
+          ? { type: "text" as const, text: part.text }
+          : {
+              type: "image_url" as const,
+              image_url: {
+                url: `data:${part.inlineData?.mimeType};base64,${part.inlineData?.data}`,
+              },
+            };
+      }),
+    })),
+  ];
+  for (const model of OPENAI_VISION_MODELS) {
+    try {
+      const res = await fetch(OPENAI_BASE, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          max_tokens: MAX_OUTPUT_TOKENS,
+        }),
+        signal: AbortSignal.timeout(25_000),
+      });
+      if (!res.ok) continue;
+      const json = (await res.json()) as {
+        choices?: { message?: { content?: string } }[];
+      };
+      const text = json.choices?.[0]?.message?.content?.trim();
+      if (text) return text;
+    } catch {
+      /* thử model tiếp theo */
+    }
+  }
+  return null;
+}
+
 export const analyzeImage = action({
   args: {
     messages: v.array(
@@ -383,6 +454,22 @@ export const analyzeImage = action({
       }
     }
     console.error(`[visionChat] mọi model đọc ảnh đều lỗi: ${lastError}`);
+    // Lùi sang nhà cung cấp thứ hai nếu có khoá — nhánh ảnh không được phép
+    // chết chỉ vì một khoá miễn phí hết hạn mức.
+    const openAiKey = process.env.OPENAI_API_KEY;
+    if (openAiKey) {
+      const text = await analyzeWithOpenAi(openAiKey, contents);
+      if (text) {
+        return {
+          ok: true as const,
+          reply: cleanPlainText(text),
+          provider: "openai",
+          imageCount: kept.length,
+          dropped,
+        };
+      }
+      lastError = `${lastError} | openai: không đọc được ảnh`;
+    }
     // Hết cả vòng thử mới vẫn thất bại → mới ghi nhớ model nào đang bị chặn,
     // để lượt sau của người khác khỏi đụng vào.
     for (const model of rateLimitedModels) {

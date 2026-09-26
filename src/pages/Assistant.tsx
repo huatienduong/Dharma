@@ -882,22 +882,50 @@ export default function Assistant() {
               imageMime: attachedImage?.mime,
             },
           ];
-          for (const shape of shapes) {
-            try {
-              const vision = await callConvexAction<AskResult>(
-                "visionChat:analyzeImage",
-                { ...shape, ...getDeviceMeta() },
-              );
-              if (vision.ok || vision.code === "rate_limited") return vision;
-              // Nhánh đọc ảnh đã chạy và báo lỗi nghiệp vụ (hết hạn mức, ảnh
-              // không đọc được…) → trả nguyên lỗi đó ra. Trước đây im lặng
-              // rơi xuống `ask` vốn KHÔNG đọc ảnh, nên trợ lý trả lời như thể
-              // không có ảnh nào — người dùng tưởng hệ thống không thấy ảnh.
-              if (vision.message) return vision;
-            } catch {
-              /* thử cấu trúc tiếp theo */
+          // Hết hạn mức ở gói miễn phí thường chỉ kéo dài vài giây, nên thử
+          // lại một vòng sau 4 giây trước khi báo lỗi cho người dùng.
+          let quotaBlocked = false;
+          for (let round = 0; round < 2 && !quotaBlocked; round++) {
+            if (round > 0) {
+              await new Promise((r) => window.setTimeout(r, 4000));
+            }
+            for (const shape of shapes) {
+              try {
+                const vision = await callConvexAction<AskResult>(
+                  "visionChat:analyzeImage",
+                  { ...shape, ...getDeviceMeta() },
+                );
+                if (vision.ok || vision.code === "rate_limited") return vision;
+                // Nhánh đọc ảnh đã chạy và báo lỗi nghiệp vụ → trả nguyên lỗi
+                // đó ra. Trước đây im lặng rơi xuống `ask` vốn KHÔNG đọc ảnh,
+                // nên trợ lý trả lời như thể không có ảnh nào — người dùng
+                // tưởng hệ thống không thấy ảnh. Riêng lỗi hết hạn mức thì
+                // đánh dấu để thử vòng sau.
+                if (vision.message) {
+                  if (vision.code === "ai_unavailable") {
+                    quotaBlocked = true;
+                    break;
+                  }
+                  return vision;
+                }
+              } catch {
+                /* thử cấu trúc tiếp theo */
+              }
             }
           }
+          if (quotaBlocked) {
+            return {
+              ok: false,
+              code: "ai_unavailable",
+              message:
+                "Máy chủ đang bận (hết hạn mức phân tích ảnh của gói). Bấm Gửi lại sau 1–2 phút, hoặc mô tả bằng lời.",
+            };
+          }
+          return {
+            ok: false,
+            code: "bad_image",
+            message: "Không gửi được hình ảnh lên máy chủ. Hãy thử lại với ảnh khác.",
+          };
           } finally {
             setAnalyzingImage(false);
           }
