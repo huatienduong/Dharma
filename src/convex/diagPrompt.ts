@@ -154,7 +154,11 @@ export const diagProviders = action({
     const geminiKey = process.env.GEMINI_API_KEY;
     const geminiOut: Record<string, unknown> = {};
     if (geminiKey) {
-      for (const model of ["gemini-2.5-flash", "gemini-2.5-flash-lite"]) {
+      for (const model of [
+        "gemini-3.8-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3-flash-preview",
+      ]) {
         const started = Date.now();
         try {
           const res = await fetch(

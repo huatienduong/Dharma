@@ -25,12 +25,17 @@ import { featuresPrompt } from "../lib/appFeatures";
 
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
-/** Model đọc ảnh, thử lần lượt cho tới khi có câu trả lời. */
+/**
+ * Model đọc ảnh, thử lần lượt cho tới khi có câu trả lời.
+ *
+ * `gemini-2.5-flash` và `gemini-2.5-flash-lite` đã bị Google thu hồi cho tài
+ * khoản mới (API trả 404 và chỉ định model thay thế), nên danh sách cũ mở
+ * đầu bằng hai model chết — mỗi lượt ảnh tốn thêm hai lần gọi vô ích.
+ */
 const VISION_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
+  "gemini-3.8-flash",
+  "gemini-3.5-flash-lite",
   "gemini-3-flash-preview",
-  "gemini-2.5-pro",
 ];
 
 /** Giữ đúng giọng điệu của Trợ lý Phật học (rút gọn cho nhánh ảnh). */
@@ -49,7 +54,7 @@ CÁCH TRẢ LỜI:
 
 - Ghi nhớ toàn bộ cuộc trò chuyện, không chỉ lượt gần nhất.
 
-${featuresPrompt()}`;
+${featuresPrompt(true)}`;
 
 const MAX_OUTPUT_TOKENS = 700;
 /** Khớp HISTORY_LIMIT của aiChat.ask để ngữ cảnh gửi lên giống nhau. */

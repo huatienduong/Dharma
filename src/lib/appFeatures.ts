@@ -83,8 +83,22 @@ export const FEATURE_TIPS = [
   'Muốn nói chuyện bằng giọng nói: bảo họ nhắn "mở đàm thoại" là màn đàm thoại mở ngay.',
 ];
 
-/** Dựng phần mô tả tính năng để chèn vào system prompt. */
-export function featuresPrompt(): string {
+/**
+ * Dựng phần mô tả tính năng để chèn vào system prompt.
+ *
+ * `compact = true` chỉ giữ TÊN tính năng, bỏ hướng dẫn thao tác. Cần cho
+ * nhánh dự phòng: hạn mức Groq tính bằng TOKEN mỗi phút cho cả tổ chức
+ * (chỉ 8.000 token/phút), nên mỗi prompt thừa một câu cũng có thể khiến
+ * cả nhóm người dùng bị chặn. Nhánh chính dùng bản đầy đủ.
+ */
+export function featuresPrompt(compact = false): string {
+  if (compact) {
+    return [
+      "## TÍNH NĂNG ỨNG DỤNG (tự động cập nhật)",
+      "Khi người dùng hỏi về ứng dụng, chỉ được nói các tính năng có trong danh sách này:",
+      FEATURES.map((f) => `- ${f.name}`).join("\n"),
+    ].join("\n");
+  }
   const lines = FEATURES.map(
     (f) => `- ${f.name}: ${f.how}`,
   ).join("\n");

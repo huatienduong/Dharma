@@ -25,21 +25,22 @@ const GROQ_MODELS = [
   "openai/gpt-oss-120b",
   "moonshotai/kimi-k2-instruct",
 ];
-const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
+const GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3-flash-preview"];
 
 /* ------------------------------------------------------------------ */
 /* HẠN MỨC NHÀ CUNG CẤP — nguyên nhân gốc của "không trả lời được"     */
 /* ------------------------------------------------------------------ */
 /*
- * Hạn mức Groq tính CHUNG cho cả tổ chức, không riêng từng model: kho
- * vực của gói miễn phí chỉ chịu được khoảng 10 lượt/phút. Khi đã vượt,
- * Groq trả 429 NGAY LẬP TỨ (khoảng 0,4s) — nên nếu cứ thử lần lượt 4
- * model thì mỗi lượt hỏi hỏng lại đốt thêm 4 lượt gọi vô ích, càng làm
- * hạn mức kiệt hơn. Hai việc sửa ở đây:
+ * Hạn mức Groq tính CHUNG cho cả tổ chức và tính bằng TOKEN mỗi phút:
+ * khoảng 1.000 request/phút nhưng chỉ 8.000 token/phút — đó mới là nút
+ * thắt. Một lượt hỏi có prompt + lịch sử + câu trả lời dài sẽ tự nó ăn
+ * gần hết hạn mức của cả phút, khiến mọi người dùng cùng bị chặn. Ba việc
+ * sửa ở đây:
  *   1. Gặp 429 thì DỪNG ngay vòng lặp của nhà cung cấp đó, chuyển sang
  *      nhà cung cấp kia, thay vì đâm tiếp vào chỗ vừa bị từ chối.
  *   2. Ghi nhớ thời điểm hết hạn mức để các lượt hỏi kế tiếp bỏ qua hẳn
  *      nhà cung cấp đang bị chặn, không đốt thêm request nào.
+ *   3. Giữ prompt và ngữ cảnh nhỏ gọn (xem FALLBACK_SYSTEM và `context`).
  * Ngoài ra cache lại câu hỏi đơn lặp lại trong 10 phút: người dùng hay
  * bấm "Gửi lại" hoặc hỏi lại đúng câu vừa hỏi, và mỗi lần lặp lại đều
  * tốn hạn mức của những người đang dùng thật.
@@ -99,14 +100,52 @@ CÁCH TRẢ LỜI:
 - KHÔNG dùng emoji. KHÔNG dùng ký tự markdown (###, **, *, ---, |). Trả lời bằng tiếng Việt.
 - Không biết thì nói không biết; không chẩn đoán y khoa/tâm lý; không hành xử như bậc đạo hạnh thực thụ.
 - Nhớ toàn bộ cuộc trò chuyện, không chỉ lượt gần nhất.
+- Khi có căn cứ kinh điển thì nêu tên kinh + số hiệu (SN 56.11, Dhammapada 183...) và tối đa 1 đường dẫn thật ở cuối (suttacentral.net, dhammatalks.org, cbetaonline.dila.edu.tw). TUYỆT ĐỐI không bịa đường dẫn.
 
-NGUỒN THAM KHẢO:
-- Khi trả lời có căn cứ kinh điển, nêu tên kinh + số hiệu (SN 56.11, Dhammapada 183...) và kèm tối đa 1–2 đường dẫn thật ở cuối, viết thuần dạng https://... (chỉ dùng suttacentral.net, dhammatalks.org, cbetaonline.dila.edu.tw, dhammaloka.org).
-- TUYỆT ĐỐI không bịa đường dẫn; không chắc thì chỉ nêu tên kinh.
-
-${featuresPrompt()}`;
+${featuresPrompt(true)}`;
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
+
+/**
+ * Tự dò model Gemini còn sống thay vì chỉ hardcode.
+ *
+ * Google đã thu hồi `gemini-2.5-flash` và `gemini-2.5-flash-lite` cho tài
+ * khoản mới — danh sách viết cứng lúc đó im lặng chết, mỗi câu hỏi mất
+ * thêm hai lần gọi rồi mới tới model còn sống. Đọc danh mục model của chính
+ * khoá đang dùng giúp ứng dụng tự thích nghi lần thu hồi sau. Hỏng thì quay
+ * về danh sách dự phòng.
+ */
+async function listGeminiTextModels(key: string): Promise<string[]> {
+  try {
+    const res = await fetch(`${GEMINI_BASE}/models?pageSize=200`, {
+      headers: { "x-goog-api-key": key },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return GEMINI_MODELS;
+    const json = (await res.json()) as {
+      models?: { name?: string; supportedGenerationMethods?: string[] }[];
+    };
+    const alive = (json.models ?? [])
+      .filter((m) =>
+        (m.supportedGenerationMethods ?? []).includes("generateContent"),
+      )
+      .map((m) => (m.name ?? "").replace(/^models\//, ""))
+      .filter(
+        (id) =>
+          id &&
+          /flash/i.test(id) &&
+          !/-tts|-image|-embedding|-aqa|-live|-audio|-safety/i.test(id),
+      );
+    if (alive.length === 0) return GEMINI_MODELS;
+    // Ưu tiên model đã biết chắc dùng được, phần còn lại để dự phòng.
+    return [
+      ...GEMINI_MODELS.filter((m) => alive.includes(m)),
+      ...alive.filter((m) => !GEMINI_MODELS.includes(m)),
+    ].slice(0, 3);
+  } catch {
+    return GEMINI_MODELS;
+  }
+}
 
 function firstText(json: unknown): string {
   const c = (json as { choices?: { message?: { content?: string } }[] })
@@ -154,6 +193,12 @@ export const chatFallback = action({
     }
 
     const recent = messages.slice(-24);
+    // Chỉ gửi 6 lượt gần nhất, mỗi lượt cắn còn 700 ký tự: vừa đủ ngữ cảnh
+    // mà không ăn hết hạn mức token của cả phút.
+    const context = recent.slice(-6).map((m) => ({
+      role: m.role,
+      content: m.content.slice(0, 700),
+    }));
     const errors: string[] = [];
     /** true = mọi lỗi đều do hết hạn mức (429), thông báo sẽ dịu hơn */
     let allRateLimited = true;
@@ -175,10 +220,10 @@ export const chatFallback = action({
               model,
               messages: [
                 { role: "system", content: FALLBACK_SYSTEM },
-                ...recent.slice(-12),
+                ...context,
               ],
               temperature: 0.35,
-              max_tokens: 900,
+              max_tokens: 700,
             }),
             signal: AbortSignal.timeout(40_000),
           });
@@ -213,14 +258,12 @@ export const chatFallback = action({
     if (geminiKey && Date.now() < geminiCooldownUntil) {
       errors.push("gemini: đang nghỉ sau lần bị giới hạn gần nhất");
     } else if (geminiKey) {
-      const contents = recent
-        .map((m) => ({
-          role: m.role === "assistant" ? "model" : "user",
-          parts: [{ text: m.content }],
-        }))
-        .slice(-12);
+      const contents = context.map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
       while (contents.length > 0 && contents[0].role !== "user") contents.shift();
-      for (const model of GEMINI_MODELS) {
+      for (const model of await listGeminiTextModels(geminiKey)) {
         try {
           const httpRes = await fetch(`${GEMINI_BASE}/models/${model}:generateContent`, {
             method: "POST",
