@@ -47,6 +47,8 @@ export type ChatThreadProps = {
   onSpeakMessage: (m: Msg) => void;
   /** Mốc thời gian của câu đang được đọc to — null = đang rảnh. */
   readingTs: number | null;
+  /** Mốc thời gian của câu đang chờ máy chủ tổng hợp giọng — null = không chờ. */
+  loadingTs: number | null;
 };
 
 export function ChatThread({
@@ -63,6 +65,7 @@ export function ChatThread({
   onRecallImage,
   onSpeakMessage,
   readingTs,
+  loadingTs,
 }: ChatThreadProps) {
   // Chưa có tin nhắn nào: để trống hoàn toàn, vào thẳng khung chat. Lời
   // chào và danh sách câu hỏi đề xuất đã được gỡ theo yêu cầu.
@@ -93,6 +96,7 @@ export function ChatThread({
             imageStorageId={m.imageStorageId}
             onSpeak={() => onSpeakMessage(m)}
             speaking={readingTs === m.ts}
+            loading={loadingTs === m.ts}
           />
         );
       })}
@@ -182,6 +186,7 @@ export function AssistantMessage({
   imageStorageId,
   onSpeak,
   speaking,
+  loading,
 }: {
   content: string;
   ts: number;
@@ -198,6 +203,8 @@ export function AssistantMessage({
   onSpeak?: () => void;
   /** Câu này đang được đọc to. */
   speaking?: boolean;
+  /** Câu này đang chờ máy chủ tổng hợp giọng đọc. */
+  loading?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const text = plainText(content);
@@ -265,11 +272,23 @@ export function AssistantMessage({
               onClick={onSpeak}
               className="inline-flex items-center justify-center rounded px-1 py-0.5 transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label={
-                speaking ? "Dừng đọc câu trả lời" : "Đọc lại câu trả lời"
+                loading
+                  ? "Đang tải giọng đọc"
+                  : speaking
+                    ? "Dừng đọc câu trả lời"
+                    : "Đọc lại câu trả lời"
               }
-              title={speaking ? "Dừng đọc" : "Đọc lại bằng giọng nói"}
+              title={
+                loading
+                  ? "Đang tải giọng đọc…"
+                  : speaking
+                    ? "Dừng đọc"
+                    : "Đọc lại bằng giọng nói"
+              }
             >
-              {speaking ? (
+              {loading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-gold" />
+              ) : speaking ? (
                 <Square className="h-3.5 w-3.5 text-gold" />
               ) : (
                 <Volume2 className="h-3.5 w-3.5" />

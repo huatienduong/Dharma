@@ -132,10 +132,21 @@ export default function Assistant() {
    */
   const [readingTs, setReadingTs] = useState<number | null>(null);
   const readingTsRef = useRef<number | null>(null);
+  /**
+   * Mốc thời gian của câu ĐANG CHỜ máy chủ tổng hợp giọng đọc (chưa có tiếng).
+   * Tách khỏi readingTs vì hai trạng thái này hiển thị khác nhau: đang chờ
+   * thì vòng quay, đang đọc thì nút vuông dừng.
+   */
+  const [loadingTs, setLoadingTs] = useState<number | null>(null);
+  const loadingTsRef = useRef<number | null>(null);
 
   const markReading = useCallback((ts: number | null) => {
     readingTsRef.current = ts;
     setReadingTs(ts);
+  }, []);
+  const markLoading = useCallback((ts: number | null) => {
+    loadingTsRef.current = ts;
+    setLoadingTs(ts);
   }, []);
   // Nhịp tăng phần trăm giả lập cho tới khi máy chủ trả ảnh về.
   const imageTickRef = useRef<number | null>(null);
@@ -830,6 +841,12 @@ export default function Assistant() {
    * chồng tiếng. Dùng đúng giọng người dùng đã chọn ở Cài đặt. */
   const speakMessage = useCallback(
     (m: Msg) => {
+      // Bấm lại câu đang chờ → huỷ; lệnh tải đang chạy bị bỏ qua.
+      if (loadingTsRef.current === m.ts) {
+        stopSpeaking();
+        markLoading(null);
+        return;
+      }
       if (readingTsRef.current === m.ts) {
         stopSpeaking();
         markReading(null);
@@ -839,17 +856,24 @@ export default function Assistant() {
       if (!text) return;
       // Câu đang đọc (nếu có) bị cắt trước rồi mới đọc câu mới.
       stopSpeaking();
-      markReading(m.ts);
+      markLoading(m.ts);
       void speakVI(text, {
         voice: voiceIdRef.current,
+        // Đã có tiếng: chuyển từ đang chờ sang đang đọc.
+        onStart: () => {
+          if (loadingTsRef.current !== m.ts) return;
+          markLoading(null);
+          markReading(m.ts);
+        },
         // onDone của lớp đọc to luôn chạy đúng một lần → nút loa không bị
         // kẹt ở trạng thái "đang đọc" khi âm thanh đã tắt.
         onDone: () => {
+          if (loadingTsRef.current === m.ts) markLoading(null);
           if (readingTsRef.current === m.ts) markReading(null);
         },
       });
     },
-    [markReading, speakVI, stopSpeaking],
+    [markLoading, markReading, speakVI, stopSpeaking],
   );
 
   /* ----- Gửi lại câu vừa bị lỗi (nút "Gửi lại" trong hội thoại) ----- */
@@ -1053,6 +1077,7 @@ export default function Assistant() {
           onRecallImage={recallImage}
           onSpeakMessage={speakMessage}
           readingTs={readingTs}
+          loadingTs={loadingTs}
         />
       </div>
 
