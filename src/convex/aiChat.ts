@@ -744,12 +744,73 @@ export const aiSelfTest = internalAction({
 /* Nhận diện ý định tạo ảnh — dùng chung client & server (src/lib/imageIntent) */
 import { wantsImage } from "../lib/imageIntent";
 
-/** Thứ tự ưu tiên: model Nano Banana mới nhất trước, bản cũ làm dự phòng. */
-const GEMINI_IMAGE_MODELS = [
-  "gemini-3.1-flash-image",
+/**
+ * Thứ tự ưu tiên model tạo ảnh (Nano Banana). Tên được đối chiếu lại với
+ * danh sách model đang sống; nếu Google đã đổi tên thì listGeminiImageModels
+ * tự bổ sung các model ảnh còn sống thay vì để tính năng chết.
+ */
+const GEMINI_IMAGE_PREFERENCE = [
+  "gemini-3-pro-image-preview",
   "gemini-2.5-flash-image",
-] as const;
+  "gemini-2.5-flash-image-preview",
+  "gemini-2.0-flash-preview-image-generation",
+];
 const IMAGE_TIMEOUT_MS = 90_000;
+
+const imageModelsCache = new Map<string, { at: number; models: string[] }>();
+const IMAGE_MODELS_TTL_MS = 10 * 60_000;
+
+/**
+ * Dò model tạo ảnh đang sống. Google liên tục thu hồi/đổi tên model ảnh
+ * (gemini-3.1-flash-image trước đây trong danh sách đã không còn), hardcode
+ * một danh sách thì chỉ cần một lần đổi tên là tính năng tạo ảnh chết âm
+ * thầm. Cache 10 phút để không phải gọi /models mỗi lượt.
+ */
+async function listGeminiImageModels(
+  geminiKey: string,
+): Promise<string[]> {
+  const cached = imageModelsCache.get(geminiKey);
+  if (cached && Date.now() - cached.at < IMAGE_MODELS_TTL_MS) {
+    return cached.models;
+  }
+  let live: string[] = [];
+  try {
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models",
+      {
+        headers: { "x-goog-api-key": geminiKey },
+        signal: AbortSignal.timeout(6_000),
+      },
+    );
+    if (res.ok) {
+      const json = (await res.json()) as {
+        models?: { name?: string; supportedGenerationMethods?: string[] }[];
+      };
+      live = (json.models ?? [])
+        .filter(
+          (m) =>
+            typeof m.name === "string" &&
+            (m.supportedGenerationMethods ?? []).includes("generateContent"),
+        )
+        .map((m) => (m.name ?? "").replace(/^models\//, ""));
+    }
+  } catch {
+    /* không dò được thì cứ dùng danh sách ưu tiên */
+  }
+  const ordered: string[] = [];
+  for (const id of GEMINI_IMAGE_PREFERENCE) {
+    if (live.length === 0 || live.includes(id)) ordered.push(id);
+  }
+  for (const id of live) {
+    if (ordered.includes(id)) continue;
+    if (!id.includes("image")) continue;
+    if (id.includes("tts") || id.includes("embedding")) continue;
+    ordered.push(id);
+  }
+  const models = ordered.length > 0 ? ordered : [...GEMINI_IMAGE_PREFERENCE];
+  imageModelsCache.set(geminiKey, { at: Date.now(), models });
+  return models;
+}
 
 /**
  * Sinh ảnh bằng Gemini (mô hình Nano Banana).
@@ -760,60 +821,107 @@ const IMAGE_TIMEOUT_MS = 90_000;
  *
  * Trả về null khi không có khóa / mọi model đều lỗi — caller báo lỗi.
  */
+async function callGeminiImage(
+  geminiKey: string,
+  model: string,
+  instruction: string,
+  modalities: string[],
+): Promise<{ data: string; mime: string } | { error: string; fatal: boolean }> {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": geminiKey,
+      },
+      signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS),
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: instruction }] }],
+        generationConfig: { responseModalities: modalities },
+      }),
+    },
+  );
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    // 404/403 = model không tồn tại hoặc không được phép → thử model khác,
+    // đổi responseModalities cũng vô ích.
+    return {
+      error: `HTTP ${res.status} — ${body.slice(0, 180)}`,
+      fatal: res.status === 404 || res.status === 403,
+    };
+  }
+  const json = (await res.json()) as {
+    candidates?: {
+      content?: {
+        parts?: { inlineData?: { data?: string; mimeType?: string } }[];
+      };
+    }[];
+    error?: { message?: string };
+  };
+  const parts = (json.candidates ?? []).flatMap((c) => c.content?.parts ?? []);
+  // Ưu tiên part có mime ảnh; nếu không thì lấy part đầu có dữ liệu.
+  const hit =
+    parts.find(
+      (p) =>
+        p.inlineData?.data &&
+        (p.inlineData.mimeType ?? "").startsWith("image/"),
+    ) ?? parts.find((p) => p.inlineData?.data);
+  if (!hit?.inlineData?.data) {
+    return {
+      error: json.error?.message ?? "phản hồi không chứa ảnh",
+      fatal: false,
+    };
+  }
+  return {
+    data: hit.inlineData.data,
+    mime: hit.inlineData.mimeType ?? "image/png",
+  };
+}
+
 async function generateImage(
   ctx: { storage: { store: (blob: Blob) => Promise<string> } },
   prompt: string,
-): Promise<{ storageId: string } | null> {
+): Promise<{ storageId: string } | { error: string }> {
   const geminiKey = process.env.GEMINI_API_KEY;
-  if (!geminiKey) return null;
-  for (const model of GEMINI_IMAGE_MODELS) {
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": geminiKey,
-          },
-          signal: AbortSignal.timeout(IMAGE_TIMEOUT_MS),
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: `Tạo hình theo yêu cầu sau. Ưu tiên phong cách trang nghiêm, trang trí, hài hòa với tinh thần Phật giáo Theravāda khi chủ đề liên quan. Không chữ trong ảnh.\n\nYêu cầu: ${prompt}`,
-                  },
-                ],
-              },
-            ],
-            generationConfig: { responseModalities: ["IMAGE"] },
-          }),
-        },
-      );
-      if (!res.ok) continue;
-      const json = (await res.json()) as {
-        candidates?: {
-          content?: {
-            parts?: { inlineData?: { data?: string; mimeType?: string } }[];
-          };
-        }[];
-      };
-      const part = json.candidates?.[0]?.content?.parts?.find(
-        (p) => p.inlineData?.data,
-      )?.inlineData;
-      if (!part?.data) continue;
-      // Chuyển base64 → bytes rồi lưu vào File Storage.
-      const bytes = Uint8Array.from(atob(part.data), (c) => c.charCodeAt(0));
-      const storageId = await ctx.storage.store(
-        new Blob([bytes], { type: part.mimeType ?? "image/png" }),
-      );
-      return { storageId };
-    } catch {
-      /* thử model tiếp theo */
+  if (!geminiKey) return { error: "thiếu khóa GEMINI_API_KEY" };
+  const models = await listGeminiImageModels(geminiKey);
+  const instruction = `Tạo hình theo yêu cầu sau. Ưu tiên phong cách trang nghiêm, trang trí, hài hòa với tinh thần Phật giáo Theravāda khi chủ đề liên quan. Không chữ trong ảnh.\n\nYêu cầu: ${prompt}`;
+  const tried: string[] = [];
+  let lastError = "không rõ";
+  for (const model of models) {
+    // Model mới chỉ nhận IMAGE, model cũ đòi TEXT+IMAGE — thử cả hai.
+    for (const modalities of [["IMAGE"], ["TEXT", "IMAGE"]]) {
+      try {
+        const out = await callGeminiImage(
+          geminiKey,
+          model,
+          instruction,
+          modalities,
+        );
+        if ("data" in out) {
+          // Chuyển base64 → bytes rồi lưu vào File Storage.
+          const bytes = Uint8Array.from(atob(out.data), (c) => c.charCodeAt(0));
+          const storageId = await ctx.storage.store(
+            new Blob([bytes], { type: out.mime }),
+          );
+          return { storageId };
+        }
+        lastError = `${model} [${modalities.join("+")}]: ${out.error}`;
+        tried.push(model);
+        if (out.fatal) break;
+      } catch (err) {
+        lastError = `${model}: ${err instanceof Error ? err.message : String(err)}`;
+        tried.push(model);
+        break;
+      }
     }
   }
-  return null;
+  // Ghi log để lần sau biết chính xác nguyên nhân thay vì đoán mò.
+  console.error(
+    `[aiChat] tạo ảnh thất bại — model đã thử: ${tried.join(", ") || models.join(", ")} | ${lastError}`,
+  );
+  return { error: lastError };
 }
 
 /* ------------------------------------------------------------------ */
@@ -846,7 +954,8 @@ export const createImage = action({
       };
     }
     const image = await generateImage(ctx, clean);
-    if (!image) {
+    if ("error" in image) {
+      console.error("[aiChat] createImage:", image.error);
       return {
         ok: false as const,
         code: "image_unavailable",
