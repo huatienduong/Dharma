@@ -11,6 +11,7 @@
  * instance Invidious, instance nào sống thì dùng.
  */
 
+import { isBuddhistTopic } from "@/lib/buddhistVideoFilter";
 import { youtubeVideoId, type VideoInfo } from "@/lib/videoIntent";
 
 /**
@@ -219,8 +220,12 @@ export async function searchVideoInBrowser(raw: string): Promise<VideoInfo[]> {
     ];
   }
 
-  const query = toQuery(raw);
-  if (!query) return [];
+  const topic = toQuery(raw);
+  if (!topic) return [];
+  // Người dùng gõ chủ đề tuỳ ý ("thiền", "dukkha"…): thêm "Phật giáo" vào câu
+  // tìm để YouTube trả về đúng nhóm video liên quan tới Phật giáo, thay vì
+  // chặn lại chủ đề lạ. Câu đã nói rõ Phật giáo thì giữ nguyên.
+  const query = isBuddhistTopic(topic) ? topic : `${topic} Phật giáo`;
 
   // 2. Hỏi bằng lời → tìm bằng YouTube Data API (có tên kênh + thời lượng).
   const byKey = await searchYouTube(query, 5);

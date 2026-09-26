@@ -8,11 +8,6 @@
  */
 
 import {
-  isBuddhistTopic,
-  keepBuddhistVideos,
-  NO_BUDDHIST_VIDEO_MESSAGE,
-} from "@/lib/buddhistVideoFilter";
-import {
   fetchSuggestedVideos,
   searchVideoInBrowser,
   viewCountText,
@@ -66,24 +61,16 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
     if (!topic || busy) return;
     setMessage("");
     setPlaying(null);
-    // Chỉ tìm nội dung Phật giáo: chủ đề khác Phật học thì báo luôn, khỏi
-    // tìm để không hiện kết quả lạc đề.
-    if (!isBuddhistTopic(topic)) {
-      setVideos([]);
-      setMessage(NO_BUDDHIST_VIDEO_MESSAGE);
-      return;
-    }
     setBusy(true);
     setSearched(topic);
     try {
       // Ứng dụng tự dùng khoá của hệ thống qua máy chủ; ở đây chỉ chạy
       // đường dự phòng trong trình duyệt, người dùng không phải dán khoá.
-      const found = keepBuddhistVideos(
-        await searchVideoInBrowser(topic),
-        true,
-      );
+      // Không lọc cứng: câu tìm đã gộp "Phật giáo" nên kết quả là nhóm
+      // video liên quan tới Phật giáo.
+      const found = await searchVideoInBrowser(topic);
       setVideos(found);
-      if (!found.length) setMessage(NO_BUDDHIST_VIDEO_MESSAGE);
+      if (!found.length) setMessage("Chưa tìm được video về chủ đề này nhé.");
     } catch {
       setMessage("Chưa tìm được video. Bạn thử lại sau nhé.");
     } finally {

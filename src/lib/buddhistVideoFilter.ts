@@ -109,7 +109,3 @@ export function keepBuddhistVideos(
   if (!strict) return videos;
   return videos.filter(isBuddhistVideo);
 }
-
-/** Lời nhắc dùng chung khi không có video Phật giáo nào để hiện. */
-export const NO_BUDDHIST_VIDEO_MESSAGE =
-  "Trợ lý chỉ tìm và đề xuất video về Phật giáo. Bạn thử chủ đề như Tứ Đế, Tánh niệm, Vipassana, Nghiệp quả hay Luật Tứ Phần nhé.";
