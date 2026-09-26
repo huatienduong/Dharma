@@ -274,6 +274,15 @@ export default function Assistant() {
   // Khi đang hiện chữ từng phần, không tự cuộn toàn bộ vùng chat xuống đáy.
   const suppressNextAutoScrollRef = useRef(false);
   const [streamingReply, setStreamingReply] = useState<string | null>(null);
+  /**
+   * Lỗi trả lời hiện ngay trong hội thoại kèm nút "Gửi lại" — người dùng
+   * không phải gõ lại câu hỏi chỉ vì một lỗi mạng tạm thời.
+   */
+  const [failedReply, setFailedReply] = useState<{
+    message: string;
+    question: string;
+    msg: Msg;
+  } | null>(null);
   // Tiến trình tạo ảnh: null = không tạo, số 0–100 = phần trăm đang chạy.
   const [imageProgress, setImageProgress] = useState<number | null>(null);
   const imageProgressRef = useRef<number | null>(null);
@@ -455,6 +464,9 @@ export default function Assistant() {
         return;
       }
 
+      // Câu mới đã gửi → lỗi cũ không còn ý nghĩa.
+      setFailedReply(null);
+
       const base: Msg[] = [...historyRef.current, ...pendingRef.current];
       const userMsg: Msg = {
         role: "user",
@@ -575,6 +587,7 @@ export default function Assistant() {
         }
 
         const answer = await askWithRetry();
+        setFailedReply(null);
         const reply = answer.reply;
         if (wantsArt) finishImageProgress();
         const replyMsg: Msg = {
@@ -654,14 +667,21 @@ export default function Assistant() {
         setStreamingReply(null);
         finishImageProgress();
         const errorMessage = convexErrMessage(err);
-        const userMsg =
+        const errText =
           /\[convex|server error|called by client|request id/i.test(errorMessage)
             ? "Kết nối máy chủ chưa ổn định. Bạn hãy gửi lại câu này sau ít giây."
             : errorMessage;
+        // Lỗi nằm ngay trong hội thoại kèm nút gửi lại, thay vì chỉ có toast
+        // biến mất sau mấy giây.
+        setFailedReply({
+          message: errText || "Không gửi được câu hỏi.",
+          question,
+          msg: userMsg,
+        });
         if (!opts?.fromCall) {
-          toast.error(userMsg || "Không gửi được câu hỏi.");
+          toast.error(errText || "Không gửi được câu hỏi.");
         } else {
-          toast.error(userMsg || "Không kết nối được trợ lý.");
+          toast.error(errText || "Không kết nối được trợ lý.");
           // Không mở màn "đang nâng cấp" chỉ vì một request AI lỗi: màn che toàn
           // màn hình khiến người dùng tưởng mất kết nối và không gửi tiếp được.
           sendingRef.current = false;
@@ -692,6 +712,17 @@ export default function Assistant() {
   useEffect(() => {
     sendRef.current = send;
   }, [send]);
+
+  /* ----- Gửi lại câu vừa bị lỗi (nút "Gửi lại" trong hội thoại) ----- */
+  const retryFailed = useCallback(() => {
+    const failed = failedReply;
+    if (!failed || busyRef.current) return;
+    setFailedReply(null);
+    // Gỡ bong bóng lỗi cũ khỏi hàng chờ để không hiện hai lần cùng một câu.
+    pendingRef.current = pendingRef.current.filter((m) => m !== failed.msg);
+    setPending(pendingRef.current);
+    void send(failed.question);
+  }, [failedReply, send]);
 
   /* ----- Đàm thoại: trả lời tại chỗ cho lời chào (không gọi AI) ----- */
   const handleLocalReply = useCallback(
@@ -1116,6 +1147,7 @@ export default function Assistant() {
     historyRef.current = [];
     setPending([]);
     setHistory([]);
+    setFailedReply(null);
     try {
       localStorage.removeItem(CHAT_KEY);
     } catch {
@@ -1269,6 +1301,49 @@ export default function Assistant() {
             })}
             {streamingReply !== null && streamingReply.length > 0 && (
               <AssistantMessage content={streamingReply} ts={Date.now()} grouped={false} />
+            )}
+            {/* Lỗi trả lời + nút gửi lại, hiện ngay trong hội thoại */}
+            {failedReply && (
+              <div className="mt-4 flex items-start gap-2">
+                <span className="mt-1 flex size-10 shrink-0 items-center justify-center rounded-full bg-destructive/15 text-destructive">
+                  <Undo2 className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 flex-1 sm:max-w-[78%]">
+                  <div className="rounded-3xl rounded-bl-md border border-destructive/40 bg-destructive/10 px-4 py-3">
+                    <p className="text-sm font-semibold text-destructive">
+                      Trợ lý chưa trả lời được
+                    </p>
+                    <p className="mt-1 text-sm leading-relaxed text-foreground/85">
+                      {failedReply.message}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={retryFailed}
+                        disabled={busy}
+                        className="gap-1.5"
+                      >
+                        {busy ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Undo2 className="h-3.5 w-3.5" />
+                        )}
+                        Gửi lại
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setFailedReply(null)}
+                        disabled={busy}
+                      >
+                        Bỏ qua
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
             {imageProgress !== null && (
               <div className="mt-4 flex items-start gap-2">
