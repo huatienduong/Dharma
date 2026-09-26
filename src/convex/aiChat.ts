@@ -410,11 +410,46 @@ export const ttsDiag = action({
     if (geminiKey) {
       const models = await listGeminiTtsModels(geminiKey);
       out.gemini.models = models;
-      const audio = await synthGemini(geminiKey, "A", "Kore");
-      out.gemini.ok = audio !== null;
-      out.gemini.note = audio
-        ? `OK, ${audio.mime}`
-        : "mọi model TTS đều lỗi (xem log máy chủ)";
+      // Gọi thẳng model đầu tiên để lấy NGUYÊN VĂN lỗi — synthGemini chỉ
+      // ghi log, mà log production không thấy được nên không dùng để chẩn
+      // đoán được.
+      for (const model of models) {
+        try {
+          const res = await fetch(
+            `${GEMINI_BASE}/models/${model}:generateContent`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": geminiKey,
+              },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: "Xin chào bạn." }] }],
+                generationConfig: {
+                  responseModalities: ["AUDIO"],
+                  speechConfig: {
+                    voiceConfig: {
+                      prebuiltVoiceConfig: { voiceName: "Kore" },
+                    },
+                  },
+                },
+              }),
+              signal: AbortSignal.timeout(25_000),
+            },
+          );
+          if (res.ok) {
+            out.gemini.ok = true;
+            out.gemini.note = `${model}: OK`;
+            break;
+          }
+          const detail = (await res.text().catch(() => "")).slice(0, 220);
+          out.gemini.note = `${model}: HTTP ${res.status} ${detail}`;
+        } catch (err) {
+          out.gemini.note = `${model}: ${
+            err instanceof Error ? err.message : String(err)
+          }`;
+        }
+      }
     }
 
     return out;
