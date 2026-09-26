@@ -45,6 +45,14 @@ export type SpeakOpts = {
   voice?: string | null;
   male?: boolean;
   onDone?: () => void;
+  /**
+   * Chạy khi âm thanh BẮT ĐẦU phát ra (sau khi đã có đủ dữ liệu).
+   *
+   * Tách khỏi onDone vì giai đoạn chờ máy chủ tổng hợp TTS có thể mất vài
+   * giây — giao diện cần biết để hiện “đang chờ” thay vì im lặng, khiến
+   * người dùng tưởng nút bị hỏng.
+   */
+  onStart?: () => void;
 };
 
 /* ------------------------------------------------------------------ */
@@ -561,6 +569,8 @@ export function useVietnameseTTS() {
       if (src) {
         setEngine("server");
         setSpeaking(true);
+        // Đã có đủ âm thanh: báo giao diện biết lượt phát bắt đầu.
+        opts.onStart?.();
 
           // 1a. ƯU TIÊN: Web Audio — resolve khi phát xong
           try {

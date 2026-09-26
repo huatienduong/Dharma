@@ -390,15 +390,22 @@ type ServerVoice = {
  * listGeminiTtsModels tự dò danh sách model đang sống từ API rồi mới chọn.
  */
 const GEMINI_TTS_MODELS = [
+  // THỨ TỰ QUAN TRỌNG: đo thực tế bằng action ttsDiag cho thấy
+  // "gemini-3.8-flash-tts" là model TTS ĐANG CHẠY thật, còn các model
+  // 2.5/3.1 trả lỗi hết. Trước đây danh sách xếp model chết ở trước nên
+  // mỗi lần đọc to phải vượt 3 lần thử hỏng mới tới được model sống, mất
+  // 6-7 giây và quá mốc chờ 9s nên rơi về Web Speech (sai giọng hoặc im).
+  // Đưa model sống lên đầu là cách sửa an toàn nhất: nếu sau này nó hỏng,
+  // vòng lặp vẫn rơi tiếp xuống các model còn lại y như cũ.
   // Danh sách này phải khớp với các model TTS ĐANG SỐNG. Trước đây có
   // "gemini-3-pro-preview-tts" đã bị Google thu hồi, và thiếu hẳn dòng
   // 3.1/3.8 — nên khi cache rỗng, nhánh Gemini thử toàn model chết và mọi
   // giọng đều im, tưởng như giọng hỏng.
-  "gemini-2.5-flash-preview-tts",
-  "gemini-2.5-pro-preview-tts",
-  "gemini-3.1-flash-tts-preview",
   "gemini-3.8-flash-tts",
   "gemini-3.8-flash-lite-tts",
+  "gemini-3.1-flash-tts-preview",
+  "gemini-2.5-flash-preview-tts",
+  "gemini-2.5-pro-preview-tts",
 ] as const;
 
 const ttsModelsCache = new Map<string, { at: number; models: string[] }>();
