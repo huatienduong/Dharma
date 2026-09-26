@@ -63,10 +63,6 @@ export const FEATURES: AppFeature[] = [
     how: "Vào Cài đặt → Giọng nói, nghe thử và chọn; dùng cho cả chat lẫn đàm thoại.",
   },
   {
-    name: "Màn chào với hình Đức Phật",
-    how: "Khi hội thoại còn trống, màn chào hiện hình tượng Đức Phật Thích Ca Mâu Ni theo phong cách Phật giáo Theravāda. Gõ câu hỏi vào ô nhập bên dưới để bắt đầu.",
-  },
-  {
     name: "Sao chép câu trả lời",
     how: "Bấm biểu tượng sao chép dưới câu trả lời để lấy nguyên văn.",
   },
