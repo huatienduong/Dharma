@@ -5,13 +5,13 @@
  * hiển thị nằm ở đây để sửa giao diện không phải đụng tới logic.
  */
 
+import { BotAvatar } from "@/components/BotAvatar";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { formatTs, plainText, type Msg } from "@/lib/chatHelpers";
 import { cn } from "@/lib/utils";
 import { useQuery } from "convex/react";
 import {
-  Bot,
   Check,
   Copy,
   Loader2,
@@ -132,9 +132,7 @@ export function ChatThread({
       )}
       {imageProgress !== null && (
         <div className="mt-4 flex items-start gap-2">
-          <span className="mt-1 flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
-            <Bot className="h-6 w-6" />
-          </span>
+          <BotAvatar className="mt-1" />
           <div className="min-w-0 flex-1 sm:max-w-[75%]">
             <div className="rounded-3xl rounded-bl-md border border-border/50 bg-card px-4 py-3 shadow-sm">
               <div className="flex items-center justify-between text-sm font-medium">
@@ -231,9 +229,7 @@ export function AssistantMessage({
   return (
     <div className={cn("flex items-start gap-2", grouped ? "mt-1.5" : "mt-5")}>
       {/* Avatar robot ở TRÊN — thẳng hàng đầu bong bóng trả lời */}
-      <span className="mt-1 flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
-        <Bot className="h-6 w-6" />
-      </span>
+      <BotAvatar className="mt-1" />
       <div className="min-w-0 flex-1 sm:max-w-[75%]">
         {image && (
           <img
@@ -348,9 +344,7 @@ function AssistantThinking() {
   return (
     <div className="mt-5 flex items-start gap-2">
       {/* Avatar robot ở TRÊN, đồng hàng với bong bóng chờ */}
-      <span className="mt-1 flex size-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-gold text-primary-foreground shadow-sm">
-        <Bot className="h-6 w-6" />
-      </span>
+      <BotAvatar className="mt-1" />
       <div className="inline-flex items-center gap-1.5 rounded-3xl rounded-bl-md border border-border/50 bg-card px-4 py-3.5 shadow-sm">
         {[0, 1, 2].map((i) => (
           <span

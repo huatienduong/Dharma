@@ -8,7 +8,8 @@
 
 import type { CallStatus } from "@/hooks/useCallSession";
 import { cn } from "@/lib/utils";
-import { Bot, Mic, MicOff, PhoneOff, Square, X } from "lucide-react";
+import { BotAvatar } from "@/components/BotAvatar";
+import { Mic, MicOff, PhoneOff, Square, X } from "lucide-react";
 
 export type CallOverlayProps = {
   callStatus: CallStatus;
@@ -49,9 +50,7 @@ export function CallOverlay({
       <div className="relative z-10 flex h-full w-full max-w-[1800px] flex-col">
         <div className="flex w-full items-center justify-between px-5 pt-5 sm:px-8">
           <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-sm">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-gold to-amber-700">
-              <Bot className="h-6 w-6 text-white" />
-            </span>
+            <BotAvatar size="lg" glow />
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/50">
                 Trợ lý Phật học
