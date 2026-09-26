@@ -8,7 +8,6 @@ import {
 } from "@/lib/version";
 import {
   useSettings,
-  type ThemeMode,
 } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,11 +28,9 @@ import {
   ChevronRight,
   Download,
   Lightbulb,
-  Moon,
   Paperclip,
   RefreshCw,
   Send,
-  Sun,
   Volume2,
   X,
 } from "lucide-react";
@@ -55,7 +52,6 @@ export default function Settings() {
   const {
     settings,
     t,
-    setTheme,
     setNotifications,
   } = useSettings();
   const meta = useQuery(api.library.getAppVersion, {});
