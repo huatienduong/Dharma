@@ -43,7 +43,7 @@ import { wantsImage } from "@/lib/imageIntent";
 import { APP_VERSION } from "@/lib/version";
 import { cn } from "@/lib/utils";
 import { useAction, useMutation } from "convex/react";
-import { ArrowLeft, Phone, Settings, Tv } from "lucide-react";
+import { ArrowLeft, Phone, Settings, TvMinimalPlay } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -1232,7 +1232,7 @@ export default function Assistant() {
             aria-label="Tìm và xem video"
             title="Tìm và xem video"
           >
-            <Tv className="h-5 w-5 shrink-0" />
+            <TvMinimalPlay className="h-5 w-5 shrink-0" />
           </button>
           {!isHome && (
             <button
