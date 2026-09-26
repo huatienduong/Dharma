@@ -8,8 +8,8 @@
  */
 
 import {
-  fetchRelatedVideos,
-  fetchSuggestedVideos,
+  fetchRelatedPage,
+  fetchSuggestedPage,
   searchVideoInBrowser,
   viewCountText,
 } from "@/lib/videoSearchClient";
@@ -27,7 +27,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("");
@@ -37,40 +37,118 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
   const [playing, setPlaying] = useState<VideoInfo | null>(null);
   const [message, setMessage] = useState("");
 
-  // Danh sách gợi ý: video Phật giáo hay xem, tối đa 20, tải khi mở màn hình.
+  // Danh sách gợi ý: tải theo trang, cuộn tới đâu lấy tới đó (không giới hạn).
   const [suggested, setSuggested] = useState<VideoInfo[]>([]);
   const [suggestBusy, setSuggestBusy] = useState(true);
-  useEffect(() => {
-    let alive = true;
-    void (async () => {
-      const list = await fetchSuggestedVideos(20).catch(() => []);
-      if (alive) {
-        setSuggested(list);
-        setSuggestBusy(false);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, []);
+  const [suggestPage, setSuggestPage] = useState(0);
+  const [suggestMore, setSuggestMore] = useState(false);
+  const suggestBusyRef = useRef(false);
 
-  // Video liên quan tới nội dung ĐANG XEM (khác hẳn danh sách gợi ý chung).
+  /** Lấy trang gợi ý kế tiếp, bỏ trùng video đã có. */
+  const loadMoreSuggested = useCallback(
+    async (page: number) => {
+      if (suggestBusyRef.current) return;
+      suggestBusyRef.current = true;
+      if (page === 0) setSuggestBusy(true);
+      else setSuggestMore(true);
+      const batch = await fetchSuggestedPage(page).catch(() => []);
+      if (batch.length) {
+        setSuggested((prev) => {
+          const seen = new Set(prev.map((v) => v.videoId));
+          const add = batch.filter((v) => !seen.has(v.videoId));
+          return add.length ? [...prev, ...add] : prev;
+        });
+      }
+      setSuggestBusy(false);
+      setSuggestMore(false);
+      suggestBusyRef.current = false;
+    },
+    [],
+  );
+
+  useEffect(() => {
+    void loadMoreSuggested(0);
+  }, [loadMoreSuggested]);
+
+  /** Tự nạp thêm khi cuộn tới cuối danh sách gợi ý. */
+  const suggestSentinel = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = suggestSentinel.current;
+    if (!el || playing) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          const next = suggestPage + 1;
+          setSuggestPage(next);
+          void loadMoreSuggested(next);
+        }
+      },
+      { rootMargin: "400px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [suggestPage, loadMoreSuggested, playing]);
+
+  // Video liên quan tới nội dung ĐANG XEM — tải theo trang, cuộn là có thêm.
   const [related, setRelated] = useState<VideoInfo[]>([]);
   const [relatedBusy, setRelatedBusy] = useState(false);
+  const [relatedPage, setRelatedPage] = useState(0);
+  const [relatedMore, setRelatedMore] = useState(false);
+  const relatedBusyRef = useRef(false);
+  const relatedVideoRef = useRef<VideoInfo | null>(null);
 
-  /** Mở trình phát: tải luôn danh sách video liên quan để hiện bên dưới. */
+  const loadMoreRelated = useCallback(
+    async (video: VideoInfo, page: number) => {
+      if (relatedBusyRef.current) return;
+      relatedBusyRef.current = true;
+      if (page === 0) setRelatedBusy(true);
+      else setRelatedMore(true);
+      const batch = await fetchRelatedPage(video, page).catch(() => []);
+      if (batch.length) {
+        setRelated((prev) => {
+          const seen = new Set(prev.map((v) => v.videoId));
+          seen.add(video.videoId);
+          const add = batch.filter((v) => !seen.has(v.videoId));
+          return add.length ? [...prev, ...add] : prev;
+        });
+      }
+      setRelatedBusy(false);
+      setRelatedMore(false);
+      relatedBusyRef.current = false;
+    },
+    [],
+  );
+
+  /** Mở trình phát: nạp trang đầu của video liên quan. */
   const openVideo = (v: VideoInfo) => {
+    relatedVideoRef.current = v;
     setPlaying(v);
     setVideos([]);
     setSearched("");
     setMessage("");
-    setRelatedBusy(true);
-    void (async () => {
-      const list = await fetchRelatedVideos(v, 12).catch(() => []);
-      setRelated(list);
-      setRelatedBusy(false);
-    })();
+    setRelated([]);
+    setRelatedPage(0);
+    void loadMoreRelated(v, 0);
   };
+
+  /** Tự nạp thêm khi cuộn tới cuối danh sách liên quan. */
+  const relatedSentinel = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = relatedSentinel.current;
+    if (!el || !playing || !relatedVideoRef.current) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          const next = relatedPage + 1;
+          setRelatedPage(next);
+          void loadMoreRelated(relatedVideoRef.current!, next);
+        }
+      },
+      { rootMargin: "400px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [relatedPage, loadMoreRelated, playing]);
 
   // Nói thẳng chủ đề vào ô tìm kiếm: cùng bộ nghe 3 tầng như ô nhập câu hỏi
   // của khung chat (Web Speech → Whisper → sửa dấu tiếng Việt).
@@ -309,11 +387,6 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
         {/* ĐANG XEM VIDEO: chỉ hiện video LIÊN QUAN tới nội dung đó. */}
         {playing ? (
           <section>
-            <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
-              <Play className="h-3.5 w-3.5 text-gold" />
-              Video liên quan
-            </h2>
-
             {relatedBusy ? (
               <p className="mt-4 flex items-center justify-center gap-2 text-[13px] text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin text-gold" />
@@ -333,14 +406,14 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
                   <button
                     type="button"
                     onClick={() => openVideo(v)}
-                    className="flex w-full items-center gap-3 p-1.5 text-left transition hover:bg-muted/50"
+                    className="flex w-full items-center gap-3.5 p-2 text-left transition hover:bg-muted/50"
                   >
                     <span className="relative shrink-0">
                       <img
                         src={v.thumbnail}
                         alt=""
                         loading="lazy"
-                        className="h-12 w-20 object-cover"
+                        className="h-16 w-28 object-cover"
                       />
                       {v.duration ? (
                         <span className="absolute bottom-0.5 right-0.5 rounded bg-black/80 px-1 text-[10px] tabular-nums text-white">
@@ -349,12 +422,12 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
                       ) : null}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="line-clamp-2 block text-[13px] font-medium leading-snug text-foreground/95">
+                      <span className="line-clamp-2 block text-[15px] font-medium leading-snug text-foreground/95">
                         {v.title || "Video"}
                       </span>
                       {viewCountText(v.viewCount) ? (
-                        <span className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
-                          <Eye className="h-3 w-3" />
+                        <span className="mt-1 flex items-center gap-1 text-[12px] text-muted-foreground">
+                          <Eye className="h-3.5 w-3.5" />
                           {viewCountText(v.viewCount)}
                         </span>
                       ) : null}
@@ -369,11 +442,6 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
         {/* CHƯA XEM VIDEO: hiện danh sách gợi ý chung. */}
         {playing ? null : (
         <section>
-          <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
-            <Play className="h-3.5 w-3.5 text-gold" />
-            Video gợi ý
-          </h2>
-
           {suggestBusy ? (
             <p className="mt-4 flex items-center justify-center gap-2 text-[13px] text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin text-gold" />
@@ -416,12 +484,12 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
                   </span>
                   {/* Tiêu đề + số lượt xem bên phải */}
                   <span className="min-w-0 flex-1">
-                    <span className="line-clamp-2 block text-[13px] font-medium leading-snug text-foreground/95">
+                    <span className="line-clamp-2 block text-[15px] font-medium leading-snug text-foreground/95">
                       {v.title || "Video"}
                     </span>
                     {viewCountText(v.viewCount) ? (
-                      <span className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
-                        <Eye className="h-3 w-3" />
+                      <span className="mt-1 flex items-center gap-1 text-[12px] text-muted-foreground">
+                        <Eye className="h-3.5 w-3.5" />
                         {viewCountText(v.viewCount)}
                       </span>
                     ) : null}
@@ -430,6 +498,14 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
               </li>
             ))}
           </ul>
+          {/* Cuộn tới đây thì nạp thêm gợi ý */}
+          <div ref={suggestSentinel} className="h-1" />
+          {suggestMore ? (
+            <p className="mt-2 flex items-center justify-center gap-2 py-2 text-[13px] text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin text-gold" />
+              Đang tải thêm…
+            </p>
+          ) : null}
         </section>
         )}
 

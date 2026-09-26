@@ -141,49 +141,48 @@ async function searchYouTube(
   }
 }
 
+/** Các nhóm chủ đề Phật giáo dùng làm nguồn cho danh sách gợi ý. */
+const SUGGEST_TOPICS = [
+  "phat hoc",
+  "giao ly phat gia",
+  "thien tap",
+  "kinh phat gia",
+  "nghiep phat",
+  "tu de phat gia",
+];
+
 /**
- * VIDEO LIÊN QUAN — gợi ý theo đúng nội dung đang xem, dùng tiêu đề video
- * đó làm từ khoá (bỏ chữ thừa, cắt ngắn) rồi lọc theo chủ đề Phật giáo.
- * Video đang xem không nằm trong danh sách của chính nó.
+ * MỘT TRANG VIDEO GỢI Ý — mỗi lần gọi trả tối đa `size` video khác nhau, để
+ * người dùng cuộn là có thêm (không giới hạn số lượng).
  */
-export async function fetchRelatedVideos(
-  video: VideoInfo,
-  limit = 12,
+export async function fetchSuggestedPage(
+  page: number,
+  size = 10,
 ): Promise<VideoInfo[]> {
-  const title = (video.title ?? "").replace(/\s*[|\-–—].*$/, "").trim();
-  if (!title) return fetchSuggestedVideos(limit);
-  const topic = title.slice(0, 70);
-  const found = await searchYouTube(
-    isBuddhistTopic(topic) ? topic : `${topic} Phật giáo`,
-    limit + 1,
-  );
-  return found.filter((v) => v.videoId !== video.videoId).slice(0, limit);
+  const topic = SUGGEST_TOPICS[page % SUGGEST_TOPICS.length];
+  return searchYouTube(topic, size);
 }
 
 /**
- * DANH SÁCH GỢI Ý — video Phật giáo hay xem, tối đa `limit` video, tải khi
- * mở màn hình. Trả về [] nếu mạng lỗi thì màn hình vẫn dùng được.
+ * MỘT TRANG VIDEO LIÊN QUAN — trang đầu theo tiêu đề video đang xem, các
+ * trang sau nới dần bằng các góc nhìn khác để vẫn là nội dung liên quan.
  */
-export async function fetchSuggestedVideos(limit = 20): Promise<VideoInfo[]> {
-  const queries = [
-    "phat hoc",
-    "giao ly phat gia",
-    "thien tap",
-    "kinh phat gia",
-  ];
-  const seen = new Set<string>();
-  const out: VideoInfo[] = [];
-  for (const q of queries) {
-    if (out.length >= limit) break;
-    const batch = await searchYouTube(q, 10);
-    for (const v of batch) {
-      if (out.length >= limit) break;
-      if (seen.has(v.videoId)) continue;
-      seen.add(v.videoId);
-      out.push(v);
-    }
-  }
-  return out.slice(0, limit);
+export async function fetchRelatedPage(
+  video: VideoInfo,
+  page: number,
+  size = 10,
+): Promise<VideoInfo[]> {
+  const title = (video.title ?? "").replace(/\s*[|\-–—].*$/, "").trim();
+  if (!title) return fetchSuggestedPage(page, size);
+  const base = title.slice(0, 70);
+  const query =
+    page === 0
+      ? isBuddhistTopic(base)
+        ? base
+        : `${base} Phật giáo`
+      : `${base} ${SUGGEST_TOPICS[page % SUGGEST_TOPICS.length]}`;
+  const found = await searchYouTube(query, size + 1);
+  return found.filter((v) => v.videoId !== video.videoId).slice(0, size);
 }
 
 /** Các instance Invidious công khai, thử theo thứ tự. */

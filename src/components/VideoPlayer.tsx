@@ -183,12 +183,15 @@ export function VideoPlayer({
   const wake = useCallback(() => {
     setChrome(true);
     window.clearTimeout(hideTimer.current);
+    // Ghim thì luôn giữ thanh điều khiển để người dùng tua được ngay.
+    if (pinned) return;
     hideTimer.current = window.setTimeout(() => {
       if (playing) setChrome(false);
     }, 2500);
-  }, [playing]);
+  }, [playing, pinned]);
 
   useEffect(() => {
+    setChrome(true);
     wake();
     return () => window.clearTimeout(hideTimer.current);
   }, [wake]);
@@ -299,18 +302,28 @@ export function VideoPlayer({
       onTouchStart={wake}
       className={
         pinned
-          ? "sticky top-0 z-40 flex max-h-[52vh] flex-col border-b border-border/50 bg-black"
+          ? "sticky top-0 z-40 flex flex-col border-b border-border/50 bg-black"
           : "fixed inset-0 z-[130] flex flex-col bg-black"
       }
     >
-      <div className="relative flex min-h-0 flex-1 items-center justify-center">
+      <div
+        className={
+          pinned
+            ? "relative mx-auto w-full max-w-[860px]"
+            : "relative flex min-h-0 flex-1 items-center justify-center"
+        }
+      >
         <video
           ref={videoRef}
           src={src ?? undefined}
           poster={video.thumbnail}
           playsInline
           {...NATIVE_CONTROLS}
-          className="max-h-full w-full bg-black object-contain"
+          className={
+            pinned
+              ? "aspect-video w-full bg-black object-contain"
+              : "max-h-full w-full bg-black object-contain"
+          }
           onClick={() =>
             videoRef.current?.paused
               ? void videoRef.current?.play().catch(() => {})
