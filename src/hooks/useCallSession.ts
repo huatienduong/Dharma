@@ -82,11 +82,19 @@ export function useCallSession(deps: CallDeps) {
   const [interim, setInterim] = useState("");
 
   /** Im lặng bao lâu thì coi là nói xong (ms) — chống cắt cụt "Xin chào". */
-  const CALL_SILENCE_MS = 1000;
+  const CALL_SILENCE_MS = 1400;
   /** Trần chờ cho một lượt nói (ms) — câu dài không bị treo. */
-  const CALL_MAX_UTTERANCE_MS = 6000;
+  const CALL_MAX_UTTERANCE_MS = 12000;
   /** Ngưỡng coi là "đang nói" khi đo âm lượng (RMS 0–1). */
-  const CALL_VOICE_ON = 0.06;
+  const CALL_VOICE_ON = 0.055;
+  /**
+   * Khoảng lặng tối thiểu sau khi trợ lý đọc xong mới mở lại mic (ms).
+   *
+   * 900ms là quá ngắn với điện thoại để loa ngoài: âm thanh cuối còn vọng vào
+   * micro, phiên nghe mới mở ra đúng lúc loa còn rung → câu đầu tiên người
+   * dùng nói bị nuốt và nghe như “không nghe”.
+   */
+  const CALL_ECHO_GUARD_MS = 1500;
 
   const callActiveRef = useRef(false);
   const aiSpeakingRef = useRef(false);
@@ -125,12 +133,29 @@ export function useCallSession(deps: CallDeps) {
   const lastAiWordAtRef = useRef(0);
   const lastAssistantEventAtRef = useRef(0);
   const recRef = useRef<RecLike | null>(null);
+  /**
+   * Phiên nghe hiện tại còn sống không.
+   *
+   * QUAN TRỌNG: trước đây mọi lớp giám sát (3s, 5s, 12s) đều gọi thẳng vào
+   * `startListening()`, hàm này lại luôn hủy phiên cũ rồi dựng phiên mới —
+   * kể cả khi phiên cũ vẫn chạy tốt. Kết quả: micro bật/tắt liên tục, mất
+   * đầu câu, điện thoại báo micro bận. Nay chỉ dựng lại khi phiên cũ THỰC SỰ
+   * chết, còn phiên sống thì giữ nguyên.
+   */
+  const sessionLiveRef = useRef(false);
+  /** Hẹn giờ mở lại mic đang chờ — dùng để gộp/cancel lệnh dựng lại. */
+  const reopenTimerRef = useRef(0);
   const startListeningRef = useRef<() => void>(() => {});
   /** Gọi kết thúc cuộc gọi từ trong `handleUtterance` (định nghĩa sau đó). */
   const endCallRef = useRef<() => void>(() => {});
 
   /** Gọi xong lượt đọc: trả trạng thái về "đang nghe" và mở lại mic. */
   const finishSpeaking = useCallback((spoken: string) => {
+    // onDone CÓ THỂ chạy hai lần: một lần từ chính lớp đọc to, một lần từ
+    // `.then()` bên dưới hoặc từ đồng hồ canh. Lần thứ hai sẽ hủy phiên nghe
+    // vừa mới mở và bật lại micro → “chập chờn” đúng lúc người dùng đang
+    // nói. Vì vậy chốt bằng cờ trạng thái: đang nói thì mới xử lý.
+    if (!aiSpeakingRef.current) return;
     if (speakGuardRef.current) {
       window.clearTimeout(speakGuardRef.current);
       speakGuardRef.current = 0;
@@ -142,7 +167,7 @@ export function useCallSession(deps: CallDeps) {
     lastSpokenRef.current = spoken;
     // Đợi hết vọng cuối rồi mới mở lại mic.
     aiFinishedAtRef.current = Date.now();
-    aiQuietUntilRef.current = Date.now() + 900;
+    aiQuietUntilRef.current = Date.now() + CALL_ECHO_GUARD_MS;
     setCallStatus("listening");
     startListeningRef.current();
   }, []);
@@ -150,14 +175,22 @@ export function useCallSession(deps: CallDeps) {
   /** Đọc to một câu rồi tự mở lại mic — dùng chung cho mọi lượt trả lời. */
   const speakThenListen = useCallback(
     (text: string) => {
+      // Đang đọc dở câu trước mà câu mới đã đến: cắt câu cũ trước, nếu không
+      // hai lượt đọc chồng tiếng — nghe như bị lặp, và onDone của lượt cũ đến
+      // muộn sẽ giành mic của lượt mới.
+      if (aiSpeakingRef.current) {
+        stopSpeaking();
+        aiSpeakingRef.current = false;
+      }
       aiSpeakingRef.current = true;
       speakSinceRef.current = Date.now();
+      sessionLiveRef.current = false;
       setInterim("");
       setCallStatus("speaking");
       lastAssistantEventAtRef.current = Date.now();
       // Đóng mic ngay khi bắt đầu đọc: không để trình duyệt nghe nhầm
       // giọng trợ lý thành câu hỏi của người dùng.
-      aiQuietUntilRef.current = Date.now() + 400;
+      aiQuietUntilRef.current = Date.now() + CALL_ECHO_GUARD_MS;
       const onDone = () => finishSpeaking(text);
       // ĐỒNG HỒ CANH: dù bất kỳ lý do nào (Web Speech nuốt lệnh đọc,
       // AudioContext bị khoá, máy chủ TTS im) khiến onDone không chạy thì vẫn
@@ -172,7 +205,7 @@ export function useCallSession(deps: CallDeps) {
           if (aiSpeakingRef.current) onDone();
         });
     },
-    [finishSpeaking, getVoiceId, speak],
+    [finishSpeaking, getVoiceId, speak, stopSpeaking],
   );
 
   /** Đàm thoại: xử lý một câu người dùng vừa nói. */
@@ -225,11 +258,17 @@ export function useCallSession(deps: CallDeps) {
     ) {
       return;
     }
+    // Phiên nghe hiện tại vẫn sống → KHÔNG dựng lại. Đây là chốt chặn quan
+    // trọng nhất chống micro chập chờn: dựng lại phiên sống sẽ cắt ngang câu
+    // người dùng đang nói và làm micro nhấp nháy bật/tắt.
+    if (sessionLiveRef.current) return;
     // Vừa đọc xong: chờ hết tiếng vọng rồi mới mở mic, nếu không trợ lý
     // nghe lại chính câu mình vừa đọc và tự hỏi lại nhau.
     const quiet = aiQuietUntilRef.current - Date.now();
     if (quiet > 0) {
-      window.setTimeout(() => {
+      if (reopenTimerRef.current) window.clearTimeout(reopenTimerRef.current);
+      reopenTimerRef.current = window.setTimeout(() => {
+        reopenTimerRef.current = 0;
         if (callActiveRef.current) startListeningRef.current();
       }, quiet + 40);
       return;
@@ -255,6 +294,8 @@ export function useCallSession(deps: CallDeps) {
         if (level >= CALL_VOICE_ON) {
           if (!loudSince) loudSince = now;
           lastLoudAt = now;
+          // Có tiếng → phiên nghe còn sống: chặn lớp giám sát dựng lại.
+          lastAssistantEventAtRef.current = now;
           return;
         }
         if (!loudSince) return;
@@ -320,6 +361,7 @@ export function useCallSession(deps: CallDeps) {
     const restartSession = () => {
       if (committed || !callActiveRef.current) return;
       stopWatchdog();
+      sessionLiveRef.current = false;
       try {
         rec.onend = null;
         rec.onerror = null;
@@ -328,7 +370,9 @@ export function useCallSession(deps: CallDeps) {
         /* noop */
       }
       recRef.current = null;
-      window.setTimeout(() => {
+      if (reopenTimerRef.current) window.clearTimeout(reopenTimerRef.current);
+      reopenTimerRef.current = window.setTimeout(() => {
+        reopenTimerRef.current = 0;
         if (callActiveRef.current && !committed) startListeningRef.current();
       }, 350);
     };
@@ -367,6 +411,7 @@ export function useCallSession(deps: CallDeps) {
       finalBuf = "";
       pendingBuf = "";
       recRef.current = null;
+      sessionLiveRef.current = false;
       stopWatchdog();
       try {
         rec.onend = null;
@@ -434,6 +479,7 @@ export function useCallSession(deps: CallDeps) {
 
     rec.onstart = () => {
       errorStreak = 0;
+      sessionLiveRef.current = true;
       lastAssistantEventAtRef.current = Date.now();
       if (callActiveRef.current) setCallStatus("listening");
     };
@@ -448,6 +494,12 @@ export function useCallSession(deps: CallDeps) {
       const now = Date.now();
       errorStreak = 0;
       lastEventAt = now;
+      // Cập nhật mốc "sự kiện" ở MỌI kết quả (kể cả rỗng). Trước đây mốc này
+      // chỉ đổi lúc mở phiên nghe và lúc trợ lý đọc xong, nên lớp giám sát 3
+      // giây tưởng phiên nghe chết sau 8 giây im lặng và dựng lại — cắt ngang
+      // câu người dùng đang nói. Đây là một nguyên nhân chính của “mic
+      // chập chờn”.
+      lastAssistantEventAtRef.current = now;
       if (!lastSpeechAt) speechStartedAt = now;
       lastSpeechAt = now;
       // Nối dấu thay vì ghi đè, để câu hiện ra đúng như đang nói.
@@ -476,6 +528,7 @@ export function useCallSession(deps: CallDeps) {
     };
     rec.onend = () => {
       recRef.current = null;
+      sessionLiveRef.current = false;
       stopWatchdog();
       cancelCommit();
       // Trình duyệt tự kết thúc phiên nghe: vẫn chốt câu đang dở nếu có.
@@ -494,6 +547,7 @@ export function useCallSession(deps: CallDeps) {
       }
     };
     recRef.current = rec;
+    sessionLiveRef.current = true;
     sessionStartedAt = Date.now();
     lastEventAt = sessionStartedAt;
     // Bảo vệ: Chrome/Safari đôi khi treo phiên nghe mà không báo lỗi. Không có
@@ -503,7 +557,9 @@ export function useCallSession(deps: CallDeps) {
       if (committed || !callActiveRef.current) return;
       // Đang có tiếng (đo được) → để đo mức lo, không dựng lại phiên nghe.
       if (loudSince) return;
-      if (Date.now() - lastEventAt < 12_000) return;
+      // 25 giây không có sự kiện nào mới coi như phiên nghe chết âm thầm
+      // (Chrome/Safari dừng phiên sau một khoảng im lặng dài).
+      if (Date.now() - lastEventAt < 25_000) return;
       lastEventAt = Date.now();
       restartSession();
     }, 2000);
@@ -518,6 +574,8 @@ export function useCallSession(deps: CallDeps) {
         if (level >= CALL_VOICE_ON) {
           if (!loudSince) loudSince = now;
           lastLoudAt = now;
+          // Có tiếng → phiên nghe còn sống: chặn lớp giám sát dựng lại.
+          lastAssistantEventAtRef.current = now;
           return;
         }
         if (!loudSince) return;
@@ -570,6 +628,11 @@ export function useCallSession(deps: CallDeps) {
 
   const endCall = useCallback(() => {
     callActiveRef.current = false;
+    sessionLiveRef.current = false;
+    if (reopenTimerRef.current) {
+      window.clearTimeout(reopenTimerRef.current);
+      reopenTimerRef.current = 0;
+    }
     try {
       recRef.current?.abort();
     } catch {
@@ -598,6 +661,7 @@ export function useCallSession(deps: CallDeps) {
   const toggleMute = useCallback(() => {
     mutedRef.current = !mutedRef.current;
     if (mutedRef.current) {
+      sessionLiveRef.current = false;
       try {
         recRef.current?.abort();
       } catch {
@@ -639,7 +703,8 @@ export function useCallSession(deps: CallDeps) {
         !micDeniedRef.current &&
         !aiSpeakingRef.current &&
         !sendingRef.current &&
-        Date.now() - lastAssistantEventAtRef.current > 12_000
+        // Chỉ canh khi phiên nghe đang CHẾT, không canh khi nó còn sống.
+        !sessionLiveRef.current
       ) {
         lastAssistantEventAtRef.current = Date.now();
         startListeningRef.current();
@@ -702,8 +767,10 @@ export function useCallSession(deps: CallDeps) {
         return;
       }
       // 3) Đang nghe nhưng phiên nghe chết âm thầm → dựng lại (nhanh hơn
-      //    đồng hồ 12 giây bên trên để người dùng ít phải chờ).
-      if (!sendingRef.current && now - lastAssistantEventAtRef.current > 8_000) {
+      //    đồng hồ 25 giây bên trong để người dùng ít phải chờ). CHỈ dựng
+      //    lại khi phiên hiện tại thực sự chết — nếu không, mỗi lần im lặng
+      //    dài sẽ hủy phiên đang chạy tốt và người dùng mất đầu câu.
+      if (!sendingRef.current && !sessionLiveRef.current) {
         lastAssistantEventAtRef.current = now;
         startListeningRef.current();
       }
@@ -714,6 +781,11 @@ export function useCallSession(deps: CallDeps) {
   useEffect(() => {
     return () => {
       callActiveRef.current = false;
+      sessionLiveRef.current = false;
+      if (reopenTimerRef.current) {
+        window.clearTimeout(reopenTimerRef.current);
+        reopenTimerRef.current = 0;
+      }
       try {
         recRef.current?.abort();
       } catch {

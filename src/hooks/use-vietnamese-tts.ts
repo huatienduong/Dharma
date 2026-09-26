@@ -54,6 +54,18 @@ export type SpeakOpts = {
 /* ------------------------------------------------------------------ */
 
 let sharedCtx: AudioContext | null = null;
+/**
+ * BufferSource đang phát — giữ tham chiếu để CẮT NGAY khi người dùng
+ * ngắt, thay vì đóng cả AudioContext.
+ *
+ * VÌ SAO ĐỔI: trước đây `stop()` đóng context rồi đặt null. Lượt phát sau
+ * phải tạo context mới, mà context tạo ngoài cư chạm của người dùng thường
+ * mở ở trạng thái `suspended` và `resume()` hay bị từ chối → `playWithWebAudio`
+ * ném lỗi → rơi sang HTMLAudio rồi Web Speech. Đó là lý do “bấm nghe thử
+ * giọng” lúc nào cũng loạt, và câu đầu tiên của mỗi lượt bị nuốt. Nay chỉ
+ * dừng buffer, context vẫn sống và phát lần sau ổn định.
+ */
+let activeSource: AudioBufferSourceNode | null = null;
 let speechPrimed = false;
 let noVietnameseVoiceWarned = false;
 
@@ -125,6 +137,7 @@ async function playWithWebAudio(dataUrl: string): Promise<void> {
     const src = ctx.createBufferSource();
     src.buffer = buffer;
     src.connect(ctx.destination);
+    activeSource = src;
     // Trừ thêm 3s cho việc giải mã/phát và cộng thêm độ dài âm thanh.
     const deadlineMs = (buffer.duration + 3) * 1000;
     const timer = window.setTimeout(() => {
@@ -133,10 +146,12 @@ async function playWithWebAudio(dataUrl: string): Promise<void> {
       } catch {
         /* noop */
       }
+      if (activeSource === src) activeSource = null;
       reject(new Error("webaudio-timeout"));
     }, deadlineMs);
     src.onended = () => {
       window.clearTimeout(timer);
+      if (activeSource === src) activeSource = null;
       resolve();
     };
     // AudioBufferSourceNode không có onerror — lỗi phát hiện qua việc context
@@ -209,15 +224,16 @@ export function useVietnameseTTS() {
       }
       audioRef.current = null;
     }
-    // Cắt buffer đang phát qua Web Audio: đóng context (nguồn gắn với nó
-    // im ngay) — lượt phát sau tự tạo context mới.
-    if (sharedCtx) {
+    // Cắt buffer đang phát qua Web Audio: dừng đúng source đang kêu (nghe
+    // tắt ngay) mà GIỮ nguyên AudioContext, để lượt phát sau không phải
+    // xin quyền phát lại từ đầu.
+    if (activeSource) {
       try {
-        void sharedCtx.close();
+        activeSource.stop();
       } catch {
         /* noop */
       }
-      sharedCtx = null;
+      activeSource = null;
     }
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();

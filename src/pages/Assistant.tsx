@@ -689,9 +689,24 @@ export default function Assistant() {
 
         if (opts?.fromCall) {
           sendingRef.current = false;
-          if (!finishReply()) return;
           // Trong cuộc gọi: đọc to bằng giọng người dùng đã chọn, đọc xong tự
           // mở lại mic → đàm thoại hai chiều liền mạch.
+          //
+          // Mọi đường thoát sớm ở đây đều PHẢI trả lại mic. Trước đây nhánh
+          // `!finishReply()` (tin vừa bị người dùng gỡ) return thẳng → micro
+          // đóng luôn, người dùng nói tiếp không ai nghe, đúng triệu chứng
+          // “không trả lời bằng giọng nói”.
+          if (!finishReply()) {
+            if (callActiveRef.current) {
+              setCallStatus("listening");
+              lastAssistantEventAtRef.current = Date.now();
+              window.setTimeout(
+                () => call.startListeningRef.current(),
+                500,
+              );
+            }
+            return;
+          }
           if (!callActiveRef.current) return;
           lastAssistantEventAtRef.current = Date.now();
           setCallStatus("speaking");
