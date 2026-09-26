@@ -11,6 +11,7 @@ import {
   decryptString,
   encryptString,
 } from "@/lib/secureStorage";
+import type { VideoInfo } from "@/lib/videoIntent";
 
 /**
  * Kết quả chuẩn hoá của các nhánh hỏi: nhánh đọc ảnh, nhánh đọc tệp và
@@ -28,6 +29,11 @@ export type Msg = {
   image?: { base64: string; mime: string };
   /** storageId ảnh AI tạo — nạp URL từ Convex File Storage khi hiển thị */
   imageStorageId?: string;
+  /**
+   * Video YouTube gợi ý cho câu trả lời này — hiển thị thẻ xem ngay trong
+   * khung chat, bấm là phát. Không gửi lên AI (chỉ lấy `role` + `content`).
+   */
+  video?: VideoInfo;
 };
 
 /* ------------------------------------------------------------------ */

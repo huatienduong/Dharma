@@ -30,6 +30,7 @@ import {
   type Msg,
 } from "@/lib/chatHelpers";
 import { callConvexAction } from "@/lib/convexAction";
+import { isVideoRequest, type VideoInfo } from "@/lib/videoIntent";
 import { getDeviceMeta } from "@/lib/deviceSecurity";
 import { wantsImage } from "@/lib/imageIntent";
 import { APP_VERSION } from "@/lib/version";
@@ -203,6 +204,44 @@ export default function Assistant() {
   // Nối hàm đọc-sau-khai-báo: hook đàm thoại cần đọc to, hàm đọc to lại do
   // hook trả về — dùng ref để không đụng tới mảng deps của useCallback.
   const speakThenListenRef = useRef<(text: string) => void>(() => {});
+
+  /**
+   * GẮN VIDEO VÀO CÂU TRẢ LỜI — người dùng chỉ cần hỏi hoặc dán link, AI
+   * trả lời xong ứng dụng tự tìm video YouTube và thêm thẻ xem vào đúng câu
+   * đó trong khung chat. Chạy nền, không chặn câu trả lời; lỗi thì bỏ qua,
+   * người dùng vẫn đọc được câu trả lời bình thường.
+   */
+  const attachVideo = useCallback(
+    (query: string, replyTs: number) => {
+      if (!isVideoRequest(query)) return;
+      void (async () => {
+        try {
+          const res = await callConvexAction<{
+            ok: boolean;
+            videos: VideoInfo[];
+            message?: string;
+          }>("videoSearch:find", { query }, 25_000);
+          const video = res?.ok ? res.videos[0] : undefined;
+          if (!video) {
+            if (res?.message) toast.info(res.message);
+            return;
+          }
+          // Sửa đúng câu trả lời đang chờ; nếu người dùng đã xoá hội thoại
+          // thì `ts` không còn trong lịch sử → không làm gì cả.
+          const nextHistory = historyRef.current.map((m) =>
+            m.ts === replyTs ? { ...m, video } : m,
+          );
+          if (nextHistory === historyRef.current) return;
+          historyRef.current = nextHistory;
+          setHistory(nextHistory);
+          void saveLocalChatSecure(nextHistory);
+        } catch {
+          /* Không tìm được video thì bỏ qua — không báo lỗi làm phiền */
+        }
+      })();
+    },
+    [],
+  );
 
   const call = useCallSession({
     micSupported,
@@ -740,6 +779,9 @@ export default function Assistant() {
           const nextHistory = [...historyRef.current, messageToSave, replyMsg];
           historyRef.current = nextHistory;
           setHistory(nextHistory);
+          // Người dùng hỏi về video (hoặc dán link) → sau khi trả lời xong,
+          // tự tìm video và gắn thẻ xem vào đúng câu này.
+          attachVideo(userMsg.content, replyMsg.ts);
           // Tải sẵn âm thanh câu trả lời này (chạy nền, không phát gì) để
           // khi người dùng bấm nút loa là có tiếng ngay, không phải chờ
           // máy chủ tổng hợp TTS.

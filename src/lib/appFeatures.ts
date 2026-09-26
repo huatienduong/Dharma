@@ -47,6 +47,10 @@ export const FEATURES: AppFeature[] = [
     how: `Bấm nút tệp để chọn tối đa ${MAX_FILES_PER_MESSAGE} tệp mỗi lượt (txt, md, csv, tsv, json, log, srt, xml, html, yaml, mã nguồn và PDF), rồi gửi kèm câu hỏi.`,
   },
   {
+    name: "Xem video ngay trong khung chat",
+    how: "Người dùng chỉ cần hỏi về video hoặc dán link YouTube. Trợ lý trả lời trước, sau đó ứng dụng tự tìm video và hiện thẻ xem ngay dưới câu trả lời — bấm nút play là xem tại chỗ, không cần mở app khác.",
+  },
+  {
     name: "Tạo hình minh hoạ Phật pháp",
     how: 'Chỉ cần nhờ bằng lời: "vẽ hình hoa sen", "minh hoạ tứ thánh đế" — hệ thống tự vẽ.',
   },

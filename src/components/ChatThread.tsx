@@ -6,9 +6,11 @@
  */
 
 import { BotAvatar } from "@/components/BotAvatar";
+import { VideoCard } from "@/components/VideoCard";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { formatTs, plainText, type Msg } from "@/lib/chatHelpers";
+import type { VideoInfo } from "@/lib/videoIntent";
 import { cn } from "@/lib/utils";
 import { useQuery } from "convex/react";
 import {
@@ -94,6 +96,7 @@ export function ChatThread({
             grouped={grouped}
             image={m.image}
             imageStorageId={m.imageStorageId}
+            video={m.video}
             onSpeak={() => onSpeakMessage(m)}
             speaking={readingTs === m.ts}
             loading={loadingTs === m.ts}
@@ -184,6 +187,7 @@ export function AssistantMessage({
   grouped,
   image,
   imageStorageId,
+  video,
   onSpeak,
   speaking,
   loading,
@@ -195,6 +199,8 @@ export function AssistantMessage({
   image?: { base64: string; mime: string };
   /** storageId ảnh AI tạo trong Convex File Storage */
   imageStorageId?: string;
+  /** Video YouTube gợi ý — hiện thẻ xem ngay dưới câu trả lời */
+  video?: VideoInfo;
   /**
    * Bấm nút loa → đọc to câu này (bấm lại khi đang đọc thì dừng).
    * Không truyền (undefined) thì không hiện nút — dùng cho câu đang hiện dần
@@ -264,6 +270,7 @@ export function AssistantMessage({
         <div className="inline-block max-w-full whitespace-pre-wrap break-words rounded-3xl rounded-bl-md border border-border/50 bg-card px-4 py-2.5 text-[18px] leading-[1.8] text-foreground/95 shadow-sm sm:text-[19px]">
           {text}
         </div>
+        {video && <VideoCard video={video} />}
         <div className="mt-1 flex items-center gap-1 pl-2 text-[12px] text-muted-foreground/70">
           <span>{formatTs(ts)}</span>
           {onSpeak && (
