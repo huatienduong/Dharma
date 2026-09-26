@@ -246,6 +246,7 @@ const CALL_OPEN_PATTERNS = [
 
 function isStartCallCommand(raw: string): boolean {
   const t = deaccent(raw.toLowerCase())
+    .replace(/thoai/g, "thoi") // "thoại" -> "thoi" để khớp mẫu
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -263,9 +264,10 @@ function isStartCallCommand(raw: string): boolean {
 
 /**
  * Số lượt hội thoại gửi kèm cho AI. Phải khớp `HISTORY_LIMIT` ở
- * `convex/aiChat.ts` (24) — đủ để trợ lý nhớ xuyên suốt cuộc trò chuyện.
+ * `convex/aiChat.ts` (16) — đủ để trợ lý nhớ xuyên suốt cuộc trò chuyện mà
+ * vẫn nằm trong hạn mức token của gói.
  */
-const CONTEXT_MESSAGES = 24;
+const CONTEXT_MESSAGES = 16;
 
 /**
  * Lời chào / cảm ơn thuần túy — trả lời ngay tại máy, không gọi AI.

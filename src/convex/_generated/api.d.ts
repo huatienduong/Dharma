@@ -11,7 +11,9 @@
 import type * as aiChat from "../aiChat.js";
 import type * as auth from "../auth.js";
 import type * as auth_emailOtp from "../auth/emailOtp.js";
+import type * as chatFallback from "../chatFallback.js";
 import type * as crons from "../crons.js";
+import type * as diagPrompt from "../diagPrompt.js";
 import type * as http from "../http.js";
 import type * as legalContent from "../legalContent.js";
 import type * as library from "../library.js";
@@ -28,7 +30,9 @@ declare const fullApi: ApiFromModules<{
   aiChat: typeof aiChat;
   auth: typeof auth;
   "auth/emailOtp": typeof auth_emailOtp;
+  chatFallback: typeof chatFallback;
   crons: typeof crons;
+  diagPrompt: typeof diagPrompt;
   http: typeof http;
   legalContent: typeof legalContent;
   library: typeof library;

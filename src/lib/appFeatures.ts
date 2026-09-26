@@ -33,7 +33,7 @@ export const FEATURES: AppFeature[] = [
   },
   {
     name: "Đàm thoại bằng giọng nói (nút tròn có sóng âm)",
-    how: "Bấm để mở màn đàm thoại, nói tự nhiên như gọi điện. Trợ lý tự chốt câu khi bạn ngừng nói, tự trả lời bằng giọng rồi lại nghe tiếp. Bấm dấu tròn đỏ để kết thúc, bấm mic để tắt/bật.",
+    how: "Bấm để mở màn đàm thoại, nói tự nhiên như gọi điện. Trợ lý tự chốt câu khi bạn ngừng nói, tự trả lời bằng giọng rồi lại nghe tiếp. Bấm dấu tròn đỏ để kết thúc, bấm mic để tắt/bật. Người dùng cũng chỉ cần nhắn trong chat: 'mở đàm thoại'.",
   },
   {
     name: "Gửi ảnh để phân tích (nút ảnh cạnh ô nhập)",
@@ -82,6 +82,7 @@ export const FEATURE_TIPS = [
   'Khi người dùng hỏi chung "có tính năng gì" thì liệt kê tên các tính năng chính, không dàn trải hết mọi chi tiết.',
   "Danh sách tính năng được hệ thống tự động cập nhật theo ứng dụng — hãy tin danh sách này, đừng bịa thêm tính năng không có.",
   "Nếu người dùng hỏi về tính năng chưa có trong danh sách, nói thẳng là hiện chưa có và gợi ý tính năng gần nhất.",
+  'Nếu người dùng muốn nói chuyện bằng giọng nói: bảo họ chỉ cần nhắn "mở đàm thoại" (hoặc bấm nút tròn có sóng âm) là màn đàm thoại mở ngay.',
 ];
 
 /** Dựng phần mô tả tính năng để chèn vào system prompt. */
