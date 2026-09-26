@@ -1131,15 +1131,33 @@ export default function Assistant() {
       // dưới bàn phím.
       style={vv.height ? { height: `${vv.height}px` } : undefined}
     >
-      {/* ---------- Header: gọi bên trái, tên ở giữa, điều khiển bên phải ---------- */}
+      {/* ---------- Header: tên bên trái, nút gọi / xem video / cài đặt bên phải ---------- */}
       <header
         // Bàn phím bật làm trình duyệt đẩy layout viewport; dịch thanh tiêu
         // đề xuống đúng mép trên của vùng nhìn thật để nó CỐ ĐỊNH, không bị
         // đẩy lên hay bị che.
         style={vv.offsetTop ? { transform: `translateY(${vv.offsetTop}px)` } : undefined}
-        className="fixed inset-x-0 top-0 z-40 grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-1 border-b border-border/60 bg-background/95 px-2 backdrop-blur-md sm:px-4"
+        className="fixed inset-x-0 top-0 z-40 grid h-16 grid-cols-[1fr_auto] items-center gap-1 border-b border-border/60 bg-background/95 px-2 backdrop-blur-md sm:px-4"
       >
-        <div className="flex min-w-0 items-center gap-1 justify-self-start">
+        {/* Bên trái: nút quay lại (nếu có) + tên ứng dụng */}
+        <div className="flex min-w-0 items-center gap-1.5">
+          {!isHome && (
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-foreground transition hover:bg-accent"
+              aria-label="Quay lại"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          )}
+          <p className="min-w-0 truncate text-left text-[14px] font-extrabold uppercase tracking-[0.14em] text-foreground sm:text-[15px] sm:tracking-[0.18em]">
+            Trợ lý Phật học
+          </p>
+        </div>
+
+        {/* Bên phải: đàm thoại, xem video, cài đặt */}
+        <div className="flex shrink-0 items-center gap-1 justify-self-end">
           <button
             type="button"
             onClick={openCall}
@@ -1158,25 +1176,6 @@ export default function Assistant() {
           >
             <TvMinimalPlay className="h-5 w-5 shrink-0" />
           </button>
-          {!isHome && (
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-foreground transition hover:bg-accent"
-              aria-label="Quay lại"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-          )}
-        </div>
-
-        <div className="flex min-w-0 items-center justify-center gap-2">
-          <p className="max-w-[9.5rem] truncate text-center text-[13px] font-extrabold uppercase tracking-[0.12em] text-foreground sm:max-w-none sm:text-[15px] sm:tracking-[0.18em]">
-            Trợ lý Phật học
-          </p>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-1 justify-self-end">
           <button
             type="button"
             onClick={() => navigate("/settings?section=about")}
