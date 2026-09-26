@@ -24,16 +24,8 @@ export function HomeGreeting({
       className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center gap-6 overflow-hidden text-center"
     >
       {/* ---------- Logo robot ---------- */}
-      <div className="relative flex shrink-0 items-center justify-center">
-        <span
-          aria-hidden
-          className="absolute -inset-4 rounded-full bg-primary/10 blur-xl sm:-inset-5"
-        />
-        <BotAvatar
-          size="lg"
-          glow
-          className="relative size-20 shadow-lg sm:size-24"
-        />
+      <div className="flex shrink-0 items-center justify-center">
+        <BotAvatar size="lg" glow className="size-20 sm:size-24" />
       </div>
 
       {/* ---------- Lời chào + câu hỏi ---------- */}
