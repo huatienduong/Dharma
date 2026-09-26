@@ -547,11 +547,128 @@ async function synthesizeElevenLabs(
  * Android và khi có tiếng ồn — nguyên nhân người dùng phải sửa lại câu hỏi
  * trước khi gửi. Nên ta ghi âm song song rồi chép lại bằng Whisper, cho
  * văn bản chính xác hơn nhiều. Bản trình duyệt vẫn giữ làm dự phòng.
+ *
+ * Ba việc quyết định độ chính xác, đều rẻ và đều làm việc:
+ *  1. `prompt` — đưa bản nghe của trình duyệt cùng từ vựng Phật học làm
+ *     ngữ cảnh; Whisper dựa vào đó để chọn đúng chữ có dấu.
+ *  2. `verbose_json` — lấy từng đoạn kèm `no_speech_prob` để loại đoạn
+ *     ảo (Whisper hay tự thêm câu quảng cáo khi đầu đoạn im lặng).
+ *  3. Sửa chính tả bằng model nhanh — chỉ sửa dấu và thuật ngữ, không
+ *     đổi ý, có soát để không rò rỉ câu trả lời vào câu hỏi.
  */
 const GROQ_STT_PREFERENCE = [
   "whisper-large-v3",
   "distil-whisper-large-v3",
 ];
+
+/** Từ vựng Phật học hay bị chép sai — đưa vào `prompt` cho Whisper bám theo. */
+const BUDDHIST_VOCAB_HINT =
+  "Trợ lý Phật học, Kinh tạng Pāli, Theravāda, Tứ Diệu Đế, Bát Chánh Đạo, " +
+  "dukkha, anicca, anatta, vipassanā, samatha, Abhidhamma, Dhammapada, " +
+  "chánh niệm, giới luật, thiền tứ niệm xứ, tánh không, duyên khởi, nghiệp, " +
+  "luật tăng, Phật, Pháp, Tăng.";
+
+/**
+ * Câu ngắn mà Whisper tự thêm khi đoạn đầu im lặng. CHỈ loại khi toàn bộ
+ * kết quả đúng bằng một trong số này — trong câu hỏi thật chúng có thể là
+ * từ người dùng nói thật, nên không được xoá ở giữa văn bản.
+ */
+const STT_NOISE_ONLY = new Set([
+  "cam on ban",
+  "cam on",
+  "xin cam on",
+  "vang",
+  "da",
+  "ua",
+  "ok",
+  "okay",
+  "xin hai bam",
+  "hai bam vao",
+  "ban co the nghe toi khong",
+  "toi khong nghe ro",
+  "phu de",
+  "phu de do",
+  "dich boi",
+  "theo doi",
+  "dang ky",
+  "nhac nen",
+]);
+
+/** Cách viết thường gặp → cách viết chuẩn (thuật ngữ Pāli, tiếng Việt). */
+const PALI_SPELLING: [RegExp, string][] = [
+  [/\bvipassana\b/gi, "vipassanā"],
+  [/\bsamatha\b/gi, "samatha"],
+  [/\bpali\b/gi, "Pāli"],
+  [/\btheravada\b/gi, "Theravāda"],
+  [/\bmetta\b/gi, "mettā"],
+  [/\bkaruna\b/gi, "karuṇā"],
+  [/\bupekkha\b/gi, "upekkhā"],
+  [/\bsamadhi\b/gi, "samādhi"],
+  [/\bnguoi\b/gi, "người"],
+  [/\bkhong\b/gi, "không"],
+  [/\bnghien\b/gi, "nghiêm"],
+  [/\bpham\b/gi, "phạm"],
+  [/\bluat\b/gi, "luật"],
+  [/\bthien\b/gi, "thiền"],
+  [/\bhoc\b/gi, "học"],
+];
+
+/**
+ * Bỏ lặp: Whisper đôi khi lặp một cụm ("cảm ơn cảm ơn cảm ơn") khi audio
+ * chỉ có tiếng ồn. Cắt cụm bị lặp, nhưng chỉ khi lặp NGUYÊN VẸN từ 3 lần
+ * trở lên — lặp tự nhiên trong tiếng Việt ("rất rất vui") phải giữ lại.
+ */
+function collapseLoops(text: string): string {
+  const words = text.split(/\s+/);
+  let guard = 0;
+  let changed = true;
+  while (changed && guard++ < 12) {
+    changed = false;
+    for (let size = Math.min(6, Math.floor(words.length / 3)); size >= 1; size--) {
+      for (let i = 0; i + size * 3 <= words.length; i++) {
+        const chunk = words.slice(i, i + size).join(" ").toLowerCase();
+        const same = (at: number) =>
+          words.slice(at, at + size).join(" ").toLowerCase() === chunk;
+        if (same(i) && same(i + size) && same(i + size * 2)) {
+          words.splice(i + size * 2, size);
+          changed = true;
+          break;
+        }
+      }
+      if (changed) break;
+    }
+  }
+  return words.join(" ");
+}
+
+/** Làm sạch và chuẩn hoá văn bản Whisper trả về. */
+function tidyVietnamese(raw: string): string {
+  let text = raw
+    .replace(/\[[^\]]*\]|\((?:inaudible|silence|background noise|music)[^)]*\)/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return "";
+
+  const bare = text
+    .toLowerCase()
+    .replace(/[.,!?;:…“”"'()\-–—]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (STT_NOISE_ONLY.has(bare)) return "";
+
+  text = collapseLoops(text);
+  for (const [pattern, replacement] of PALI_SPELLING) {
+    text = text.replace(pattern, replacement);
+  }
+  text = text.replace(/\s+/g, " ").trim();
+  if (!text) return "";
+
+  // Viết hoa đầu câu và có dấu kết câu cho dễ đọc.
+  text = text.charAt(0).toLocaleUpperCase("vi") + text.slice(1);
+  if (!/[.!?…]$/.test(text)) text += "?";
+  return text;
+}
+
 
 const sttModelsCache = new Map<string, { at: number; models: string[] }>();
 const STT_MODELS_TTL_MS = 30 * 60_000;
@@ -591,6 +708,69 @@ async function listGroqSttModels(groqKey: string): Promise<string[]> {
 }
 
 /**
+ * SỬA CHÍNH TẢ sau khi chép — đây là bước quyết định "rõ ràng, không sai".
+ *
+ * Whisper rất tốt ở nhận dạng nhưng hay trả về câu thiếu dấu tiếng Việt
+ * ("cam on thay co", "nguoi ta noi gi") — đọc lên rất khó hiểu và gửi cho
+ * trợ lý cũng dễ hiểu sai. Model ngôn ngữ sửa nốt dấu và thuật ngữ trong
+ * khoảng 0.3s, chỉ sửa chính tả, tuyệt đối không trả lời câu hỏi.
+ *
+ * Có chốt an toàn: chỉ nhận kết quả khi độ dài tương đối hợp lý, không
+ * chứa dấu xuống dòng, không phải phản hồi dài. Sai thì giữ nguyên bản gốc.
+ */
+const POLISH_SYSTEM = `Bạn là công cụ SỬA CHÍNH TẢ tiếng Việt cho giọng nói tự động (Whisper). Nhiệm vụ duy nhất của bạn:
+1. Thêm đầy đủ dấu tiếng Việt cho mọi từ thiếu dấu.
+2. Sửa chính tả từ sai (ví dụ: "cam on" -> "cảm ơn", "thay co" -> "thầy cô", "nguoi" -> "người", "phat gia" -> "Phật giáo", "chah niem" -> "chánh niệm").
+3. Dùng đúng thuật ngữ Phật học: Kinh tạng Pāli, Tứ Diệu Đế, Bát Chánh Đạo, vipassanā, samatha, anicca, dukkha, anatta, chánh niệm, giới luật, duyên khởi, vô ngã, tánh không, luật tăng, ngũ uẩn, tham muốn.
+4. Viết hoa chữ cái đầu câu và thêm dấu chấm câu.
+5. Bỏ lặp từ bị lặp do nhiễu âm thanh.
+
+QUY TẮC TUYỆT ĐỐI:
+- Giữ nguyên ý và thứ tự từ. CHỈ sửa lỗi chính tả, KHÔNG thêm, KHÔNG bớt, KHÔNG viết lại.
+- TUYỆT ĐỐI KHÔNG trả lời nội dung câu, không giải thích, không thêm lời dẫn, không bọc trong dấu nháy.
+- Trả về đúng MỘT dòng duy nhất.`;
+
+async function polishVietnamese(raw: string): Promise<string> {
+  const text = raw.trim();
+  if (text.length < 2) return raw;
+  const groqKey = process.env.GROQ_API_KEY;
+  if (!groqKey) return raw;
+  try {
+    const models = await listGroqModels(groqKey, false);
+    const provider = createOpenAICompatible({
+      name: "groq-polish",
+      baseURL: GROQ_BASE_URL,
+      apiKey: groqKey,
+    });
+    const result = await generateText({
+      model: provider(models[0]),
+      system: POLISH_SYSTEM,
+      messages: [{ role: "user", content: text }],
+      temperature: 0.1,
+      maxOutputTokens: 400,
+      maxRetries: 0,
+    });
+    const fixed = result.text
+      .replace(/^["'`\u201c\u2018]+/, "")
+      .replace(/["'`\u201d\u2019]+$/, "")
+      .replace(/^(?:Dung|Dạ|Vâng|Được|Đây là)[,:]?\s*/i, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    // Chốt an toàn: quá ngắn/dài = mô hình đang viết lại chứ không sửa lỗi.
+    if (fixed.length < 2) return raw;
+    if (fixed.length < text.length * 0.5 || fixed.length > text.length * 1.8 + 12) {
+      return raw;
+    }
+    if (/[.!?]\s+[A-ZÀ-ỸĐ]/.test(fixed) && fixed.length > text.length + 20) {
+      return raw; // dấu hiệu trả lời nhiều câu chứ không sửa chính tả
+    }
+    return fixed;
+  } catch {
+    return raw;
+  }
+}
+
+/**
  * CHÉP LỜI NÓI — nhận audio base64, trả về văn bản tiếng Việt.
  *
  * Cố định `temperature: 0` vì đây là bài toán nghe chính tả, không sáng tạo;
@@ -602,8 +782,12 @@ export const transcribe = action({
     audioMime: v.optional(v.string()),
     deviceId: v.optional(v.string()),
     integrity: v.optional(v.string()),
+    /** Bản nghe sơ bộ của trình duyệt — dùng làm ngữ cảnh cho Whisper. */
+    browserText: v.optional(v.string()),
+    /** Bỏ qua bước sửa chính tả (dùng cho bản dự phòng nhanh). */
+    skipPolish: v.optional(v.boolean()),
   },
-  handler: async (ctx, { audioBase64, audioMime, deviceId, integrity }) => {
+  handler: async (ctx, { audioBase64, audioMime, deviceId, integrity, browserText, skipPolish }) => {
     const denied = await checkRateLimit(ctx, "ask", deviceId, integrity);
     if (denied) return { ok: false as const, message: denied };
     const groqKey = process.env.GROQ_API_KEY;
@@ -632,6 +816,10 @@ export const transcribe = action({
         ? "ogg"
         : "webm";
     const models = await listGroqSttModels(groqKey);
+    // Ngữ cảnh: bản nghe của trình duyệt + từ vựng ngành. Ngắn gọn, dưới
+    // giới hạn prompt của Whisper, nhưng đủ để nó chọn đúng dấu tiếng Việt.
+    const hint = (browserText ?? "").trim().slice(0, 220);
+    const prompt = [hint, BUDDHIST_VOCAB_HINT].filter(Boolean).join(" ").slice(0, 480);
     let lastError = "không rõ";
     for (const model of models) {
       try {
@@ -644,6 +832,8 @@ export const transcribe = action({
         form.append("language", "vi");
         form.append("task", "transcribe");
         form.append("temperature", "0");
+        if (prompt) form.append("prompt", prompt);
+        form.append("response_format", "verbose_json");
         const res = await fetch(`${GROQ_BASE_URL}/audio/transcriptions`, {
           method: "POST",
           headers: { Authorization: `Bearer ${groqKey}` },
@@ -655,10 +845,28 @@ export const transcribe = action({
           lastError = `${model}: HTTP ${res.status} ${detail.slice(0, 140)}`;
           continue;
         }
-        const json = (await res.json()) as { text?: string };
-        const text = (json.text ?? "").trim();
-        if (text) return { ok: true as const, text };
-        lastError = `${model}: phản hồi không có văn bản`;
+        const json = (await res.json()) as {
+          text?: string;
+          segments?: { text?: string; no_speech_prob?: number }[];
+        };
+        // Bỏ đoạn mà Whisper tự nhận là không có tiếng nói — đây là nguồn
+        // phổ biến của câu rác kiểu "Xin hãy bấm vào nút bên dưới".
+        const segments = (json.segments ?? []).filter(
+          (s) => typeof s.no_speech_prob !== "number" || s.no_speech_prob < 0.6,
+        );
+        const raw = (segments.length
+          ? segments.map((s) => s.text ?? "").join(" ")
+          : (json.text ?? "")
+        )
+          .trim();
+        const text = tidyVietnamese(raw);
+        if (!text) {
+          lastError = `${model}: nghe ra toàn tiếng ồn`;
+          continue;
+        }
+        if (skipPolish) return { ok: true as const, text, polished: false };
+        const polished = await polishVietnamese(text);
+        return { ok: true as const, text: polished, polished: polished !== text };
       } catch (err) {
         lastError = `${model}: ${err instanceof Error ? err.message : String(err)}`;
       }

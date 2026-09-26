@@ -26,6 +26,7 @@ import {
   Eraser,
   Heart,
   ImagePlus,
+  Loader2,
   Mic,
   MicOff,
   Phone,
@@ -215,9 +216,11 @@ export default function Assistant() {
   const {
     supported: micSupported,
     listening,
+    refining: micRefining,
+    interim: micInterim,
     start,
     stop,
-    refine: refineUtterance,
+    transcribeClip,
   } = useVoiceSearch();
   const {
     speak: speakVI,
@@ -623,6 +626,13 @@ export default function Assistant() {
   /* ----- Đàm thoại: xử lý một câu người dùng vừa nói ----- */
   const handleUtterance = useCallback(
     (text: string) => {
+      // Câu rỗng (nghe ra tiếng ồn) → nghe lại, không gửi lên trợ lý.
+      if (!text.trim()) {
+        setInterim("");
+        if (callActiveRef.current) setCallStatus("listening");
+        window.setTimeout(() => startListeningRef.current(), 300);
+        return;
+      }
       if (busyRef.current || sendingRef.current) {
         window.setTimeout(() => startListeningRef.current(), 600);
         return;
@@ -690,8 +700,10 @@ export default function Assistant() {
         }
         // Dừng ghi âm rồi chép lại: văn bản chính xác hơn nhiều so với bản
         // nghe trực tiếp của trình duyệt. Lỗi thì giữ nguyên bản gốc.
+        setCallStatus("thinking");
+        setInterim(t);
         void stopMicRecording().then((clip) =>
-          refineUtterance(t, clip).then((better) => handleUtterance(better)),
+          transcribeClip(clip, t).then((better) => handleUtterance(better)),
         );
       }
     };
@@ -724,7 +736,7 @@ export default function Assistant() {
     } catch {
       /* đã start — bỏ qua */
     }
-  }, [handleUtterance]);
+  }, [handleUtterance, transcribeClip]);
 
   useEffect(() => {
     startListeningRef.current = startListening;
@@ -900,6 +912,12 @@ export default function Assistant() {
 
   const onVoiceChat = useCallback(
     (text: string) => {
+      // Không gửi câu rỗng khi nghe ra toáng tiếng ồn — chỉ báo lại cho
+      // người dùng biết để họ nói lại.
+      if (!text.trim()) {
+        toast("Mình chưa nghe rõ. Bạn nói lại giúp nhé.");
+        return;
+      }
       void send(text);
     },
     [send],
@@ -1139,13 +1157,18 @@ export default function Assistant() {
               <button
                 type="button"
                 onClick={() => (listening ? stop() : start(onVoiceChat))}
+                disabled={micRefining}
                 aria-label={listening ? "Dừng nghe" : "Hỏi bằng giọng nói"}
                 className={cn(
-                  "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground",
+                  "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground disabled:opacity-60",
                   listening && "bg-destructive/10 text-destructive",
                 )}
               >
-                <Mic className="h-[18px] w-[18px]" />
+                {micRefining ? (
+                  <Loader2 className="h-[18px] w-[18px] animate-spin text-gold" />
+                ) : (
+                  <Mic className="h-[18px] w-[18px]" />
+                )}
                 {listening && (
                   <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
@@ -1170,6 +1193,25 @@ export default function Assistant() {
             </Button>
           </div>
 
+          {/* Trạng thái nghe / chép lại: người dùng luôn biết ứng dụng đang
+              nghe gì và đã nghe được bao nhiêu. */}
+          {(listening || micRefining || micInterim) && (
+            <div className="mt-2 flex items-center gap-2 px-1 text-[13px] text-muted-foreground">
+              {micRefining ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-gold" />
+                  <span>Đang chép lại cho rõ và đúng dấu…</span>
+                </>
+              ) : (
+                <>
+                  <span className="flex h-2 w-2 shrink-0 animate-pulse rounded-full bg-destructive" />
+                  <span className="truncate">
+                    {micInterim || "Đang nghe… nói xong bấm lại để gửi"}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
         </form>
 
       {callOpen && (
