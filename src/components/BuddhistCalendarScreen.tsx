@@ -23,10 +23,11 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Sparkles,
   Sprout,
 } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 /** Cột lịch: thứ Hai → Chủ Nhật. */
 const WEEK_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
@@ -101,6 +102,22 @@ function MoonGlyph({ phase }: { phase: ReturnType<typeof moonPhase> }) {
             : "left-0 rounded-l-full bg-primary/30",
         )}
       />
+    </span>
+  );
+}
+
+/** Đồng hồ chạy từng giây, theo giờ Việt Nam (giờ máy đang dùng). */
+function LiveClock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    <span className="tabular-nums text-[15px] font-semibold text-foreground">
+      {pad(now.getHours())}:{pad(now.getMinutes())}:{pad(now.getSeconds())}
     </span>
   );
 }
@@ -211,6 +228,15 @@ export function BuddhistCalendarScreen({ onClose }: { onClose: () => void }) {
                 {moonPhase(pickedLunar)}
               </span>
             </div>
+          </div>
+
+          {/* Giờ hiện tại, cập nhật mỗi giây */}
+          <div className="mt-3 flex items-center gap-2 border-t border-border/50 pt-3">
+            <Clock className="h-4 w-4 shrink-0 text-primary" />
+            <LiveClock />
+            <span className="text-[13px] text-muted-foreground">
+              giờ Việt Nam
+            </span>
           </div>
 
           <div className="mt-3 flex flex-wrap gap-1.5">
