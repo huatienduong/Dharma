@@ -36,6 +36,11 @@ import {
   isVideoRequest,
   type VideoInfo,
 } from "@/lib/videoIntent";
+import {
+  isBuddhistTopic,
+  keepBuddhistVideos,
+  NO_BUDDHIST_VIDEO_MESSAGE,
+} from "@/lib/buddhistVideoFilter";
 import { searchVideoInBrowser } from "@/lib/videoSearchClient";
 import { loadYouTubeKey } from "@/lib/youtubeKey";
 import { getDeviceMeta } from "@/lib/deviceSecurity";
@@ -236,7 +241,8 @@ export default function Assistant() {
       let warned = false;
       void (async () => {
         const apply = (list: VideoInfo[]) => {
-          const videos = list.slice(0, 3);
+          // Chỉ gắn video về Phật giáo — nội dung khác không hiển thị.
+          const videos = keepBuddhistVideos(list, true).slice(0, 3);
           if (!videos.length) return false;
           // Sửa đúng câu trả lời đang chờ; nếu người dùng đã xoá hội thoại
           // thì `ts` không còn trong lịch sử → không làm gì cả.
@@ -274,8 +280,11 @@ export default function Assistant() {
         const local = await searchVideoInBrowser(query, key).catch(() => []);
         if (apply(local)) return;
         if (!warned) {
+          warned = true;
           toast.info(
-            "Chưa tìm được video. Bạn dán link YouTube cụ thể là Trợ lý mở xem ngay trong khung chat nhé.",
+            isBuddhistTopic(query)
+              ? NO_BUDDHIST_VIDEO_MESSAGE
+              : "Trợ lý chỉ tìm và đề xuất video về Phật giáo. Bạn thử chủ đề như Tứ Đế, Tánh niệm hay Vipassana nhé.",
           );
         }
       })();

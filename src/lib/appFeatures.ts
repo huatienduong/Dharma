@@ -47,12 +47,12 @@ export const FEATURES: AppFeature[] = [
     how: `Bấm nút tệp để chọn tối đa ${MAX_FILES_PER_MESSAGE} tệp mỗi lượt (txt, md, csv, tsv, json, log, srt, xml, html, yaml, mã nguồn và PDF), rồi gửi kèm câu hỏi.`,
   },
   {
-    name: "Tìm và xem video (nút TV cạnh nút điện thoại)",
-    how: "Bấm nút TV ở góc trên trái (ngay cạnh nút điện thoại) để mở màn hình Tìm video: gõ chủ đề rồi bấm 'Tìm', kết quả hiện ngay, bấm video nào là phát ngay trong màn hình đó. Cuối màn hình có mục 'Đề xuất chủ đề' (Tứ Đế, Tánh niệm, Vipassana…) — bấm một chủ đề là có video, không cần gõ. Nút mũi tên quay lại khung chat.",
+    name: "Xem video cùng Trợ lý (nút TV cạnh nút điện thoại)",
+    how: "Bấm nút TV ở góc trên trái (ngay cạnh nút điện thoại) để mở màn hình 'Xem video cùng Trợ lý Phật học': gõ chủ đề rồi bấm 'Tìm', kết quả hiện ngay, bấm video nào là phát ngay trong màn hình đó. Cuối màn hình có mục 'Đề xuất chủ đề' (Tứ Đế, Tánh niệm, Vipassana…) — bấm một chủ đề là có video, không cần gõ. Màn hình này CHỈ tìm và hiện video về Phật giáo; nếu họ hỏi chủ đề khác thì nói thẳng là Trợ lý chỉ làm video Phật học. Nút mũi tên quay lại khung chat.",
   },
   {
     name: "Xem video ngay trong khung chat",
-    how: "KHÔNG có nút tìm video nào trong khung chat — người dùng chỉ cần NHẮN bằng lời, ví dụ 'tôi muốn xem video về nghiệp cú', 'cho mình xem video giảng về tánh niệm', hoặc dán thẳng link YouTube. Trợ lý trả lời trước, ứng dụng tự tìm và gắn tối đa 3 video đề xuất ngay dưới câu trả lời; bấm video nào thì phát ngay trong khung chat. Muốn tìm theo chủ đề chính xác hơn thì dán khoá YouTube Data API vào Cài đặt → Video YouTube; dán link YouTube thì xem được ngay, không cần khoá.",
+    how: "KHÔNG có nút tìm video nào trong khung chat — người dùng chỉ cần NHẮN bằng lời, ví dụ 'tôi muốn xem video về nghiệp quả', 'cho mình xem video giảng về tánh niệm', hoặc dán thẳng link YouTube. Trợ lý trả lời trước, ứng dụng tự tìm và gắn tối đa 3 video đề xuất ngay dưới câu trả lời; bấm video nào thì phát ngay trong khung chat. Muốn tìm theo chủ đề chính xác hơn thì dán khoá YouTube Data API vào Cài đặt → Video YouTube; dán link YouTube thì xem được ngay, không cần khoá.",
   },
   {
     name: "Tạo hình minh hoạ Phật pháp",

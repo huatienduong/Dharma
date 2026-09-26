@@ -9,6 +9,11 @@
 
 import { Button } from "@/components/ui/button";
 import { BotAvatar } from "@/components/BotAvatar";
+import {
+  isBuddhistTopic,
+  keepBuddhistVideos,
+  NO_BUDDHIST_VIDEO_MESSAGE,
+} from "@/lib/buddhistVideoFilter";
 import { searchVideoInBrowser } from "@/lib/videoSearchClient";
 import type { VideoInfo } from "@/lib/videoIntent";
 import { loadYouTubeKey } from "@/lib/youtubeKey";
@@ -41,19 +46,25 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
   const run = async (q: string) => {
     const topic = q.trim();
     if (!topic || busy) return;
-    setBusy(true);
     setMessage("");
     setPlaying(null);
+    // Chỉ tìm nội dung Phật giáo: chủ đề khác Phật học thì báo luôn, khỏi
+    // tìm để không hiện kết quả lạc đề.
+    if (!isBuddhistTopic(topic)) {
+      setVideos([]);
+      setMessage(NO_BUDDHIST_VIDEO_MESSAGE);
+      return;
+    }
+    setBusy(true);
     setSearched(topic);
     try {
       const key = await loadYouTubeKey().catch(() => "");
-      const found = await searchVideoInBrowser(topic, key);
+      const found = keepBuddhistVideos(
+        await searchVideoInBrowser(topic, key),
+        true,
+      );
       setVideos(found);
-      if (!found.length) {
-        setMessage(
-          "Chưa tìm được video. Bạn dán khoá YouTube ở Cài đặt → Video YouTube thì tìm chính xác hơn.",
-        );
-      }
+      if (!found.length) setMessage(NO_BUDDHIST_VIDEO_MESSAGE);
     } catch {
       setMessage("Chưa tìm được video. Bạn thử lại sau nhé.");
     } finally {
@@ -74,7 +85,7 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
           <ArrowLeft className="h-5 w-5" />
         </button>
         <p className="min-w-0 flex-1 truncate text-[15px] font-semibold">
-          Tìm video trên YouTube
+          Xem video cùng Trợ lý Phật học
         </p>
       </div>
 
@@ -219,7 +230,7 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
             Đề xuất chủ đề
           </h2>
           <p className="mt-1 text-[12px] text-muted-foreground/80">
-            Bấm một chủ đề để xem video tương ứng ngay tại đây.
+            Trợ lý chỉ tìm video về Phật giáo. Bấm một chủ đề để xem ngay tại đây.
           </p>
           <ul className="mt-3 flex flex-wrap gap-2">
             {SUGGESTIONS.map((s) => (
@@ -249,7 +260,7 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
           <p className="text-[13px] leading-relaxed text-muted-foreground">
             Muốn hỏi thêm về nội dung video? Quay lại khung chat và nhắn
             &ldquo;cho mình xem video về …&rdquo; — Trợ lý trả lời kèm và gửi
-            danh sách video vào đúng câu đó.
+            danh sách video Phật học vào đúng câu đó.
           </p>
         </section>
       </div>
