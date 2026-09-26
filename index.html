@@ -2,16 +2,13 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <!-- Logo runtime sẽ thay favicon và apple-touch-icon bằng ảnh mới trong Convex Storage. -->
-    <!-- Mở kết nối tới máy chủ Convex NGAY từ đầu: app dùng websocket + API
-         + ảnh logo. Không có preconnect thì mỗi lần mở app phải chờ bắt
+    <!-- Mở kết nối tới máy chủ Convex NGAY từ đầu: app dùng websocket + API.
+         Không có preconnect thì mỗi lần mở app phải chờ bắt
          tay/TLS riêng cho từng origin → vài trăm ms trên mạng chậm. -->
     <link rel="preconnect" href="https://determined-rabbit-619.convex.cloud" crossorigin />
-    <link rel="dns-prefetch" href="https://determined-rabbit-619.convex.site" />
-    <link rel="preconnect" href="https://determined-rabbit-619.convex.site" crossorigin />
-    <link rel="icon" type="image/png" href="https://determined-rabbit-619.convex.site/logo" />
+    <link rel="icon" type="image/svg+xml" href="./app-icon.svg" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="apple-touch-icon" type="image/png" href="https://determined-rabbit-619.convex.site/logo" />
+    <link rel="apple-touch-icon" href="./app-icon.svg" />
     <meta name="theme-color" content="#17100a" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
