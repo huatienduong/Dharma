@@ -142,6 +142,25 @@ async function searchYouTube(
 }
 
 /**
+ * VIDEO LIÊN QUAN — gợi ý theo đúng nội dung đang xem, dùng tiêu đề video
+ * đó làm từ khoá (bỏ chữ thừa, cắt ngắn) rồi lọc theo chủ đề Phật giáo.
+ * Video đang xem không nằm trong danh sách của chính nó.
+ */
+export async function fetchRelatedVideos(
+  video: VideoInfo,
+  limit = 12,
+): Promise<VideoInfo[]> {
+  const title = (video.title ?? "").replace(/\s*[|\-–—].*$/, "").trim();
+  if (!title) return fetchSuggestedVideos(limit);
+  const topic = title.slice(0, 70);
+  const found = await searchYouTube(
+    isBuddhistTopic(topic) ? topic : `${topic} Phật giáo`,
+    limit + 1,
+  );
+  return found.filter((v) => v.videoId !== video.videoId).slice(0, limit);
+}
+
+/**
  * DANH SÁCH GỢI Ý — video Phật giáo hay xem, tối đa `limit` video, tải khi
  * mở màn hình. Trả về [] nếu mạng lỗi thì màn hình vẫn dùng được.
  */

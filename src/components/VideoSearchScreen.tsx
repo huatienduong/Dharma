@@ -8,6 +8,7 @@
  */
 
 import {
+  fetchRelatedVideos,
   fetchSuggestedVideos,
   searchVideoInBrowser,
   viewCountText,
@@ -53,6 +54,24 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
     };
   }, []);
 
+  // Video liên quan tới nội dung ĐANG XEM (khác hẳn danh sách gợi ý chung).
+  const [related, setRelated] = useState<VideoInfo[]>([]);
+  const [relatedBusy, setRelatedBusy] = useState(false);
+
+  /** Mở trình phát: tải luôn danh sách video liên quan để hiện bên dưới. */
+  const openVideo = (v: VideoInfo) => {
+    setPlaying(v);
+    setVideos([]);
+    setSearched("");
+    setMessage("");
+    setRelatedBusy(true);
+    void (async () => {
+      const list = await fetchRelatedVideos(v, 12).catch(() => []);
+      setRelated(list);
+      setRelatedBusy(false);
+    })();
+  };
+
   // Nói thẳng chủ đề vào ô tìm kiếm: cùng bộ nghe 3 tầng như ô nhập câu hỏi
   // của khung chat (Web Speech → Whisper → sửa dấu tiếng Việt).
   const voice = useVoiceSearch();
@@ -96,120 +115,138 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
         </p>
       </div>
 
-      {/* ---------- THANH TÌM KIẾM: CỐ ĐỊNH, không cuộn theo danh sách ---------- */}
-      <div className="shrink-0 border-b border-border/60 bg-background/95 px-3 pb-3 backdrop-blur-md sm:px-4">
-        {/* Ô tìm kiếm: micro và kính lúp nằm TRONG ô, không có nút bên ngoài */}
-        <div className="mt-3 flex items-center gap-2 rounded-2xl border border-border/70 bg-card pl-3 pr-1.5">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                void run(query);
-              }
-            }}
-            aria-label="Nhập chủ đề muốn xem video"
-            className="h-12 min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none"
-          />
+      {/* ---------- THANH TÌM KIẾM: micro bên trái, kính lúp bên phải ---------- */}
+      {!playing ? (
+        <div className="shrink-0 border-b border-border/60 bg-background/95 px-3 pb-3 backdrop-blur-md sm:px-4">
+          <div className="mt-3 flex items-center gap-1 rounded-2xl border border-border/70 bg-card pr-1.5">
+            {/* Micro: nói chủ đề, nằm bên TRÁI ô nhập */}
+            {voice.supported ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (voice.listening) {
+                    voice.stop();
+                    return;
+                  }
+                  voice.start((text) => {
+                    const spoken = text.trim();
+                    if (!spoken) return;
+                    setQuery(spoken);
+                    void run(spoken);
+                  });
+                }}
+                disabled={voice.refining}
+                aria-label={voice.listening ? "Dừng nói" : "Nói chủ đề muốn xem"}
+                className={cn(
+                  "relative ml-1.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
+                  voice.listening
+                    ? "bg-destructive/15 text-destructive"
+                    : "text-foreground/70 hover:bg-muted hover:text-foreground",
+                  voice.refining && "opacity-60",
+                )}
+              >
+                {voice.refining ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-gold" />
+                ) : voice.listening ? (
+                  <MicOff className="h-4 w-4" />
+                ) : (
+                  <Mic className="h-4 w-4" />
+                )}
+                {voice.listening ? (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-destructive" />
+                  </span>
+                ) : null}
+              </button>
+            ) : null}
 
-          {/* Xoá nội dung */}
-          {query ? (
-            <button
-              type="button"
-              onClick={() => setQuery("")}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
-              aria-label="Xoá nội dung tìm kiếm"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          ) : null}
-
-          {/* Micro: nói chủ đề thay vì gõ */}
-          {voice.supported ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (voice.listening) {
-                  voice.stop();
-                  return;
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void run(query);
                 }
-                voice.start((text) => {
-                  const spoken = text.trim();
-                  if (!spoken) return;
-                  setQuery(spoken);
-                  void run(spoken);
-                });
               }}
-              disabled={voice.refining}
-              aria-label={voice.listening ? "Dừng nói" : "Nói chủ đề muốn xem"}
+              aria-label="Nhập chủ đề muốn xem video"
+              className="h-12 min-w-0 flex-1 bg-transparent pl-1 text-[15px] text-foreground outline-none"
+            />
+
+            {query ? (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                aria-label="Xoá nội dung tìm kiếm"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
+
+            {/* Kính lúp: chạy tìm ngay trong ô */}
+            <button
+              type="button"
+              onClick={() => void run(query)}
+              disabled={!query.trim() || busy}
+              aria-label="Tìm video"
               className={cn(
-                "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
-                voice.listening
-                  ? "bg-destructive/15 text-destructive"
-                  : "text-foreground/70 hover:bg-muted hover:text-foreground",
-                voice.refining && "opacity-60",
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
+                query.trim() && !busy
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground/60",
               )}
             >
-              {voice.refining ? (
-                <Loader2 className="h-4 w-4 animate-spin text-gold" />
-              ) : voice.listening ? (
-                <MicOff className="h-4 w-4" />
+              {busy ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Mic className="h-4 w-4" />
+                <Search className="h-4 w-4" />
               )}
-              {voice.listening ? (
-                <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-destructive" />
-                </span>
-              ) : null}
             </button>
+          </div>
+
+          {/* Câu đang nói vào ô tìm kiếm */}
+          {voice.listening || voice.refining || voice.interim ? (
+            <p className="mt-2 flex items-center gap-2 px-1 text-[13px] text-muted-foreground">
+              {voice.refining ? (
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-gold" />
+              ) : (
+                <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-destructive" />
+              )}
+              {voice.interim ? (
+                <span className="truncate">{voice.interim}</span>
+              ) : (
+                <span>{voice.refining ? "Đang chép lại…" : "Đang nghe…"}</span>
+              )}
+            </p>
           ) : null}
-
-          {/* Kính lúp: chạy tìm ngay trong ô */}
-          <button
-            type="button"
-            onClick={() => void run(query)}
-            disabled={!query.trim() || busy}
-            aria-label="Tìm video"
-            className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
-              query.trim() && !busy
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground/60",
-            )}
-          >
-            {busy ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Search className="h-4 w-4" />
-            )}
-          </button>
         </div>
-
-        {/* Câu đang nói vào ô tìm kiếm */}
-        {voice.listening || voice.refining || voice.interim ? (
-          <p className="mt-2 flex items-center gap-2 px-1 text-[13px] text-muted-foreground">
-            {voice.refining ? (
-              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-gold" />
-            ) : (
-              <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-destructive" />
-            )}
-            {voice.interim ? (
-              <span className="truncate">{voice.interim}</span>
-            ) : (
-              <span>{voice.refining ? "Đang chép lại…" : "Đang nghe…"}</span>
-            )}
-          </p>
-        ) : null}
-
-      </div>
+      ) : null}
 
       {/* ---------- Nội dung cuộn: video đang phát, kết quả, gợi ý ---------- */}
       <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-8 sm:px-4">
-        {/* Video đang phát: trình phát riêng của ứng dụng, không nhúng YouTube */}
-        {playing ? <VideoPlayer video={playing} onClose={() => setPlaying(null)} /> : null}
+        {/* Trình phát GHIM ở đầu trang: danh sách bên dưới lướt riêng, trình
+            phát không bị cuộn theo. */}
+        {playing ? (
+          <div className="sticky top-0 z-40 bg-background">
+            <VideoPlayer
+              video={playing}
+              pinned
+              onClose={() => {
+                setPlaying(null);
+                setRelated([]);
+              }}
+            />
+          </div>
+        ) : null}
+
+        {/* Tiêu đề video đang xem */}
+        {playing ? (
+          <p className="mt-3 line-clamp-2 px-1 text-[14px] font-medium leading-snug">
+            {playing.title || "Video"}
+          </p>
+        ) : null}
 
         {/* Kết quả */}
         {message ? (
@@ -269,6 +306,68 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
         ) : null}
 
 
+        {/* ĐANG XEM VIDEO: chỉ hiện video LIÊN QUAN tới nội dung đó. */}
+        {playing ? (
+          <section>
+            <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
+              <Play className="h-3.5 w-3.5 text-gold" />
+              Video liên quan
+            </h2>
+
+            {relatedBusy ? (
+              <p className="mt-4 flex items-center justify-center gap-2 text-[13px] text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin text-gold" />
+                Đang tải video liên quan…
+              </p>
+            ) : null}
+
+            {!relatedBusy && !related.length ? (
+              <p className="mt-3 text-[13px] text-muted-foreground">
+                Chưa tải được video liên quan.
+              </p>
+            ) : null}
+
+            <ul className="mt-3 space-y-1.5">
+              {related.map((v) => (
+                <li key={v.videoId}>
+                  <button
+                    type="button"
+                    onClick={() => openVideo(v)}
+                    className="flex w-full items-center gap-3 p-1.5 text-left transition hover:bg-muted/50"
+                  >
+                    <span className="relative shrink-0">
+                      <img
+                        src={v.thumbnail}
+                        alt=""
+                        loading="lazy"
+                        className="h-12 w-20 object-cover"
+                      />
+                      {v.duration ? (
+                        <span className="absolute bottom-0.5 right-0.5 rounded bg-black/80 px-1 text-[10px] tabular-nums text-white">
+                          {v.duration}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="line-clamp-2 block text-[13px] font-medium leading-snug text-foreground/95">
+                        {v.title || "Video"}
+                      </span>
+                      {viewCountText(v.viewCount) ? (
+                        <span className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <Eye className="h-3 w-3" />
+                          {viewCountText(v.viewCount)}
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {/* CHƯA XEM VIDEO: hiện danh sách gợi ý chung. */}
+        {playing ? null : (
         <section>
           <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
             <Play className="h-3.5 w-3.5 text-gold" />
@@ -332,6 +431,7 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
             ))}
           </ul>
         </section>
+        )}
 
       </div>
     </div>

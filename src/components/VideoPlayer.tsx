@@ -37,9 +37,12 @@ const NATIVE_CONTROLS = { controls: false, controlsList: undefined } as const;
 export function VideoPlayer({
   video,
   onClose,
+  /** Ghim trình phát ở đầu trang: không che hết màn hình, danh sách bên dưới vẫn cuộn được. */
+  pinned = false,
 }: {
   video: VideoInfo;
   onClose: () => void;
+  pinned?: boolean;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -254,7 +257,11 @@ export function VideoPlayer({
       ref={wrapRef}
       onMouseMove={wake}
       onTouchStart={wake}
-      className="fixed inset-0 z-[130] flex flex-col bg-black"
+      className={
+        pinned
+          ? "sticky top-0 z-40 flex max-h-[52vh] flex-col border-b border-border/50 bg-black"
+          : "fixed inset-0 z-[130] flex flex-col bg-black"
+      }
     >
       <div className="relative flex min-h-0 flex-1 items-center justify-center">
         <video
@@ -296,7 +303,7 @@ export function VideoPlayer({
         ) : null}
 
         {/* Tiêu đề: chỉ tên video, không có tên kênh hay nhãn YouTube */}
-        {chrome && !mini ? (
+        {chrome && !mini && !pinned ? (
           <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start gap-3 bg-gradient-to-b from-black/70 to-transparent p-3">
             <div className="pointer-events-auto min-w-0 flex-1">
               <p className="line-clamp-1 text-[14px] font-medium text-white">
