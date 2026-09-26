@@ -43,7 +43,7 @@ import { wantsImage } from "@/lib/imageIntent";
 import { APP_VERSION } from "@/lib/version";
 import { cn } from "@/lib/utils";
 import { useAction, useMutation } from "convex/react";
-import { ArrowLeft, Phone, Settings, Video } from "lucide-react";
+import { ArrowLeft, Phone, Settings, Tv } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -157,7 +157,7 @@ export default function Assistant() {
    */
   const [loadingTs, setLoadingTs] = useState<number | null>(null);
 
-  /* ---- Màn tìm video YouTube (mở từ nút camera cạnh nút đàm thoại) ---- */
+  /* ---- Màn tìm video YouTube (mở từ nút TV cạnh nút đàm thoại) ---- */
   const [videoScreen, setVideoScreen] = useState(false);
 
   const loadingTsRef = useRef<number | null>(null);
@@ -1232,7 +1232,7 @@ export default function Assistant() {
             aria-label="Tìm và xem video"
             title="Tìm và xem video"
           >
-            <Video className="h-5 w-5 shrink-0" />
+            <Tv className="h-5 w-5 shrink-0" />
           </button>
           {!isHome && (
             <button
