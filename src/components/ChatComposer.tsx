@@ -16,6 +16,8 @@ import {
   ImagePlus,
   Loader2,
   Mic,
+  Play,
+  Search,
   Send,
   X,
 } from "lucide-react";
@@ -60,6 +62,14 @@ export type ChatComposerProps = {
   onMicToggle: () => void;
 
   onClearAll: () => void;
+
+  /** Ô tìm video YouTube ngay trong khung chat. */
+  videoSearchOpen: boolean;
+  onToggleVideoSearch: () => void;
+  videoQuery: string;
+  onVideoQueryChange: (v: string) => void;
+  onVideoSearch: () => void;
+  videoSearching: boolean;
 };
 
 function formatSize(bytes: number): string {
@@ -88,6 +98,12 @@ export function ChatComposer({
   micInterim,
   onMicToggle,
   onClearAll,
+  videoSearchOpen,
+  onToggleVideoSearch,
+  videoQuery,
+  onVideoQueryChange,
+  onVideoSearch,
+  videoSearching,
 }: ChatComposerProps) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,6 +118,60 @@ export function ChatComposer({
       style={liftUp ? { transform: `translateY(-${liftUp}px)` } : undefined}
       className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-3xl bg-background/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md sm:px-4"
     >
+      {/* ---------- Ô tìm video YouTube ngay tại khung chat ---------- */}
+      {videoSearchOpen && (
+        <div className="mb-2 flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl border border-border/70 bg-card px-3">
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <input
+              value={videoQuery}
+              onChange={(e) => onVideoQueryChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onVideoSearch();
+                }
+              }}
+              placeholder="Tìm video trên YouTube…"
+              aria-label="Tìm video trên YouTube"
+              className="h-10 w-full bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground/60"
+            />
+            {videoQuery && (
+              <button
+                type="button"
+                onClick={() => onVideoQueryChange("")}
+                className="shrink-0 text-muted-foreground transition hover:text-foreground"
+                aria-label="Xoá nội dung tìm kiếm"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            onClick={onVideoSearch}
+            disabled={!videoQuery.trim() || videoSearching}
+            className="h-10 shrink-0 gap-1.5 rounded-full"
+          >
+            {videoSearching ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4" />
+            )}
+            Tìm
+          </Button>
+          <button
+            type="button"
+            onClick={onToggleVideoSearch}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-foreground/70 transition hover:bg-accent"
+            aria-label="Đóng ô tìm video"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* ---------- Đính kèm đang chờ gửi ---------- */}
       {(image || files.length > 0) && (
         <div className="mb-2 flex flex-wrap items-center gap-2 pl-1">
@@ -194,6 +264,19 @@ export function ChatComposer({
             title="Tải lên tệp (CSV, TXT, JSON, PDF…)"
           >
             <FileText className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onToggleVideoSearch}
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-2xl text-foreground/70 transition hover:bg-accent hover:text-foreground",
+              videoSearchOpen && "bg-primary/20 text-primary",
+            )}
+            title="Tìm video trên YouTube"
+            aria-label="Tìm video trên YouTube"
+            aria-pressed={videoSearchOpen}
+          >
+            <Play className="h-4 w-4" />
           </button>
           <button
             type="button"

@@ -7,6 +7,7 @@
 
 import { BotAvatar } from "@/components/BotAvatar";
 import { VideoCard } from "@/components/VideoCard";
+import { VideoListCard } from "@/components/VideoListCard";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { formatTs, plainText, type Msg } from "@/lib/chatHelpers";
@@ -85,6 +86,7 @@ export function ChatThread({
             ts={m.ts}
             grouped={grouped}
             image={m.image}
+            videoSearch={m.videoSearch}
             onRecall={() => onRecallMessage(m)}
             onRecallImage={m.image ? () => onRecallImage(m) : undefined}
           />
@@ -335,6 +337,7 @@ function UserMessage({
   ts,
   grouped,
   image,
+  videoSearch,
   onRecall,
   onRecallImage,
 }: {
@@ -342,6 +345,8 @@ function UserMessage({
   ts: number;
   grouped?: boolean;
   image?: { base64: string; mime: string };
+  /** Kết quả tìm video tại ô chat — hiện ngay dưới câu hỏi của người dùng. */
+  videoSearch?: { query: string; videos: VideoInfo[] };
   onRecall: () => void;
   onRecallImage?: () => void;
 }) {
@@ -367,6 +372,16 @@ function UserMessage({
                 <Undo2 className="h-4 w-4" />
               </button>
             )}
+          </div>
+        )}
+        {/* Kết quả tìm video: chỉ hiện danh sách khi có video, không hiện
+            bong bóng trống. */}
+        {videoSearch && videoSearch.videos.length > 0 && (
+          <div className="mb-1.5 max-w-full">
+            <VideoListCard
+              query={videoSearch.query}
+              videos={videoSearch.videos}
+            />
           </div>
         )}
         {content && (
