@@ -152,10 +152,9 @@ export function ChatComposer({
         </div>
       )}
 
-      {/* Khung nhập: ở GIAO DIỆN SÁNG nền trắng làm thẻ trắng + viền nhạt
-          bị "mờ" mất. Vì vậy ở chế độ sáng dùng nền cát nâu + viền nâu rõ,
-          bấm vào thì viền đậm hẳn lên; chế độ tối giữ nguyên như cũ. */}
-      <div className="flex items-end gap-1 rounded-[24px] border border-gold/40 bg-secondary p-1.5 shadow-[0_2px_14px_-6px_rgba(111,66,38,0.35)] transition focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/25 dark:border-border/70 dark:bg-card dark:shadow-lg dark:focus-within:border-gold/50 dark:focus-within:ring-gold/15">
+      {/* Khung nhập: ở chế độ sáng nền kem nên khung phải TRẮNG + viền đỏ
+          rõ, bấm vào viền đậm hẳn lên; chế độ tối giữ nguyên như cũ. */}
+      <div className="flex items-end gap-1 rounded-[24px] border border-gold/40 bg-card p-1.5 shadow-[0_2px_14px_-6px_rgba(176,24,27,0.30)] transition focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/25 dark:border-border/70 dark:bg-card dark:shadow-lg dark:focus-within:border-gold/50 dark:focus-within:ring-gold/15">
         <input
           ref={imageInputRef}
           type="file"

@@ -44,49 +44,49 @@
   --color-gold-soft: var(--gold-soft);
 }
 
-/* CHANGE VALUES FOR THEME — màu y cà sa theo truyền thống Theravāda:
- * NÂN VÀ TRẮNG — nền chung là nâu kem sáng, thẻ/khung nhập trắng, chữ và
- * điểm nhấn nâu đất. Như vậy khung nào cũng tách bạch với nền. */
+/* CHANGE VALUES FOR THEME — tông ĐỎ VÀ KEM: nền chung kem đào nhạt, thẻ và
+ * khung nhập trắng, thao tác chính (nút gửi, tin nhắn của bạn) đỏ chủ đạo,
+ * chi tiết nhỏ dùng hồng đào. Chữ gần đen nâu để dễ đọc trên cả hai. */
 :root {
   --radius: 1.5rem;
-  --background: #f2e4d3; /* nâu kem sáng — nền chung */
-  --foreground: #3b2417; /* nâu đậm cho chữ */
-  --card: #ffffff; /* thẻ trắng nổi trên nền nâu */
-  --card-foreground: #3b2417;
+  --background: #f7e6cf; /* kem đào — nền chung */
+  --foreground: #2c1a12; /* chữ gần đen nâu */
+  --card: #ffffff; /* thẻ trắng nổi trên nền kem */
+  --card-foreground: #2c1a12;
   --popover: #ffffff;
-  --popover-foreground: #3b2417;
-  --primary: #6f4226; /* nâu đất làm điểm nhấn */
-  --primary-foreground: #fffaf5;
-  --secondary: #fbf3ea; /* gần trắng, dùng cho khung nhập */
-  --secondary-foreground: #5b3824;
-  --muted: #e7d5c2;
-  --muted-foreground: #6b5140;
-  --accent: #e3cdb6;
-  --accent-foreground: #4c2c1b;
-  --destructive: #b42318;
-  --border: #d8bf9f; /* viền nâu rõ hơn vì nền đã là màu */
-  --input: #d8bf9f;
-  --ring: #6f4226;
-  --chart-1: #6f4226;
-  --chart-2: #8b5535;
-  --chart-3: #a86b43;
-  --chart-4: #4c2c1b;
-  --chart-5: #c1845b;
-  --sidebar: #e9d7c1;
-  --sidebar-foreground: #3b2417;
-  --sidebar-primary: #6f4226;
-  --sidebar-primary-foreground: #fffaf5;
-  --sidebar-accent: #e3cdb6;
-  --sidebar-accent-foreground: #4c2c1b;
-  --sidebar-border: #d8bf9f;
-  --sidebar-ring: #6f4226;
+  --popover-foreground: #2c1a12;
+  --primary: #b0181b; /* đỏ chủ đạo */
+  --primary-foreground: #fff7ef;
+  --secondary: #fdf3e3; /* kem rất sáng cho khung nhập, nút phụ */
+  --secondary-foreground: #5a1a14;
+  --muted: #f0dcbe;
+  --muted-foreground: #6f5741;
+  --accent: #edcfa6; /* hồng đào cho vùng bấm */
+  --accent-foreground: #4a1410;
+  --destructive: #c81e1e;
+  --border: #e0bf94; /* viền kem rõ trên nền màu */
+  --input: #e0bf94;
+  --ring: #b0181b;
+  --chart-1: #b0181b;
+  --chart-2: #8e1418;
+  --chart-3: #d1512f;
+  --chart-4: #4a1410;
+  --chart-5: #e08a3c;
+  --sidebar: #f1dcbd;
+  --sidebar-foreground: #2c1a12;
+  --sidebar-primary: #b0181b;
+  --sidebar-primary-foreground: #fff7ef;
+  --sidebar-accent: #edcfa6;
+  --sidebar-accent-foreground: #4a1410;
+  --sidebar-border: #e0bf94;
+  --sidebar-ring: #b0181b;
 
-  /* Token phụ trợ — cam đất y cà sa làm điểm nhấn chính */
-  --brown-deep: #3b2417;
-  --brown-mid: #6f4226;
-  --gold: #6f4226; /* nâu đất chủ đạo ở chế độ sáng */
-  --gold-soft: #a86b43;
-  --lotus: #f6ece0;
+  /* Token phụ trợ — đỏ chủ đạo đi kèm kem đào */
+  --brown-deep: #2c1a12;
+  --brown-mid: #8e1418;
+  --gold: #b0181b; /* đỏ chủ đạo ở chế độ sáng */
+  --gold-soft: #c9453f;
+  --lotus: #f7e6cf;
 
   --font-size-scale: 1;
 }
