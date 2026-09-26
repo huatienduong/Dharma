@@ -64,7 +64,7 @@ export const FEATURES: AppFeature[] = [
   },
   {
     name: "Gợi ý câu hỏi",
-    how: "Khi hội thoại trống, ứng dụng gợi ý câu hỏi về Bát Chánh Đạo, Tứ Thánh Đế... để bấm vào hỏi ngay.",
+    how: "Khi hội thoại trống, màn chào hiện lời chào, hướng dẫn sử dụng và các câu hỏi gợi ý về Bát Chánh Đạo, Tứ Thánh Đế... Các câu gợi ý tự đổi liên tục, bấm vào câu nào thì hỏi câu đó ngay.",
   },
   {
     name: "Sao chép câu trả lời",

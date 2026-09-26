@@ -5,6 +5,7 @@ import {
   type AttachedFile,
 } from "@/components/ChatComposer";
 import { ChatThread, type FailedReply } from "@/components/ChatThread";
+import { HomeWelcome } from "@/components/HomeWelcome";
 import { api } from "@/convex/_generated/api";
 import { useCallSession } from "@/hooks/useCallSession";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
@@ -1159,6 +1160,9 @@ export default function Assistant() {
           !isEmpty && image && "pb-48",
         )}
       >
+        {/* Màn chào chỉ hiện khi hội thoại còn trống; vùng này
+            overflow-hidden nên khối chào phải tự vừa tầm nhìn, không cuộn. */}
+        {isEmpty && <HomeWelcome onPick={(q) => void send(q)} />}
         <ChatThread
           messages={messages}
           isEmpty={isEmpty}
