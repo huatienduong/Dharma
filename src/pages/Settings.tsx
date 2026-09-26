@@ -43,7 +43,7 @@ import { useNavigate, useSearchParams } from "react-router";
 
 /** Câu thử giọng — ngắn để tiết kiệm hạn mức TTS nhưng đủ để nghe chất giọng. */
 const VOICE_PREVIEW_TEXT =
-  "Kính chào. Xin hãy bình tĩnh thở vào, thở ra, nhớ về hơi thở đang diễn ra.";
+  "Xin chào bạn. Tôi là trợ lý Phật học của bạn.";
 
 const FEEDBACK_BUG_MESSAGE =
   "Chúng tôi đã ghi nhận yêu cầu hỗ trợ khắc phục sự cố và sẽ tiến hành kiểm tra khắc phục. Xin trân thành cảm ơn!";
