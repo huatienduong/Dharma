@@ -18,6 +18,7 @@ import {
   Image as ImageIcon,
   MessageSquareWarning,
   Phone,
+  Sparkles,
   Volume2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -122,32 +123,35 @@ export function HomeWelcome({ onPick }: { onPick: (question: string) => void }) 
   }, []);
 
   return (
-    <div className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center gap-2.5 overflow-hidden sm:gap-3.5">
+    <div className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center gap-3 overflow-hidden sm:gap-4">
       {/* ---------- Lời chào ---------- */}
-      <div className="flex shrink-0 flex-col items-center gap-1.5 text-center">
+      <div className="flex shrink-0 flex-col items-center gap-2 text-center">
         <BotAvatar size="lg" glow className="size-12 shadow-lg sm:size-14" />
-        <h1 className="text-base font-extrabold tracking-tight text-foreground sm:text-lg">
+        <h1 className="text-lg font-extrabold tracking-tight text-foreground sm:text-xl">
           Xin chào, mình là Trợ lý Phật học
         </h1>
-        <p className="max-w-md text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
-          Mình giải thích giáo lý theo Theravāda, đọc hình và tệp bạn gửi, và
-          nói chuyện bằng giọng nói. Dưới đây là cách dùng nhanh.
+        <p className="max-w-sm text-xs leading-relaxed text-muted-foreground sm:text-[13px]">
+          Hỏi về Phật học, gửi hình hoặc tệp, hay nói chuyện bằng giọng nói —
+          tất cả ngay tại đây.
         </p>
-
       </div>
 
       {/* ---------- Hướng dẫn sử dụng ----------
           Màn hình thấp (điện thoại ngang) thì ẩn hẳn khối này để mọi thứ
           vẫn vừa tầm nhìn — tuyệt đối không để trang phải cuộn. */}
-      <ul className="grid w-full shrink-0 grid-cols-2 gap-1.5 [@media(max-height:620px)]:hidden sm:gap-2">
+      <ul className="grid w-full shrink-0 grid-cols-2 gap-2 [@media(max-height:600px)]:hidden">
         {GUIDES.map(({ Icon, title, text }) => (
           <li
             key={title}
-            className="flex items-start gap-2 rounded-2xl border border-border/60 bg-card/60 px-2.5 py-1.5"
+            className="flex min-w-0 items-start gap-2 rounded-2xl border border-border/60 bg-card/60 px-2.5 py-2"
           >
-            <Icon className="mt-px size-3.5 shrink-0 text-primary" />
-            <p className="min-w-0 text-[11px] leading-snug text-foreground/85">
-              <span className="font-semibold text-foreground">{title}: </span>
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+              <Icon className="size-4" />
+            </span>
+            <p className="min-w-0 text-xs leading-snug text-muted-foreground sm:text-[13px]">
+              <span className="block font-semibold text-foreground">
+                {title}
+              </span>
               {text}
             </p>
           </li>
@@ -155,9 +159,12 @@ export function HomeWelcome({ onPick }: { onPick: (question: string) => void }) 
       </ul>
 
       {/* ---------- Gợi ý câu hỏi ngẫu nhiên, tự đổi liên tục ---------- */}
-      <div className="flex min-h-0 w-full shrink-0 flex-col items-center gap-1.5">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+      <div className="flex min-h-0 w-full shrink-0 flex-col items-center gap-2">
+        <p className="flex flex-wrap items-center justify-center gap-x-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
           Gợi ý câu hỏi
+          <span className="font-medium normal-case tracking-normal text-muted-foreground/70">
+            — tự đổi liên tục, bấm để hỏi
+          </span>
         </p>
         <div className="flex w-full flex-col gap-1.5">
           {picks.map((q) => (
@@ -168,9 +175,10 @@ export function HomeWelcome({ onPick }: { onPick: (question: string) => void }) 
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
-              className="min-h-9 w-full rounded-2xl border border-primary/25 bg-primary/10 px-3 py-1.5 text-left text-[11px] font-medium leading-snug text-foreground transition-colors hover:border-primary/50 hover:bg-primary/20 sm:text-xs"
+              className="flex min-h-10 w-full items-center gap-2 rounded-2xl border border-primary/25 bg-primary/10 px-3 py-1.5 text-left text-[13px] font-medium leading-snug text-foreground transition-colors hover:border-primary/60 hover:bg-primary/20"
             >
-              {q}
+              <Sparkles className="size-3.5 shrink-0 text-primary" />
+              <span className="line-clamp-2 min-w-0">{q}</span>
             </motion.button>
           ))}
         </div>
