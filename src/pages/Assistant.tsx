@@ -545,21 +545,33 @@ export default function Assistant() {
       // Hỏng/thiếu thì tự lùi về `ask` y như cũ — không mất tính năng cũ.
       const askOnce = async (): Promise<AskResult> => {
         if (attachedImages.length > 0) {
-          try {
-            const vision = await callConvexAction<AskResult>(
-              "visionChat:analyzeImage",
-              {
-                messages: payloadMessages,
-                images: attachedImages.map((i) => ({
-                  base64: i.base64,
-                  mime: i.mime,
-                })),
-                ...getDeviceMeta(),
-              },
-            );
-            if (vision.ok || vision.code === "rate_limited") return vision;
-          } catch {
-            /* rơi xuống `ask` bên dưới */
+          // Gửi nhiều ảnh theo cấu trúc mới; nếu máy chủ chưa có bản mới (hoặc
+          // lỗi) thì thử lại bằng cấu trúc một ảnh cũ, cuối cùng mới lùi về
+          // `ask` — luôn có đường ra, không bao giờ chết cứng ở bước này.
+          const shapes: Record<string, unknown>[] = [
+            {
+              messages: payloadMessages,
+              images: attachedImages.map((i) => ({
+                base64: i.base64,
+                mime: i.mime,
+              })),
+            },
+            {
+              messages: payloadMessages,
+              imageBase64: attachedImage?.base64,
+              imageMime: attachedImage?.mime,
+            },
+          ];
+          for (const shape of shapes) {
+            try {
+              const vision = await callConvexAction<AskResult>(
+                "visionChat:analyzeImage",
+                { ...shape, ...getDeviceMeta() },
+              );
+              if (vision.ok || vision.code === "rate_limited") return vision;
+            } catch {
+              /* thử cấu trúc tiếp theo */
+            }
           }
         }
         return ask({

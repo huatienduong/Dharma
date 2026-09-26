@@ -152,11 +152,13 @@ export const analyzeImage = action({
       };
     }
 
-    // Gom ảnh từ cả hai đường rồi áp hạn mức gói.
-    const incoming: VisionImage[] = [
-      ...(images ?? []),
-      ...(imageBase64 ? [{ base64: imageBase64, mime: imageMime }] : []),
-    ].filter((i) => !!i.base64);
+    // Ưu tiên cấu trúc nhiều ảnh; chỉ dùng đường một ảnh khi client gửi kiểu cũ.
+    const incoming: VisionImage[] = (images?.length
+      ? images
+      : imageBase64
+        ? [{ base64: imageBase64, mime: imageMime }]
+        : []
+    ).filter((i) => !!i.base64);
     if (incoming.length === 0) {
       return {
         ok: false as const,
