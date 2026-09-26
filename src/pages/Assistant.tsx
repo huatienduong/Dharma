@@ -227,6 +227,41 @@ function isClearHistoryCommand(raw: string): boolean {
 }
 
 /**
+ * YÊU CẦU MỞ ĐÀM THOẠI từ trong khung chat — người dùng chỉ cần nhắn
+ * "mở đàm thoại" là ứng dụng bật màn đàm thoại, không cần qua AI.
+ *
+ * Rất thận trọng để không mở nhầm: chỉ nhận câu lệnh NGẮN, không dấu hỏi,
+ * không phải câu hỏi, và không nhận câu kiểu "gọi điện cho mẹ tôi".
+ */
+const CALL_OPEN_PATTERNS = [
+  // "mở / bật / bắt đầu / chuyển sang ... đàm thoại, gọi điện, chế độ nói"
+  /\b(mo|bat|bat dau|chuyen sang|chuyen qua|chuyen|vao|quay ve)\b\s*(dam thoi|goi dien|dien thoai|che do noi|che do dam thoi|che do goi dien)\b/,
+  // chỉ cần nói thẳng: "đàm thoại", "gọi điện thoại với tôi"
+  /^(dam thoi|goi dien|dien thoai|che do noi)\b/,
+  // "nói chuyện / trò chuyện ... bằng giọng nói / tiếng Việt / voice"
+  /\b(noi chuyen|tro chuyen|goi)\b.*\b(bang giong noi|giong noi|tieng viet|voice)\b/,
+  // "tôi muốn nói chuyện", "cho tôi đàm thoại"
+  /\b(toi muon|ban muon|muon|cho toi|hay|oi)\b.*\b(dam thoi|noi chuyen|tro chuyen)\b/,
+];
+
+function isStartCallCommand(raw: string): boolean {
+  const t = deaccent(raw.toLowerCase())
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!t) return false;
+  const words = t.split(" ").filter(Boolean);
+  if (words.length > 6) return false;
+  if (/[?]/.test(raw)) return false;
+  if (CLEAR_QUESTION.test(t)) return false;
+  // "gọi điện cho mẹ", "gọi bác sĩ" — đang gọi người khác, không phải mở app.
+  if (/\b(cho|ve|cho me|cha me|ban|khach|nguoi|bac si)\b/.test(t) && !/\bcho toi\b/.test(t)) {
+    return false;
+  }
+  return CALL_OPEN_PATTERNS.some((re) => re.test(t));
+}
+
+/**
  * Số lượt hội thoại gửi kèm cho AI. Phải khớp `HISTORY_LIMIT` ở
  * `convex/aiChat.ts` (24) — đủ để trợ lý nhớ xuyên suốt cuộc trò chuyện.
  */
@@ -384,11 +419,14 @@ export default function Assistant() {
   /** Gọi xóa hội thoại / kết thúc cuộc gọi từ nơi định nghĩa trước trong file. */
   const clearAllRef = useRef<(() => Promise<void> | void) | null>(null);
   const endCallRef = useRef<(() => void) | null>(null);
-  // Nối hai hàm được khai báo phía dưới trong file. Dùng ref để lệnh "xoá hội
-  // thoại" gọi được chúng mà không phải đụng tới mảng deps của useCallback.
+  const openCallRef = useRef<(() => void) | null>(null);
+  // Nối các hàm được khai báo phía dưới trong file. Dùng ref để lệnh trong
+  // khung chat ("xoá hội thoại", "mở đàm thoại") gọi được chúng mà không
+  // phải đụng tới mảng deps của useCallback.
   useEffect(() => {
     clearAllRef.current = clearAll;
     endCallRef.current = endCall;
+    openCallRef.current = openCall;
   });
 
   /** Im lặng bao lâu thì coi là nói xong (ms) — chống cắt cụt "Xin chào". */
@@ -537,6 +575,13 @@ export default function Assistant() {
         setFailedReply(null);
         void clearAllRef.current?.();
         if (callActiveRef.current) endCallRef.current?.();
+        return;
+      }
+      // Yêu cầu đàm thoại ngay trong khung chat → mở thẳng màn đàm thoại.
+      if (isStartCallCommand(q)) {
+        setInput("");
+        if (callActiveRef.current) return;
+        openCallRef.current?.();
         return;
       }
       // Gom ảnh đính kèm theo hạn mức gói. Ảnh vượt hạn mức vẫn KHÔNG chặn
