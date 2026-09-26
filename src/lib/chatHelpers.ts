@@ -21,13 +21,19 @@ export type AskResult =
   | { ok: false; code?: string; message: string };
 
 export type Msg = {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "system";
   content: string;
   ts: number;
   /** Ảnh người dùng tải lên (base64) — chỉ hiển thị, không gửi lại AI */
   image?: { base64: string; mime: string };
   /** storageId ảnh AI tạo — nạp URL từ Convex File Storage khi hiển thị */
   imageStorageId?: string;
+  /**
+   * Dòng ghi chú "kết thúc cuộc gọi" (giờ kết thúc + thời lượng).
+   * Chỉ có ở tin hệ thống `role: "system"`; tin này lưu trong lịch sử để
+   * người dùng còn thấy sau khi mở lại, nhưng KHÔNG gửi lên AI.
+   */
+  callSummary?: { at: number; durationMs: number };
 };
 
 /* ------------------------------------------------------------------ */
@@ -64,7 +70,10 @@ export async function loadLocalChatSecure(): Promise<Msg[] | null> {
         (m): m is Msg =>
           Boolean(
             m &&
-              (m.role === "user" || m.role === "assistant") &&
+              (m.role === "user" ||
+                m.role === "assistant" ||
+                (m.role === "system" &&
+                  typeof m.callSummary?.durationMs === "number")) &&
               typeof m.content === "string",
           ),
       )
@@ -347,6 +356,20 @@ export function plainText(s: string): string {
     .replace(/\*([^*\n]+)\*/g, "$1")
     .replace(/^#{1,6}\s*/gm, "")
     .replace(/^\s*[*•]+\s+/gm, "– ");
+}
+
+/**
+ * Nội dung dòng ghi chú “kết thúc cuộc gọi” — dùng chung cho lúc lưu vào
+ * lịch sử lẫn lúc hiển thị, nên đọc lại luôn thấy đúng câu đã ghi.
+ */
+export function callSummaryText(at: number, durationMs: number): string {
+  const d = new Date(at);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  const total = Math.max(0, Math.round(durationMs / 1000));
+  const mm = String(Math.floor(total / 60)).padStart(2, "0");
+  const ss = String(total % 60).padStart(2, "0");
+  return `Cuộc gọi đã kết thúc lúc ${hh}:${mi} • Thời lượng ${mm}:${ss}`;
 }
 
 /**
