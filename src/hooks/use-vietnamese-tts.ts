@@ -117,10 +117,43 @@ function primeBrowserAudio(): void {
  * nhánh dự phòng phía sau không bao giờ được gọi. Từ đây ta luôn reject
  * khi quá thời gian để rơi tiếp sang HTMLAudio / Web Speech.
  */
+/** Đọc trạng thái context qua hàm riêng: TypeScript không thấy `resume()`
+ *  thay đổi state nên sẽ suy ra kiểu quá hẹp và báo lỗi so sánh vô nghĩa. */
+const ctxState = (c: AudioContext): AudioContextState => c.state;
+
+/** Thử mở lại một context; trả về context đang chạy hoặc null. */
+async function reviveCtx(c: AudioContext): Promise<AudioContext | null> {
+  try {
+    if (ctxState(c) === "suspended") await c.resume();
+  } catch {
+    /* iOS hay từ chối resume ngoài cư chạm */
+  }
+  if (ctxState(c) === "running") return c;
+  return null;
+}
+
 async function playWithWebAudio(dataUrl: string): Promise<void> {
-  const ctx = getSharedCtx();
+  let ctx = getSharedCtx();
   if (!ctx) throw new Error("no-webaudio");
-  if (ctx.state === "suspended") await ctx.resume();
+  if (ctxState(ctx) === "suspended") {
+    const alive = await reviveCtx(ctx);
+    if (alive) {
+      ctx = alive;
+    } else {
+      // Giữ context sống là cách ổn định nhất, nhưng nếu resume thất bại thì
+      // context đó đã chết vĩnh viễn (đúng trường hợp iOS). Khi đó mới đóng
+      // và tạo context mới — giữ lại cơ chế cứu hộ cũ, không bỏ.
+      try {
+        await ctx.close();
+      } catch {
+        /* noop */
+      }
+      if (sharedCtx === ctx) sharedCtx = null;
+      ctx = getSharedCtx();
+      if (!ctx) throw new Error("no-webaudio");
+      ctx = (await reviveCtx(ctx)) ?? ctx;
+    }
+  }
   const b64 = dataUrl.split(",")[1] ?? "";
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
@@ -130,7 +163,7 @@ async function playWithWebAudio(dataUrl: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     // Vẫn suspended sau khi resume → không thể phat, trả về ngay để thử
     // đường khác thay vì chờ mãi.
-    if (ctx.state !== "running") {
+    if (ctxState(ctx) !== "running") {
       reject(new Error("audio-context-suspended"));
       return;
     }

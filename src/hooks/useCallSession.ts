@@ -143,6 +143,16 @@ export function useCallSession(deps: CallDeps) {
    * chết, còn phiên sống thì giữ nguyên.
    */
   const sessionLiveRef = useRef(false);
+  /**
+   * Thẻ thế hệ của phiên nghe.
+   *
+   * Cần thiết vì các callback của phiên cũ (Web Speech, bộ đo mức, watchdog)
+   * vẫn có thể bắn sau khi phiên đã bị hủy — `abort()` trên Chrome hay bắn
+   * `onerror` rồi `onend` bất đồng bộ. Nếu không có thẻ, onerror của phiên CŨ
+   * sẽ gọi `restartSession` và hủy luôn phiên MỚI đang chạy tốt → micro
+   * chập chờn, đúng triệu chứng cần khắc phục.
+   */
+  const sessionGenRef = useRef(0);
   /** Hẹn giờ mở lại mic đang chờ — dùng để gộp/cancel lệnh dựng lại. */
   const reopenTimerRef = useRef(0);
   const startListeningRef = useRef<() => void>(() => {});
@@ -163,6 +173,10 @@ export function useCallSession(deps: CallDeps) {
     aiSpeakingRef.current = false;
     lastAiWordAtRef.current = Date.now();
     lastAssistantEventAtRef.current = Date.now();
+    // Tuyên bố “không còn phiên nghe nào”: vô hiệu thẻ thế hệ để mọi
+    // callback tồn đọng của phiên cũ tự bỏ qua thay vì chốt nhầm câu.
+    sessionLiveRef.current = false;
+    sessionGenRef.current += 1;
     if (!callActiveRef.current) return;
     lastSpokenRef.current = spoken;
     // Đợi hết vọng cuối rồi mới mở lại mic.
@@ -185,6 +199,7 @@ export function useCallSession(deps: CallDeps) {
       aiSpeakingRef.current = true;
       speakSinceRef.current = Date.now();
       sessionLiveRef.current = false;
+      sessionGenRef.current += 1;
       setInterim("");
       setCallStatus("speaking");
       lastAssistantEventAtRef.current = Date.now();
@@ -262,6 +277,9 @@ export function useCallSession(deps: CallDeps) {
     // trọng nhất chống micro chập chờn: dựng lại phiên sống sẽ cắt ngang câu
     // người dùng đang nói và làm micro nhấp nháy bật/tắt.
     if (sessionLiveRef.current) return;
+    // Mỗi lần dựng phiên mới nhận một thẻ; mọi callback của phiên này đều
+    // tự bỏ qua nếu thẻ không còn khớp (xem sessionGenRef).
+    const gen = ++sessionGenRef.current;
     // Vừa đọc xong: chờ hết tiếng vọng rồi mới mở mic, nếu không trợ lý
     // nghe lại chính câu mình vừa đọc và tự hỏi lại nhau.
     const quiet = aiQuietUntilRef.current - Date.now();
@@ -274,13 +292,18 @@ export function useCallSession(deps: CallDeps) {
       return;
     }
     try {
-      // Bỏ onend của phiên cũ TRƯỚC khi hủy: nếu không, onend của phiên cũ
-      // chạy và chốt nhầm câu của phiên mới.
-      if (recRef.current) recRef.current.onend = null;
+      // Bỏ onend VÀ onerror của phiên cũ TRƯỚC khi hủy: nếu không, onend /
+      // onerror của phiên cũ chạy sau đó và chốt nhầm câu — hoặc tệ hơn,
+      // onerror gọi restartSession và hủy luôn phiên mới vừa dựng.
+      if (recRef.current) {
+        recRef.current.onend = null;
+        recRef.current.onerror = null;
+      }
       recRef.current?.abort();
     } catch {
       /* noop */
     }
+    recRef.current = null;
 
     // Trình duyệt không có Web Speech (Firefox, một số WebView): chỉ ghi âm
     // rồi chép lại bằng Whisper. Trước đây nhánh này báo "micro đã tắt" và
@@ -360,6 +383,8 @@ export function useCallSession(deps: CallDeps) {
     // nguyên nhân "nói mà trợ lý không nghe": phiên nghe chết âm thầm.
     const restartSession = () => {
       if (committed || !callActiveRef.current) return;
+      // Phiên này đã bị thay thế → im lặng, không đụng vào phiên mới.
+      if (gen !== sessionGenRef.current) return;
       stopWatchdog();
       sessionLiveRef.current = false;
       try {
@@ -373,6 +398,7 @@ export function useCallSession(deps: CallDeps) {
       if (reopenTimerRef.current) window.clearTimeout(reopenTimerRef.current);
       reopenTimerRef.current = window.setTimeout(() => {
         reopenTimerRef.current = 0;
+        if (gen !== sessionGenRef.current) return;
         if (callActiveRef.current && !committed) startListeningRef.current();
       }, 350);
     };
@@ -380,6 +406,7 @@ export function useCallSession(deps: CallDeps) {
     // Chốt câu: dừng ghi âm rồi chép lại bằng Whisper (chính xác hơn bản nghe
     // trực tiếp của trình duyệt). Lỗi thì giữ nguyên bản gốc.
     const commit = (force = false) => {
+      if (gen !== sessionGenRef.current) return;
       cancelCommit();
       if (committed || !callActiveRef.current) return;
       const heard = (finalBuf + " " + pendingBuf)
@@ -436,6 +463,7 @@ export function useCallSession(deps: CallDeps) {
     // sớm, nên "Xin chào" từng bị cắt còn "Xin". Chỉ gửi khi đã im lặng đủ
     // lâu (người dùng nói xong), có trần chờ để câu dài không bị treo.
     const scheduleCommit = (force = false) => {
+      if (gen !== sessionGenRef.current) return;
       cancelCommit();
       if (committed || !callActiveRef.current) return;
       const heard = (finalBuf + " " + pendingBuf)
@@ -507,6 +535,8 @@ export function useCallSession(deps: CallDeps) {
       scheduleCommit();
     };
     rec.onerror = (e) => {
+      // Lỗi đến từ phiên đã bị thay → bỏ qua, không được giết phiên mới.
+      if (gen !== sessionGenRef.current) return;
       const code = e.error ?? "";
       if (code === "not-allowed" || code === "service-not-allowed") {
         micDeniedRef.current = true;
@@ -527,6 +557,7 @@ export function useCallSession(deps: CallDeps) {
       restartSession();
     };
     rec.onend = () => {
+      if (gen !== sessionGenRef.current) return;
       recRef.current = null;
       sessionLiveRef.current = false;
       stopWatchdog();
@@ -554,6 +585,7 @@ export function useCallSession(deps: CallDeps) {
     // gì trong 12 giây → tự dựng lại phiên nghe để không "chết âm thầm".
     stopWatchdog();
     watchdog = window.setInterval(() => {
+      if (gen !== sessionGenRef.current) return;
       if (committed || !callActiveRef.current) return;
       // Đang có tiếng (đo được) → để đo mức lo, không dựng lại phiên nghe.
       if (loudSince) return;
@@ -569,6 +601,7 @@ export function useCallSession(deps: CallDeps) {
       // Đồng thời đo mức âm lượng để tự chốt câu khi trình duyệt im lặng
       // (nhiều máy không có Web Speech → không có kết quả nào để dựa vào).
       void startMicRecording((level) => {
+        if (gen !== sessionGenRef.current) return;
         if (committed) return;
         const now = Date.now();
         if (level >= CALL_VOICE_ON) {
@@ -618,6 +651,9 @@ export function useCallSession(deps: CallDeps) {
     mutedRef.current = false;
     sendingRef.current = false;
     aiSpeakingRef.current = false;
+    // Mở cuộc gọi mới: mọi phiên nghe cũ coi như đã chết. Bắt buộc để
+    // `startListening` không bị chặn bởi cờ “phiên còn sống” của phiên trước.
+    sessionLiveRef.current = false;
     setInterim("");
     setCallStatus("listening");
     setCallOpen(true);
@@ -629,6 +665,8 @@ export function useCallSession(deps: CallDeps) {
   const endCall = useCallback(() => {
     callActiveRef.current = false;
     sessionLiveRef.current = false;
+    // Vô hiệu thẻ của mọi phiên đang chờ → callback cũ tự bỏ qua.
+    sessionGenRef.current += 1;
     if (reopenTimerRef.current) {
       window.clearTimeout(reopenTimerRef.current);
       reopenTimerRef.current = 0;
@@ -782,6 +820,7 @@ export function useCallSession(deps: CallDeps) {
     return () => {
       callActiveRef.current = false;
       sessionLiveRef.current = false;
+      sessionGenRef.current += 1;
       if (reopenTimerRef.current) {
         window.clearTimeout(reopenTimerRef.current);
         reopenTimerRef.current = 0;
