@@ -9,7 +9,7 @@
  */
 
 import type { VideoInfo } from "@/lib/videoIntent";
-import { ArrowLeft, ExternalLink, Play, Search } from "lucide-react";
+import { ArrowLeft, Play, Search } from "lucide-react";
 import { useState } from "react";
 
 export function VideoListCard({
@@ -33,24 +33,15 @@ export function VideoListCard({
             allowFullScreen
           />
         </div>
-        <div className="flex items-center justify-between gap-2 px-3 py-2">
+        <div className="flex items-center justify-center px-3 py-2">
           <button
             type="button"
             onClick={() => setPlaying(null)}
-            className="inline-flex min-w-0 items-center gap-1.5 text-[12px] text-muted-foreground transition hover:text-foreground"
+            className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground transition hover:text-foreground"
           >
-            <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">Video khác</span>
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Video khác
           </button>
-          <a
-            href={`https://www.youtube.com/watch?v=${playing.videoId}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex shrink-0 items-center gap-1 text-[12px] text-muted-foreground transition hover:text-foreground"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            YouTube
-          </a>
         </div>
       </div>
     );

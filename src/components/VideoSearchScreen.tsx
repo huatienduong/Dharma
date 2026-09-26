@@ -17,22 +17,8 @@ import {
 import { searchVideoInBrowser } from "@/lib/videoSearchClient";
 import type { VideoInfo } from "@/lib/videoIntent";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ExternalLink, Lightbulb, Loader2, Play, Search, X } from "lucide-react";
+import { ArrowLeft, Loader2, Play, Search, X } from "lucide-react";
 import { useState } from "react";
-
-/** Chủ đề gợi ý — dùng để bấm một cái là có video, không phải gõ. */
-const SUGGESTIONS = [
-  "Tứ Đế",
-  "Tánh niệm",
-  "Dukkha — khổ",
-  "Vipassana",
-  "Bát Nhã Tâm Kinh",
-  "Nghiệp quả",
-  "Bốn tầng nhẫn",
-  "Cúng dường",
-  "Luật Tứ Phần",
-  "Thiền và trí tuệ",
-];
 
 export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("");
@@ -131,7 +117,6 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
                   void run(query);
                 }
               }}
-              placeholder="Nhập chủ đề muốn xem…"
               aria-label="Nhập chủ đề muốn xem video"
               className="h-11 w-full bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground/60"
             />
@@ -223,37 +208,6 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
           </section>
         ) : null}
 
-        {/* ---------- ĐỀ XUẤT: nằm ở dưới ---------- */}
-        <section className="mt-8">
-          <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
-            <Lightbulb className="h-3.5 w-3.5 text-gold" />
-            Đề xuất chủ đề
-          </h2>
-          <p className="mt-1 text-[12px] text-muted-foreground/80">
-            Trợ lý chỉ tìm video về Phật giáo. Bấm một chủ đề để xem ngay tại đây.
-          </p>
-          <ul className="mt-3 flex flex-wrap gap-2">
-            {SUGGESTIONS.map((s) => (
-              <li key={s}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setQuery(s);
-                    void run(s);
-                  }}
-                  disabled={busy}
-                  className={cn(
-                    "rounded-full border border-border/60 bg-card px-3.5 py-2 text-[13px] transition",
-                    "hover:border-primary/60 hover:bg-muted/40 disabled:opacity-50",
-                  )}
-                >
-                  {s}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-
         {/* Gợi ý dùng Trợ lý */}
         <section className="mt-8 flex items-start gap-2.5 rounded-2xl border border-border/50 bg-muted/40 p-3">
           <BotAvatar className="mt-0.5" />
@@ -265,18 +219,6 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
         </section>
       </div>
 
-      {/* Liên kết mở rộng khi đang xem */}
-      {playing ? (
-        <a
-          href={`https://www.youtube.com/watch?v=${playing.videoId}`}
-          target="_blank"
-          rel="noreferrer"
-          className="mx-auto mb-[max(0.75rem,env(safe-area-inset-bottom))] inline-flex items-center gap-1.5 text-[12px] text-muted-foreground transition hover:text-foreground"
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-          Mở trên YouTube
-        </a>
-      ) : null}
     </div>
   );
 }
