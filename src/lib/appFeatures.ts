@@ -97,14 +97,16 @@ export const FEATURE_TIPS = [
  * một mục là mọi nhánh — chat, ảnh, đàm thoại — cùng có.
  */
 export const SUPPORT_TIPS = [
+  "TUYỆT ĐỐI không bịa đường dẫn hay nhóm cài đặt trong ứng dụng. Trong Cài đặt chỉ có: Giao diện, Thông báo, Giọng nói, Giới thiệu, Chính sách & Điều khoản, Góp ý & Báo lỗi. Các nút trong khung chat: gửi ảnh và xoá hội thoại ở góc trái ô nhập, micro và loa ở góc phải, biểu tượng bánh răng là Cài đặt, điện thoại ở góc trên trái là Đàm thoại. Ô nhập KHÔNG có nút bàn phím hay nút đính kèm khác. Không chắc thì nói bước kiểm tra chung thay vì chỉ một đường dẫn trong app.",
   "Hỏi cách dùng hoặc gặp lỗi → hướng dẫn theo ĐÚNG tên nút trên màn hình, theo thứ tự thao tác, mỗi bước một ý, ngắn gọn và làm được ngay. Không nói chung chung kiểu 'hãy thử lại'.",
   "Lỗi 'tạm chưa trả lời được': máy chủ AI đang bận vì nhiều người dùng. Chờ khoảng một phút rồi bấm nút Gửi lại, hoặc hỏi lại bằng câu ngắn hơn.",
   "Lỗi 'gửi yêu cầu quá nhanh': hệ thống giới hạn số câu mỗi phút, hãy chậm lại, đợi một phút rồi thử tiếp.",
-  "Micro không nghe: kiểm tra trình duyệt đã được cấp quyền micro chưa, tắt các ứng dụng khác đang dùng micro, nói cách xa micro một chút và chọn nơi yên tĩnh.",
+  "Micro không nghe: quyền dùng micro do TRÌNH DUYỆT cấp (mở phần cài đặt/quyền của chính trình duyệt, không phải trong ứng dụng), tắt các ứng dụng khác đang giữ micro, nói gần micro và ở nơi yên tĩnh. Trong Cài đặt của ứng dụng chỉ có mục 'Giọng nói' và mục đó dùng cho đọc to, không liên quan tới micro.",
   "Nói xong không tự gửi: giữ yên lặng khoảng 1 giây sau câu cuối, hoặc bấm nút Dừng nghe. Nếu vẫn không được thì gõ câu hỏi bằng chữ.",
   "Ảnh không phân tích được: gửi từng ảnh một, ảnh JPG hoặc PNG, dung lượng vừa phải. Nếu máy chủ báo hết hạn mức thì thử lại sau 1–2 phút.",
-  "Không nghe thấy giọng đọc: kiểm tra âm lượng và chế độ im lặng của điện thoại, hoặc đổi giọng khác trong Cài đặt → Giọng nói.",
-  "Muốn bắt đầu lại: nói 'xoá hội thoại' hoặc bấm biểu tượng thùng rác. Muốn nói chuyện bằng giọng nói thì bấm nút tròn có sóng âm ở góc trên trái, hoặc nhắn 'mở đàm thoại'.",
+  "Không nghe thấy giọng đọc: kiểm tra âm lượng và chế độ im lặng của điện thoại, hoặc chọn giọng khác trong Cài đặt → Giọng nói.",
+  "Muốn bắt đầu lại: nói 'xoá hội thoại' hoặc bấm biểu tượng thùng rác ở góc trái ô nhập. Muốn nói chuyện bằng giọng nói thì bấm nút điện thoại ở góc trên trái, hoặc nhắn 'mở đàm thoại'.",
+  "Báo lỗi hoặc góp ý: Cài đặt → Góp ý & Báo lỗi.",
 ];
 
 export function featuresPrompt(compact = false): string {

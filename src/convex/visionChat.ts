@@ -22,6 +22,7 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { featuresPrompt } from "../lib/appFeatures";
+import { cleanPlainText } from "../lib/textClean";
 
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -351,13 +352,12 @@ export const analyzeImage = action({
           };
           // Bỏ phần "suy nghĩ" của model: đó là lời bàn nội tâm, không
           // phải câu trả lời cho người dùng.
-          const text = (json.candidates?.[0]?.content?.parts ?? [])
-            .filter((p) => !p.thought)
-            .map((p) => p.text ?? "")
-            .join("")
-            .trim()
-            // Gỡ gạch đầu dòng hay bị model đặt ở câu mở đầu.
-            .replace(/^[\s–\-•*]+/, "");
+          const text = cleanPlainText(
+            (json.candidates?.[0]?.content?.parts ?? [])
+              .filter((p) => !p.thought)
+              .map((p) => p.text ?? "")
+              .join(""),
+          );
           if (text) {
             return {
               ok: true as const,

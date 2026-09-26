@@ -15,6 +15,7 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { featuresPrompt } from "../lib/appFeatures";
+import { cleanPlainText } from "../lib/textClean";
 
 const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
@@ -190,7 +191,7 @@ function askedForSource(text: string): boolean {
  *      ở cuối câu trả lời. Họ hỏi nguồn thì vẫn giữ nguyên.
  */
 function tidyReply(text: string, question: string): string {
-  const out = text.trim().replace(/^[\s–\-•*]+/, "");
+  const out = cleanPlainText(text);
   if (askedForSource(question)) return out;
   const lines = out.split("\n");
   while (
