@@ -59,10 +59,6 @@ export const FEATURES: AppFeature[] = [
     how: 'Viết theo mẫu "LỆNH: NỘI DUNG CỤ THỂ", lệnh phải ở ĐẦU câu. Lệnh dùng được: báo lỗi, góp ý, hỗ trợ kỹ thuật, khắc phục sự cố, khiếu nại, nhận xét, ý kiến, đề xuất. Ví dụ "báo lỗi: nút xoá hội thoại bị treo" hoặc "khắc phục sự cố: ứng dụng đóng băng khi mở lại". Nếu chỉ gõ lệnh mà chưa có nội dung thì Trợ lý sẽ nhắc lại đúng mẫu này. Trợ lý tự chuyển thẳng cho bộ phận kỹ thuật, không cần mở Cài đặt, không cần để lại email.',
   },
   {
-    name: "Màn chào hỏi bạn cần hỗ trợ gì",
-    how: "Khi hội thoại còn trống, màn hình hiện logo Trợ lý và câu hỏi “Bạn cần được hỗ trợ gì?” kèm các kiểu hỗ trợ: hỏi về Phật học, gửi hình ảnh hoặc tệp, nghe lại câu trả lời, đàm thoại bằng giọng nói, báo lỗi và góp ý.",
-  },
-  {
     name: `Chọn ${VOICE_COUNT} giọng đọc (Cài đặt → Giọng nói)`,
     how: "Vào Cài đặt → Giọng nói, nghe thử và chọn; dùng cho cả chat lẫn đàm thoại.",
   },

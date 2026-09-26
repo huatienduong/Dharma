@@ -5,7 +5,6 @@ import {
   type AttachedFile,
 } from "@/components/ChatComposer";
 import { ChatThread, type FailedReply } from "@/components/ChatThread";
-import { HomeGreeting } from "@/components/HomeGreeting";
 import { api } from "@/convex/_generated/api";
 import { useCallSession } from "@/hooks/useCallSession";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
@@ -1176,8 +1175,7 @@ export default function Assistant() {
           !isEmpty && image && "pb-48",
         )}
       >
-        {/* Hội thoại trống: màn chào logo robot + câu hỏi cần hỗ trợ gì. */}
-        {isEmpty && <HomeGreeting />}
+        {/* Hội thoại trống: cố tình để trống hoàn toàn, vào thẳng khung chat. */}
         <ChatThread
           messages={messages}
           isEmpty={isEmpty}
