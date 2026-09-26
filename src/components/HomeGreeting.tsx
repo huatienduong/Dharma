@@ -17,12 +17,12 @@ export function HomeGreeting() {
       <div className="relative flex shrink-0 items-center justify-center">
         <span
           aria-hidden
-          className="absolute -inset-5 rounded-full bg-primary/10 blur-2xl sm:-inset-7"
+          className="absolute -inset-4 rounded-full bg-primary/10 blur-xl sm:-inset-5"
         />
         <BotAvatar
           size="lg"
           glow
-          className="relative size-[min(30vh,200px)] shadow-xl sm:size-[min(34vh,240px)]"
+          className="relative size-20 shadow-lg sm:size-24"
         />
       </div>
 
