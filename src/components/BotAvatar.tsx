@@ -33,7 +33,7 @@ export function BotAvatar({
     <span
       className={cn(
         "relative flex shrink-0 items-center justify-center rounded-[28%]",
-        "bg-muted",
+        "bg-card",
         SIZES[size],
         className,
       )}
@@ -54,8 +54,8 @@ export function BotAvatar({
             rx="0.9"
             className="fill-muted-foreground"
           />
-          <circle cx="24" cy="5.6" r="2.9" className="fill-foreground" />
-          <circle cx="23.2" cy="4.8" r="0.9" className="fill-background" />
+          <circle cx="24" cy="5.6" r="2.9" className="fill-primary" />
+          <circle cx="23.2" cy="4.8" r="0.9" className="fill-background" opacity="0.4" />
         </g>
 
         {/* Tai nghe hai bên */}
@@ -65,7 +65,7 @@ export function BotAvatar({
           width="3.4"
           height="8"
           rx="1.7"
-          className="fill-accent"
+          className="fill-border"
         />
         <rect
           x="36"
@@ -73,24 +73,25 @@ export function BotAvatar({
           width="3.4"
           height="8"
           rx="1.7"
-          className="fill-accent"
+          className="fill-border"
         />
 
-        {/* Đầu robot — KHÔNG viền bo, chỉ nền trơn cho gọn */}
+        {/* Đầu robot — KHÔNG viền bo; nền nhạt hơn vỏ ngoài để tách bạch
+            trên giao diện tối nâu */}
         <rect
           x="11.4"
           y="12.4"
           width="25.2"
           height="24"
           rx="9.4"
-          className="fill-card"
+          className="fill-muted"
         />
         {/* Ánh sáng trên vòm đầu */}
         <path
           d="M16.4 16.6c1.9-2 4.9-3.1 7.6-3.1s5.7 1.1 7.6 3.1"
           fill="none"
-          className="stroke-background"
-          strokeOpacity="0.9"
+          className="stroke-foreground"
+          strokeOpacity="0.22"
           strokeWidth="1.9"
           strokeLinecap="round"
         />
@@ -101,16 +102,16 @@ export function BotAvatar({
           cy="27.4"
           rx="2.6"
           ry="1.7"
-          className="fill-muted-foreground"
-          opacity="0.3"
+          className="fill-primary"
+          opacity="0.2"
         />
         <ellipse
           cx="31.6"
           cy="27.4"
           rx="2.6"
           ry="1.7"
-          className="fill-muted-foreground"
-          opacity="0.3"
+          className="fill-primary"
+          opacity="0.2"
         />
 
         {/* Quầng sáng mắt (chỉ khi bật glow) */}
@@ -120,15 +121,15 @@ export function BotAvatar({
               cx="19.2"
               cy="24.4"
               r="4.2"
-              className="fill-foreground"
-              opacity="0.18"
+              className="fill-primary"
+              opacity="0.25"
             />
             <circle
               cx="28.8"
               cy="24.4"
               r="4.2"
-              className="fill-foreground"
-              opacity="0.18"
+              className="fill-primary"
+              opacity="0.25"
             />
           </>
         ) : null}
@@ -136,8 +137,8 @@ export function BotAvatar({
         {/* Mắt tròn xoe, có đốm sáng */}
         <ellipse cx="19.2" cy="24.4" rx="2.6" ry="3.1" className="fill-foreground" />
         <ellipse cx="28.8" cy="24.4" rx="2.6" ry="3.1" className="fill-foreground" />
-        <circle cx="18.4" cy="23.1" r="0.95" className="fill-card" />
-        <circle cx="28" cy="23.1" r="0.95" className="fill-card" />
+        <circle cx="18.4" cy="23.1" r="0.95" className="fill-muted" />
+        <circle cx="28" cy="23.1" r="0.95" className="fill-muted" />
 
         {/* Nụ cười thân thiện */}
         <path
