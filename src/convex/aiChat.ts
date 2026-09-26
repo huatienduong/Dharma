@@ -336,12 +336,90 @@ type ServerVoice = {
  * listGeminiTtsModels tự dò danh sách model đang sống từ API rồi mới chọn.
  */
 const GEMINI_TTS_MODELS = [
+  // Danh sách này phải khớp với các model TTS ĐANG SỐNG. Trước đây có
+  // "gemini-3-pro-preview-tts" đã bị Google thu hồi, và thiếu hẳn dòng
+  // 3.1/3.8 — nên khi cache rỗng, nhánh Gemini thử toàn model chết và mọi
+  // giọng đều im, tưởng như giọng hỏng.
   "gemini-2.5-flash-preview-tts",
   "gemini-2.5-pro-preview-tts",
-  "gemini-3-pro-preview-tts",
+  "gemini-3.1-flash-tts-preview",
+  "gemini-3.8-flash-tts",
+  "gemini-3.8-flash-lite-tts",
 ] as const;
 
 const ttsModelsCache = new Map<string, { at: number; models: string[] }>();
+
+/**
+ * CHẨN ĐOÁN ĐỌC TO — tách từng nhánh để biết chính xác vì sao im.
+ *
+ * Cần vì trước đây khi không nghe được, không biết là giọng chết, model TTS
+ * chết, hết hạn mức hay khóa sai — tất cả đều trả cùng một kết quả rỗng.
+ * Action này gọi thử từng nhánh và trả về nguyên văn lỗi của nhánh đó.
+ */
+export const ttsDiag = action({
+  args: {},
+  handler: async () => {
+    const out: {
+      elevenLabs: { ok: boolean; note: string };
+      gemini: { ok: boolean; note: string; models: string[] };
+    } = {
+      elevenLabs: { ok: false, note: "chưa cấu hình khóa" },
+      gemini: { ok: false, note: "chưa cấu hình khóa", models: [] },
+    };
+
+    const elevenKey = process.env.ELEVENLABS_API_KEY;
+    if (elevenKey) {
+      try {
+        const res = await fetch(
+          `${ELEVENLABS_BASE_URL}/text-to-speech/${ELEVENLABS_FALLBACK_VOICES.female[0]}?output_format=mp3_44100_128`,
+          {
+            method: "POST",
+            headers: {
+              "xi-api-key": elevenKey,
+              "Content-Type": "application/json",
+              Accept: "audio/mpeg",
+            },
+            body: JSON.stringify({
+              text: "A",
+              model_id: ELEVENLABS_MODEL,
+              voice_settings: ELEVENLABS_VOICE_SETTINGS.female,
+            }),
+            signal: AbortSignal.timeout(20_000),
+          },
+        );
+        if (res.ok) {
+          out.elevenLabs = {
+            ok: true,
+            note: `HTTP 200, ${(await res.arrayBuffer()).byteLength} byte`,
+          };
+        } else {
+          out.elevenLabs = {
+            ok: false,
+            note: `HTTP ${res.status} ${(await res.text().catch(() => "")).slice(0, 200)}`,
+          };
+        }
+      } catch (err) {
+        out.elevenLabs = {
+          ok: false,
+          note: err instanceof Error ? err.message : String(err),
+        };
+      }
+    }
+
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (geminiKey) {
+      const models = await listGeminiTtsModels(geminiKey);
+      out.gemini.models = models;
+      const audio = await synthGemini(geminiKey, "A", "Kore");
+      out.gemini.ok = audio !== null;
+      out.gemini.note = audio
+        ? `OK, ${audio.mime}`
+        : "mọi model TTS đều lỗi (xem log máy chủ)";
+    }
+
+    return out;
+  },
+});
 const TTS_MODELS_TTL_MS = 30 * 60_000;
 
 /**
@@ -390,12 +468,25 @@ async function refreshGeminiTtsModels(geminiKey: string): Promise<void> {
  * Danh sách model TTS dùng được. Cache rỗng thì dùng luôn danh sách ưu tiên
  * và dò nền — không để người dùng chờ thêm cho một lệnh gọi không thiết yếu.
  */
+/**
+ * Danh sách model TTS để thử. Cache rỗng thì DÒ NGAY (giới hạn 5s) thay vì
+ * chạy nền rồi lập tức dùng danh sách dự phòng — nếu không, mỗi lần khởi
+ * động action mới đều thử model đã chết và im lặng, khiến người dùng tưởng
+ * giọng nói bị hỏng. Dự phòng vẫn được dùng nếu dò quá 5s.
+ */
 async function listGeminiTtsModels(geminiKey: string): Promise<string[]> {
   const cached = ttsModelsCache.get(geminiKey);
   if (cached && Date.now() - cached.at < TTS_MODELS_TTL_MS) {
     return cached.models;
   }
-  if (!cached) void refreshGeminiTtsModels(geminiKey).catch(() => {});
+  if (!cached) {
+    await Promise.race([
+      refreshGeminiTtsModels(geminiKey).catch(() => {}),
+      new Promise((r) => setTimeout(r, 5_000)),
+    ]);
+    const fresh = ttsModelsCache.get(geminiKey);
+    if (fresh) return fresh.models;
+  }
   return [...GEMINI_TTS_MODELS];
 }
 
