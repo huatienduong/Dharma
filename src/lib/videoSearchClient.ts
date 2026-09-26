@@ -44,107 +44,16 @@ function toQuery(raw: string): string {
     .trim();
 }
 
-/** "PT1H2M10S" → "1:02:10" hoặc "02:10". */
-function isoDuration(raw: string | undefined): string | undefined {
-  const m = raw?.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
-  if (!m) return undefined;
-  const h = Number(m[1] ?? 0);
-  const min = Number(m[2] ?? 0);
-  const s = Number(m[3] ?? 0);
-  return h > 0
-    ? `${h}:${String(min).padStart(2, "0")}:${String(s).padStart(2, "0")}`
-    : `${min}:${String(s).padStart(2, "0")}`;
-}
-
-/**
- * Tìm bằng YouTube Data API v3 ngay trên máy người dùng (Google cho phép
- * gọi chéo miền). Cần khoá API — khoá người dùng dán ở Cài đặt → Video
- * YouTube, khoá máy chủ thì Convex dùng riêng.
- */
-async function searchWithKey(
-  query: string,
-  key: string,
-): Promise<VideoInfo[]> {
-  const ctl = new AbortController();
-  const timer = window.setTimeout(() => ctl.abort(), 8000);
-  try {
-    const res = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=3&relevanceLanguage=vi&q=${encodeURIComponent(query)}&key=${encodeURIComponent(key)}`,
-      { signal: ctl.signal },
-    );
-    if (!res.ok) return [];
-    const json = (await res.json()) as {
-      items?: {
-        id?: { videoId?: string };
-        snippet?: {
-          title?: string;
-          channelTitle?: string;
-          thumbnails?: { medium?: { url?: string }; high?: { url?: string } };
-        };
-      }[];
-    };
-    const items = json.items ?? [];
-    const ids = items
-      .map((it) => it.id?.videoId)
-      .filter((x): x is string => Boolean(x));
-
-    // Lấy thời lượng (bỏ trống nếu không lấy được, không sao).
-    let durations: Record<string, string | undefined> = {};
-    if (ids.length) {
-      try {
-        const detail = await fetch(
-          `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids.join(",")}&key=${encodeURIComponent(key)}`,
-        );
-        if (detail.ok) {
-          const dj = (await detail.json()) as {
-            items?: { id?: string; contentDetails?: { duration?: string } }[];
-          };
-          durations = Object.fromEntries(
-            (dj.items ?? []).map((it) => [
-              it.id ?? "",
-              isoDuration(it.contentDetails?.duration),
-            ]),
-          );
-        }
-      } catch {
-        /* bỏ qua */
-      }
-    }
-
-    return items
-      .map((it): VideoInfo | null => {
-        const videoId = it.id?.videoId;
-        if (!videoId) return null;
-        return {
-          videoId,
-          title: it.snippet?.title ?? "",
-          channel: it.snippet?.channelTitle ?? "",
-          thumbnail:
-            it.snippet?.thumbnails?.high?.url ??
-            it.snippet?.thumbnails?.medium?.url ??
-            `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
-          duration: durations[videoId],
-        };
-      })
-      .filter((x): x is VideoInfo => x !== null);
-  } catch {
-    return [];
-  } finally {
-    window.clearTimeout(timer);
-  }
-}
-
 /**
  * Tìm video để đưa vào khung chat. Trả về `[]` nếu không tìm được (khi đó
  * người dùng có thể dán link YouTube).
  *
- * `key` là khoá YouTube lưu trên thiết bị — có thì tìm chính thức, không
- * có thì thử các instance Invidious công khai.
+ * Ứng dụng tự dùng khoá của hệ thống qua máy chủ, người dùng KHÔNG phải
+ * dán khoá. Hàm này chỉ là đường dự phòng chạy ngay trong trình duyệt:
+ * dán link YouTube thì xem được luôn, ngoài ra thử các instance Invidious
+ * công khai.
  */
-export async function searchVideoInBrowser(
-  raw: string,
-  key = "",
-): Promise<VideoInfo[]> {
+export async function searchVideoInBrowser(raw: string): Promise<VideoInfo[]> {
   // 1. Dán link YouTube → không cần mạng, ghép ảnh nhỏ là xem được ngay.
   const id = youtubeVideoId(raw);
   if (id) {
@@ -161,13 +70,7 @@ export async function searchVideoInBrowser(
   const query = toQuery(raw);
   if (!query) return [];
 
-  // 2. Có khoá → YouTube Data API (kết quả chuẩn, có tên kênh + thời lượng).
-  if (key) {
-    const byKey = await searchWithKey(query, key);
-    if (byKey.length) return byKey;
-  }
-
-  // 3. Hỏi bằng lời và không có khoá → tìm qua instance Invidious.
+  // 2. Hỏi bằng lời → tìm qua instance Invidious công khai.
   for (const base of INVIDIOUS_INSTANCES) {
     try {
       const ctl = new AbortController();

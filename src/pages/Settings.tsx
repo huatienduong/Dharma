@@ -1,7 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { LegalDocs } from "@/components/LegalDocs";
 import { wipeSecureStorage } from "@/lib/secureStorage";
-import { loadYouTubeKey, saveYouTubeKey } from "@/lib/youtubeKey";
 import {
   APP_DEVELOPER,
   APP_NAME,
@@ -28,16 +27,14 @@ import {
   CheckCircle2,
   ChevronRight,
   Download,
-  KeyRound,
   Lightbulb,
   Paperclip,
   RefreshCw,
   Send,
-  Trash2,
   Volume2,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router";
 
@@ -58,16 +55,6 @@ export default function Settings() {
     setNotifications,
   } = useSettings();
   const meta = useQuery(api.library.getAppVersion, {});
-  // Đọc khoá đã lưu để hiện đúng trạng thái trong Cài đặt.
-  useEffect(() => {
-    let alive = true;
-    void loadYouTubeKey().then((k) => {
-      if (alive) setYtKey(k);
-    });
-    return () => {
-      alive = false;
-    };
-  }, []);
   const submitFeedback = useMutation(api.library.submitFeedback);
   const sendFeedbackEmail = useAction(api.library.emailFeedback);
 
@@ -79,14 +66,13 @@ export default function Settings() {
   const validSection =
     sectionParam === "appearance" ||
     sectionParam === "voice" ||
-    sectionParam === "video" ||
     sectionParam === "about" ||
     sectionParam === "feedback" ||
     sectionParam === "legal"
       ? sectionParam
       : null;
   const [openCard, setOpenCard] = useState<
-    null | "appearance" | "voice" | "video" | "about" | "feedback" | "legal"
+    null | "appearance" | "voice" | "about" | "feedback" | "legal"
   >(validSection);
   const toggle = (key: typeof openCard) =>
     setOpenCard((cur) => (cur === key ? null : key));
@@ -129,66 +115,22 @@ export default function Settings() {
     }
   };
 
-  // Khoá API YouTube (tìm & xem video trong khung chat) — lưu mã hoá trên
-  // thiết bị, không gửi đi đâu. Rỗng = không dán khoá, vẫn xem được video
-  // khi dán link YouTube.
-  const [ytKey, setYtKey] = useState("");
-  const [ytKeyInput, setYtKeyInput] = useState("");
-
-  const saveYtKey = async () => {
-    await saveYouTubeKey(ytKeyInput);
-    setYtKeyInput("");
-    setYtKey("");
-    toast.success("Đã lưu khoá YouTube. Từ giờ hỏi về video là xem được ngay.");
-  };
-  const removeYtKey = async () => {
-    await saveYouTubeKey("");
-    setYtKeyInput("");
-    setYtKey("");
-    toast.success("Đã xoá khoá YouTube khỏi thiết bị.");
-  };
-
+  // Góp ý / báo lỗi — chỉ dùng trong mục cuối, không phải trạng thái dùng chung.
   const [fbType, setFbType] = useState<"idea" | "bug">("idea");
   const [fbMessage, setFbMessage] = useState("");
   const [fbEmail, setFbEmail] = useState("");
-  const [fbFile, setFbFile] = useState<File | null>(null);
-  const fbFileRef = useRef<HTMLInputElement>(null);
+  const [fbFile, setFbFile] = useState<{ name: string; size: number } | null>(
+    null,
+  );
   const [sending, setSending] = useState(false);
-
-  // Kiểm tra cập nhật: chỉ chạy khi bấm nút, hiển thị kết quả
-  const [checking, setChecking] = useState(false);
-  const [checkResult, setCheckResult] = useState<null | {
-    ok: boolean;
-    message: string;
-    releaseNotes?: string;
-  }>(null);
-
-  const latest = meta?.latestVersion ?? APP_VERSION;
-  const hasUpdate = compareVersions(latest, APP_VERSION) > 0;
-
-  const handleCheckUpdate = async () => {
-    setChecking(true);
-    setCheckResult(null);
-    // So sánh với phiên bản mới nhất trên server
-    await new Promise((r) => setTimeout(r, 600));
-    const up = compareVersions(latest, APP_VERSION) > 0;
-    setCheckResult({
-      ok: true,
-      message: up
-        ? `Có phiên bản mới ${latest}. Cập nhật để nhận tính năng và sửa lỗi mới.`
-        : `Bạn đang dùng phiên bản mới nhất (${APP_VERSION}).`,
-      releaseNotes: up ? meta?.releaseNotes : undefined,
-    });
-    setChecking(false);
-  };
-
-  // Thiết bị/hệ điều hành phát hiện tự động từ trình duyệt
+  const fbFileRef = useRef<HTMLInputElement>(null);
+  // Tên thiết bị / hệ điều hành chỉ để báo lỗi, không thu thập gì khác.
   const detectedDevice = useMemo(() => {
-    if (typeof navigator === "undefined") return "";
-    const ua = navigator.userAgent;
+    if (typeof navigator === "undefined") return "Không rõ";
+    const ua = navigator.userAgent || "";
     const os = /Android/i.test(ua)
       ? "Android"
-      : /iPhone|iPad|iPod/i.test(ua)
+      : /iPhone|iPad|iOS/i.test(ua)
         ? "iOS"
         : /Windows/i.test(ua)
           ? "Windows"
@@ -196,20 +138,53 @@ export default function Settings() {
             ? "macOS"
             : /Linux/i.test(ua)
               ? "Linux"
-              : "Không xác định";
-    const browser = /Edg\//.test(ua)
+              : "Không rõ";
+    const browser = /Edg\//i.test(ua)
       ? "Edge"
-      : /OPR\//.test(ua)
-        ? "Opera"
-        : /Chrome\//.test(ua)
-          ? "Chrome"
-          : /Safari\//.test(ua)
-            ? "Safari"
-            : /Firefox\//.test(ua)
-              ? "Firefox"
-              : "Trình duyệt khác";
+      : /Chrome\//i.test(ua)
+        ? "Chrome"
+        : /Safari\//i.test(ua)
+          ? "Safari"
+          : "Trình duyệt khác";
     return `${os} · ${browser}`;
   }, []);
+
+  // Kiểm tra cập nhật: phiên bản mới nhất nằm trên máy chủ (`meta`), so với
+  // bản đang chạy. Không có gì so sánh thì coi như đang mới nhất.
+  const [checking, setChecking] = useState(false);
+  const [checkResult, setCheckResult] = useState<{
+    message: string;
+    releaseNotes?: string;
+  } | null>(null);
+  const hasUpdate = Boolean(
+    meta?.latestVersion && compareVersions(meta.latestVersion, APP_VERSION) > 0,
+  );
+  const handleCheckUpdate = async () => {
+    setChecking(true);
+    try {
+      // Cho một nhịp để giao diện kịp vẽ trạng thái "đang kiểm tra…".
+      await new Promise((r) => window.setTimeout(r, 400));
+      if (!meta) {
+        setCheckResult({
+          message: "Chưa kiểm tra được — bạn thử lại khi có mạng nhé.",
+        });
+      } else if (hasUpdate) {
+        setCheckResult({
+          message: `Đã có phiên bản mới ${meta.latestVersion}.`,
+          releaseNotes: meta.releaseNotes,
+        });
+      } else {
+        setCheckResult({
+          message: "Bạn đang dùng bản mới nhất.",
+          releaseNotes: meta.releaseNotes,
+        });
+      }
+    } catch {
+      setCheckResult({ message: "Chưa kiểm tra được. Bạn thử lại sau nhé." });
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const handleSend = async () => {
     if (fbMessage.trim().length < 5) {
@@ -382,68 +357,6 @@ export default function Settings() {
         </RowCard>
 
         {/* ---------- Giới thiệu / Phiên bản ---------- */}
-        {/* ---------- Video YouTube ---------- */}
-        <RowCard
-          label="Video YouTube"
-          open={openCard === "video"}
-          onClick={() => toggle("video")}
-        >
-          <div className="space-y-3 pt-1">
-            <p className="text-[13px] leading-relaxed text-muted-foreground">
-              Muốn hỏi Trợ lý về video và xem ngay trong khung chat thì dán
-              khoá YouTube Data API v3 vào đây. Khoá được mã hoá và chỉ lưu
-              trên máy này, không gửi đi đâu.
-            </p>
-            {ytKey ? (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between rounded-2xl bg-muted/50 px-4 py-3">
-                  <p className="text-sm font-semibold">Đã có khoá</p>
-                  <span className="text-[12px] tabular-nums text-muted-foreground">
-                    ••••{ytKey.slice(-4)}
-                  </span>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={removeYtKey}
-                  className="w-full gap-1.5 rounded-full"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Xoá khoá
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <input
-                  type="password"
-                  autoComplete="off"
-                  spellCheck={false}
-                  value={ytKeyInput}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    setYtKeyInput(e.target.value)
-                  }
-                  placeholder="Dán khoá API YouTube"
-                  aria-label="Khoá API YouTube"
-                  className="h-11 w-full rounded-2xl border border-border bg-background px-4 text-[15px] text-foreground outline-none transition placeholder:text-muted-foreground/70 focus:border-primary"
-                />
-                <Button
-                  size="sm"
-                  onClick={saveYtKey}
-                  disabled={!ytKeyInput.trim()}
-                  className="w-full gap-1.5 rounded-full"
-                >
-                  <KeyRound className="h-3.5 w-3.5" />
-                  Lưu khoá
-                </Button>
-                <p className="text-[11px] leading-relaxed text-muted-foreground">
-                  Chưa có khoá vẫn xem được video khi bạn dán link YouTube
-                  vào khung chat.
-                </p>
-              </div>
-            )}
-          </div>
-        </RowCard>
-
         <RowCard
           label="Giới thiệu"
           open={openCard === "about"}

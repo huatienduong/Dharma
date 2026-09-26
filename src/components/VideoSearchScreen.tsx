@@ -16,7 +16,6 @@ import {
 } from "@/lib/buddhistVideoFilter";
 import { searchVideoInBrowser } from "@/lib/videoSearchClient";
 import type { VideoInfo } from "@/lib/videoIntent";
-import { loadYouTubeKey } from "@/lib/youtubeKey";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, ExternalLink, Lightbulb, Loader2, Play, Search, X } from "lucide-react";
 import { useState } from "react";
@@ -58,9 +57,10 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
     setBusy(true);
     setSearched(topic);
     try {
-      const key = await loadYouTubeKey().catch(() => "");
+      // Ứng dụng tự dùng khoá của hệ thống qua máy chủ; ở đây chỉ chạy
+      // đường dự phòng trong trình duyệt, người dùng không phải dán khoá.
       const found = keepBuddhistVideos(
-        await searchVideoInBrowser(topic, key),
+        await searchVideoInBrowser(topic),
         true,
       );
       setVideos(found);

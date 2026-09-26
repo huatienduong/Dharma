@@ -42,7 +42,6 @@ import {
   NO_BUDDHIST_VIDEO_MESSAGE,
 } from "@/lib/buddhistVideoFilter";
 import { searchVideoInBrowser } from "@/lib/videoSearchClient";
-import { loadYouTubeKey } from "@/lib/youtubeKey";
 import { getDeviceMeta } from "@/lib/deviceSecurity";
 import { wantsImage } from "@/lib/imageIntent";
 import { APP_VERSION } from "@/lib/version";
@@ -274,10 +273,9 @@ export default function Assistant() {
           console.warn("[video] máy chủ chưa sẵn sàng, thử tìm trực tiếp:", err);
         }
 
-        // 2. Dự phòng: tìm ngay trong trình duyệt bằng khoá người dùng đã
-        // dán ở Cài đặt (lưu mã hoá trên thiết bị).
-        const key = await loadYouTubeKey().catch(() => "");
-        const local = await searchVideoInBrowser(query, key).catch(() => []);
+        // 2. Dự phòng: tìm ngay trong trình duyệt (dán link là xem được
+        // luôn; ngoài ra thử server Invidious công khai).
+        const local = await searchVideoInBrowser(query).catch(() => []);
         if (apply(local)) return;
         if (!warned) {
           warned = true;
