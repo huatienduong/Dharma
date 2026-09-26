@@ -326,11 +326,7 @@ export default function Settings() {
           open={openCard === "voice"}
           onClick={() => toggle("voice")}
         >
-          <div className="space-y-3 pt-1">
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              Chọn giọng để Trợ lý đọc to khi trả lời. Bấm biểu tượng loa để
-              thử giọng trước khi chọn.
-            </p>
+          <div className="pt-1">
             <div className="grid gap-2 sm:grid-cols-2">
               {VOICE_LIST.map((v) => {
                 const active = voiceId === v.id;
