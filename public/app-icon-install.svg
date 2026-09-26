@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="512" height="512" role="img" aria-label="Trợ lý Phật học">
+  <title>Trợ lý Phật học</title>
+  <!--
+    ICON KHI CÀI ĐẶT — khác icon trong ứng dụng: có VỎ NGOÀI màu nâu để
+    nổi trên màn hình chính / thanh ứng dụng. Nền tràn viền (maskable-safe)
+    nên hệ điều hành bo góc tự do, robot nằm gọn trong vùng an toàn 80%.
+  -->
+  <defs>
+    <linearGradient id="shell" x1="24" y1="0" x2="24" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2b2015"/>
+      <stop offset="1" stop-color="#17100a"/>
+    </linearGradient>
+    <radialGradient id="warm" cx="24" cy="14" r="26" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e0852a" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#e0852a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- VỎ NGOÀI MÀU NÂU: tràn viền, không bo góc sẵn (hệ điều hành tự bo) -->
+  <rect x="0" y="0" width="48" height="48" fill="url(#shell)"/>
+  <rect x="0" y="0" width="48" height="48" fill="url(#warm)"/>
+
+  <!-- Robot: cùng hình với BotAvatar trong ứng dụng, thu nhỏ còn ~68% để
+      nằm trọn trong vùng an toàn khi hệ điều hành bo góc -->
+  <g transform="translate(7.7 7.7) scale(0.68)">
+    <!-- Ăng-ten: que y cà sa + hạt kem sáng -->
+    <rect x="23.1" y="6.2" width="1.8" height="6.6" rx="0.9" fill="#e0852a"/>
+    <circle cx="24" cy="5.6" r="3" fill="#f3e9d8"/>
+    <circle cx="23.1" cy="4.7" r="0.95" fill="#17100a" opacity="0.35"/>
+
+    <!-- Tai nghe y cà sa -->
+    <rect x="8.4" y="20.8" width="3.6" height="8.4" rx="1.8" fill="#e0852a"/>
+    <rect x="36" y="20.8" width="3.6" height="8.4" rx="1.8" fill="#e0852a"/>
+
+    <!-- Đầu kem sáng -->
+    <rect x="11.2" y="12.2" width="25.6" height="24.4" rx="9.6" fill="#f3e9d8"/>
+    <!-- Ánh sáng trên vòm đầu -->
+    <path d="M16.2 16.4c1.9-2 4.9-3.1 7.8-3.1s5.9 1.1 7.8 3.1" fill="none" stroke="#e0852a" stroke-opacity="0.45" stroke-width="2" stroke-linecap="round"/>
+    <!-- Má hồng ấm -->
+    <ellipse cx="16.3" cy="27.6" rx="2.7" ry="1.7" fill="#e0852a" opacity="0.4"/>
+    <ellipse cx="31.7" cy="27.6" rx="2.7" ry="1.7" fill="#e0852a" opacity="0.4"/>
+    <!-- Mắt gần đen + đốm sáng -->
+    <ellipse cx="19.1" cy="24.3" rx="2.8" ry="3.3" fill="#1a1108"/>
+    <ellipse cx="28.9" cy="24.3" rx="2.8" ry="3.3" fill="#1a1108"/>
+    <circle cx="18.2" cy="22.9" r="1" fill="#f3e9d8"/>
+    <circle cx="28" cy="22.9" r="1" fill="#f3e9d8"/>
+    <!-- Nụ cười -->
+    <path d="M21.2 30c.9 1.4 2.1 2.1 2.8 2.1s1.9-.7 2.8-2.1" fill="none" stroke="#1a1108" stroke-width="1.7" stroke-linecap="round"/>
+  </g>
+</svg>
