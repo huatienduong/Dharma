@@ -546,17 +546,27 @@ const ERROR_KEYWORDS =
 /**
  * Từ thuộc về phần mềm — dùng để CHẶT CỬA bật 2 (từ mở đầu mơ hồ như
  * “vấn đề”, “đề xuất”). Rộng hơn nhóm trên, không dùng để dán nhãn.
+ *
+ * LƯU Ý: KHÔNG dùng “lỗi” trần. Bỏ dấu xong “lời” và “lỗi” trùng nhau, nên
+ * “Treo lời giảng của Đại thừa” sẽ bị tính là có từ khoá kỹ thuật rồi nuốt
+ * mất. Vì vậy chỉ khớp “lỗi” khi đi kèm danh từ báo lỗi kỹ thuật.
  */
 const TECH_TERMS =
-  /loi|hong|sap|treo|crash|bug|khong hoat dong|khong chay|khong phan hoi|khong nghe|khong ra tieng|khong phat (am|tieng)|mat tieng|mat ket noi|that bai|bi ngat|ngat giua|dong bang|chay cham|nhanh qua|lo hang|buffer|lag|ket loi|loi ky thuat|khong duoc gui|khong bam duoc|khong len|trang trang|ung dung|\bapp\b|nut|hanh dong|thong bao|man hinh|tai ve|dang tai|ket noi|giao dien|chet app|dong app|tai tep|tai anh|nap tien|quay lai|len loi|thong tin sai|tra loi sai|khong dung y|sai khac|chay lai|mo lai|reset|thi thuong|lam treo|doc qua nho|\bmic\b|hang dong|nhay qua|nhay|hay nhay|qua nhanh/;
+  /loi (ky thuat|xay ra|ung dung|app|he thong|ket noi|giao dien|may chu|phan mem|hien thi|tra loi|doc|phat sinh|ket qua|mo ra)|doc (to|loi|cau|het)|het tieng|am thanh|giong (doc|de|to)|phat am|hong|sap|treo|crash|bug|khong hoat dong|khong chay|khong phan hoi|khong nghe|khong ra tieng|khong phat (am|tieng)|mat tieng|mat ket noi|that bai|bi ngat|ngat giua|dong bang|chay cham|nhanh qua|lo hang|buffer|lag|ket loi|loi ky thuat|khong duoc gui|khong bam duoc|khong len|trang trang|ung dung|\bapp\b|nut|hanh dong|thong bao|man hinh|tai ve|dang tai|ket noi|giao dien|chet app|dong app|tai tep|tai anh|nap tien|quay lai|len loi|thong tin sai|tra loi sai|khong dung y|sai khac|chay lai|mo lai|reset|thi thuong|lam treo|doc qua nho|\bmic\b|hang dong|nhay qua|nhay|hay nhay|qua nhanh/;
 
 /**
  * Từ mở đầu bậc 2 NHƯNG TỰ NÓ ĐÃ LÀ LỖI — không cần thêm từ khoá kỹ thuật
- * nào ở phần thân. “Không hoạt động”, “mất tiếng”… là lời kêu cứu rõ ràng,
+ * nào ở phần thân. “Không hoạt động”, “không nghe”… là lời kêu cứu rõ ràng,
  * không thể là câu hỏi Phật học.
+ *
+ * CỐ Ý KHÔNG ĐỂ “treo”, “mất tiếng”, “không nghe” ở đây: đây cũng là từ Hán
+ * Việt dùng trong giáo lý (“treo lời giảng”, “mất tiếng trong nhà tông”,
+ * “không nghe rõ lời giảng”), nếu cho tự nhận thì những câu hỏi Phật học đó bị
+ * nuốt mất. Muốn báo lỗi kiểu đó (ví dụ “mất tiếng đọc to câu trả lời”) vẫn
+ * vào được vì phần thân có từ khoá kỹ thuật.
  */
 const SELF_TECHNICAL_LEAD =
-  /^(treo|mat tieng|khong hoat dong|khong chay|khong nghe|khong phan hoi|khong ra tieng|khong phat (am|tieng))\b/;
+  /^(khong hoat dong|khong chay|khong phan hoi|khong ra tieng|khong phat (am|tieng))\b/;
 
 export type ChatFeedback = {
   /** "bug" = báo lỗi, "idea" = góp ý. */
