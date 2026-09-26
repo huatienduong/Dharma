@@ -108,6 +108,17 @@ async function searchViaInvidious(query: string): Promise<SearchItem[]> {
   return [];
 }
 
+/**
+ * Trạng thái tìm video — báo khoá đã nạp hay chưa, để kiểm chứng nhanh mà
+ * không phải đoán từ triệu chứng “không thấy thẻ video”.
+ */
+export const status = action({
+  args: {},
+  handler: async (): Promise<{ youtube: boolean }> => {
+    return { youtube: Boolean(process.env.YOUTUBE_API_KEY) };
+  },
+});
+
 export const find = action({
   args: {
     /** Câu người dùng gõ (có thể chứa link YouTube). */
