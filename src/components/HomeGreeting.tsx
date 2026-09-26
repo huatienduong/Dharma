@@ -25,7 +25,7 @@ export function HomeGreeting({
     >
       {/* ---------- Logo robot ---------- */}
       <div className="flex shrink-0 items-center justify-center">
-        <BotAvatar size="lg" glow className="size-20 sm:size-24" />
+        <BotAvatar size="lg" glow className="size-24 sm:size-32" />
       </div>
 
       {/* ---------- Lời chào + câu hỏi ---------- */}
