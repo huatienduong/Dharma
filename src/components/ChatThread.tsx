@@ -17,7 +17,9 @@ import {
   Loader2,
   Share2,
   Sparkles,
+  Square,
   Undo2,
+  Volume2,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -39,6 +41,13 @@ export type ChatThreadProps = {
   stalled: boolean;
   onRecallMessage: (m: Msg) => void;
   onRecallImage: (m: Msg) => void;
+  /**
+   * Đọc to một câu trả lời cũ. CHỈ chạy khi người dùng bấm nút loa — không
+   * tự phát, để giữ đúng thói quen đọc lướt.
+   */
+  onSpeakMessage: (m: Msg) => void;
+  /** Mốc thời gian của câu đang được đọc to — null = đang rảnh. */
+  readingTs: number | null;
 };
 
 export function ChatThread({
@@ -53,6 +62,8 @@ export function ChatThread({
   stalled,
   onRecallMessage,
   onRecallImage,
+  onSpeakMessage,
+  readingTs,
 }: ChatThreadProps) {
   // Chưa có tin nhắn nào: để trống hoàn toàn, vào thẳng khung chat. Lời
   // chào và danh sách câu hỏi đề xuất đã được gỡ theo yêu cầu.
@@ -81,6 +92,8 @@ export function ChatThread({
             grouped={grouped}
             image={m.image}
             imageStorageId={m.imageStorageId}
+            onSpeak={() => onSpeakMessage(m)}
+            speaking={readingTs === m.ts}
           />
         );
       })}
@@ -181,6 +194,8 @@ export function AssistantMessage({
   grouped,
   image,
   imageStorageId,
+  onSpeak,
+  speaking,
 }: {
   content: string;
   ts: number;
@@ -189,6 +204,14 @@ export function AssistantMessage({
   image?: { base64: string; mime: string };
   /** storageId ảnh AI tạo trong Convex File Storage */
   imageStorageId?: string;
+  /**
+   * Bấm nút loa → đọc to câu này (bấm lại khi đang đọc thì dừng).
+   * Không truyền (undefined) thì không hiện nút — dùng cho câu đang hiện dần
+   * chữ, chưa đọc được.
+   */
+  onSpeak?: () => void;
+  /** Câu này đang được đọc to. */
+  speaking?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const text = plainText(content);
@@ -250,6 +273,23 @@ export function AssistantMessage({
         </div>
         <div className="mt-1 flex items-center gap-1 pl-2 text-[12px] text-muted-foreground/70">
           <span>{formatTs(ts)}</span>
+          {onSpeak && (
+            <button
+              type="button"
+              onClick={onSpeak}
+              className="inline-flex items-center justify-center rounded px-1 py-0.5 transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={
+                speaking ? "Dừng đọc câu trả lời" : "Đọc lại câu trả lời"
+              }
+              title={speaking ? "Dừng đọc" : "Đọc lại bằng giọng nói"}
+            >
+              {speaking ? (
+                <Square className="h-3.5 w-3.5 text-gold" />
+              ) : (
+                <Volume2 className="h-3.5 w-3.5" />
+              )}
+            </button>
+          )}
           <button
             type="button"
             onClick={handleCopy}

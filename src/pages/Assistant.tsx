@@ -18,6 +18,7 @@ import {
   isClearHistoryCommand,
   isStartCallCommand,
   loadLocalChatSecure,
+  plainText,
   saveLocalChatSecure,
   speakableSummary,
   type AskResult,
@@ -123,6 +124,18 @@ export default function Assistant() {
    */
   const [analyzingImage, setAnalyzingImage] = useState(false);
   const imageProgressRef = useRef<number | null>(null);
+  /**
+   * Mốc thời gian của câu trả lời đang được đọc to (nút loa trong khung chat).
+   * null = đang rảnh. Giữ cả state lẫn ref: state để tô đậm nút, ref để nút
+   * bấm lại biết chính xác câu nào đang đọc mà không cần đưa vào deps.
+   */
+  const [readingTs, setReadingTs] = useState<number | null>(null);
+  const readingTsRef = useRef<number | null>(null);
+
+  const markReading = useCallback((ts: number | null) => {
+    readingTsRef.current = ts;
+    setReadingTs(ts);
+  }, []);
   // Nhịp tăng phần trăm giả lập cho tới khi máy chủ trả ảnh về.
   const imageTickRef = useRef<number | null>(null);
 
@@ -803,6 +816,35 @@ export default function Assistant() {
     sendRef.current = send;
   }, [send]);
 
+  /* ----- Đọc lại một câu trả lời cũ (nút loa cạnh câu trả lời) -----
+   *
+   * CHỈ phát khi người dùng bấm: bấm lần đầu đọc, bấm lại câu đang đọc thì
+   * dừng. Mỗi lần bấm câu khác sẽ cắt câu đang đọc trước, không để hai câu
+   * chồng tiếng. Dùng đúng giọng người dùng đã chọn ở Cài đặt. */
+  const speakMessage = useCallback(
+    (m: Msg) => {
+      if (readingTsRef.current === m.ts) {
+        stopSpeaking();
+        markReading(null);
+        return;
+      }
+      const text = plainText(m.content);
+      if (!text) return;
+      // Câu đang đọc (nếu có) bị cắt trước rồi mới đọc câu mới.
+      stopSpeaking();
+      markReading(m.ts);
+      void speakVI(text, {
+        voice: voiceIdRef.current,
+        // onDone của lớp đọc to luôn chạy đúng một lần → nút loa không bị
+        // kẹt ở trạng thái "đang đọc" khi âm thanh đã tắt.
+        onDone: () => {
+          if (readingTsRef.current === m.ts) markReading(null);
+        },
+      });
+    },
+    [markReading, speakVI, stopSpeaking],
+  );
+
   /* ----- Gửi lại câu vừa bị lỗi (nút "Gửi lại" trong hội thoại) ----- */
   const retryFailed = useCallback(() => {
     const failed = failedReply;
@@ -1002,6 +1044,8 @@ export default function Assistant() {
           stalled={stalled}
           onRecallMessage={recallMessage}
           onRecallImage={recallImage}
+          onSpeakMessage={speakMessage}
+          readingTs={readingTs}
         />
       </div>
 
