@@ -35,8 +35,21 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      // addAll hỏng cả nhóm nếu một mục lỗi → tải từng mục cho chắc.
-      .then((cache) => Promise.all(OFFLINE_FALLBACK.map((url) => cache.add(url))))
+      // Chỉ cache bản phục vụ được. Nếu lúc cài đặt mà trang chủ đang lỗi
+      // (404/500) thì KHÔNG lưu bản lỗi vào cache — nếu lưu, khi mất mạng
+      // người dùng sẽ thấy trang lỗi thay vì ứng dụng.
+      .then(async (cache) => {
+        await Promise.all(
+          OFFLINE_FALLBACK.map(async (url) => {
+            try {
+              const res = await fetch(url, { cache: "reload" });
+              if (res.ok) await cache.put(url, res);
+            } catch {
+              /* mục này tạm không lấy được, bỏ qua */
+            }
+          }),
+        );
+      })
       .then(() => self.skipWaiting()),
   );
 });
@@ -83,13 +96,21 @@ self.addEventListener("fetch", (event) => {
   // 2) HTML điều hướng → NETWORK-FIRST: luôn lấy bản mới khi có mạng.
   //    Chỉ dùng bản cache khi thật sự mất kết nối, để không bao giờ dính
   //    một bản HTML cũ làm app không khởi động được.
+  //
+  //    Khi máy chủ trả về trang lỗi (404/500 — ví dụ lúc nền tảng đang đẩy
+  //    bản mới) thì TRẢ NGUYÊN trang lỗi, tuyệt đối không lấy HTML cũ trong
+  //    cache: bản cũ đó khiến người dùng chạy code cũ mà tưởng đã được sửa,
+  //    và mọi lỗi đã khắc phục đều "biến mất" mà không có manh mối.
   if (request.mode === "navigate") {
     event.respondWith(
       (async () => {
         const cache = await caches.open(CACHE_NAME);
         try {
           const response = await fetch(request);
-          if (response.ok) cache.put(request, response.clone());
+          if (response.ok) {
+            cache.put(request, response.clone());
+            return response;
+          }
           return response;
         } catch {
           const cached = await cache.match(request, { ignoreSearch: true });

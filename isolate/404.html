@@ -2,18 +2,147 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Đang mở Trợ lý Phật học</title>
-    <script>
-      // GitHub Pages phục vụ 404.html khi mở trực tiếp /settings hoặc
-      // /assistant. Đưa người dùng về entrypoint để BrowserRouter xử lý route.
-      const appBase = window.location.pathname.startsWith("/dharma") ? "/dharma/" : "/";
-      if (window.location.pathname !== appBase) {
-        window.location.replace(appBase);
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Trợ lý Phật học — đang cập nhật</title>
+    <style>
+      :root {
+        color-scheme: dark;
       }
-    </script>
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: #17100a;
+        color: #f5ece1;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      .box {
+        max-width: 30rem;
+        text-align: center;
+      }
+      h1 {
+        margin: 0 0 12px;
+        font-size: 1.25rem;
+        letter-spacing: 0.02em;
+      }
+      p {
+        margin: 0 0 10px;
+        line-height: 1.7;
+        color: #e4d6c4;
+        font-size: 0.95rem;
+      }
+      .muted {
+        color: #b9a68f;
+        font-size: 0.85rem;
+      }
+      button {
+        margin-top: 18px;
+        padding: 12px 26px;
+        border: 0;
+        border-radius: 999px;
+        background: #e0852a;
+        color: #21150c;
+        font-size: 0.95rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      button:active {
+        transform: scale(0.97);
+      }
+      .lotus {
+        font-size: 2rem;
+        margin-bottom: 10px;
+      }
+    </style>
   </head>
   <body>
-    <p>Đang mở Trợ lý Phật học…</p>
+    <div class="box">
+      <div class="lotus">🪷</div>
+      <h1>Trợ lý Phật học đang được cập nhật</h1>
+      <p>
+        Máy chủ chưa phục vụ được bản mới. Đây là tình trạng tạm thời, dữ liệu
+        của bạn vẫn an toàn.
+      </p>
+      <p class="muted" id="countdown">Tự thử lại sau 8 giây…</p>
+      <button type="button" id="retry">Tải lại ngay</button>
+    </div>
+    <script>
+      /*
+       * Trang này xuất hiện khi bản đang phục vụ bị lỗi (404/500) — ví dụ lúc
+       * nền tảng đang đẩy bản mới, hoặc khi người dùng mở thẳng một đường
+       * dẫn sâu của ứng dụng.
+       *
+       * TRƯỚC ĐÂY trang này tự chuyển hướng về "/", nên khi chính trang chủ
+       * cũng lỗi thì người dùng bị đưa về chỗ lỗi rồi lại chuyển hướng —
+       * màn hình đứng ở "Đang mở…" vĩnh viễn. Nay:
+       *   1. Thử dò xem ứng dụng đã phục vụ lại chưa; có thì mới chuyển.
+       *   2. Chưa có thì nói rõ chuyện gì xảy ra và tự thử lại định kỳ.
+       */
+      const appBase = window.location.pathname.startsWith("/dharma")
+        ? "/dharma/"
+        : "/";
+      const countdown = document.getElementById("countdown");
+      const retryButton = document.getElementById("retry");
+      let seconds = 8;
+      let checking = false;
+
+      const showCountdown = () => {
+        countdown.textContent =
+          seconds > 0 ? `Tự thử lại sau ${seconds} giây…` : "Đang thử lại…";
+      };
+
+      /** Trang chủ đã phục vụ lại chưa? */
+      const probe = async () => {
+        const res = await fetch(appBase, {
+          cache: "no-store",
+          redirect: "follow",
+        });
+        return res.ok;
+      };
+
+      const check = async () => {
+        if (checking) return;
+        checking = true;
+        try {
+          if (await probe()) {
+            // Đã phục vụ lại: đưa người dùng về ứng dụng (giữ đường dẫn sâu).
+            window.location.replace(window.location.pathname);
+            return;
+          }
+        } catch {
+          /* vẫn chưa có mạng hoặc server chưa sẵn sàng — thử lại sau */
+        }
+        checking = false;
+        seconds = 8;
+        showCountdown();
+      };
+
+      retryButton.addEventListener("click", () => {
+        seconds = 1;
+        showCountdown();
+      });
+
+      window.setInterval(() => {
+        if (seconds > 0) {
+          seconds -= 1;
+          showCountdown();
+          if (seconds === 0) check();
+        }
+      }, 1000);
+
+      // Có mạng trở lại thì thử ngay, không bắt người dùng chờ hết 8 giây.
+      window.addEventListener("online", () => {
+        seconds = 1;
+        showCountdown();
+      });
+
+      showCountdown();
+    </script>
   </body>
 </html>
