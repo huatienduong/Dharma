@@ -178,6 +178,13 @@ async function loadLocalChatSecure(): Promise<Msg[] | null> {
 
 /** Lưu lịch sử — LUÔN mã hóa AES-256-GCM trước khi ghi xuống thiết bị. */
 /**
+ * Trần số ảnh gửi kèm trong một lượt — khớp với `MAX_IMAGES_PER_REQUEST`
+ * của action `visionChat.analyzeImage`. Vượt trần thì ảnh dư bị cắt bớt,
+ * người dùng vẫn nhận được câu trả lời từ AI.
+ */
+const MAX_IMAGES_PER_MESSAGE = 6;
+
+/**
  * Lời chào / cảm ơn thuần túy — trả lời ngay tại máy, không gọi AI.
  *
  * Khi đang đàm thoại, chờ chép xong + gọi AI mất 1–2 giây, nghe rất chậm so
@@ -253,7 +260,24 @@ export default function Assistant() {
   // FIX "không phản hồi": đếm thời gian chờ AI — quá 60s hiển thị lỗi
   // thay vì đứng ở "đang suy niệm" vĩnh viễn (provider treo không trả).
   const [stalled, setStalled] = useState(false);
-  const [image, setImage] = useState<{ base64: string; mime: string } | null>(null);
+  const [image, setImageState] = useState<{ base64: string; mime: string } | null>(null);
+  /**
+   * Ảnh bổ sung (ảnh thứ 2 trở đi trong cùng một lượt). `image` giữ ảnh đầu
+   * để phần xem trước cạnh ô nhập không phải sửa; các ảnh còn lại nằm ở đây.
+   */
+  const [extraImages, setExtraImages] = useState<{ base64: string; mime: string }[]>([]);
+  const extraImagesRef = useRef<{ base64: string; mime: string }[]>([]);
+  /**
+   * Hàm thay thế `setImage` cho phần giao diện: bỏ ảnh đính kèm thì bỏ luôn
+   * cả các ảnh bổ sung, không bao giờ còn ảnh "cô đơn" nào lọt vào lượt gửi.
+   */
+  const setImage = useCallback((next: { base64: string; mime: string } | null) => {
+    setImageState(next);
+    if (next === null) {
+      extraImagesRef.current = [];
+      setExtraImages([]);
+    }
+  }, []);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -447,7 +471,14 @@ export default function Assistant() {
   const send = useCallback(
     async (text: string, opts?: { fromCall?: boolean }) => {
       const q = text.trim();
-      const attachedImage = !opts?.fromCall ? image : null;
+      // Gom ảnh đính kèm theo hạn mức gói. Ảnh vượt hạn mức vẫn KHÔNG chặn
+      // người dùng: cắt bớt rồi vẫn gửi đi để AI trả lời các ảnh còn lại.
+      const allImages: { base64: string; mime: string }[] = !opts?.fromCall
+        ? [image, ...extraImages].filter((i): i is { base64: string; mime: string } => !!i)
+        : [];
+      const overQuota = allImages.length - MAX_IMAGES_PER_MESSAGE;
+      const attachedImages = allImages.slice(0, MAX_IMAGES_PER_MESSAGE);
+      const attachedImage = attachedImages[0] ?? null;
       if (!q && !attachedImage) return;
       const question = q || "Hãy mô tả và giải thích hình ảnh này trong phạm vi Phật học.";
       // Đang bận: xếp hàng chờ (chat) hoặc nhắc nhở nhẹ (đàm thoại) thay vì
@@ -472,7 +503,11 @@ export default function Assistant() {
       const base: Msg[] = [...historyRef.current, ...pendingRef.current];
       const userMsg: Msg = {
         role: "user",
-        content: question,
+        // Nhiều ảnh: ghi rõ số ảnh trong bong bóng vì phần xem trước chỉ hiện ảnh đầu.
+        content:
+          attachedImages.length > 1
+            ? `${question}\n\n(kèm ${attachedImages.length} ảnh)`
+            : question,
         ts: Date.now(),
         // Lưu ảnh đi kèm tin nhắn để hiển thị lại trong hội thoại
         image: attachedImage
@@ -483,6 +518,12 @@ export default function Assistant() {
       if (!opts?.fromCall) {
         setInput("");
         setImage(null);
+        if (overQuota > 0) {
+          toast(
+            `Gói cho phép ${MAX_IMAGES_PER_MESSAGE} ảnh mỗi lượt — ${overQuota} ảnh chưa được gửi, Trợ lý vẫn trả lời dựa trên ${MAX_IMAGES_PER_MESSAGE} ảnh còn lại.`,
+            { duration: 4000 },
+          );
+        }
       }
       // Luôn thêm vào phiên (kể cả call) để giữ ngữ cảnh và không mất lịch sử.
       // Đánh dấu busy đồng bộ ngay để chặn hai request chồng nhau trước khi
@@ -503,14 +544,16 @@ export default function Assistant() {
       // Ảnh: nhánh riêng (Gemini đọc ảnh) vì Groq không còn model thị giác.
       // Hỏng/thiếu thì tự lùi về `ask` y như cũ — không mất tính năng cũ.
       const askOnce = async (): Promise<AskResult> => {
-        if (attachedImage) {
+        if (attachedImages.length > 0) {
           try {
             const vision = await callConvexAction<AskResult>(
               "visionChat:analyzeImage",
               {
                 messages: payloadMessages,
-                imageBase64: attachedImage.base64,
-                imageMime: attachedImage.mime,
+                images: attachedImages.map((i) => ({
+                  base64: i.base64,
+                  mime: i.mime,
+                })),
                 ...getDeviceMeta(),
               },
             );
@@ -708,7 +751,7 @@ export default function Assistant() {
         }
       }
     },
-    [ask, createImage, image],
+    [ask, createImage, extraImages, image],
   );
 
   useEffect(() => {
@@ -1197,12 +1240,34 @@ export default function Assistant() {
           toast.error("Không thể chuyển ảnh sang định dạng phù hợp.");
           return;
         }
-        setImage({ base64, mime: "image/jpeg" });
+        const picked = { base64, mime: "image/jpeg" };
+        // Ảnh đầu tiên giữ chỗ xem trước; ảnh tiếp theo xếp vào hàng chờ tới
+        // trần của gói. Không bao giờ chặn người dùng — vượt trần thì thay ảnh
+        // cũ nhất và AI vẫn trả lời các ảnh còn lại.
+        if (!image) {
+          extraImagesRef.current = [];
+          setExtraImages([]);
+          setImageState(picked);
+          return;
+        }
+        const extras = extraImagesRef.current;
+        const next =
+          extras.length >= MAX_IMAGES_PER_MESSAGE - 1
+            ? [...extras.slice(1), picked]
+            : [...extras, picked];
+        if (extras.length >= MAX_IMAGES_PER_MESSAGE - 1) {
+          toast(
+            `Gói cho phép ${MAX_IMAGES_PER_MESSAGE} ảnh mỗi lượt — ảnh mới thay ảnh cũ nhất. Trợ lý vẫn trả lời các ảnh còn lại.`,
+            { duration: 4000 },
+          );
+        }
+        extraImagesRef.current = next;
+        setExtraImages(next);
       };
       img.src = reader.result as string;
     };
     reader.readAsDataURL(file);
-  }, []);
+  }, [image]);
 
   useEffect(() => {
     return () => {
