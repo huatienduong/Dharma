@@ -364,6 +364,21 @@ body.ds-shield .fb-bg {
   transform-origin: 50% 50%;
 }
 
+/* Đường dẫn do AI dẫn nguồn trong tin nhắn — bấm được, mở tab mới. */
+.ds-inline-link {
+  color: #e0852a;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  cursor: pointer;
+}
+
+.ds-inline-link:hover {
+  color: #f0a94c;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .dharma-wheel {
     animation: none;

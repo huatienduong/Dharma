@@ -43,7 +43,8 @@ CÁCH TRẢ LỜI:
 - Trả lời bằng tiếng Việt, thân thiện, khiêm tốn, không dùng emoji, không dùng markdown.
 - NGẮN GỌN: tối đa 6 câu. Không liệt kê từng chi tiết nhỏ vô nghĩa.
 - Nếu ảnh không rõ hoặc không có gì để nói, nói thẳng là không nhìn rõ và mời người dùng gửi ảnh khác.
-- Không bịa chi tiết không có trong ảnh. Không khẳng định điều không chắc chắn.`;
+- Không bịa chi tiết không có trong ảnh. Không khẳng định điều không chắc chắn.
+- Nếu ảnh có liên quan tới kinh điển, được phép dẫn nguồn tối đa 1–2 đường dẫn thật ở cuối câu trả lời, viết thuần dạng https://... (chỉ dùng nguồn như suttacentral.net, dhammatalks.org, cbetaonline.dila.edu.tw, dhammaloka.org); TUYỆT ĐỐI không bịa đường dẫn — không chắc thì chỉ nêu tên kinh.`;
 
 const MAX_OUTPUT_TOKENS = 700;
 /** Khớp HISTORY_LIMIT của aiChat.ask để ngữ cảnh gửi lên giống nhau. */
@@ -205,6 +206,7 @@ export const analyzeImage = action({
     while (contents.length > 0 && contents[0].role !== "user") contents.shift();
 
     let lastError = "không rõ";
+    let quotaHit = false;
     for (const model of VISION_MODELS) {
       try {
         const res = await fetch(`${GEMINI_BASE}/models/${model}:generateContent`, {
@@ -226,6 +228,15 @@ export const analyzeImage = action({
         if (!res.ok) {
           const detail = await res.text().catch(() => "");
           lastError = `${model}: HTTP ${res.status} ${detail.slice(0, 160)}`;
+          // Hết hạn mức (gói) thì dừng ngay: các model cùng dùng chung hạn
+          // mức nên thử tiếp chỉ làm người dùng chờ thêm mà không có kết quả.
+          if (
+            res.status === 429 ||
+            /RESOURCE_EXHAUSTED|quota|rate limit|rate_limit/i.test(detail)
+          ) {
+            quotaHit = true;
+            break;
+          }
           continue;
         }
         const json = (await res.json()) as {
@@ -258,6 +269,14 @@ export const analyzeImage = action({
       }
     }
     console.error(`[visionChat] mọi model đọc ảnh đều lỗi: ${lastError}`);
+    if (quotaHit) {
+      return {
+        ok: false as const,
+        code: "ai_unavailable" as const,
+        message:
+          "Máy chủ đang bận (hết hạn mức phân tích ảnh của gói). Vui lòng thử lại sau 1–2 phút, hoặc mô tả bằng lời.",
+      };
+    }
     return {
       ok: false as const,
       code: "ai_unavailable" as const,

@@ -15,6 +15,7 @@ import { Bot, Wrench } from "lucide-react";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router";
 import "./index.css";
 import { startContentProtection } from "@/lib/contentProtection";
+import { installLinkify } from "@/lib/linkify";
 
 // Dharma AI — ứng dụng chỉ còn Trợ lý Phật học (màn chính) + Cài đặt.
 // Lazy load route components for better code splitting
@@ -210,3 +211,6 @@ createRoot(document.getElementById("root")!).render(
 // KHÓA NỘI DUNG: chặn hoàn toàn sao chép văn bản trong ứng dụng (copy, cut,
 // menu chuột phải, kéo thả, bôi đen, Ctrl+C/X/A). Không đụng tới ô nhập.
 startContentProtection();
+
+// ĐƯỜNG DẪN trong tin nhắn trở thành link bấm được (AI dẫn nguồn kinh điển).
+installLinkify();

@@ -331,6 +331,8 @@ export default function Assistant() {
   const [interim, setInterim] = useState("");
   /** Số lần thử lại khi trợ lý còn đang bận (để không bỏ rơi câu nói). */
   const busyWaitsRef = useRef(0);
+  /** Số lần tự gửi lại trong đàm thoại khi request lỗi (1 lần cho đủ). */
+  const callRetryRef = useRef(0);
 
   /** Im lặng bao lâu thì coi là nói xong (ms) — chống cắt cụt "Xin chào". */
   const CALL_SILENCE_MS = 1000;
@@ -643,8 +645,21 @@ export default function Assistant() {
           }
         }
 
-        const answer = await askWithRetry();
+        // Đàm thoại: chờ tối đa 25s rồi bỏ qua, không để người dùng ngồi
+        // nhìn "Đang suy niệm" mãi — yêu cầu chạy nền vẫn tự huỷ về sau.
+        const answer = await (opts?.fromCall
+          ? Promise.race([
+              askWithRetry(),
+              new Promise<never>((_, reject) =>
+                window.setTimeout(
+                  () => reject(new Error("hết giờ (25s)")),
+                  25_000,
+                ),
+              ),
+            ])
+          : askWithRetry());
         setFailedReply(null);
+        callRetryRef.current = 0;
         const reply = answer.reply;
         if (wantsArt) finishImageProgress();
         const replyMsg: Msg = {
@@ -687,7 +702,13 @@ export default function Assistant() {
           setInterim("");
           setCallStatus("speaking");
           lastAssistantEventAtRef.current = Date.now();
-          void speakVI(reply, {
+          // Không đọc to đường dẫn (đọc "https slash slash..." rất khó nghe);
+          // người dùng vẫn thấy và bấm được link trong hội thoại.
+          const spoken = reply
+            .replace(/https?:\/\/\S+/g, "")
+            .replace(/[ \t]{2,}/g, " ")
+            .trim();
+          void speakVI(spoken || reply, {
             voice: voiceIdRef.current,
             onDone: () => {
               aiSpeakingRef.current = false;
@@ -744,6 +765,18 @@ export default function Assistant() {
           sendingRef.current = false;
           if (callActiveRef.current) {
             setCallStatus("listening");
+            // Tự gửi lại đúng câu vừa nói một lần — nguyên nhân "đàm thoại
+            // không phản hồi" là người dùng phải nói lại từ đầu.
+            if (callRetryRef.current < 1) {
+              callRetryRef.current += 1;
+              window.setTimeout(() => {
+                if (callActiveRef.current) {
+                  void sendRef.current(question, { fromCall: true });
+                }
+              }, 1200);
+              return;
+            }
+            callRetryRef.current = 0;
             window.setTimeout(() => startListeningRef.current(), 800);
           }
         }

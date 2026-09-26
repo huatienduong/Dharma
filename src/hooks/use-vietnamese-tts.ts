@@ -359,7 +359,12 @@ export function useVietnameseTTS() {
           ? { onDone: optsOrDone }
           : (optsOrDone ?? {});
       stopFlagRef.current = false;
-      const clean = text.trim();
+      // Bỏ đường dẫn trước khi đọc to: đọc "https slash slash..." rất khó nghe,
+      // người dùng vẫn thấy và bấm được link trong hội thoại.
+      const clean = text
+        .replace(/https?:\/\/\S+/g, "")
+        .replace(/[ \t]{2,}/g, " ")
+        .trim();
       if (!clean) {
         opts.onDone?.();
         return;
