@@ -10,6 +10,7 @@ import type { CallStatus } from "@/hooks/useCallSession";
 import { cn } from "@/lib/utils";
 import { BotAvatar } from "@/components/BotAvatar";
 import { Mic, MicOff, PhoneOff, Square, X } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export type CallOverlayProps = {
   callStatus: CallStatus;
@@ -37,6 +38,24 @@ export function CallOverlay({
           ? "Đang trả lời"
           : "Micro đã tắt";
 
+  /**
+   * THỜI LƯỢNG ĐÀM THOẠI — đồng hồ đếm từ lúc mở cuộc gọi, hiển thị dạ
+   * phút:giây. Màn đàm thoại chỉ hiện khi `callOpen` nên chỉ cần nhớ mốc bắt
+   * đầu là đủ; component bị gỡ thì đồng hồ dừng theo.
+   */
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const startedAt = Date.now();
+    setElapsed(0);
+    const id = window.setInterval(
+      () => setElapsed(Date.now() - startedAt),
+      1000,
+    );
+    return () => window.clearInterval(id);
+  }, []);
+  const mm = String(Math.floor(elapsed / 60_000)).padStart(2, "0");
+  const ss = String(Math.floor((elapsed % 60_000) / 1000)).padStart(2, "0");
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#09090b] text-white">
       <div
@@ -49,14 +68,9 @@ export function CallOverlay({
 
       <div className="relative z-10 flex h-full w-full max-w-[1800px] flex-col">
         <div className="flex w-full items-center justify-between px-5 pt-5 sm:px-8">
-          <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-sm">
-            <BotAvatar size="lg" glow />
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/50">
-                Trợ lý Phật học
-              </p>
-            </div>
-          </div>
+          {/* Chỉ còn nút đóng: đã bỏ icon nhỏ + chữ “Trợ lý Phật học” theo yêu
+              cầu, phần nhận diện do logo robot ở giữa màn đảm nhiệm. */}
+          <span aria-hidden />
 
           <button
             type="button"
@@ -69,20 +83,38 @@ export function CallOverlay({
         </div>
 
         <div className="flex flex-1 flex-col items-center justify-center px-6 pb-10 pt-6">
+          {/* Logo robot thay cho quả cầu sóng âm cũ */}
           <div
             className={cn(
-              "orb-shell h-52 w-52 sm:h-64 sm:w-64 lg:h-80 lg:w-80",
-              callStatus === "listening" && "orb-listening",
-              callStatus === "speaking" && "orb-speaking",
-              callStatus === "thinking" && "orb-thinking",
+              "relative flex h-52 w-52 items-center justify-center sm:h-64 sm:w-64 lg:h-80 lg:w-80",
               callStatus === "muted" && "opacity-50",
             )}
           >
-            <div className="orb-core" />
+            <span
+              aria-hidden
+              className={cn(
+                "absolute inset-4 rounded-full bg-primary/20 blur-3xl",
+                callStatus === "listening" && "animate-pulse",
+                callStatus === "speaking" && "animate-pulse",
+              )}
+            />
+            <BotAvatar
+              size="lg"
+              glow
+              className="relative h-[70%] w-[70%] shrink-0"
+            />
           </div>
 
           <p className="mt-8 text-center text-xl font-medium tracking-wide text-white/90 sm:text-2xl">
             {statusText}
+          </p>
+
+          {/* Thời lượng cuộc gọi hiện dưới trạng thái */}
+          <p
+            className="mt-1.5 text-sm font-medium tabular-nums tracking-widest text-white/60"
+            aria-label="Thời lượng đàm thoại"
+          >
+            {mm}:{ss}
           </p>
 
           {/* CÂU ĐANG NGHE: trước đây không hiện, người dùng không biết
