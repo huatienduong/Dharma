@@ -7,7 +7,6 @@
  * không phải mở ứng dụng khác.
  */
 
-import { BotAvatar } from "@/components/BotAvatar";
 import {
   isBuddhistTopic,
   keepBuddhistVideos,
@@ -276,17 +275,7 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
           </section>
         ) : null}
 
-        {/* Gợi ý dùng Trợ lý */}
-        <section className="mt-8 flex items-start gap-2.5 rounded-2xl border border-border/50 bg-muted/40 p-3">
-          <BotAvatar className="mt-0.5" />
-          <p className="text-[13px] leading-relaxed text-muted-foreground">
-            Muốn hỏi thêm về nội dung video? Quay lại khung chat và nhắn
-            &ldquo;cho mình xem video về …&rdquo; — Trợ lý trả lời kèm và gửi
-            danh sách video Phật học vào đúng câu đó.
-          </p>
-        </section>
       </div>
-
     </div>
   );
 }
