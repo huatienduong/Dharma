@@ -8,6 +8,7 @@ import {
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 import { loadVoicePref } from "@/lib/aiVoices";
 import { wantsImage } from "@/lib/imageIntent";
+import { callConvexAction } from "@/lib/convexAction";
 import { getDeviceMeta } from "@/lib/deviceSecurity";
 import {
   CHAT_STORAGE_KEY as CHAT_KEY,
@@ -43,6 +44,14 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
+
+/**
+ * Kết quả chuẩn hoá của cả hai nhánh hỏi: nhánh đọc ảnh (Gemini) và nhánh
+ * hội thoại chữ (Groq) — cùng một hợp đồng để phần retry/xử lý lỗi dùng chung.
+ */
+type AskResult =
+  | { ok: true; reply: string }
+  | { ok: false; code?: string; message: string };
 
 type Msg = {
   role: "user" | "assistant";
@@ -292,6 +301,8 @@ export default function Assistant() {
   const CALL_SILENCE_MS = 1000;
   /** Trần chờ cho một lượt nói (ms) — câu dài không bị treo. */
   const CALL_MAX_UTTERANCE_MS = 6000;
+  /** Ngưỡng coi là "đang nói" khi đo âm lượng (RMS 0–1). */
+  const CALL_VOICE_ON = 0.06;
 
   const callActiveRef = useRef(false);
   const aiSpeakingRef = useRef(false);
@@ -469,21 +480,41 @@ export default function Assistant() {
 
       // Tự phục hồi khi kết nối chập chờn: thử lại tối đa 3 lần với khoảng
       // chờ tăng dần. Các lỗi nghiệp vụ vẫn dừng ngay để không gửi sai.
-      const askOnce = () =>
-        ask({
+      const payloadMessages = [...base, { role: "user" as const, content: question }]
+        .slice(-4)
+        .map((m) => ({
+          role: m.role,
+          content: m.content.slice(0, 7500),
+        }));
+      // Ảnh: nhánh riêng (Gemini đọc ảnh) vì Groq không còn model thị giác.
+      // Hỏng/thiếu thì tự lùi về `ask` y như cũ — không mất tính năng cũ.
+      const askOnce = async (): Promise<AskResult> => {
+        if (attachedImage) {
+          try {
+            const vision = await callConvexAction<AskResult>(
+              "visionChat:analyzeImage",
+              {
+                messages: payloadMessages,
+                imageBase64: attachedImage.base64,
+                imageMime: attachedImage.mime,
+                ...getDeviceMeta(),
+              },
+            );
+            if (vision.ok || vision.code === "rate_limited") return vision;
+          } catch {
+            /* rơi xuống `ask` bên dưới */
+          }
+        }
+        return ask({
           // Chỉ gửi 4 lượt gần nhất đúng với ngữ cảnh backend sử dụng. Cắt bớt
           // ký tự phòng khi lịch sử cũ chứa câu trả lời rất dài để lượt hỏi
           // sau không bị từ chối; tin nhắn hiện tại luôn nằm cuối.
-          messages: [...base, { role: "user" as const, content: question }]
-            .slice(-4)
-            .map((m) => ({
-              role: m.role,
-              content: m.content.slice(0, 7500),
-            })),
+          messages: payloadMessages,
           imageBase64: attachedImage?.base64,
           imageMime: attachedImage?.mime,
           ...getDeviceMeta(),
         });
+      };
       const askWithRetry = async () => {
         let lastError: unknown = new Error("Không gửi được câu hỏi.");
         for (let attempt = 0; attempt < 3; attempt++) {
@@ -736,10 +767,41 @@ export default function Assistant() {
     } catch {
       /* noop */
     }
+
+    // Trình duyệt không có Web Speech (Firefox, một số WebView): chỉ ghi âm
+    // rồi chép lại bằng Whisper. Trước đây nhánh này báo "micro đã tắt" và
+    // chết luôn → không nghe được lệnh trong cuộc gọi.
+    const startRecordOnly = () => {
+      let loudSince = 0;
+      let lastLoudAt = 0;
+      void startMicRecording((level) => {
+        if (!callActiveRef.current) return;
+        const now = Date.now();
+        if (level >= CALL_VOICE_ON) {
+          if (!loudSince) loudSince = now;
+          lastLoudAt = now;
+          return;
+        }
+        if (!loudSince) return;
+        if (now - lastLoudAt < CALL_SILENCE_MS || now - loudSince < 700) return;
+        loudSince = 0;
+        setCallStatus("thinking");
+        void stopMicRecording().then((clip) =>
+          transcribeClip(clip, "").then((heard) => handleUtterance(heard)),
+        );
+      });
+    };
+
     const rec = newRecognition();
     if (!rec) {
-      micDeniedRef.current = true;
-      setCallStatus("muted");
+      if (micSupported) {
+        micDeniedRef.current = false;
+        setCallStatus("listening");
+        startRecordOnly();
+      } else {
+        micDeniedRef.current = true;
+        setCallStatus("muted");
+      }
       return;
     }
     rec.lang = "vi-VN";
@@ -752,6 +814,11 @@ export default function Assistant() {
     let speechStartedAt = 0;
     let commitTimer: number | null = null;
     let committed = false;
+    let waitRetries = 0;
+    // Đo âm lượng: dự phòng cho trình duyệt không có/không nghe được Web
+    // Speech — khi đó người dùng nói xong vẫn chốt câu để Whisper tự nghe.
+    let loudSince = 0;
+    let lastLoudAt = 0;
 
     const cancelCommit = () => {
       if (commitTimer !== null) {
@@ -762,13 +829,13 @@ export default function Assistant() {
 
     // Chốt câu: dừng ghi âm rồi chép lại bằng Whisper (chính xác hơn bản nghe
     // trực tiếp của trình duyệt). Lỗi thì giữ nguyên bản gốc.
-    const commit = () => {
+    const commit = (force = false) => {
       cancelCommit();
       if (committed || !callActiveRef.current) return;
       const heard = (finalBuf + " " + pendingBuf)
         .replace(/\s+/g, " ")
         .trim();
-      if (heard.length < 2) return;
+      if (!force && heard.length < 2) return;
       committed = true;
       finalBuf = "";
       pendingBuf = "";
@@ -795,21 +862,30 @@ export default function Assistant() {
     // KHÔNG gửi ngay khi vừa nghe được vài chữ. Web Speech chốt từng từ rất
     // sớm, nên "Xin chào" từng bị cắt còn "Xin". Chỉ gửi khi đã im lặng đủ
     // lâu (người dùng nói xong), có trần chờ để câu dài không bị treo.
-    const scheduleCommit = () => {
+    const scheduleCommit = (force = false) => {
       cancelCommit();
-      if (committed) return;
-      if (
-        aiSpeakingRef.current ||
-        sendingRef.current ||
-        Date.now() - lastAiWordAtRef.current < 350
-      ) {
-        return;
-      }
+      if (committed || !callActiveRef.current) return;
       const heard = (finalBuf + " " + pendingBuf)
         .replace(/\s+/g, " ")
         .trim();
-      if (heard.length < 2) return;
+      // Chưa có chữ nào từ trình duyệt: chỉ chốt khi đo âm lượng bảo đã nói
+      // xong (dự phòng không có Web Speech).
+      if (heard.length < 2) {
+        if (force) commit(true);
+        return;
+      }
       const now = Date.now();
+      // Trợ lý đang nói hoặc vừa nói xong: KHÔNG bỏ rơi câu của người dùng —
+      // hẹn thử lại sau ít phút (trước đây lỗi ở đây làm câu nói biến mất).
+      if (
+        aiSpeakingRef.current ||
+        sendingRef.current ||
+        now - lastAiWordAtRef.current < 350
+      ) {
+        if (++waitRetries > 20) return;
+        commitTimer = window.setTimeout(scheduleCommit, 400);
+        return;
+      }
       const silentMs = now - lastSpeechAt;
       const waitedMs = now - speechStartedAt;
       if (silentMs < CALL_SILENCE_MS && waitedMs < CALL_MAX_UTTERANCE_MS) {
@@ -876,7 +952,27 @@ export default function Assistant() {
     try {
       rec.start();
       // Ghi âm song song: sau khi có câu, chép lại bằng Whisper cho chính xác.
-      void startMicRecording();
+      // Đồng thời đo mức âm lượng để tự chốt câu khi trình duyệt im lặng
+      // (nhiều máy không có Web Speech → không có kết quả nào để dựa vào).
+      void startMicRecording((level) => {
+        if (committed) return;
+        const now = Date.now();
+        if (level >= CALL_VOICE_ON) {
+          if (!loudSince) loudSince = now;
+          lastLoudAt = now;
+          return;
+        }
+        if (!loudSince) return;
+        const quietMs = now - lastLoudAt;
+        const spokenMs = now - loudSince;
+        if (quietMs < CALL_SILENCE_MS || spokenMs < 700) return;
+        loudSince = 0;
+        // Chỉ chốt khi trình duyệt chưa nghe được gì; nếu đã có chữ thì đường
+        // chính (Web Speech) tự chốt theo nhịp im lặng.
+        if (finalBuf.trim().length < 2 && pendingBuf.trim().length < 2) {
+          scheduleCommit(true);
+        }
+      });
     } catch {
       /* đã start — bỏ qua */
     }
