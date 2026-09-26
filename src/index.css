@@ -44,40 +44,41 @@
   --color-gold-soft: var(--gold-soft);
 }
 
-/* CHANGE VALUES FOR THEME — màu áo y cà sa theo truyền thống Theravāda:
- * nền sáng trắng, chữ và điểm nhấn màu nâu ấm, thẻ trắng bo lớn. */
+/* CHANGE VALUES FOR THEME — màu y cà sa theo truyền thống Theravāda:
+ * NÂN VÀ TRẮNG — nền chung là nâu kem sáng, thẻ/khung nhập trắng, chữ và
+ * điểm nhấn nâu đất. Như vậy khung nào cũng tách bạch với nền. */
 :root {
   --radius: 1.5rem;
-  --background: #ffffff; /* nền sáng trắng */
+  --background: #f2e4d3; /* nâu kem sáng — nền chung */
   --foreground: #3b2417; /* nâu đậm cho chữ */
-  --card: #ffffff;
+  --card: #ffffff; /* thẻ trắng nổi trên nền nâu */
   --card-foreground: #3b2417;
   --popover: #ffffff;
   --popover-foreground: #3b2417;
   --primary: #6f4226; /* nâu đất làm điểm nhấn */
   --primary-foreground: #fffaf5;
-  --secondary: #f4e9df; /* nâu cát rất nhạt */
+  --secondary: #fbf3ea; /* gần trắng, dùng cho khung nhập */
   --secondary-foreground: #5b3824;
-  --muted: #f4ece5;
-  --muted-foreground: #806451;
-  --accent: #ead7c6;
+  --muted: #e7d5c2;
+  --muted-foreground: #6b5140;
+  --accent: #e3cdb6;
   --accent-foreground: #4c2c1b;
   --destructive: #b42318;
-  --border: #e8d8c9; /* viền nâu nhạt cho khung giao diện sáng */
-  --input: #e8d8c9;
+  --border: #d8bf9f; /* viền nâu rõ hơn vì nền đã là màu */
+  --input: #d8bf9f;
   --ring: #6f4226;
   --chart-1: #6f4226;
   --chart-2: #8b5535;
   --chart-3: #a86b43;
   --chart-4: #4c2c1b;
   --chart-5: #c1845b;
-  --sidebar: #faf6f2;
+  --sidebar: #e9d7c1;
   --sidebar-foreground: #3b2417;
   --sidebar-primary: #6f4226;
   --sidebar-primary-foreground: #fffaf5;
-  --sidebar-accent: #ead7c6;
+  --sidebar-accent: #e3cdb6;
   --sidebar-accent-foreground: #4c2c1b;
-  --sidebar-border: #e8d8c9;
+  --sidebar-border: #d8bf9f;
   --sidebar-ring: #6f4226;
 
   /* Token phụ trợ — cam đất y cà sa làm điểm nhấn chính */
@@ -85,7 +86,7 @@
   --brown-mid: #6f4226;
   --gold: #6f4226; /* nâu đất chủ đạo ở chế độ sáng */
   --gold-soft: #a86b43;
-  --lotus: #f4e9df;
+  --lotus: #f6ece0;
 
   --font-size-scale: 1;
 }
