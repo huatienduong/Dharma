@@ -34,8 +34,8 @@ export function BotAvatar({
     <span
       className={cn(
         "relative flex shrink-0 items-center justify-center rounded-[28%]",
-        "bg-gradient-to-b from-[#FFF8EC] to-[#F6E2C0]",
-        "shadow-[0_2px_10px_-4px_rgba(176,24,27,0.35)]",
+        "bg-gradient-to-b from-[#FDF6E9] to-[#F1DCB4]",
+        "shadow-[0_2px_10px_-4px_rgba(111,66,38,0.45)]",
         SIZES[size],
         className,
       )}
@@ -49,15 +49,15 @@ export function BotAvatar({
         <defs>
           <linearGradient id="bot-shell" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#FFFFFF" />
-            <stop offset="100%" stopColor="#F8EBD6" />
+            <stop offset="100%" stopColor="#F3E2C4" />
           </linearGradient>
           <linearGradient id="bot-bead" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#F7C768" />
-            <stop offset="100%" stopColor="#E0852A" />
+            <stop offset="0%" stopColor="#F5C877" />
+            <stop offset="100%" stopColor="#D98C2B" />
           </linearGradient>
           <linearGradient id="bot-eye" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#5A2114" />
-            <stop offset="100%" stopColor="#2E0F08" />
+            <stop offset="0%" stopColor="#5A3A1E" />
+            <stop offset="100%" stopColor="#33200F" />
           </linearGradient>
         </defs>
 
@@ -69,15 +69,15 @@ export function BotAvatar({
             width="1.8"
             height="6.6"
             rx="0.9"
-            fill="#DFB067"
+            fill="#C79A57"
           />
           <circle cx="24" cy="5.6" r="2.9" fill="url(#bot-bead)" />
-          <circle cx="23.2" cy="4.8" r="0.9" fill="#FFFDF8" opacity="0.95" />
+          <circle cx="23.2" cy="4.8" r="0.9" fill="#FFF8EC" opacity="0.9" />
         </g>
 
         {/* Tai nghe hai bên */}
-        <rect x="8.6" y="21" width="3.4" height="8" rx="1.7" fill="#EFD9AE" />
-        <rect x="36" y="21" width="3.4" height="8" rx="1.7" fill="#EFD9AE" />
+        <rect x="8.6" y="21" width="3.4" height="8" rx="1.7" fill="#E4C795" />
+        <rect x="36" y="21" width="3.4" height="8" rx="1.7" fill="#E4C795" />
 
         {/* Đầu robot sứ trắng */}
         <rect
@@ -87,7 +87,7 @@ export function BotAvatar({
           height="24"
           rx="9.4"
           fill="url(#bot-shell)"
-          stroke="#DFB067"
+          stroke="#C79A57"
           strokeWidth="1.1"
         />
         {/* Ánh sáng trên vòm đầu */}
@@ -101,14 +101,14 @@ export function BotAvatar({
         />
 
         {/* Má hồng nhẹ cho thân thiện */}
-        <ellipse cx="16.4" cy="27.4" rx="2.6" ry="1.7" fill="#F0975F" opacity="0.35" />
-        <ellipse cx="31.6" cy="27.4" rx="2.6" ry="1.7" fill="#F0975F" opacity="0.35" />
+        <ellipse cx="16.4" cy="27.4" rx="2.6" ry="1.7" fill="#F3B27A" opacity="0.4" />
+        <ellipse cx="31.6" cy="27.4" rx="2.6" ry="1.7" fill="#F3B27A" opacity="0.4" />
 
         {/* Quầng sáng mắt (chỉ khi bật glow) */}
         {glow ? (
           <>
-            <circle cx="19.2" cy="24.4" r="4.2" fill="#E0852A" opacity="0.22" />
-            <circle cx="28.8" cy="24.4" r="4.2" fill="#E0852A" opacity="0.22" />
+            <circle cx="19.2" cy="24.4" r="4.2" fill="#F0A63A" opacity="0.2" />
+            <circle cx="28.8" cy="24.4" r="4.2" fill="#F0A63A" opacity="0.2" />
           </>
         ) : null}
 
@@ -122,7 +122,7 @@ export function BotAvatar({
         <path
           d="M21.4 30.2c.9 1.3 2 1.9 2.6 1.9s1.7-.6 2.6-1.9"
           fill="none"
-          stroke="#8A3320"
+          stroke="#8A5A2B"
           strokeWidth="1.5"
           strokeLinecap="round"
         />
