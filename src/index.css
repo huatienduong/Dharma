@@ -44,12 +44,12 @@
   --color-gold-soft: var(--gold-soft);
 }
 
-/* CHANGE VALUES FOR THEME — tông ĐỎ VÀ KEM: nền chung kem đào nhạt, thẻ và
- * khung nhập trắng, thao tác chính (nút gửi, tin nhắn của bạn) đỏ chủ đạo,
- * chi tiết nhỏ dùng hồng đào. Chữ gần đen nâu để dễ đọc trên cả hai. */
+/* CHANGE VALUES FOR THEME — tông ĐỎ, TRẮNG VÀ KEM: nền chung TRẮNG, thẻ
+ * trắng, thao tác chính (nút gửi, tin nhắn của bạn) đỏ chủ đạo, chi tiết
+ * nhỏ và vùng bấm dùng kem đào. Chữ gần đen nâu để dễ đọc trên cả hai. */
 :root {
   --radius: 1.5rem;
-  --background: #f7e6cf; /* kem đào — nền chung */
+  --background: #ffffff; /* nền chung TRẮNG */
   --foreground: #2c1a12; /* chữ gần đen nâu */
   --card: #ffffff; /* thẻ trắng nổi trên nền kem */
   --card-foreground: #2c1a12;
@@ -72,7 +72,7 @@
   --chart-3: #d1512f;
   --chart-4: #4a1410;
   --chart-5: #e08a3c;
-  --sidebar: #f1dcbd;
+  --sidebar: #fdf6ec;
   --sidebar-foreground: #2c1a12;
   --sidebar-primary: #b0181b;
   --sidebar-primary-foreground: #fff7ef;
