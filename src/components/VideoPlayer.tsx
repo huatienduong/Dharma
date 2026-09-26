@@ -53,8 +53,9 @@ export function VideoPlayer({
   const hideTimer = useRef(0);
 
   const [src, setSrc] = useState<string | null>(null);
+  /** true = không có nguồn trực tiếp, dùng khung phát dự phòng. */
+  const [fallback, setFallback] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [playing, setPlaying] = useState(false);
   const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -75,19 +76,20 @@ export function VideoPlayer({
     const ctl = new AbortController();
     let alive = true;
     setLoading(true);
-    setError("");
     setSrc(null);
+    setFallback(false);
     void (async () => {
       const url = await resolveDirectStream(video.videoId, ctl.signal).catch(
         () => null,
       );
       if (!alive) return;
-      if (url) setSrc(url);
-      else {
+      if (url) {
+        setSrc(url);
+      } else {
+        // Không có máy chủ nào phát trực tiếp được: chuyển sang khung phát dự
+        // phòng để người dùng vẫn xem được video ngay.
+        setFallback(true);
         setLoading(false);
-        setError(
-          "Chưa lấy được nguồn phát cho video này. Bạn thử video khác hoặc mở lại sau nhé.",
-        );
       }
     })();
     return () => {
@@ -313,17 +315,30 @@ export function VideoPlayer({
             : "relative flex min-h-0 flex-1 items-center justify-center"
         }
       >
+        {fallback ? (
+          <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
+            <iframe
+              className="absolute inset-0 h-full w-full"
+              src={`https://www.youtube-nocookie.com/embed/${video.videoId}?autoplay=1&rel=0&modestbranding=1`}
+              title={video.title || "Video"}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        ) : null}
         <video
           ref={videoRef}
+          className={
+            fallback
+              ? "hidden"
+              : pinned
+                ? "aspect-video w-full rounded-2xl border border-border/50 bg-black object-contain"
+                : "m-3 max-h-full w-full rounded-2xl border border-border/50 bg-black object-contain"
+          }
           src={src ?? undefined}
           poster={video.thumbnail}
           playsInline
           {...NATIVE_CONTROLS}
-          className={
-            pinned
-              ? "aspect-video w-full rounded-2xl border border-border/50 bg-black object-contain"
-              : "m-3 max-h-full w-full rounded-2xl border border-border/50 bg-black object-contain"
-          }
           onClick={() =>
             videoRef.current?.paused
               ? void videoRef.current?.play().catch(() => {})
@@ -354,12 +369,6 @@ export function VideoPlayer({
           <p className="absolute flex items-center gap-2 rounded-full bg-background/80 px-3 py-1.5 text-[13px] text-foreground/85 backdrop-blur">
             <Loader2 className="h-4 w-4 animate-spin" />
             Đang tải video…
-          </p>
-        ) : null}
-
-        {error ? (
-          <p className="absolute inset-x-6 rounded-2xl border border-border/50 bg-background/90 px-4 py-3 text-center text-[14px] leading-relaxed text-foreground/85 backdrop-blur">
-            {error}
           </p>
         ) : null}
 
@@ -403,7 +412,7 @@ export function VideoPlayer({
       </div>
 
       {/* ---------- Thanh điều khiển tự vẽ ---------- */}
-      {chrome ? (
+      {chrome && !fallback ? (
         <div className="shrink-0 border-t border-border/50 bg-card/60 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 text-foreground backdrop-blur-md">
           {/* Thanh tua */}
           <input

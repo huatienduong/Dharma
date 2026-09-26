@@ -15,7 +15,6 @@ import {
 } from "@/lib/videoSearchClient";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { VideoPlayer } from "@/components/VideoPlayer";
-import { keepBuddhistVideos } from "@/lib/buddhistVideoFilter";
 import type { VideoInfo } from "@/lib/videoIntent";
 import { cn } from "@/lib/utils";
 import {
@@ -51,11 +50,9 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
       suggestBusyRef.current = true;
       if (page === 0) setSuggestBusy(true);
       else setSuggestMore(true);
-      // Chỉ đề xuất video về Phật giáo: lọc cứng, video lạc đề không hiện.
-      const batch = keepBuddhistVideos(
-        await fetchSuggestedPage(page).catch(() => []),
-        true,
-      );
+      // Nguồn gợi ý đã là các nhóm chủ đề Phật giáo; không lọc thêm theo tiêu đề
+      // để không bỏ nhầm video Phật học có tên gọi khác.
+      const batch = await fetchSuggestedPage(page).catch(() => []);
       if (batch.length) {
         setSuggested((prev) => {
           const seen = new Set(prev.map((v) => v.videoId));
@@ -66,8 +63,7 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
       setSuggestBusy(false);
       setSuggestMore(false);
       suggestBusyRef.current = false;
-      // Trang này bị lọc hết (không còn nội dung Phật giáo) → lấy tiếp trang
-      // kế tiếp, đừng để danh sách đứng trống.
+      // Trang rỗng (mạng lỗi) → thử trang kế tiếp, đừng để danh sách trống.
       if (!batch.length && page === 0) {
         void loadMoreSuggested(page + 1);
       }
@@ -112,10 +108,7 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
       relatedBusyRef.current = true;
       if (page === 0) setRelatedBusy(true);
       else setRelatedMore(true);
-      const batch = keepBuddhistVideos(
-        await fetchRelatedPage(video, page).catch(() => []),
-        true,
-      );
+      const batch = await fetchRelatedPage(video, page).catch(() => []);
       if (batch.length) {
         setRelated((prev) => {
           const seen = new Set(prev.map((v) => v.videoId));
