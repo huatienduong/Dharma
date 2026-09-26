@@ -1,16 +1,27 @@
 /**
  * Service worker của Trợ lý Phật học.
  *
- * MỤC TIÊU: mở app phải ra ngay, không chờ mạng.
- *  • Tài nguyên build có tên có HASH (/assets/xxx-[hash].js|.css) → bất biến
- *    theo phiên bản, nên CACHE-FIRST: lần mở thứ hai trở đi không tải lại.
- *    Đây là phần nặng nhất của app (~700KB) nên đây là thay đổi lớn nhất.
- *  • HTML điều hướng → STALE-WHILE-REVALIDATE: hiện bản đang cache ngay,
- *    tải bản mới ở nền cho lần sau. Nhờ vậy bản cũ vẫn mở được khi mạng yếu.
- *  • Mọi thứ khác cùng origin → network-first như trước, có cache dự phòng.
+ * SỬA LỖI "TOÀN APP KHÔNG HOẠT ĐỘNG":
+ *   Trước đây HTML điều hướng dùng stale-while-revalidate — trình duyệt nhận
+ *   bản HTML ĐÃ CACHE (bản cũ, trỏ tới tên chunk của bản build cũ). Sau một
+ *   lần deploy, bản HTML cũ đó trỏ tới các file đã bị xoá → trình duyệt báo
+ *   "Failed to fetch dynamically imported module" và app không khởi động được.
+ *   Tệ hơn: mỗi lần tải lại vẫn nhận đúng bản HTML hỏng đó, nên app chết hẳn
+ *   dù máy chủ vẫn bình thường.
+ *
+ *   Nay: HTML luôn lấy từ MẠNG trước (network-first), cache chỉ dùng khi thật
+ *   sự mất mạng. Nhờ vậy sau mỗi lần deploy, người dùng luôn chạy đúng bản
+ *   mới, và bản cache cũ tự được dọn khi service worker kích hoạt.
+ *
+ *   Tài nguyên có tên HASH (/assets/xxx-[hash].js) vẫn CACHE-FIRST: chúng bất
+ *   biến theo phiên bản nên tải lại là vô ích — giữ nguyên để app mở nhanh.
  */
-const CACHE_NAME = "tro-ly-phat-hoc-v6-fast";
-const APP_SHELL = ["./", "./manifest.webmanifest", "./app-icon.svg"];
+const CACHE_NAME = "tro-ly-phat-hoc-v7-networkfirst";
+const OFFLINE_FALLBACK = [
+  "./",
+  "./manifest.webmanifest",
+  "./app-icon.svg",
+];
 
 /** Tài nguyên do Vite build, tên có hash → không bao giờ đổi trong phiên bản. */
 function isImmutableAsset(url) {
@@ -25,12 +36,13 @@ self.addEventListener("install", (event) => {
     caches
       .open(CACHE_NAME)
       // addAll hỏng cả nhóm nếu một mục lỗi → tải từng mục cho chắc.
-      .then((cache) => Promise.all(APP_SHELL.map((url) => cache.add(url))))
+      .then((cache) => Promise.all(OFFLINE_FALLBACK.map((url) => cache.add(url))))
       .then(() => self.skipWaiting()),
   );
 });
 
 self.addEventListener("activate", (event) => {
+  // Dọn toàn bộ cache cũ (kể cả bản HTML hỏng) ngay khi phiên bản này chạy.
   event.waitUntil(
     caches
       .keys()
@@ -68,24 +80,24 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 2) HTML điều hướng → stale-while-revalidate: hiện ngay bản đang có.
+  // 2) HTML điều hướng → NETWORK-FIRST: luôn lấy bản mới khi có mạng.
+  //    Chỉ dùng bản cache khi thật sự mất kết nối, để không bao giờ dính
+  //    một bản HTML cũ làm app không khởi động được.
   if (request.mode === "navigate") {
     event.respondWith(
       (async () => {
         const cache = await caches.open(CACHE_NAME);
-        const cached = await cache.match(request, { ignoreSearch: true });
-        const network = fetch(request)
-          .then((response) => {
-            if (response.ok) cache.put(request, response.clone());
-            return response;
-          })
-          .catch(() => null);
-        if (cached) return cached;
-        const fresh = await network;
-        if (fresh) return fresh;
-        const shell = await cache.match("./");
-        if (shell) return shell;
-        throw new Error("Không có bản sao lưu cục bộ");
+        try {
+          const response = await fetch(request);
+          if (response.ok) cache.put(request, response.clone());
+          return response;
+        } catch {
+          const cached = await cache.match(request, { ignoreSearch: true });
+          if (cached) return cached;
+          const shell = await cache.match("./");
+          if (shell) return shell;
+          throw new Error("Không có bản sao lưu cục bộ");
+        }
       })(),
     );
     return;

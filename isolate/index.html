@@ -99,24 +99,79 @@
   <body>
     <div id="root"></div>
     <script>
-      // Nếu chunk JS cũ bị 404 sau khi phiên bản mới phát hành → tự tải lại
-      // trang một lần để nhận bundle mới (khắc phục trắng trang).
-      window.addEventListener("error", function (e) {
-        var src = e && e.target && (e.target.src || e.target.href);
-        if (!src || !/\.js(\?|$)/.test(src)) return;
-        if (sessionStorage.getItem("ds-chunk-retry")) return;
-        sessionStorage.setItem("ds-chunk-retry", "1");
-        window.location.reload();
-      }, true);
-      window.addEventListener("unhandledrejection", function (e) {
-        var msg = String((e && e.reason && e.reason.message) || "");
-        if (!/Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported/i.test(msg)) return;
-        if (sessionStorage.getItem("ds-chunk-retry")) return;
-        sessionStorage.setItem("ds-chunk-retry", "1");
-        window.location.reload();
-      });
-      // Không còn màn chờ logo — giữ stub để main.tsx gọi an toàn.
-      window.__dsBootDone = function () {};
+      // PHÒNG CHỐNG APP CHẾT VĨNH VIỄN SAU KHI PHÁT HÀNH PHIÊN BẢN MỚI.
+      //
+      // Trước đây: chunk JS cũ bị 404 → reload một lần. Nhưng service worker
+      // vẫn trả đúng bản HTML cũ đã cache, nên lần reload sau vẫn hỏng, cờ
+      // "đã thử" lại chặn lần nữa → app chết hẳn tới cuối phiên làm việc.
+      //
+      // Nay: khi phát hiện lỗi tải chunk, xoá service worker + toàn bộ cache
+      // rồi mới reload, và cho phép tự cứu tới 2 lần. Lần khởi động thành công
+      // sẽ xoá cờ để lần phát hành sau cũng được cứu như thường.
+      (function () {
+        var KEY = "ds-chunk-retry";
+        var MAX = 2;
+
+        function recover() {
+          var tries = Number(sessionStorage.getItem(KEY) || "0");
+          if (tries >= MAX) return;
+          sessionStorage.setItem(KEY, String(tries + 1));
+          var reload = function () {
+            window.location.reload();
+          };
+          try {
+            if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+              navigator.serviceWorker.getRegistrations().then(function (regs) {
+                regs.forEach(function (r) {
+                  r.unregister();
+                });
+                if (window.caches && caches.keys) {
+                  return caches.keys().then(function (keys) {
+                    return Promise.all(
+                      keys.map(function (k) {
+                        return caches.delete(k);
+                      })
+                    );
+                  });
+                }
+              }).then(reload, reload);
+              return;
+            }
+          } catch (e) {
+            /* bỏ qua, vẫn reload */
+          }
+          reload();
+        }
+
+        window.addEventListener(
+          "error",
+          function (e) {
+            var src = e && e.target && (e.target.src || e.target.href);
+            if (!src || !/\.js(\?|$)/.test(src)) return;
+            recover();
+          },
+          true
+        );
+        window.addEventListener("unhandledrejection", function (e) {
+          var msg = String((e && e.reason && e.reason.message) || "");
+          if (
+            !/Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported/i.test(
+              msg
+            )
+          )
+            return;
+          recover();
+        });
+
+        // App đã khởi động tốt → cho phép tự cứu ở lần phát hành kế tiếp.
+        window.__dsBootDone = function () {
+          try {
+            sessionStorage.removeItem(KEY);
+          } catch (e) {
+            /* noop */
+          }
+        };
+      })();
     </script>
   </body>
 </html>
