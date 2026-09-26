@@ -1,10 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="512" height="512" role="img" aria-label="Trợ lý Phật học">
   <title>Trợ lý Phật học</title>
-  <!-- Nền nâu đúng màu giao diện (token secondary) -->
-  <rect width="48" height="48" rx="10.6" fill="#2f2314"/>
-
+  <!-- KHÔNG vỏ ngoài: nền trong suốt, chỉ còn hình robot -->
   <!-- Robot: cùng hình với BotAvatar trong ứng dụng (khung 48, vẽ ở 88%) -->
-  <g transform="translate(2.88 2.88) scale(0.88)">
+  <g transform="translate(1.6 1.6) scale(0.93)">
     <!-- Ăng-ten: que y cà sa + hạt kem sáng -->
     <rect x="23.1" y="6.2" width="1.8" height="6.6" rx="0.9" fill="#e0852a"/>
     <circle cx="24" cy="5.6" r="3" fill="#f3e9d8"/>
