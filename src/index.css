@@ -388,33 +388,35 @@ body.ds-shield .fb-bg {
 /* ================================================================
    DẤU TÍCH XÁC NHẬN CHÍNH CHỦ
    ------------------------------------------------------------
-   Trợ lý Phật học là tài khoản chính thức của ứng dụng nên avatar
-   robot trong khung chat có dấu tích nhỏ ở góc phải dưới, đúng kiểu
+   Trợ lý Phật học là tài khoản chính thức của ứng dụng nên tên của
+   nó trong khung chat được gắn dấu tích nhỏ ngay sau chữ, đúng kiểu
    dấu tích "xác nhận" — nhưng dùng màu nâu đất của ứng dụng thay vì
    xanh dương, để đồng bộ với giao diện.
    ================================================================ */
 
-/* Chỉ avatar trong khung chat (nền gradient nâu → vàng). Avatar ở màn
-   đàm thoại dùng gradient khác nên không bị gắn dấu tích. */
-span.bg-gradient-to-br.from-primary:has(> svg.lucide) {
-  position: relative;
+/* Tên ở đầu khung chat ("Trợ lý Phật học"): bỏ cắt chữ để dấu tích
+   không bị chìm mất trên màn hình hẹp, rồi xếp tên và dấu tích cạnh
+   nhau theo chiều ngang. */
+p.truncate.uppercase {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
 }
 
-span.bg-gradient-to-br.from-primary:has(> svg.lucide)::after {
+p.truncate.uppercase::after {
   content: "";
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
+  flex: none;
   width: 16px;
   height: 16px;
   border-radius: 9999px;
-  /* Nâu đất #6f4226 nổi bật trên nền avatar màu vàng ở cả chế độ sáng
-     lẫn chế độ tối; dấu gạch bên trong màu kem. */
+  /* Nâu đất #6f4226 nổi bật trên nền kem của khung chat; dấu gạch bên
+     trong màu kem. */
   background-color: #6f4226;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fdf6ec' stroke-width='4.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: center;
   background-size: 11px 11px;
-  /* Vòng viền màu nền để dấu tích tách bạch khỏi avatar. */
-  box-shadow: 0 0 0 2px var(--background);
 }
