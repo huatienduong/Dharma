@@ -235,8 +235,10 @@ export default function Assistant() {
           historyRef.current = nextHistory;
           setHistory(nextHistory);
           void saveLocalChatSecure(nextHistory);
-        } catch {
-          /* Không tìm được video thì bỏ qua — không báo lỗi làm phiền */
+        } catch (err) {
+          // Máy chủ chưa trả lời được (chưa có khoá, mạng lỗi…) thì bỏ qua
+          // im lặng: người dùng vẫn đọc câu trả lời bình thường.
+          console.warn("[video] không tìm được video:", err);
         }
       })();
     },
