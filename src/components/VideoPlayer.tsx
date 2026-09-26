@@ -236,7 +236,7 @@ export function VideoPlayer({
   // Hình thu nhỏ: nổi ở góc dưới bên phải, video vẫn chạy.
   if (mini) {
     return (
-      <div className="fixed bottom-4 right-4 z-[120] w-[min(78vw,320px)] border border-border/70 bg-card shadow-2xl">
+      <div className="fixed bottom-4 right-4 z-[120] w-[min(78vw,320px)] overflow-hidden rounded-2xl border border-border/70 bg-card shadow-2xl">
         <video
           ref={videoRef}
           src={src ?? undefined}
@@ -261,7 +261,7 @@ export function VideoPlayer({
                 ? void videoRef.current?.play().catch(() => {})
                 : videoRef.current?.pause()
             }
-            className="flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-muted"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-foreground/85 transition hover:bg-accent hover:text-foreground"
             aria-label={playing ? "Tạm dừng" : "Phát"}
           >
             {playing ? (
@@ -277,7 +277,7 @@ export function VideoPlayer({
           <button
             type="button"
             onClick={() => setMini(false)}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-muted"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-foreground/85 transition hover:bg-accent hover:text-foreground"
             aria-label="Mở rộng trình phát"
           >
             <Maximize2 className="h-4 w-4" />
@@ -285,7 +285,7 @@ export function VideoPlayer({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-foreground transition hover:bg-muted"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-foreground/85 transition hover:bg-accent hover:text-foreground"
             aria-label="Đóng video"
           >
             <X className="h-4 w-4" />
@@ -302,8 +302,8 @@ export function VideoPlayer({
       onTouchStart={wake}
       className={
         pinned
-          ? "sticky top-0 z-40 flex flex-col border-b border-border/50 bg-black"
-          : "fixed inset-0 z-[130] flex flex-col bg-black"
+          ? "sticky top-0 z-40 flex flex-col border-b border-border/50 bg-background"
+          : "fixed inset-0 z-[130] flex flex-col bg-background"
       }
     >
       <div
@@ -321,8 +321,8 @@ export function VideoPlayer({
           {...NATIVE_CONTROLS}
           className={
             pinned
-              ? "aspect-video w-full bg-black object-contain"
-              : "max-h-full w-full bg-black object-contain"
+              ? "aspect-video w-full rounded-2xl border border-border/50 bg-black object-contain"
+              : "m-3 max-h-full w-full rounded-2xl border border-border/50 bg-black object-contain"
           }
           onClick={() =>
             videoRef.current?.paused
@@ -351,14 +351,14 @@ export function VideoPlayer({
         />
 
         {loading ? (
-          <p className="absolute flex items-center gap-2 text-[13px] text-white/80">
+          <p className="absolute flex items-center gap-2 rounded-full bg-background/80 px-3 py-1.5 text-[13px] text-foreground/85 backdrop-blur">
             <Loader2 className="h-4 w-4 animate-spin" />
             Đang tải video…
           </p>
         ) : null}
 
         {error ? (
-          <p className="absolute inset-x-6 text-center text-[14px] leading-relaxed text-white/85">
+          <p className="absolute inset-x-6 rounded-2xl border border-border/50 bg-background/90 px-4 py-3 text-center text-[14px] leading-relaxed text-foreground/85 backdrop-blur">
             {error}
           </p>
         ) : null}
@@ -366,7 +366,7 @@ export function VideoPlayer({
         {/* Đã xem đến đâu: nhảy về chỗ cũ, cho phép xem lại từ đầu */}
         {chrome && !mini && resumeAt > 0 && time < resumeAt - 2 ? (
           <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center bg-gradient-to-b from-black/70 to-transparent p-3">
-            <span className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-[12px] text-white">
+            <span className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/90 px-3 py-1.5 text-[12px] text-foreground backdrop-blur">
               Đã xem đến {formatTime(resumeAt)}
               <button
                 type="button"
@@ -374,7 +374,7 @@ export function VideoPlayer({
                   seek(0);
                   setResumeAt(0);
                 }}
-                className="rounded-full bg-white/20 px-2 py-0.5 transition hover:bg-white/30"
+                className="rounded-full bg-accent px-2 py-0.5 text-foreground/90 transition hover:bg-primary hover:text-primary-foreground"
               >
                 Xem lại từ đầu
               </button>
@@ -386,14 +386,14 @@ export function VideoPlayer({
         {chrome && !mini && !pinned ? (
           <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start gap-3 bg-gradient-to-b from-black/70 to-transparent p-3">
             <div className="pointer-events-auto min-w-0 flex-1">
-              <p className="line-clamp-1 text-[14px] font-medium text-white">
+              <p className="line-clamp-1 text-[14px] font-medium text-foreground">
                 {video.title || "Video"}
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="pointer-events-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25"
+              className="pointer-events-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-card/80 text-foreground transition hover:bg-accent"
               aria-label="Đóng trình phát"
             >
               <X className="h-5 w-5" />
@@ -404,7 +404,7 @@ export function VideoPlayer({
 
       {/* ---------- Thanh điều khiển tự vẽ ---------- */}
       {chrome ? (
-        <div className="shrink-0 bg-black px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 text-white">
+        <div className="shrink-0 border-t border-border/50 bg-card/60 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2.5 text-foreground backdrop-blur-md">
           {/* Thanh tua */}
           <input
             type="range"
@@ -414,11 +414,11 @@ export function VideoPlayer({
             value={time}
             onChange={(e) => seek(Number(e.target.value))}
             aria-label="Tua video"
-            className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/25 accent-primary"
+            className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-border accent-primary"
             style={{
               background: `linear-gradient(to right, hsl(var(--primary)) ${
                 duration ? (time / duration) * 100 : 0
-              }%, rgba(255,255,255,0.25) 0%)`,
+              }%, var(--border) 0%)`,
             }}
           />
 
@@ -430,7 +430,7 @@ export function VideoPlayer({
                   ? void videoRef.current?.play().catch(() => {})
                   : videoRef.current?.pause()
               }
-              className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/15"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-foreground/85 transition hover:bg-accent hover:text-foreground"
               aria-label={playing ? "Tạm dừng" : "Phát"}
             >
               {playing ? (
@@ -446,7 +446,7 @@ export function VideoPlayer({
                 saveNow();
                 seek(Math.max(0, time - 10));
               }}
-              className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/15"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-foreground/85 transition hover:bg-accent hover:text-foreground"
               aria-label="Lùi 10 giây"
               title="Lùi 10 giây"
             >
@@ -458,7 +458,7 @@ export function VideoPlayer({
                 saveNow();
                 seek(Math.min(duration || 0, time + 10));
               }}
-              className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/15"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-foreground/85 transition hover:bg-accent hover:text-foreground"
               aria-label="Tiến 10 giây"
               title="Tiến 10 giây"
             >
@@ -472,7 +472,7 @@ export function VideoPlayer({
                 setMuted(next);
                 if (videoRef.current) videoRef.current.muted = next;
               }}
-              className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/15"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-foreground/85 transition hover:bg-accent hover:text-foreground"
               aria-label={muted ? "Bật tiếng" : "Tắt tiếng"}
             >
               {muted ? (
@@ -497,10 +497,10 @@ export function VideoPlayer({
                 }
               }}
               aria-label="Âm lượng"
-              className="hidden h-1.5 w-20 cursor-pointer appearance-none rounded-full bg-white/25 sm:block"
+              className="hidden h-1.5 w-20 cursor-pointer appearance-none rounded-full bg-border sm:block"
             />
 
-            <span className="ml-1 text-[12px] tabular-nums text-white/85">
+            <span className="ml-1 text-[12px] tabular-nums text-muted-foreground">
               {formatTime(time)} / {formatTime(duration)}
             </span>
 
@@ -511,13 +511,13 @@ export function VideoPlayer({
               <button
                 type="button"
                 onClick={() => setMenuSpeed((v) => !v)}
-                className="flex h-9 items-center rounded-full px-2.5 text-[12px] tabular-nums transition hover:bg-white/15"
+                className="flex h-9 items-center rounded-full px-2.5 text-[12px] tabular-nums text-foreground/85 transition hover:bg-accent"
                 aria-label="Tốc độ xem"
               >
                 {speed}×
               </button>
               {menuSpeed ? (
-                <div className="absolute bottom-11 right-0 z-10 w-24 border border-white/15 bg-black/90 py-1 text-[12px]">
+                <div className="absolute bottom-11 right-0 z-10 w-24 overflow-hidden rounded-xl border border-border/60 bg-card py-1 text-[12px] shadow-xl">
                   {SPEEDS.map((s) => (
                     <button
                       key={s}
@@ -528,7 +528,7 @@ export function VideoPlayer({
                         setMenuSpeed(false);
                       }}
                       className={cn(
-                        "block w-full px-3 py-1.5 text-left transition hover:bg-white/15",
+                        "block w-full px-3 py-1.5 text-left transition hover:bg-accent",
                         s === speed && "text-primary",
                       )}
                     >
@@ -544,7 +544,7 @@ export function VideoPlayer({
               <button
                 type="button"
                 onClick={() => void openPip()}
-                className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/15"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-foreground/85 transition hover:bg-accent hover:text-foreground"
                 aria-label="Xem hình trong hình"
                 title="Hình trong hình"
               >
@@ -556,7 +556,7 @@ export function VideoPlayer({
             <button
               type="button"
               onClick={() => setMini(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/15"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-foreground/85 transition hover:bg-accent hover:text-foreground"
               aria-label="Thu nhỏ trình phát, vẫn phát"
               title="Thu nhỏ (vẫn phát)"
             >
@@ -567,7 +567,7 @@ export function VideoPlayer({
             <button
               type="button"
               onClick={() => void toggleFullscreen()}
-              className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/15"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-foreground/85 transition hover:bg-accent hover:text-foreground"
               aria-label="Xem toàn màn hình"
               title="Toàn màn hình"
             >
