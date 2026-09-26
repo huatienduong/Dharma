@@ -2,9 +2,9 @@
  * AVATAR TRỢ LÝ PHẬT HỌC — robot AI vẽ tay bằng SVG.
  *
  * Nền ứng dụng là nâu rất đậm, nên robot được vẽ theo hướng NỔI HẲN:
- * vỏ ngoài nâu ấm, đầu kem sáng (`--foreground`), mắt gần đen
- * (`--primary-foreground`), tai + ăng-ten y cà sa (`--primary`).
- * Mọi màu đều lấy từ token giao diện nên tự đổi theo giao diện.
+ * vỏ ngoài đúng màu nâu của giao diện (`--secondary`), đầu kem sáng
+ * (`--foreground`), mắt gần đen (`--primary-foreground`), tai + ăng-ten y
+ * cà sa (`--primary`). Mọi màu đều lấy từ token nên tự đổi theo giao diện.
  *
  * Dùng ở: bong bóng trả lời, thẻ tiến trình, ô "đang suy nghĩ", màn đàm
  * thoại và màn chào. Kích thước co giãn theo className của vỏ ngoài.
@@ -34,7 +34,7 @@ export function BotAvatar({
     <span
       className={cn(
         "relative flex shrink-0 items-center justify-center rounded-[28%]",
-        "bg-primary/25",
+        "bg-secondary",
         SIZES[size],
         className,
       )}
