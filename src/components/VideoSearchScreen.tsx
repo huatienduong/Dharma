@@ -36,7 +36,6 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
   const [videos, setVideos] = useState<VideoInfo[]>([]);
   const [busy, setBusy] = useState(false);
   const [playing, setPlaying] = useState<VideoInfo | null>(null);
-  const [message, setMessage] = useState("");
 
   // Danh sách gợi ý: tải theo trang, cuộn tới đâu lấy tới đó (không giới hạn).
   const [suggested, setSuggested] = useState<VideoInfo[]>([]);
@@ -138,7 +137,6 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
     setPlaying(v);
     setVideos([]);
     setSearched("");
-    setMessage("");
     setRelated([]);
     setRelatedPage(0);
     void loadMoreRelated(v, 0);
@@ -170,7 +168,6 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
   const run = async (q: string) => {
     const topic = q.trim();
     if (!topic || busy) return;
-    setMessage("");
     setPlaying(null);
     setBusy(true);
     setSearched(topic);
@@ -181,9 +178,9 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
       // video liên quan tới Phật giáo.
       const found = await searchVideoInBrowser(topic);
       setVideos(found);
-      if (!found.length) setMessage("Chưa tìm được video về chủ đề này nhé.");
+
     } catch {
-      setMessage("Chưa tìm được video. Bạn thử lại sau nhé.");
+      /* không tìm được thì để danh sách trống, không chữ nào thừa */
     } finally {
       setBusy(false);
     }
@@ -340,24 +337,14 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
         ) : null}
 
         {/* Kết quả */}
-        {message ? (
-          <p className="mt-4 rounded-2xl border border-border/50 bg-muted/40 px-4 py-3 text-[13px] leading-relaxed text-muted-foreground">
-            {message}
-          </p>
-        ) : null}
-
         {busy && !videos.length ? (
-          <p className="mt-6 flex items-center justify-center gap-2 text-[13px] text-muted-foreground">
+          <p className="mt-6 flex items-center justify-center">
             <Loader2 className="h-4 w-4 animate-spin text-gold" />
-            Đang tìm video…
           </p>
         ) : null}
 
         {videos.length > 0 ? (
           <section className="mt-4">
-            <h2 className="text-[13px] font-semibold text-muted-foreground">
-              Kết quả cho “{searched}”
-            </h2>
             <ul className="mt-2 space-y-2">
               {videos.map((v) => (
                 <li key={v.videoId}>
@@ -401,15 +388,8 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
         {playing ? (
           <section>
             {relatedBusy ? (
-              <p className="mt-4 flex items-center justify-center gap-2 text-[13px] text-muted-foreground">
+              <p className="mt-4 flex items-center justify-center">
                 <Loader2 className="h-4 w-4 animate-spin text-gold" />
-                Đang tải video liên quan…
-              </p>
-            ) : null}
-
-            {!relatedBusy && !related.length ? (
-              <p className="mt-3 text-[13px] text-muted-foreground">
-                Chưa tải được video liên quan.
               </p>
             ) : null}
 
@@ -456,15 +436,8 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
         {playing ? null : (
         <section>
           {suggestBusy ? (
-            <p className="mt-4 flex items-center justify-center gap-2 text-[13px] text-muted-foreground">
+            <p className="mt-4 flex items-center justify-center">
               <Loader2 className="h-4 w-4 animate-spin text-gold" />
-              Đang tải video gợi ý…
-            </p>
-          ) : null}
-
-          {!suggestBusy && !suggested.length ? (
-            <p className="mt-3 text-[13px] text-muted-foreground">
-              Chưa tải được danh sách gợi ý. Bạn thử tìm theo chủ đề ở ô trên nhé.
             </p>
           ) : null}
 
@@ -473,12 +446,7 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
               <li key={v.videoId}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setPlaying(v);
-                    setVideos([]);
-                    setSearched("");
-                    setMessage("");
-                  }}
+                  onClick={() => openVideo(v)}
                   className="flex w-full items-center gap-3 p-1.5 text-left transition hover:bg-muted/50"
                 >
                   {/* Ảnh nhỏ bên trái */}
@@ -514,9 +482,8 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
           {/* Cuộn tới đây thì nạp thêm gợi ý */}
           <div ref={suggestSentinel} className="h-1" />
           {suggestMore ? (
-            <p className="mt-2 flex items-center justify-center gap-2 py-2 text-[13px] text-muted-foreground">
+            <p className="mt-2 flex items-center justify-center py-2">
               <Loader2 className="h-4 w-4 animate-spin text-gold" />
-              Đang tải thêm…
             </p>
           ) : null}
         </section>
