@@ -1179,37 +1179,42 @@ export default function Assistant() {
       // dưới bàn phím.
       style={vv.height ? { height: `${vv.height}px` } : undefined}
     >
-      {/* ---------- Header: tên bên trái, nút gọi / xem video / cài đặt bên phải ---------- */}
+      {/* ---------- Header: tên ứng dụng giữa, nút bên phải ---------- */}
       <header
         // Bàn phím bật làm trình duyệt đẩy layout viewport; dịch thanh tiêu
         // đề xuống đúng mép trên của vùng nhìn thật để nó CỐ ĐỊNH, không bị
         // đẩy lên hay bị che.
         style={vv.offsetTop ? { transform: `translateY(${vv.offsetTop}px)` } : undefined}
-        className="fixed inset-x-0 top-0 z-40 grid h-16 grid-cols-[1fr_auto] items-center gap-1 border-b border-border/60 bg-background/95 px-2 backdrop-blur-md sm:px-4"
+        className="fixed inset-x-0 top-0 z-40 flex h-16 items-center gap-1 border-b border-border/60 bg-background/95 px-2 backdrop-blur-md sm:px-4"
       >
-        {/* Bên trái: nút quay lại (nếu có) + tên ứng dụng */}
-        <div className="flex min-w-0 items-center gap-1.5">
+        {/*
+          Ba ô: trái – giữa – phải. Hai ô bên có cùng `flex-1` nên phần
+          trống chia đều, tên ứng dụng luôn nằm đúng giữa dù có nút quay
+          lại hay không.
+        */}
+        <div className="flex min-w-0 flex-1 items-center">
           {!isHome && (
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-foreground transition hover:bg-accent"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-foreground transition hover:bg-accent"
               aria-label="Quay lại"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
           )}
-          <p className="min-w-0 truncate text-left text-[14px] font-extrabold uppercase tracking-[0.14em] text-foreground sm:text-[15px] sm:tracking-[0.18em]">
-            Trợ lý Phật học
-          </p>
         </div>
 
+        <p className="min-w-0 shrink truncate text-center text-[14px] font-extrabold uppercase tracking-[0.12em] text-foreground sm:text-[15px] sm:tracking-[0.16em]">
+          Trợ lý Phật học
+        </p>
+
         {/* Bên phải: đàm thoại, xem video, phật lịch, cài đặt */}
-        <div className="flex shrink-0 items-center gap-1 justify-self-end">
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-0.5">
           <button
             type="button"
             onClick={openCall}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-foreground transition hover:bg-accent hover:text-accent-foreground"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-foreground transition hover:bg-accent hover:text-accent-foreground"
             aria-label="Đàm thoại bằng giọng nói"
             title="Đàm thoại bằng giọng nói"
           >
@@ -1218,7 +1223,7 @@ export default function Assistant() {
           <button
             type="button"
             onClick={() => setVideoScreen(true)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-foreground transition hover:bg-accent hover:text-accent-foreground"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-foreground transition hover:bg-accent hover:text-accent-foreground"
             aria-label="Tìm và xem video"
             title="Tìm và xem video"
           >
@@ -1227,7 +1232,7 @@ export default function Assistant() {
           <button
             type="button"
             onClick={() => setCalendarOpen(true)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-foreground transition hover:bg-accent hover:text-accent-foreground"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl text-foreground transition hover:bg-accent hover:text-accent-foreground"
             aria-label="Xem Phật lịch"
             title="Xem Phật lịch"
           >
@@ -1236,7 +1241,7 @@ export default function Assistant() {
           <button
             type="button"
             onClick={() => navigate("/settings?section=about")}
-            className="flex h-10 w-10 items-center justify-center rounded-2xl text-foreground transition hover:bg-accent hover:text-accent-foreground"
+            className="flex h-9 w-9 items-center justify-center rounded-2xl text-foreground transition hover:bg-accent hover:text-accent-foreground"
             title="Cài đặt và cập nhật ứng dụng"
             aria-label="Cài đặt và cập nhật ứng dụng"
           >
