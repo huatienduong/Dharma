@@ -69,6 +69,41 @@ let activeSource: AudioBufferSourceNode | null = null;
 let speechPrimed = false;
 let noVietnameseVoiceWarned = false;
 
+/* ------------------------------------------------------------------ */
+/* BỘ NHỚ ĐỆM ÂM THANH — làm nút “đọc lại” có tiếng ngay lập tức        */
+/* ------------------------------------------------------------------ */
+/*
+ * VÌ SAO: mỗi lần bấm nút loa lại gọi TTS trên máy chủ (vài giây, có khi
+ * hết hạn mức thì rơi về Web Speech và đọc sai giọng, hoặc không đọc) —
+ * đó là lý do “lúc nghe được lúc không, lâu lâu mới trả lời”.
+ *
+ * Âm thanh đã tổng hợp được là GIỐNG HỆT nhau cho cùng một câu + cùng một
+ * giọng, nên tải một lần rồi phát lại tức thì. Bản tải trước chạy nền ngay
+ * khi câu trả lời vừa có → lần bấm đầu tiên cũng không phải chờ.
+ */
+const audioCache = new Map<string, string>();
+/** Chỉ giữ vài câu gần nhất — audio base64 khá nặng, giữ nhiều sẽ phình RAM. */
+const AUDIO_CACHE_MAX = 8;
+
+function cacheKey(text: string, voice?: string | null, male?: boolean): string {
+  return `${voice ?? ""}|${male ? 1 : 0}|${text}`;
+}
+
+function cachePut(key: string, src: string) {
+  audioCache.set(key, src);
+  // Bỏ phần tử cũ nhất (Map giữ thứ tự chèn) khi vượt trần.
+  while (audioCache.size > AUDIO_CACHE_MAX) {
+    const oldest = audioCache.keys().next().value;
+    if (oldest === undefined) break;
+    audioCache.delete(oldest);
+  }
+}
+
+/** Xoá toàn bộ âm thanh đã đệm (đổi giọng hoặc cần giải phóng bộ nhớ). */
+export function clearSpeechCache() {
+  audioCache.clear();
+}
+
 function getSharedCtx(): AudioContext | null {
   try {
     const AC =
@@ -487,32 +522,45 @@ export function useVietnameseTTS() {
         finishWith(() => opts.onDone?.());
       };
 
-      // 1. Thử server TTS. Timeout 9s: máy chủ có thể thử lần lượt nhiều
-      //    model TTS, và lần khởi động đầu tiên hay chậm. Timeout quá ngắn
-      //    (trước đây 4s) khiến hầu hết câu rơi về Web Speech — mà máy
-      //    không có giọng vi-VN thì đàm thoại im lặng hoàn toàn.
-      let timeoutId = 0;
-      try {
-        const res = await Promise.race([
-          speakAction({
-            text: clean.slice(0, 2400),
-            voice: opts.voice ?? undefined,
-            male: opts.male,
-            ...getDeviceMeta(),
-          }),
-          new Promise<null>((resolve) => {
-            timeoutId = window.setTimeout(() => resolve(null), 9_000);
-          }),
-        ]);
-        window.clearTimeout(timeoutId);
+      // 1. Lấy âm thanh. ƯU TIÊN BỘ NHỚ ĐỆM: đã tổng hợp sẵn thì phát ngay,
+      //    không gọi mạng — đây là đường chính của nút đọc lại, bấm là có
+      //    tiếng tức thì. Timeout 9s khi phải gọi máy chủ: TTS mất vài giây
+      //    và có thể hết hạn mức, đó là lý do trước đây luc nghe duoc luc
+      //    khong, lau lau moi tra loi.
+      const key = cacheKey(clean, opts.voice, opts.male);
+      let src = audioCache.get(key) ?? null;
+      // Chỉ gọi máy chủ khi CHƯA có trong đệm.
+      if (!src) {
+        let timeoutId = 0;
+        try {
+          const res = await Promise.race([
+            speakAction({
+              text: clean.slice(0, 2400),
+              voice: opts.voice ?? undefined,
+              male: opts.male,
+              ...getDeviceMeta(),
+            }),
+            new Promise<null>((resolve) => {
+              timeoutId = window.setTimeout(() => resolve(null), 9_000);
+            }),
+          ]);
+          window.clearTimeout(timeoutId);
 
-        if (res && !stopFlagRef.current) {
-          // Gemini trả PCM thô → bọc WAV; mp3/WAV dùng nguyên bản
-          const src = /L16|pcm/i.test(res.mime)
-            ? `data:audio/wav;base64,${pcmToWav(res.audioBase64)}`
-            : `data:${res.mime};base64,${res.audioBase64}`;
-          setEngine("server");
-          setSpeaking(true);
+          if (res && !stopFlagRef.current) {
+            // Gemini trả PCM thô → bọc WAV; mp3/WAV dùng nguyên bản
+            src = /L16|pcm/i.test(res.mime)
+              ? `data:audio/wav;base64,${pcmToWav(res.audioBase64)}`
+              : `data:${res.mime};base64,${res.audioBase64}`;
+            cachePut(key, src);
+          }
+        } catch {
+          window.clearTimeout(timeoutId);
+        }
+      }
+
+      if (src) {
+        setEngine("server");
+        setSpeaking(true);
 
           // 1a. ƯU TIÊN: Web Audio — resolve khi phát xong
           try {
@@ -570,29 +618,63 @@ export function useVietnameseTTS() {
             audioRef.current = null;
             /* HTMLAudio cũng lỗi → Web Speech */
           }
-          finishWith(() => webSpeak(clean, opts.voice, opts.onDone));
-          return;
-        }
+        finishWith(() => webSpeak(clean, opts.voice, opts.onDone));
+        return;
+      }
 
-        // res = null (timeout / không có khóa TTS) — kết thúc có kiểm soát:
-        // đang dừng thì báo xong, không thì rời về giọng trình duyệt.
-        if (stopFlagRef.current) {
-          finishWith(() => opts.onDone?.());
-        } else {
-          finishWith(() => webSpeak(clean, opts.voice, opts.onDone));
-        }
-      } catch {
-        window.clearTimeout(timeoutId);
-        // Lỗi server/rate-limit → không ngắt vòng đàm thoại: rời về Web Speech
-        if (stopFlagRef.current) {
-          finishWith(() => opts.onDone?.());
-        } else {
-          finishWith(() => webSpeak(clean, opts.voice, opts.onDone));
-        }
+      // Không có src (máy chủ hết hạn mức / lỗi / timeout) — kết thúc có kiểm
+      // soát: đang dừng thì báo xong, không thì rời về giọng trình duyệt.
+      if (stopFlagRef.current) {
+        finishWith(() => opts.onDone?.());
+      } else {
+        finishWith(() => webSpeak(clean, opts.voice, opts.onDone));
       }
     },
     [speakAction, webSpeak],
   );
 
-  return { speak, speakBrowser: webSpeak, stop, prime: primeBrowserAudio, speaking, engine };
+  /**
+   * Tải sẵn âm thanh của một câu — chạy nền, KHÔNG phát gì.
+   *
+   * Gọi ngay khi câu trả lời vừa có, để khi người dùng bấm nút loa thì âm
+   * thanh đã sẵn sàng: bấm là có tiếng ngay, không phải chờ mạng.
+   */
+  const prefetchSpeech = useCallback(
+    (text: string, opts?: { voice?: string | null; male?: boolean }) => {
+      const clean = text
+        .replace(/https?:\/\/\S+/g, "")
+        .replace(/[ \t]{2,}/g, " ")
+        .trim();
+      if (!clean) return;
+      const key = cacheKey(clean, opts?.voice, opts?.male);
+      if (audioCache.has(key)) return;
+      void speakAction({
+        text: clean.slice(0, 2400),
+        voice: opts?.voice ?? undefined,
+        male: opts?.male,
+        ...getDeviceMeta(),
+      })
+        .then((res) => {
+          if (!res) return;
+          const src = /L16|pcm/i.test(res.mime)
+            ? `data:audio/wav;base64,${pcmToWav(res.audioBase64)}`
+            : `data:${res.mime};base64,${res.audioBase64}`;
+          cachePut(key, src);
+        })
+        .catch(() => {
+          /* hết hạn mức / lỗi mạng — bấm nút sẽ tự đọc bình thường */
+        });
+    },
+    [speakAction],
+  );
+
+  return {
+    speak,
+    speakBrowser: webSpeak,
+    stop,
+    prime: primeBrowserAudio,
+    prefetch: prefetchSpeech,
+    speaking,
+    engine,
+  };
 }

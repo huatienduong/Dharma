@@ -106,6 +106,7 @@ export default function Assistant() {
     speak: speakVI,
     stop: stopSpeaking,
     prime: primeSpeechAudio,
+    prefetch: prefetchSpeechVI,
   } = useVietnameseTTS();
   const scrollRef = useRef<HTMLDivElement>(null);
   // Khi đang hiện chữ từng phần, không tự cuộn toàn bộ vùng chat xuống đáy.
@@ -690,6 +691,12 @@ export default function Assistant() {
           const nextHistory = [...historyRef.current, messageToSave, replyMsg];
           historyRef.current = nextHistory;
           setHistory(nextHistory);
+          // Tải sẵn âm thanh câu trả lời này (chạy nền, không phát gì) để
+          // khi người dùng bấm nút loa là có tiếng ngay, không phải chờ
+          // máy chủ tổng hợp TTS.
+          prefetchSpeechVI(plainText(replyMsg.content), {
+            voice: voiceIdRef.current,
+          });
           // Ảnh base64 nặng: chỉ giữ ảnh trong 40 tin nhắn gần nhất, tin cũ
           // hơn bỏ ảnh (giữ chữ) để lịch sử lưu trữ không phình to.
           const cut = Math.max(0, nextHistory.length - 40);
@@ -809,7 +816,7 @@ export default function Assistant() {
         }
       }
     },
-    [ask, call, createImage, extraImages, files, image],
+    [ask, call, createImage, extraImages, files, image, prefetchSpeechVI],
   );
 
   useEffect(() => {
