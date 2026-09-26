@@ -31,23 +31,39 @@ const GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3-fl
 /* HẠN MỨC NHÀ CUNG CẤP — nguyên nhân gốc của "không trả lời được"     */
 /* ------------------------------------------------------------------ */
 /*
- * Hạn mức Groq tính CHUNG cho cả tổ chức và tính bằng TOKEN mỗi phút:
- * khoảng 1.000 request/phút nhưng chỉ 8.000 token/phút — đó mới là nút
- * thắt. Một lượt hỏi có prompt + lịch sử + câu trả lời dài sẽ tự nó ăn
- * gần hết hạn mức của cả phút, khiến mọi người dùng cùng bị chặn. Ba việc
- * sửa ở đây:
- *   1. Gặp 429 thì DỪNG ngay vòng lặp của nhà cung cấp đó, chuyển sang
- *      nhà cung cấp kia, thay vì đâm tiếp vào chỗ vừa bị từ chối.
- *   2. Ghi nhớ thời điểm hết hạn mức để các lượt hỏi kế tiếp bỏ qua hẳn
- *      nhà cung cấp đang bị chặn, không đốt thêm request nào.
- *   3. Giữ prompt và ngữ cảnh nhỏ gọn (xem FALLBACK_SYSTEM và `context`).
+ * Hạn mức KHÔNG áp dụng giống nhau cho mọi model. Đo thật trên production:
+ *   - Groq: 1.000 request/phút nhưng chỉ 8.000 token/phút cho cả tổ
+ *     chức, nên một lượt hỏi dài có thể chạm trần.
+ *   - Gemini: `gemini-3.8-flash` đã hết hạn mức (429) trong khi
+ *     `gemini-3.5-flash-lite` vẫn chạy tốt.
+ * Vì vậy quy tắc ở đây là:
+ *   1. KHÔNG bao giờ bỏ dở danh sách model vì một model bị 429 — thử tiếp
+ *      model còn lại. Trước đây dừng vòng lặp khiến một model hết hạn mức
+ *      làm cả nhánh chết, dù còn model sống đứng ngay sau.
+ *   2. Nghỉ tạm theo TỪNG MODEL, không theo cả nhà cung cấp: một model bị
+ *      chặn không được ảnh hưởng tới các model khác.
+ *   3. Model đang nghỉ bị đẩy xuống cuối danh sách, và lần sau bỏ qua —
+ *      nhờ đó không tốn request vào chỗ chắc chắn không sống.
  * Ngoài ra cache lại câu hỏi đơn lặp lại trong 10 phút: người dùng hay
  * bấm "Gửi lại" hoặc hỏi lại đúng câu vừa hỏi, và mỗi lần lặp lại đều
  * tốn hạn mức của những người đang dùng thật.
  */
-const COOLDOWN_MS = 25_000;
-let groqCooldownUntil = 0;
-let geminiCooldownUntil = 0;
+const MODEL_COOLDOWN_MS = 60_000;
+/** Hết hạn mức cả ngày thì nghỉ lâu hơn, tránh gọi vô ích. */
+const MODEL_QUOTA_COOLDOWN_MS = 10 * 60_000;
+const modelCooldown = new Map<string, number>();
+
+function markModelCooldown(model: string, ms: number): void {
+  modelCooldown.set(model, Date.now() + ms);
+}
+
+/** Model chưa bị chặn đứng trước; model đang nghỉ đẩy xuống cuối. */
+function orderModels(models: string[]): string[] {
+  const now = Date.now();
+  const busy = models.filter((m) => (modelCooldown.get(m) ?? 0) > now);
+  const free = models.filter((m) => (modelCooldown.get(m) ?? 0) <= now);
+  return [...free, ...busy];
+}
 
 const CACHE_TTL_MS = 10 * 60_000;
 const CACHE_MAX = 40;
@@ -202,13 +218,25 @@ export const chatFallback = action({
     const errors: string[] = [];
     /** true = mọi lỗi đều do hết hạn mức (429), thông báo sẽ dịu hơn */
     let allRateLimited = true;
+    const groqKeyPresent = Boolean(process.env.GROQ_API_KEY);
+    const geminiKeyPresent = Boolean(process.env.GEMINI_API_KEY);
+    if (!groqKeyPresent && !geminiKeyPresent) {
+      return {
+        ok: false as const,
+        code: "no_provider" as const,
+        message:
+          "Máy chủ chưa cấu hình khoá AI. Vui lòng thử lại sau ít phút hoặc báo lỗi qua mục Góp ý.",
+      };
+    }
 
     // 1) Groq REST — không qua AI SDK nên không cùng lỗi với nhánh chính.
     const groqKey = process.env.GROQ_API_KEY;
-    if (groqKey && Date.now() < groqCooldownUntil) {
-      errors.push("groq: đang nghỉ sau lần bị giới hạn gần nhất");
-    } else if (groqKey) {
-      for (const model of GROQ_MODELS) {
+    if (groqKey && groqKeyPresent) {
+      for (const model of orderModels(GROQ_MODELS)) {
+        if ((modelCooldown.get(model) ?? 0) > Date.now()) {
+          errors.push(`${model}: đang nghỉ sau lần bị giới hạn gần nhất`);
+          continue;
+        }
         try {
           const httpRes = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
             method: "POST",
@@ -231,12 +259,11 @@ export const chatFallback = action({
             const detail = await httpRes.text().catch(() => "");
             errors.push(`${model}: HTTP ${httpRes.status} ${detail.slice(0, 140)}`);
             if (httpRes.status === 429) {
-              // Hết hạn mức chung của tổ chức: dừng vòng lặp, nghỉ một nhịp
-              // rồi thử nhà cung cấp khác. Gọi tiếp chỉ làm tệ hơn.
-              allRateLimited = false;
-              groqCooldownUntil = Date.now() + COOLDOWN_MS;
-              break;
+              // Chỉ model này bị chặn — thử tiếp model còn lại.
+              markModelCooldown(model, MODEL_COOLDOWN_MS);
+              continue;
             }
+            allRateLimited = false;
             continue;
           }
           const text = firstText(await httpRes.json());
@@ -255,15 +282,17 @@ export const chatFallback = action({
 
     // 2) Gemini — hạ tầng khác hẳn Groq, chỉ cần một trong hai là đủ.
     const geminiKey = process.env.GEMINI_API_KEY;
-    if (geminiKey && Date.now() < geminiCooldownUntil) {
-      errors.push("gemini: đang nghỉ sau lần bị giới hạn gần nhất");
-    } else if (geminiKey) {
+    if (geminiKey && geminiKeyPresent) {
       const contents = context.map((m) => ({
         role: m.role === "assistant" ? "model" : "user",
         parts: [{ text: m.content }],
       }));
       while (contents.length > 0 && contents[0].role !== "user") contents.shift();
-      for (const model of await listGeminiTextModels(geminiKey)) {
+      for (const model of orderModels(await listGeminiTextModels(geminiKey))) {
+        if ((modelCooldown.get(model) ?? 0) > Date.now()) {
+          errors.push(`${model}: đang nghỉ sau lần bị giới hạn gần nhất`);
+          continue;
+        }
         try {
           const httpRes = await fetch(`${GEMINI_BASE}/models/${model}:generateContent`, {
             method: "POST",
@@ -282,10 +311,17 @@ export const chatFallback = action({
             const detail = await httpRes.text().catch(() => "");
             errors.push(`${model}: HTTP ${httpRes.status} ${detail.slice(0, 140)}`);
             if (httpRes.status === 429 || httpRes.status === 503) {
-              allRateLimited = false;
-              geminiCooldownUntil = Date.now() + COOLDOWN_MS;
-              break;
+              // Hết hạn mức của riêng model này (thường là hạn mức cả ngày):
+              // nghỉ lâu hơn và thử model còn lại.
+              markModelCooldown(
+                model,
+                /quota|exceeded your current quota/i.test(detail)
+                  ? MODEL_QUOTA_COOLDOWN_MS
+                  : MODEL_COOLDOWN_MS,
+              );
+              continue;
             }
+            allRateLimited = false;
             continue;
           }
           const json = (await httpRes.json()) as {

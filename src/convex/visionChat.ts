@@ -56,6 +56,28 @@ CÁCH TRẢ LỜI:
 
 ${featuresPrompt(true)}`;
 
+/**
+ * Nghỉ tạm RIÊNG cho từng model, không theo cả nhà cung cấp.
+ *
+ * Đo thật trên production: `gemini-3.8-flash` đã hết hạn mức (429) trong
+ * khi `gemini-3.5-flash-lite` và `gemini-3-flash-preview` vẫn đọc ảnh bình
+ * thường. Trước đây gặp 429 là dừng cả vòng lặp, nên một model hết hạn mức
+ * kéo chết luôn nhánh đọc ảnh dù còn model sống đứng ngay sau.
+ */
+const MODEL_COOLDOWN_MS = 60_000;
+/** Hết hạn mức cả ngày thì nghỉ lâu hơn cho tới lượt sau. */
+const MODEL_QUOTA_COOLDOWN_MS = 10 * 60_000;
+const modelCooldown = new Map<string, number>();
+
+/** Model chưa bị chặn đứng trước; model đang nghỉ đẩy xuống cuối. */
+function orderModels(models: string[]): string[] {
+  const now = Date.now();
+  return [
+    ...models.filter((m) => (modelCooldown.get(m) ?? 0) <= now),
+    ...models.filter((m) => (modelCooldown.get(m) ?? 0) > now),
+  ];
+}
+
 const MAX_OUTPUT_TOKENS = 2048;
 /** Khớp HISTORY_LIMIT của aiChat.ask để ngữ cảnh gửi lên giống nhau. */
 const HISTORY_LIMIT = 4;
@@ -219,112 +241,145 @@ export const analyzeImage = action({
     let quotaHit = false;
     /** Đã thử lại một lần bằng yêu cầu tối giản chưa. */
     let retriedBare = false;
-    for (const model of VISION_MODELS) {
-      try {
-        const res = await fetch(`${GEMINI_BASE}/models/${model}:generateContent`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": geminiKey,
-          },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-            contents,
-            // KHÔNG gửi `temperature`: các model Gemini thế hệ mới từ chối
-            // tham số này (HTTP 400) khiến nhánh ảnh chết ngay. Ngân sách
-            // token cũng phải rộng vì model dùng token "suy nghĩ" trước khi
-            // trả lời — để hẹp thì phần trả lời về tới không còn chỗ.
-            generationConfig: {
-              maxOutputTokens: MAX_OUTPUT_TOKENS,
-            },
-          }),
-          signal: AbortSignal.timeout(45_000),
-        });
-        if (!res.ok) {
-          const detail = await res.text().catch(() => "");
-          lastError = `${model}: HTTP ${res.status} ${detail.slice(0, 160)}`;
-          // Hết hạn mức (gói) thì dừng ngay: các model cùng dùng chung hạn
-          // mức nên thử tiếp chỉ làm người dùng chờ thêm mà không có kết quả.
-          if (
-            res.status === 429 ||
-            /RESOURCE_EXHAUSTED|quota|rate limit|rate_limit/i.test(detail)
-          ) {
-            quotaHit = true;
-            break;
-          }
-          // Google đổi yêu cầu API không báo trước (từ chối tham số cũ):
-          // gặp 4xx thử lại một lần với yêu cầu tối giản thay vì bỏ ảnh.
-          if (!retriedBare && (res.status === 400 || res.status === 422)) {
-            retriedBare = true;
-            const bare = await fetch(
-              `${GEMINI_BASE}/models/${model}:generateContent`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "x-goog-api-key": geminiKey,
-                },
-                body: JSON.stringify({ contents }),
-                signal: AbortSignal.timeout(45_000),
-              },
-            );
-            if (bare.ok) {
-              const bareJson = (await bare.json()) as {
-                candidates?: {
-                  content?: { parts?: { text?: string; thought?: boolean }[] };
-                }[];
-              };
-              const bareText = (bareJson.candidates?.[0]?.content?.parts ?? [])
-                .filter((p) => !p.thought)
-                .map((p) => p.text ?? "")
-                .join("")
-                .trim();
-              if (bareText) {
-                return {
-                  ok: true as const,
-                  reply: bareText,
-                  provider: model,
-                  imageCount: kept.length,
-                  dropped,
-                };
-              }
-            }
-          }
+    /**
+     * Model gặp 429 trong lượt này. KHÔNG đánh dấu nghỉ ngay khi đang thử vì
+     * hạn mức Gemini của gói miễn phí hết rồi lại có sau vài giây; đánh dấu
+     * sớm khiến lần thử lại ngay trong cùng lượt bị bỏ qua. Chỉ đánh dấu
+     * sau khi đã thử hết số vòng.
+     */
+    const rateLimitedModels: string[] = [];
+    /**
+     * THỬ HAI VÒNG. Hạn mức Gemini ở gói miễn phí hết rồi lại có sau vài
+     * giây, nên một lượt thử duy nhất rất dễ trượt; chờ 2,5s rồi thử lại
+     * chuyển phần lớn lượt gửi ảnh thất bại thành thành công, mà vẫn nằm
+     * trong giới hạn chờ 25s mà người dùng chấp nhận được.
+     */
+    const ATTEMPT_ROUNDS = 2;
+    for (let round = 0; round < ATTEMPT_ROUNDS; round++) {
+      if (round > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 2_500));
+      }
+      for (const model of orderModels(VISION_MODELS)) {
+        if ((modelCooldown.get(model) ?? 0) > Date.now()) {
+          lastError = `${model}: đang nghỉ sau lần bị giới hạn gần nhất`;
           continue;
         }
-        const json = (await res.json()) as {
-          candidates?: {
-            content?: { parts?: { text?: string; thought?: boolean }[] };
-            finishReason?: string;
-          }[];
-          promptFeedback?: { blockReason?: string };
-        };
-        // Bỏ phần "suy nghĩ" của model: đó là lời bàn nội tâm, không phải
-        // câu trả lời cho người dùng.
-        const text = (json.candidates?.[0]?.content?.parts ?? [])
-          .filter((p) => !p.thought)
-          .map((p) => p.text ?? "")
-          .join("")
-          .trim();
-        if (text) {
-          return {
-            ok: true as const,
-            reply: text,
-            provider: model,
-            imageCount: kept.length,
-            dropped,
+        try {
+          const res = await fetch(
+            `${GEMINI_BASE}/models/${model}:generateContent`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": geminiKey,
+              },
+              body: JSON.stringify({
+                systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+                contents,
+                // KHÔNG gửi `temperature`: các model Gemini thế hệ mới từ
+                // chối tham số này. Ngân sách token phải rộng vì model dùng
+                // token "suy nghĩ" trước khi trả lời — hẹp quá thì phần trả
+                // lời về tới không còn chỗ.
+                generationConfig: {
+                  maxOutputTokens: MAX_OUTPUT_TOKENS,
+                },
+              }),
+              signal: AbortSignal.timeout(45_000),
+            },
+          );
+          if (!res.ok) {
+            const detail = await res.text().catch(() => "");
+            lastError = `${model}: HTTP ${res.status} ${detail.slice(0, 160)}`;
+            if (
+              res.status === 429 ||
+              /RESOURCE_EXHAUSTED|quota|rate limit|rate_limit/i.test(detail)
+            ) {
+              // Chỉ model này hết hạn mức — thử tiếp model còn lại ngay.
+              rateLimitedModels.push(model);
+              quotaHit = true;
+              continue;
+            }
+            // Google đổi yêu cầu API không báo trước (từ chối tham số cũ):
+            // gặp 4xx thử lại một lần với yêu cầu tối giản thay vì bỏ ảnh.
+            if (!retriedBare && (res.status === 400 || res.status === 422)) {
+              retriedBare = true;
+              const bare = await fetch(
+                `${GEMINI_BASE}/models/${model}:generateContent`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": geminiKey,
+                  },
+                  body: JSON.stringify({ contents }),
+                  signal: AbortSignal.timeout(45_000),
+                },
+              );
+              if (bare.ok) {
+                const bareJson = (await bare.json()) as {
+                  candidates?: {
+                    content?: {
+                      parts?: { text?: string; thought?: boolean }[];
+                    };
+                  }[];
+                };
+                const bareText = (bareJson.candidates?.[0]?.content?.parts ?? [])
+                  .filter((p) => !p.thought)
+                  .map((p) => p.text ?? "")
+                  .join("")
+                  .trim();
+                if (bareText) {
+                  return {
+                    ok: true as const,
+                    reply: bareText,
+                    provider: model,
+                    imageCount: kept.length,
+                    dropped,
+                  };
+                }
+              }
+            }
+            continue;
+          }
+          const json = (await res.json()) as {
+            candidates?: {
+              content?: { parts?: { text?: string; thought?: boolean }[] };
+              finishReason?: string;
+            }[];
+            promptFeedback?: { blockReason?: string };
           };
+          // Bỏ phần "suy nghĩ" của model: đó là lời bàn nội tâm, không
+          // phải câu trả lời cho người dùng.
+          const text = (json.candidates?.[0]?.content?.parts ?? [])
+            .filter((p) => !p.thought)
+            .map((p) => p.text ?? "")
+            .join("")
+            .trim();
+          if (text) {
+            return {
+              ok: true as const,
+              reply: text,
+              provider: model,
+              imageCount: kept.length,
+              dropped,
+            };
+          }
+          lastError = `${model}: ${
+            json.promptFeedback?.blockReason ??
+            json.candidates?.[0]?.finishReason ??
+            "trả lời rỗng"
+          }`;
+        } catch (err) {
+          lastError = `${model}: ${err instanceof Error ? err.message : String(err)}`;
         }
-        lastError = `${model}: ${
-          json.promptFeedback?.blockReason ??
-          json.candidates?.[0]?.finishReason ??
-          "trả lời rỗng"
-        }`;
-      } catch (err) {
-        lastError = `${model}: ${err instanceof Error ? err.message : String(err)}`;
       }
     }
     console.error(`[visionChat] mọi model đọc ảnh đều lỗi: ${lastError}`);
+    // Hết cả vòng thử mới vẫn thất bại → mới ghi nhớ model nào đang bị chặn,
+    // để lượt sau của người khác khỏi đụng vào.
+    for (const model of rateLimitedModels) {
+      modelCooldown.set(model, Date.now() + MODEL_COOLDOWN_MS);
+    }
     if (quotaHit) {
       return {
         ok: false as const,

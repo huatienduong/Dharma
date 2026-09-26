@@ -769,12 +769,12 @@ export default function Assistant() {
         try {
           const fb = await fallback();
           if (fb?.ok) return fb;
-          // Hạn mức của nhà cung cấp và bộ đếm tốc độ phía máy chủ là
-          // CHUNG cho cả hai nhánh. Khi đã cạn thì gọi tiếp nhánh chính chỉ
-          // làm hao thêm hạn mức của những người đang dùng thật — báo luôn.
-          if (fb && (fb.code === "provider_busy" || fb.code === "rate_limited")) {
-            return fb;
-          }
+          // Nhánh dự phòng đã trả lời dứt khoát (hết hạn mức, lỗi hệ thống)
+          // thì nhánh chính không thêm được gì: nó dùng CHUNG hạn mức với
+          // nhánh dự phòng và còn gửi prompt dài hơn nhiều, nên gọi tiếp chỉ
+          // làm hao thêm hạn mức của những người đang dùng thật. Chỉ khi
+          // nhánh dự phòng hỏng hẳn (không gọi được) mới thử nhánh chính.
+          if (fb) return fb;
         } catch {
           /* bỏ qua, thử nhánh chính */
         }
