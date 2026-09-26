@@ -8,8 +8,9 @@
  * không cần thao tác của người dùng.
  */
 
+import { VideoPlayer } from "@/components/VideoPlayer";
 import type { VideoInfo } from "@/lib/videoIntent";
-import { ArrowLeft, Play, Search } from "lucide-react";
+import { Play, Search } from "lucide-react";
 import { useState } from "react";
 
 export function VideoListCard({
@@ -22,29 +23,7 @@ export function VideoListCard({
   const [playing, setPlaying] = useState<VideoInfo | null>(null);
 
   if (playing) {
-    return (
-      <div className="mt-2 max-w-[420px] overflow-hidden border border-border/50 bg-black shadow-sm">
-        <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
-          <iframe
-            className="absolute inset-0 h-full w-full"
-            src={`https://www.youtube-nocookie.com/embed/${playing.videoId}?autoplay=1&rel=0&modestbranding=1`}
-            title={playing.title || "Video trên YouTube"}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
-        <div className="flex items-center justify-center px-3 py-2">
-          <button
-            type="button"
-            onClick={() => setPlaying(null)}
-            className="inline-flex items-center gap-1.5 text-[12px] text-muted-foreground transition hover:text-foreground"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Video khác
-          </button>
-        </div>
-      </div>
-    );
+    return <VideoPlayer video={playing} onClose={() => setPlaying(null)} />;
   }
 
   return (
@@ -82,13 +61,8 @@ export function VideoListCard({
               </span>
               <span className="min-w-0 flex-1">
                 <span className="line-clamp-2 block text-[13px] font-medium leading-snug text-foreground/90">
-                  {v.title || "Video trên YouTube"}
+                  {v.title || "Video"}
                 </span>
-                {v.channel ? (
-                  <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-                    {v.channel}
-                  </span>
-                ) : null}
               </span>
             </button>
           </li>

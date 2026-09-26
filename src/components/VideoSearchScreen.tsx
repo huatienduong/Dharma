@@ -13,6 +13,7 @@ import {
   viewCountText,
 } from "@/lib/videoSearchClient";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
+import { VideoPlayer } from "@/components/VideoPlayer";
 import type { VideoInfo } from "@/lib/videoIntent";
 import { cn } from "@/lib/utils";
 import {
@@ -207,33 +208,8 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
 
       {/* ---------- Nội dung cuộn: video đang phát, kết quả, gợi ý ---------- */}
       <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-8 sm:px-4">
-        {/* Video đang phát */}
-        {playing ? (
-          <div className="mt-3 overflow-hidden rounded-2xl border border-border/60 bg-black">
-            <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
-              <iframe
-                className="absolute inset-0 h-full w-full"
-                src={`https://www.youtube-nocookie.com/embed/${playing.videoId}?autoplay=1&rel=0&modestbranding=1`}
-                title={playing.title || "Video trên YouTube"}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-            <div className="flex items-center justify-between gap-2 px-3 py-2">
-              <p className="min-w-0 flex-1 truncate text-[13px] text-foreground/90">
-                {playing.title || "Video đang xem"}
-              </p>
-              <button
-                type="button"
-                onClick={() => setPlaying(null)}
-                className="shrink-0 text-[12px] text-muted-foreground transition hover:text-foreground"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        ) : null}
-
+        {/* Video đang phát: trình phát riêng của ứng dụng, không nhúng YouTube */}
+        {playing ? <VideoPlayer video={playing} onClose={() => setPlaying(null)} /> : null}
 
         {/* Kết quả */}
         {message ? (
@@ -282,13 +258,8 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="line-clamp-2 block text-[14px] font-medium leading-snug text-foreground/95">
-                        {v.title || "Video trên YouTube"}
+                        {v.title || "Video"}
                       </span>
-                      {v.channel ? (
-                        <span className="mt-1 block truncate text-[12px] text-muted-foreground">
-                          {v.channel}
-                        </span>
-                      ) : null}
                     </span>
                   </button>
                 </li>
@@ -347,7 +318,7 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
                   {/* Tiêu đề + số lượt xem bên phải */}
                   <span className="min-w-0 flex-1">
                     <span className="line-clamp-2 block text-[13px] font-medium leading-snug text-foreground/95">
-                      {v.title || "Video trên YouTube"}
+                      {v.title || "Video"}
                     </span>
                     {viewCountText(v.viewCount) ? (
                       <span className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
