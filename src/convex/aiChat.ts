@@ -328,16 +328,76 @@ type ServerVoice = {
  * chỉ giữ vai trò dự phòng khi ElevenLabs không dùng được.
  */
 /**
- * Model TTS, thử từ mới nhất → cũ nhất. Google thu hồi model cũ theo lịch
- * nên danh sách phải có nhiều bản dự phòng, nếu không một lần đổi tên là
- * toàn bộ đàm thoại im lặng (client rơi về Web Speech mà máy không có
- * giọng tiếng Việt).
+ * Model TTS, thử từ mới nhất → cũ nhất. Google thu hồi/đổi tên model TTS rất
+ * thường xuyên nên danh sách phải có nhiều bản dự phòng.
+ *
+ * Nhưng CHỈ dựa vào danh sách này là chưa đủ: đã xảy ra tình huống cả
+ * danh sách đều trả lỗi khiến đọc to im lặng hoàn toàn. Vì vậy
+ * listGeminiTtsModels tự dò danh sách model đang sống từ API rồi mới chọn.
  */
 const GEMINI_TTS_MODELS = [
-  "gemini-3.8-flash-tts",
-  "gemini-3.1-flash-tts-preview",
   "gemini-2.5-flash-preview-tts",
+  "gemini-2.5-pro-preview-tts",
+  "gemini-3-pro-preview-tts",
 ] as const;
+
+const ttsModelsCache = new Map<string, { at: number; models: string[] }>();
+const TTS_MODELS_TTL_MS = 30 * 60_000;
+
+/**
+ * DÙ MODEL TTS CHẠY NỀN — làm mới danh sách model tạo giọng nói đang sống.
+ */
+async function refreshGeminiTtsModels(geminiKey: string): Promise<void> {
+  let live: string[];
+  try {
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models",
+      {
+        headers: { "x-goog-api-key": geminiKey },
+        signal: AbortSignal.timeout(6_000),
+      },
+    );
+    if (!res.ok) return;
+    const json = (await res.json()) as {
+      models?: { name?: string; supportedGenerationMethods?: string[] }[];
+    };
+    live = (json.models ?? [])
+      .filter(
+        (m) =>
+          typeof m.name === "string" &&
+          (m.supportedGenerationMethods ?? []).includes("generateContent"),
+      )
+      .map((m) => (m.name ?? "").replace(/^models\//, ""));
+    if (live.length === 0) return;
+  } catch {
+    return;
+  }
+
+  const ordered: string[] = [];
+  for (const id of GEMINI_TTS_MODELS) if (live.includes(id)) ordered.push(id);
+  // Bổ sung mọi model tên có "tts" hoặc "audio" còn sống — đây mới là thứ
+  // cứu được nhánh đọc to khi Google đổi tên hoàn toàn.
+  for (const id of live) {
+    if (ordered.includes(id)) continue;
+    if (/tts|audio|speech/i.test(id)) ordered.push(id);
+  }
+  if (ordered.length > 0) {
+    ttsModelsCache.set(geminiKey, { at: Date.now(), models: ordered });
+  }
+}
+
+/**
+ * Danh sách model TTS dùng được. Cache rỗng thì dùng luôn danh sách ưu tiên
+ * và dò nền — không để người dùng chờ thêm cho một lệnh gọi không thiết yếu.
+ */
+async function listGeminiTtsModels(geminiKey: string): Promise<string[]> {
+  const cached = ttsModelsCache.get(geminiKey);
+  if (cached && Date.now() - cached.at < TTS_MODELS_TTL_MS) {
+    return cached.models;
+  }
+  if (!cached) void refreshGeminiTtsModels(geminiKey).catch(() => {});
+  return [...GEMINI_TTS_MODELS];
+}
 
 /* ------------------------------------------------------------------ */
 /* ElevenLabs — nhánh đọc to CHÍNH. Giọng đa ngôn ngữ đọc tiếng Việt   */
@@ -548,10 +608,19 @@ export const providerStatus = action({
     }
     // Chat dùng Groq là nhà cung cấp DUY NHẤT. Gemini chỉ còn phục vụ TTS
     // (đọc to) và tạo ảnh — hai tính năng Groq không cung cấp.
+    // Danh sách model đọc to đang thực sự sống — dùng để chẩn đoán khi
+    // người dùng báo "không nghe thấy gì", không chỉ biết có/không có khóa.
+    const geminiKey = process.env.GEMINI_API_KEY;
+    let geminiTtsModels: string[] = [];
+    if (geminiKey) {
+      await refreshGeminiTtsModels(geminiKey);
+      geminiTtsModels = ttsModelsCache.get(geminiKey)?.models ?? [];
+    }
     return {
       groq: !!groqKey,
       elevenLabs: !!process.env.ELEVENLABS_API_KEY,
-      geminiTts: !!process.env.GEMINI_API_KEY,
+      geminiTts: !!geminiKey,
+      geminiTtsModels,
       groqModels,
     };
   },
@@ -1238,6 +1307,109 @@ export const ask = action({
 });
 
 /**
+ * Gọi Gemini TTS, thử lần lượt các model đang sống cho tới khi có audio.
+ * Trả null khi mọi model lỗi — kèm log để biết chính xác nguyên nhân.
+ */
+async function synthGemini(
+  geminiKey: string,
+  text: string,
+  voiceName: string,
+): Promise<{ audioBase64: string; mime: string } | null> {
+  const models = await listGeminiTtsModels(geminiKey);
+  let lastError = "không rõ";
+  for (const model of models) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": geminiKey,
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text }] }],
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName },
+                },
+              },
+            },
+          }),
+        },
+      );
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        lastError = `${model}: HTTP ${res.status} ${detail.slice(0, 140)}`;
+        continue;
+      }
+      const json = (await res.json()) as {
+        candidates?: {
+          content?: {
+            parts?: { inlineData?: { data?: string; mimeType?: string } }[];
+          };
+        }[];
+        error?: { message?: string };
+      };
+      const part = json.candidates?.[0]?.content?.parts?.find(
+        (p) => p.inlineData?.data,
+      )?.inlineData;
+      if (part?.data) {
+        return {
+          audioBase64: part.data,
+          mime: part.mimeType ?? "audio/L16;rate=24000",
+        };
+      }
+      lastError = `${model}: ${json.error?.message ?? "phản hồi không có audio"}`;
+    } catch (err) {
+      lastError = `${model}: ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
+  console.error(`[aiChat] Gemini TTS thất bại — ${lastError}`);
+  return null;
+}
+
+/**
+ * KIỂM TRA TỪNG GIỌNG MẪU — dùng để loại bỏ giọng đã chết.
+ *
+ * Một giọng TTS có thể ngừng hoạt động (Google thu hồi prebuilt voice) mà
+ * danh mục phía client vẫn còn hiện → người dùng bấm thử rồi không nghe
+ * gì. Action này thử từng giọng với một âm tiết và trả về giọng nào còn
+ * sống, nên việc loại bỏ dựa trên dữ liệu thật chứ không đoán.
+ *
+ * Có giới hạn tốc độ (bucket "speak") nên không bị lợi dụng để đốt hạn mức.
+ */
+export const checkVoices = action({
+  args: {
+    deviceId: v.optional(v.string()),
+    integrity: v.optional(v.string()),
+  },
+  handler: async (ctx, { deviceId, integrity }) => {
+    const denied = await checkRateLimit(ctx, "speak", deviceId, integrity);
+    if (denied) return { ok: false as const, message: denied };
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (!geminiKey) {
+      return { ok: false as const, message: "Chưa cấu hình khóa Gemini." };
+    }
+    const models = await listGeminiTtsModels(geminiKey);
+    const voices: Record<string, boolean> = {};
+    for (const [id, cfg] of Object.entries(SERVER_VOICES)) {
+      const audio = await synthGemini(geminiKey, "A", cfg.gemini);
+      voices[id] = audio !== null;
+    }
+    const alive = Object.entries(voices)
+      .filter(([, ok]) => ok)
+      .map(([id]) => id);
+    const dead = Object.entries(voices)
+      .filter(([, ok]) => !ok)
+      .map(([id]) => id);
+    return { ok: true as const, voices, alive, dead, models };
+  },
+});
+
+/**
  * TTS tiếng Việt chất lượng cao — server tổng hợp âm thanh rồi trả về base64.
  * Thứ tự ưu tiên: ElevenLabs (MP3, giọng đa ngôn ngữ) → Gemini TTS → null.
  * Trả về null khi cả hai nhánh lỗi → client dùng Web Speech dự phòng.
@@ -1287,69 +1459,11 @@ export const speak = action({
     }
 
     // ƯU TIÊN 2: Gemini TTS — dự phòng khi ElevenLabs lỗi hoặc hết hạn mức.
-
     const geminiVoice = v?.gemini ?? (tone === "male" ? "Charon" : "Kore");
-
     const geminiKey = process.env.GEMINI_API_KEY;
-
     if (geminiKey) {
-      // Google đã liên tục thay model TTS (2.5 preview → 3.x). Thử lần lượt
-      // danh sách này: model đầu tiên còn sống sẽ trả audio, model đã bị
-      // thu hồi trả 404 và ta chuyển sang model kế tiếp — nhờ vậy TTS không
-      // chết âm thầm khi Google đổi tên model.
-      for (const model of GEMINI_TTS_MODELS) {
-        try {
-          const res = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-goog-api-key": geminiKey,
-              },
-              body: JSON.stringify({
-                contents: [
-                  {
-                    parts: [
-                      {
-                        // Chỉ gửi NỘI DUNG cần đọc. Trước đây có tiền tố
-                        // chỉ dẫn giọng đọc, nhưng Gemini TTS đọc to cả lệnh
-                        // nên câu đó lọt ra loa ở đầu mỗi câu trả lời.
-                        text: clean,
-                      },
-                    ],
-                  },
-                ],
-                generationConfig: {
-                  responseModalities: ["AUDIO"],
-                  speechConfig: {
-                    voiceConfig: {
-                      prebuiltVoiceConfig: { voiceName: geminiVoice },
-                    },
-                  },
-                },
-              }),
-            },
-          );
-          if (!res.ok) continue;
-          const json = (await res.json()) as {
-            candidates?: {
-              content?: {
-                parts?: { inlineData?: { data?: string; mimeType?: string } }[];
-              };
-            }[];
-          };
-          const part = json.candidates?.[0]?.content?.parts?.[0]?.inlineData;
-          if (part?.data) {
-            return {
-              audioBase64: part.data,
-              mime: part.mimeType ?? "audio/L16;rate=24000",
-            };
-          }
-        } catch {
-          /* thử model tiếp theo */
-        }
-      }
+      const audio = await synthGemini(geminiKey, clean, geminiVoice);
+      if (audio) return audio;
     }
 
     // Groq đã ngừng dịch vụ TTS (playai-tts decommissioned) và OpenAI key
