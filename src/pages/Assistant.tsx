@@ -513,6 +513,9 @@ export default function Assistant() {
   /** Mốc bắt đầu lượt đọc to / lượt gửi — giám sát dùng để cứu vòng lặp. */
   const speakSinceRef = useRef(0);
   const sendSinceRef = useRef(0);
+  /** Theo dõi lúc micro bị đánh dấu hỏng để tự thử mở lại. */
+  const micDeniedSinceRef = useRef(0);
+  const micDeniedRetryRef = useRef(0);
   /** 1 = đang tự gửi lại câu hỏi trong đàm thoại (giữ mic đóng trong lúc đó). */
   const callRetryPendingRef = useRef(0);
   /** Để hàng đợi câu nói gọi lại được chính `handleUtterance`. */
@@ -595,10 +598,32 @@ export default function Assistant() {
    * trạng thái, thấy kẹt thì cưỡng bức trả lại micro cho người dùng. ----- */
   useEffect(() => {
     const id = window.setInterval(() => {
-      if (!callActiveRef.current || mutedRef.current || micDeniedRef.current) {
+      if (!callActiveRef.current || mutedRef.current) {
         return;
       }
       const now = Date.now();
+      // 0) Micro bị đánh dấu “không dùng được” — nhưng nhiều khi đó chỉ là
+      //    lỗi tạm của trình duyệt (đặc biệt lúc vừa bật phiên nghe, hoặc
+      //    micro vừa được nhả). Nếu không tự thử lại, cuộc gọi kẹt vĩnh viễn
+      //    ở “Đang nghe”: nói gì cũng không ai nghe. Thử lại sau 20s, rồi
+      //    sau 60s nếu vẫn hỏng.
+      if (micDeniedRef.current) {
+        if (!micDeniedSinceRef.current) {
+          micDeniedSinceRef.current = now;
+        } else if (
+          now - micDeniedSinceRef.current >
+          (micDeniedRetryRef.current ? 60_000 : 20_000)
+        ) {
+          micDeniedRetryRef.current = 1;
+          micDeniedRef.current = false;
+          micDeniedSinceRef.current = 0;
+          lastAssistantEventAtRef.current = now;
+          setCallStatus("listening");
+          startListeningRef.current();
+        }
+        return;
+      }
+      micDeniedSinceRef.current = 0;
       // 1) Kẹt ở “đang trả lời” quá 25s → cưỡng bức kết thúc lượt đọc.
       if (aiSpeakingRef.current) {
         if (speakSinceRef.current > 0 && now - speakSinceRef.current > 25_000) {
@@ -754,10 +779,16 @@ export default function Assistant() {
       // Yêu cầu đàm thoại ngay trong khung chat → mở thẳng màn đàm thoại.
       if (isStartCallCommand(q)) {
         setInput("");
-        if (callActiveRef.current) return;
+        if (callActiveRef.current) {
+          // Đang trong cuộc gọi: nhả cờ "đang gửi" để micro không bị kẹt
+          // đóng vĩnh viễn sau khi gặp lệnh này.
+          sendingRef.current = false;
+          return;
+        }
         openCallRef.current?.();
         return;
       }
+      // Đã đi qua các lệnh đặc biệt ở trên → lượt gửi thật bắt đầu ở đây.
       // Gom ảnh đính kèm theo hạn mức gói. Ảnh vượt hạn mức vẫn KHÔNG chặn
       // người dùng: cắt bớt rồi vẫn gửi đi để AI trả lời các ảnh còn lại.
       const allImages: { base64: string; mime: string }[] = !opts?.fromCall

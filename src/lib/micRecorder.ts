@@ -5,6 +5,10 @@
  * Android và khi ồn), nên ta ghi âm luôn rồi gửi lên chép bằng Whisper.
  * Bản trình duyệt vẫn dùng làm phản hồi tức thì và làm dự phòng.
  *
+ * Lớp này là DỰ PHÒNG CUỐI CÙNG của chế độ đàm thoại: nếu micro không bật
+ * được thì không còn tín hiệu nào để chốt câu, cuộc gọi đứng im ở “Đang
+ * nghe”. Vì vậy mọi đường thất bại ở đây đều thử lại thay vì bỏ cuộc.
+ *
  * Chỉ dùng MediaRecorder — không cần thư viện, hoạt động trên Chrome/Safari
  * di động. Nếu trình duyệt không hỗ trợ thì hàm trả false và ứng dụng tiếp
  * tục dùng Web Speech như trước.
@@ -18,9 +22,18 @@ export type MicLevelFn = (level: number) => void;
 let recorder: MediaRecorder | null = null;
 let chunks: BlobPart[] = [];
 let stream: MediaStream | null = null;
-let levelCtx: AudioContext | null = null;
 let levelTimer = 0;
 let levelResume: (() => void) | null = null;
+let meterSource: MediaStreamAudioSourceNode | null = null;
+/**
+ * AudioContext DÙNG CHUNG cho bộ đo mức.
+ *
+ * Trước đây mỗi phiên nghe tạo một context riêng rồi đóng lại. Điện thoại
+ * giới hạn số AudioContext đang sống (thường ~6) — vượt quá thì `new
+ * AudioContext()` ném lỗi, bộ đo mức im lặng và câu nói không bao giờ được
+ * chốt. Dùng chung một context để không bao giờ chạm trần này.
+ */
+let meterCtx: AudioContext | null = null;
 /**
  * Số thứ tự phiên ghi âm. `getUserMedia` là bất đồng bộ, nên hai lần bật mic
  * liên tiếp (cuộc gọi vừa đọc xong lại mở phiên nghe mới) có thể hoàn tất
@@ -29,6 +42,13 @@ let levelResume: (() => void) | null = null;
  * giúp phiên cũ tự bỏ đi thay vì giành micro.
  */
 let startToken = 0;
+/** Lúc micro được nhả gần nhất — không xin lại quá sớm (lỗi Android). */
+let lastStopAt = 0;
+/** Lời gọi đang chờ cấp quyền micro — dùng chung cho mọi nơi gọi. */
+let inflight: Promise<boolean> | null = null;
+
+const sleep = (ms: number) =>
+  new Promise<void>((r) => window.setTimeout(r, ms));
 
 export function isMicRecordingSupported(): boolean {
   return (
@@ -51,6 +71,43 @@ function pickMimeType(): string {
   return candidates.find((m) => MediaRecorder.isTypeSupported(m)) ?? "";
 }
 
+/**
+ * Xin micro, có thử lại.
+ *
+ * LÝ DO PHẢI THỬ LẠI: sau khi một phiên ghi âm kết thúc, thiết bị âm thanh
+ * cần vài trăm mili giây mới “thả” micro. Android trả về `NotReadableError`
+ * / `AbortError` nếu xin lại quá sớm — đúng tình huống của chế độ đàm thoại
+ * (đọc xong lại mở mic ngay). Không có bước thử lại này, cuộc gọi chỉ chạy
+ * được đúng một lượt rồi kẹt vĩnh viễn ở “Đang nghe”.
+ *
+ * `NotAllowedError` (người dùng từ chối) thì thử lại cũng vô ích → thoát.
+ */
+async function acquireMic(): Promise<MediaStream | null> {
+  const constraints = {
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      // Whisper nhận âm mono nên bỏ kênh stereo thừa ngay từ đầu.
+      channelCount: 1,
+    },
+  };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await sleep(250 * attempt);
+    try {
+      // getUserMedia trên một số WebView treo mãi không trả lời → chốt 6s.
+      return await Promise.race([
+        navigator.mediaDevices.getUserMedia(constraints),
+        new Promise<null>((r) => window.setTimeout(() => r(null), 6_000)),
+      ]);
+    } catch (err) {
+      const name = (err as { name?: string } | null)?.name ?? "";
+      if (name === "NotAllowedError" || name === "SecurityError") return null;
+    }
+  }
+  return null;
+}
+
 function releaseStream() {
   if (levelTimer) {
     window.clearInterval(levelTimer);
@@ -60,10 +117,34 @@ function releaseStream() {
     window.removeEventListener("visibilitychange", levelResume);
     levelResume = null;
   }
-  void levelCtx?.close().catch(() => {});
-  levelCtx = null;
+  // Chỉ ngắt kết nối, KHÔNG đóng context dùng chung (đóng mỗi lượt sẽ chạm
+  // trần số AudioContext của trình duyệt).
+  try {
+    meterSource?.disconnect();
+  } catch {
+    /* noop */
+  }
+  meterSource = null;
   stream?.getTracks().forEach((t) => t.stop());
   stream = null;
+}
+
+/** AudioContext dùng chung cho bộ đo mức (tạo một lần, dùng lại mãi). */
+function getMeterCtx(): AudioContext | null {
+  const Ctor =
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext?: typeof AudioContext })
+      .webkitAudioContext;
+  if (!Ctor) return null;
+  if (!meterCtx) {
+    try {
+      meterCtx = new Ctor();
+    } catch {
+      return null;
+    }
+  }
+  if (meterCtx.state === "suspended") void meterCtx.resume().catch(() => {});
+  return meterCtx;
 }
 
 /**
@@ -77,22 +158,15 @@ function releaseStream() {
  *   không tự gửi. setInterval vẫn chạy nền nên giữ được nhịp đo.
  */
 function startLevelMeter(media: MediaStream, onLevel: MicLevelFn) {
-  const Ctor =
-    window.AudioContext ??
-    (window as unknown as { webkitAudioContext?: typeof AudioContext })
-      .webkitAudioContext;
-  if (!Ctor) return;
+  const ctx = getMeterCtx();
+  if (!ctx) return;
   try {
-    const ctx = new Ctor();
-    // iOS/Safari tạo AudioContext ở trạng thái suspended nếu không có cử chỉ
-    // người dùng → AnalyserNode không chạy, đo mức luôn 0 và câu nói bị bỏ.
-    if (ctx.state === "suspended") void ctx.resume().catch(() => {});
     const source = ctx.createMediaStreamSource(media);
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 1024;
     source.connect(analyser);
     const data = new Uint8Array(analyser.frequencyBinCount);
-    levelCtx = ctx;
+    meterSource = source;
     const resumeTick = () => {
       // Rời bàn phím / quay lại tab: AudioContext hay bị treo theo.
       if (ctx.state === "suspended") void ctx.resume().catch(() => {});
@@ -116,51 +190,93 @@ function startLevelMeter(media: MediaStream, onLevel: MicLevelFn) {
   }
 }
 
-/** Bắt đầu ghi âm. Trả false nếu trình duyệt không cho phép. */
-export async function startMicRecording(
-  onLevel?: MicLevelFn,
-): Promise<boolean> {
-  if (!isMicRecordingSupported()) return false;
+/** Một lần bật ghi âm thật sự (sau khi đã chờ micro được thả). */
+async function doStart(onLevel?: MicLevelFn): Promise<boolean> {
   // Dừng phiên trước nếu còn sót.
   void stopMicRecording();
   const token = ++startToken;
-  try {
-    const media = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-        // Whisper nhận âm mono nên bỏ kênh stereo thừa ngay từ đầu.
-        channelCount: 1,
-      },
-    });
-    // Đã có phiên mới hơn bắt đầu trong lúc chờ cấp quyền → nhả micro ngay,
-    // không giành lại từ phiên đang chạy.
+  // Chờ micro được “thả” sau lượt ghi âm trước.
+  const since = Date.now() - lastStopAt;
+  if (lastStopAt && since < 300) await sleep(300 - since);
+  if (token !== startToken) return false;
+
+  const media = await acquireMic();
+  // Đã có phiên mới hơn bắt đầu trong lúc chờ cấp quyền → nhả micro ngay,
+  // không giành lại từ phiên đang chạy.
+  if (!media || token !== startToken) {
+    media?.getTracks().forEach((t) => t.stop());
+    return false;
+  }
+
+  const mimeType = pickMimeType();
+  // MediaRecorder cũng có lúc ném lỗi (đặc biệt khi phiên trước chưa đóng
+  // hẳn) → thử lại thay vì mất luôn micro.
+  let rec: MediaRecorder | null = null;
+  for (let attempt = 0; attempt < 3 && !rec; attempt++) {
+    if (attempt) await sleep(220 * attempt);
     if (token !== startToken) {
       media.getTracks().forEach((t) => t.stop());
       return false;
     }
-    const mimeType = pickMimeType();
-    const rec = new MediaRecorder(
-      media,
-      mimeType ? { mimeType } : undefined,
-    );
-    chunks = [];
-    rec.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) chunks.push(e.data);
-    };
-    rec.onerror = () => {
-      /* phiên ghi âm lỗi → bỏ qua, vẫn dùng được bản Web Speech */
-    };
-    rec.start(250);
-    recorder = rec;
-    stream = media;
-    if (onLevel) startLevelMeter(media, onLevel);
-    return true;
-  } catch {
-    // Không cấp quyền micro hoặc trình duyệt chặn → không ghi âm được.
+    try {
+      rec = new MediaRecorder(
+        media,
+        mimeType ? { mimeType } : undefined,
+      );
+    } catch {
+      rec = null;
+    }
+  }
+  if (!rec) {
+    media.getTracks().forEach((t) => t.stop());
     return false;
   }
+
+  chunks = [];
+  rec.ondataavailable = (e) => {
+    if (e.data && e.data.size > 0) chunks.push(e.data);
+  };
+  rec.onerror = () => {
+    /* phiên ghi âm lỗi → bỏ qua, vẫn dùng được bản Web Speech */
+  };
+  try {
+    rec.start(250);
+  } catch {
+    try {
+      rec.start(250);
+    } catch {
+      try {
+        rec.stop();
+      } catch {
+        /* noop */
+      }
+      media.getTracks().forEach((t) => t.stop());
+      return false;
+    }
+  }
+  recorder = rec;
+  stream = media;
+  if (onLevel) startLevelMeter(media, onLevel);
+  return true;
+}
+
+/** Bật ghi âm. Trả false nếu trình duyệt không cho phép. */
+export function startMicRecording(onLevel?: MicLevelFn): Promise<boolean> {
+  if (!isMicRecordingSupported()) return Promise.resolve(false);
+  // Đang chờ cấp quyền micro: dùng chung kết quả để hai nơi gọi cùng lúc
+  // không tạo hai phiên (phiên sau sẽ giành micro của phiên trước).
+  if (inflight) return inflight;
+  const p = doStart(onLevel);
+  inflight = p;
+  void p.then(
+    () => {
+      if (inflight === p) inflight = null;
+    },
+    () => {
+      if (inflight === p) inflight = null;
+    },
+  );
+  return p;
 }
 
 /** Dừng ghi âm và trả về clip base64 (null nếu không có gì đáng dùng). */
@@ -168,6 +284,8 @@ export function stopMicRecording(): Promise<MicClip | null> {
   // Vô hiệu hoá phiên đang chờ cấp quyền: sau khi dừng thì micro phải đen,
   // không được bật lại vào lúc nào cũng.
   startToken++;
+  inflight = null;
+  lastStopAt = Date.now();
   const rec = recorder;
   recorder = null;
   if (!rec) {
