@@ -1,6 +1,7 @@
 import { api } from "@/convex/_generated/api";
 import { LegalDocs } from "@/components/LegalDocs";
 import { wipeSecureStorage } from "@/lib/secureStorage";
+import { loadYouTubeKey, saveYouTubeKey } from "@/lib/youtubeKey";
 import {
   APP_DEVELOPER,
   APP_NAME,
@@ -27,14 +28,16 @@ import {
   CheckCircle2,
   ChevronRight,
   Download,
+  KeyRound,
   Lightbulb,
   Paperclip,
   RefreshCw,
   Send,
+  Trash2,
   Volume2,
   X,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router";
 
@@ -55,6 +58,16 @@ export default function Settings() {
     setNotifications,
   } = useSettings();
   const meta = useQuery(api.library.getAppVersion, {});
+  // Đọc khoá đã lưu để hiện đúng trạng thái trong Cài đặt.
+  useEffect(() => {
+    let alive = true;
+    void loadYouTubeKey().then((k) => {
+      if (alive) setYtKey(k);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
   const submitFeedback = useMutation(api.library.submitFeedback);
   const sendFeedbackEmail = useAction(api.library.emailFeedback);
 
@@ -66,13 +79,14 @@ export default function Settings() {
   const validSection =
     sectionParam === "appearance" ||
     sectionParam === "voice" ||
+    sectionParam === "video" ||
     sectionParam === "about" ||
     sectionParam === "feedback" ||
     sectionParam === "legal"
       ? sectionParam
       : null;
   const [openCard, setOpenCard] = useState<
-    null | "appearance" | "voice" | "about" | "feedback" | "legal"
+    null | "appearance" | "voice" | "video" | "about" | "feedback" | "legal"
   >(validSection);
   const toggle = (key: typeof openCard) =>
     setOpenCard((cur) => (cur === key ? null : key));
@@ -113,6 +127,25 @@ export default function Settings() {
     } catch {
       setPreviewing((cur) => (cur === myId ? null : cur));
     }
+  };
+
+  // Khoá API YouTube (tìm & xem video trong khung chat) — lưu mã hoá trên
+  // thiết bị, không gửi đi đâu. Rỗng = không dán khoá, vẫn xem được video
+  // khi dán link YouTube.
+  const [ytKey, setYtKey] = useState("");
+  const [ytKeyInput, setYtKeyInput] = useState("");
+
+  const saveYtKey = async () => {
+    await saveYouTubeKey(ytKeyInput);
+    setYtKeyInput("");
+    setYtKey("");
+    toast.success("Đã lưu khoá YouTube. Từ giờ hỏi về video là xem được ngay.");
+  };
+  const removeYtKey = async () => {
+    await saveYouTubeKey("");
+    setYtKeyInput("");
+    setYtKey("");
+    toast.success("Đã xoá khoá YouTube khỏi thiết bị.");
   };
 
   const [fbType, setFbType] = useState<"idea" | "bug">("idea");
@@ -349,6 +382,68 @@ export default function Settings() {
         </RowCard>
 
         {/* ---------- Giới thiệu / Phiên bản ---------- */}
+        {/* ---------- Video YouTube ---------- */}
+        <RowCard
+          label="Video YouTube"
+          open={openCard === "video"}
+          onClick={() => toggle("video")}
+        >
+          <div className="space-y-3 pt-1">
+            <p className="text-[13px] leading-relaxed text-muted-foreground">
+              Muốn hỏi Trợ lý về video và xem ngay trong khung chat thì dán
+              khoá YouTube Data API v3 vào đây. Khoá được mã hoá và chỉ lưu
+              trên máy này, không gửi đi đâu.
+            </p>
+            {ytKey ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-2xl bg-muted/50 px-4 py-3">
+                  <p className="text-sm font-semibold">Đã có khoá</p>
+                  <span className="text-[12px] tabular-nums text-muted-foreground">
+                    ••••{ytKey.slice(-4)}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={removeYtKey}
+                  className="w-full gap-1.5 rounded-full"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Xoá khoá
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <input
+                  type="password"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={ytKeyInput}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setYtKeyInput(e.target.value)
+                  }
+                  placeholder="Dán khoá API YouTube"
+                  aria-label="Khoá API YouTube"
+                  className="h-11 w-full rounded-2xl border border-border bg-background px-4 text-[15px] text-foreground outline-none transition placeholder:text-muted-foreground/70 focus:border-primary"
+                />
+                <Button
+                  size="sm"
+                  onClick={saveYtKey}
+                  disabled={!ytKeyInput.trim()}
+                  className="w-full gap-1.5 rounded-full"
+                >
+                  <KeyRound className="h-3.5 w-3.5" />
+                  Lưu khoá
+                </Button>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Chưa có khoá vẫn xem được video khi bạn dán link YouTube
+                  vào khung chat.
+                </p>
+              </div>
+            )}
+          </div>
+        </RowCard>
+
         <RowCard
           label="Giới thiệu"
           open={openCard === "about"}

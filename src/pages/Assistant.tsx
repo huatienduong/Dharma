@@ -35,6 +35,8 @@ import {
   isVideoRequest,
   type VideoInfo,
 } from "@/lib/videoIntent";
+import { searchVideoInBrowser } from "@/lib/videoSearchClient";
+import { loadYouTubeKey } from "@/lib/youtubeKey";
 import { getDeviceMeta } from "@/lib/deviceSecurity";
 import { wantsImage } from "@/lib/imageIntent";
 import { APP_VERSION } from "@/lib/version";
@@ -212,8 +214,11 @@ export default function Assistant() {
   /**
    * GẮN VIDEO VÀO CÂU TRẢ LỜI — người dùng chỉ cần hỏi hoặc dán link, AI
    * trả lời xong ứng dụng tự tìm video YouTube và thêm thẻ xem vào đúng câu
-   * đó trong khung chat. Chạy nền, không chặn câu trả lời; lỗi thì bỏ qua,
-   * người dùng vẫn đọc được câu trả lời bình thường.
+   * đó trong khung chat. Chạy nền, không chặn câu trả lời.
+   *
+   * Hai đường tìm, thử theo thứ tự: máy chủ Convex (YouTube Data API, có
+   * khoá → tên kênh + thời lượng chuẩn), rồi mới tới tìm trực tiếp trong
+   * trình duyệt (Invidious) để tính năng vẫn chạy khi máy chủ chưa sẵn sàng.
    */
   const attachVideo = useCallback(
     (query: string, replyTs: number, replyText: string) => {
@@ -221,31 +226,48 @@ export default function Assistant() {
       // Trợ lý đã mời xem video trong câu trả lời — thì phải tìm và gắn
       // video, nếu không lời hứa trong câu trả lời sẽ hụt.
       if (!isVideoRequest(query) && !aiInvitesVideo(replyText)) return;
+      let warned = false;
       void (async () => {
-        try {
-          const res = await callConvexAction<{
-            ok: boolean;
-            videos: VideoInfo[];
-            message?: string;
-          }>("videoSearch:find", { query }, 25_000);
-          const video = res?.ok ? res.videos[0] : undefined;
-          if (!video) {
-            if (res?.message) toast.info(res.message);
-            return;
-          }
+        const apply = (video: VideoInfo | undefined) => {
+          if (!video) return false;
           // Sửa đúng câu trả lời đang chờ; nếu người dùng đã xoá hội thoại
           // thì `ts` không còn trong lịch sử → không làm gì cả.
           const nextHistory = historyRef.current.map((m) =>
             m.ts === replyTs ? { ...m, video } : m,
           );
-          if (nextHistory === historyRef.current) return;
+          if (nextHistory === historyRef.current) return false;
           historyRef.current = nextHistory;
           setHistory(nextHistory);
           void saveLocalChatSecure(nextHistory);
+          return true;
+        };
+
+        // 1. Máy chủ Convex (có khoá API YouTube).
+        try {
+          const res = await callConvexAction<{
+            ok: boolean;
+            videos: VideoInfo[];
+            message?: string;
+          }>("videoSearch:find", { query }, 20_000);
+          const video = res?.ok ? res.videos[0] : undefined;
+          if (video && apply(video)) return;
+          if (res?.message && !warned) {
+            warned = true;
+            toast.info(res.message);
+          }
         } catch (err) {
-          // Máy chủ chưa trả lời được (chưa có khoá, mạng lỗi…) thì bỏ qua
-          // im lặng: người dùng vẫn đọc câu trả lời bình thường.
-          console.warn("[video] không tìm được video:", err);
+          console.warn("[video] máy chủ chưa sẵn sàng, thử tìm trực tiếp:", err);
+        }
+
+        // 2. Dự phòng: tìm ngay trong trình duyệt bằng khoá người dùng đã
+        // dán ở Cài đặt (lưu mã hoá trên thiết bị).
+        const key = await loadYouTubeKey().catch(() => "");
+        const local = await searchVideoInBrowser(query, key).catch(() => []);
+        if (local[0] && apply(local[0])) return;
+        if (!warned) {
+          toast.info(
+            "Chưa tìm được video. Bạn dán link YouTube cụ thể là Trợ lý mở xem ngay trong khung chat nhé.",
+          );
         }
       })();
     },
