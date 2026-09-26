@@ -497,6 +497,7 @@ const FEEDBACK_LEAD_PATTERNS = [
   /^loi\s*xay\s*ra/i,
   /^day\s*la\s*loi/i,
   /^ho\s*tro\s*ky\s*thuat/i,
+  /^khac\s*phuc\s*(su\s*co|loi|van\s*de|ung\s*dung|app)/i,
   /^gui\s*ho\s*tro/i,
   /^van\s*de\s*ky\s*thuat/i,
   /^su\s*co\s*ky\s*thuat/i,
@@ -529,7 +530,7 @@ const FEEDBACK_WEAK_LEAD_PATTERN =
 function stripFeedbackLead(text: string): string {
   return text
     .replace(
-      /^\s*(gop\s*y|bao\s*loi|phan\s*hoi|khieu\s*nai|nhan\s*xet|y\s*kien|y\s*tuong|bao\s*van\s*de|bao\s*su\s*co|ghi\s*nhan\s*loi|phat\s*hien\s*loi|loi\s*xay\s*ra|day\s*la\s*loi|gap\s*loi|bi\s*loi|toi\s*gap\s*loi|loi\s*ky\s*thuat|loi\s*ung\s*dung|ung\s*dung\s*bi\s*loi|app\s*bi\s*loi|ho\s*tro\s*ky\s*thuat|gui\s*ho\s*tro|van\s*de\s*ky\s*thuat|su\s*co\s*ky\s*thuat|feedback|report|bug|error|de\s*xuat|ho\s*tro|van\s*de|su\s*co|loi|treo|mat\s*tieng|khong\s*(hoat\s*dong|phan\s*hoi|nghe|ra\s*tieng|chay))\s*(va\s*(gop\s*y|bao\s*loi)\s*)?/i,
+      /^\s*(gop\s*y|bao\s*loi|phan\s*hoi|khieu\s*nai|nhan\s*xet|y\s*kien|y\s*tuong|bao\s*van\s*de|bao\s*su\s*co|ghi\s*nhan\s*loi|phat\s*hien\s*loi|loi\s*xay\s*ra|day\s*la\s*loi|gap\s*loi|bi\s*loi|toi\s*gap\s*loi|loi\s*ky\s*thuat|loi\s*ung\s*dung|ung\s*dung\s*bi\s*loi|app\s*bi\s*loi|ho\s*tro\s*ky\s*thuat|khac\s*phuc\s*(su\s*co|loi|van\s*de|ung\s*dung|app)|gui\s*ho\s*tro|van\s*de\s*ky\s*thuat|su\s*co\s*ky\s*thuat|feedback|report|bug|error|de\s*xuat|ho\s*tro|van\s*de|su\s*co|loi|treo|mat\s*tieng|khong\s*(hoat\s*dong|phan\s*hoi|nghe|ra\s*tieng|chay))\s*(va\s*(gop\s*y|bao\s*loi)\s*)?/i,
       "",
     )
     .replace(/^[\s:.,\-–—]+/, "");
@@ -567,6 +568,42 @@ const TECH_TERMS =
  */
 const SELF_TECHNICAL_LEAD =
   /^(khong hoat dong|khong chay|khong phan hoi|khong ra tieng|khong phat (am|tieng))\b/;
+
+/**
+ * Ngưỡng phần thân ngắn hơn thế thì coi như người dùng CHƯA viết nội dung.
+ * Ví dụ “báo lỗi”, “góp ý:”, “hỗ trợ kỹ thuật ơi” đều dưới ngưỡng.
+ */
+const BARE_FEEDBACK_BODY_MAX = 8;
+
+/**
+ * Lệnh mở đầu hợp lệ — nhắc đúng danh sách này khi người dùng gõ thiếu nội
+ * dung, để lần sau họ viết đúng mẫu.
+ */
+export const FEEDBACK_COMMANDS =
+  "báo lỗi, góp ý, hỗ trợ kỹ thuật, khắc phục sự cố, khiếu nại, nhận xét, ý kiến, đề xuất";
+
+/** Hướng dẫn cách viết, dùng khi người dùng chỉ gõ lệnh mà chưa có nội dung. */
+export const BARE_FEEDBACK_GUIDE =
+  `🙏 Để gửi góp ý hoặc báo lỗi trực tiếp trong khung chat, bạn hãy viết theo đúng mẫu:\n\nLỆNH: NỘI DUNG CỤ THỂ CẦN HỖ TRỢ\n\nCác lệnh dùng để mở đầu câu: ${FEEDBACK_COMMANDS}.\n\nVí dụ viết đúng:\n• báo lỗi: nút xoá hội thoại bị treo\n• góp ý: xin thêm chủ đề về Trung đạo\n• hỗ trợ kỹ thuật: giọng đọc bị ngắt giữa chừng\n• khắc phục sự cố: ứng dụng đóng băng khi mở lại\n\nBạn mới gõ lệnh mà chưa viết nội dung nên Trợ lý chưa gửi được. Bạn thêm phần nội dung cụ thể ngay sau dấu hai chấm rồi gửi lại nhé. Trợ lý tự chuyển thẳng cho bộ phận kỹ thuật, không cần mở Cài đặt và không cần để lại email.`;
+
+/**
+ * Người dùng CHỈ gõ lệnh góp ý / báo lỗi mà chưa kèm nội dung.
+ *
+ * Trả về `true` để Trợ lý nhắc lại cách viết đúng mẫu, thay vì gửi thư rỗng
+ * hoặc im lặng. Chỉ nhận khi câu bắt đầu bằng lệnh góp ý — câu hỏi thường
+ * (“Vấn đề duyên khởi là gì?”) không dính vì phần thân của chúng dài.
+ */
+export function isBareFeedbackCommand(text: string): boolean {
+  const raw = text.trim();
+  if (!raw) return false;
+  const { flat } = deaccentWithMap(raw);
+  const hasLead =
+    FEEDBACK_LEAD_PATTERNS.some((re) => re.test(flat)) ||
+    FEEDBACK_WEAK_LEAD_PATTERN.test(flat);
+  if (!hasLead) return false;
+  const body = stripFeedbackLead(flat).trim();
+  return body.length < BARE_FEEDBACK_BODY_MAX;
+}
 
 export type ChatFeedback = {
   /** "bug" = báo lỗi, "idea" = góp ý. */

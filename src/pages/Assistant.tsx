@@ -19,6 +19,8 @@ import {
   isStartCallCommand,
   loadLocalChatSecure,
   parseChatFeedback,
+  isBareFeedbackCommand,
+  BARE_FEEDBACK_GUIDE,
   plainText,
   saveLocalChatSecure,
   speakableSummary,
@@ -370,6 +372,22 @@ export default function Assistant() {
       if (feedback) {
         setInput("");
         await sendChatFeedback(feedback, q);
+        return;
+      }
+      // Người dùng chỉ gõ LỆNH góp ý mà chưa viết nội dung → nhắc lại
+      // đúng mẫu “lệnh: nội dung cụ thể”, tuyệt đối không gửi thư rỗng.
+      if (isBareFeedbackCommand(q)) {
+        setInput("");
+        const userMsg: Msg = { role: "user", content: q, ts: Date.now() };
+        const replyMsg: Msg = {
+          role: "assistant",
+          content: BARE_FEEDBACK_GUIDE,
+          ts: Date.now(),
+        };
+        const nextHistory = [...historyRef.current, userMsg, replyMsg];
+        historyRef.current = nextHistory;
+        setHistory(nextHistory);
+        void saveLocalChatSecure(nextHistory);
         return;
       }
       // Lệnh xóa hội thoại: xóa sạch ngay và kết thúc cuộc trò chuyện.

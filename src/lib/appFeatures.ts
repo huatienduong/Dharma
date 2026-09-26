@@ -56,7 +56,7 @@ export const FEATURES: AppFeature[] = [
   },
   {
     name: "Báo lỗi và góp ý ngay trong khung chat",
-    how: 'Gõ "báo lỗi" hoặc "góp ý" ở ĐẦU câu rồi viết nội dung ngay sau, ví dụ "góp ý và báo lỗi: nút xoá hội thoại bị treo". Trợ lý tự chuyển thẳng cho bộ phận kỹ thuật, không cần mở Cài đặt, không cần để lại email.',
+    how: 'Viết theo mẫu "LỆNH: NỘI DUNG CỤ THỂ", lệnh phải ở ĐẦU câu. Lệnh dùng được: báo lỗi, góp ý, hỗ trợ kỹ thuật, khắc phục sự cố, khiếu nại, nhận xét, ý kiến, đề xuất. Ví dụ "báo lỗi: nút xoá hội thoại bị treo" hoặc "khắc phục sự cố: ứng dụng đóng băng khi mở lại". Nếu chỉ gõ lệnh mà chưa có nội dung thì Trợ lý sẽ nhắc lại đúng mẫu này. Trợ lý tự chuyển thẳng cho bộ phận kỹ thuật, không cần mở Cài đặt, không cần để lại email.',
   },
   {
     name: `Chọn ${VOICE_COUNT} giọng đọc (Cài đặt → Giọng nói)`,
@@ -96,7 +96,7 @@ export const FEATURE_TIPS = [
   "Trả lời NGẮN GỌN: nêu 2–4 tính năng liên quan tới câu hỏi, kèm cách bấm cụ thể.",
   "Danh sách này do hệ thống tự động cập nhật theo ứng dụng — hãy tin danh sách, đừng bịa tính năng không có; hỏi về tính năng chưa có thì nói thẳng hiện chưa có.",
   'Muốn nói chuyện bằng giọng nói: bảo họ nhắn "mở đàm thoại" là màn đàm thoại mở ngay.',
-  'Muốn báo lỗi hoặc góp ý: bảo họ gõ "báo lỗi" hoặc "góp ý" ở đầu câu rồi viết nội dung, ví dụ "góp ý và báo lỗi: giọng đọc bị ngắt". Không cần mở Cài đặt, không cần để lại email.',
+  'Muốn báo lỗi hoặc góp ý: bảo họ gõ theo mẫu "LỆNH: NỘI DUNG CỤ THỂ" với lệnh ở đầu câu (báo lỗi, góp ý, hỗ trợ kỹ thuật, khắc phục sự cố...), ví dụ "báo lỗi: giọng đọc bị ngắt". Nếu họ chỉ gõ lệnh mà chưa có nội dung thì phải nhắc lại mẫu này. Không cần mở Cài đặt, không cần để lại email.',
 ];
 
 /**
@@ -114,8 +114,9 @@ export const FEATURE_TIPS = [
  */
 export const SUPPORT_TIPS = [
   "TUYỆT ĐỐI không bịa đường dẫn hay nhóm cài đặt trong ứng dụng. Trong Cài đặt chỉ có: Giao diện, Thông báo, Giọng nói, Giới thiệu, Chính sách & Điều khoản, Góp ý & Báo lỗi. Các nút trong khung chat: góc trái ô nhập có gửi ảnh, gửi tệp và xoá hội thoại; góc phải ô nhập có micro và nút Gửi; dưới mỗi câu trả lời có loa, sao chép, chia sẻ; biểu tượng bánh răng ở góc trên phải là Cài đặt; điện thoại ở góc trên trái là Đàm thoại. Không có nút bàn phím hay nút đính kèm nào khác. Không chắc thì nói bước kiểm tra chung thay vì chỉ một đường dẫn trong app.",
-  "BÁO LỖI VÀ GÓP Ý NGAY TRONG CHAT — phần này bạn PHẢI chủ động nhắc: hãy dạy người dùng gõ từ 'báo lỗi' hoặc 'góp ý' ở ĐẦU câu rồi viết nội dung ngay sau (ví dụ 'góp ý và báo lỗi: nút xoá hội thoại bị treo'). Trợ lý tự gửi thẳng cho bộ phận kỹ thuật và báo lại là đã tiếp nhận. Nhắc cách này khi người dùng hỏi 'báo lỗi ở đâu', 'khiếu nại với ai', 'sửa lỗi thế nào', và cả khi bạn không tự khắc phục được lỗi họ đang gặp.",
-  "Chỉ nhận góp ý khi từ báo lỗi hoặc góp ý nằm ở ĐẦU câu. Nếu họ viết kiểu 'ứng dụng bị lỗi khi tôi gửi ảnh' thì đó là một câu hỏi bình thường, hãy giải thích và khắc phục trước, rồi mới nhắc họ gõ lại với từ 'báo lỗi' ở đầu câu để gửi cho bộ phận kỹ thuật.",
+  "BÁO LỖI VÀ GÓP Ý NGAY TRONG CHAT — phần này bạn PHẢI chủ động nhắc. Muốn gửi góp ý / báo lỗi trực tiếp trong khung chat thì BẮT BUỘC phải viết theo mẫu 'LỆNH: NỘI DUNG CỤ THỂ CẦN HỖ TRỢ', trong đó LỆNH nằm ở ĐẦU câu. Các lệnh được chấp nhận: 'báo lỗi', 'góp ý', 'hỗ trợ kỹ thuật', 'khắc phục sự cố', 'khiếu nại', 'nhận xét', 'ý kiến', 'đề xuất'. Ví dụ đúng: 'báo lỗi: nút xoá hội thoại bị treo', 'góp ý: xin thêm chủ đề về Trung đạo', 'hỗ trợ kỹ thuật: giọng đọc bị ngắt giữa chừng', 'khắc phục sự cố: ứng dụng đóng băng khi mở lại'. Trợ lý tự gửi thẳng cho bộ phận kỹ thuật và báo lại là đã tiếp nhận. Nhắc cách này khi người dùng hỏi 'báo lỗi ở đâu', 'khiếu nại với ai', 'sửa lỗi thế nào', và cả khi bạn không tự khắc phục được lỗi họ đang gặp.",
+  "NẾU NGƯỜI DÙNG CHỈ GÕ LỆNH MÀ CHƯA VIẾT NỘI DUNG (ví dụ chỉ gõ 'báo lỗi', 'góp ý', 'hỗ trợ kỹ thuật' rồi Enter) thì phải GIẢI THÍCH NGẮN GỌN rằng câu đó chưa có nội dung nên chưa gửi được, và hướng dẫn họ viết lại đúng mẫu 'LỆNH: NỘI DUNG CỤ THỂ' kèm 2–3 ví dụ mẫu. Tuyệt đối không im lặng, không tự bịa ra một nội dung góp ý thay họ, và không gửi đi bất cứ thư góp ý nào khi người dùng chưa viết nội dung.",
+  "Chỉ nhận góp ý khi LỆNH nằm ở ĐẦU câu và có nội dung cụ thể sau đó. Nếu họ viết kiểu 'ứng dụng bị lỗi khi tôi gửi ảnh' thì đó là một câu hỏi bình thường, hãy giải thích và khắc phục trước, rồi mới nhắc họ gõ lại theo mẫu 'báo lỗi: nội dung cụ thể' để gửi cho bộ phận kỹ thuật.",
   "TUYỆT ĐỐI không nêu, không gợi ý và không yêu cầu người dùng cung cấp địa chỉ email nhận báo lỗi. Trợ lý không thu thập email hay bất kỳ thông tin cá nhân nào của người dùng. Nếu họ hỏi gửi cho ai thì chỉ nói bộ phận kỹ thuật của ứng dụng, do nhà phát triển Hứa Tiến Dương trực tiếp vận hành.",
   "Hỏi cách dùng hoặc gặp lỗi → hướng dẫn theo ĐÚNG tên nút trên màn hình, theo thứ tự thao tác, mỗi bước một ý, ngắn gọn và làm được ngay. Không nói chung chung kiểu 'hãy thử lại'.",
   "Lỗi 'tạm chưa trả lời được': máy chủ AI đang bận vì nhiều người dùng. Chờ khoảng một phút rồi bấm nút Gửi lại, hoặc hỏi lại bằng câu ngắn hơn.",
@@ -125,7 +126,7 @@ export const SUPPORT_TIPS = [
   "Ảnh không phân tích được: gửi từng ảnh một, ảnh JPG hoặc PNG, dung lượng vừa phải. Nếu máy chủ báo hết hạn mức thì thử lại sau 1–2 phút.",
   "Không nghe thấy giọng đọc: kiểm tra âm lượng và chế độ im lặng của điện thoại, hoặc chọn giọng khác trong Cài đặt → Giọng nói.",
   "Muốn bắt đầu lại: nói 'xoá hội thoại' hoặc bấm biểu tượng thùng rác ở góc trái ô nhập. Muốn nói chuyện bằng giọng nói thì bấm nút điện thoại ở góc trên trái, hoặc nhắn 'mở đàm thoại'.",
-  "Báo lỗi hoặc góp ý: CÀCH NHANH NHẤT là gõ thẳng trong ô chat, đặt từ 'báo lỗi' hoặc 'góp ý' ở ĐẦU câu rồi viết nội dung ngay sau. Ví dụ: 'góp ý và báo lỗi: nút xoá hội thoại bị treo'. Trợ lý sẽ tự chuyển thẳng cho bộ phận kỹ thuật. Ngoài ra vẫn có thể vào Cài đặt → Góp ý & Báo lỗi nếu muốn đính kèm tệp.",
+  "Báo lỗi hoặc góp ý: CÀCH NHANH NHẤT là gõ thẳng trong ô chat theo mẫu 'LỆNH: NỘI DUNG CỤ THỂ', lệnh ở ĐẦU câu (báo lỗi, góp ý, hỗ trợ kỹ thuật, khắc phục sự cố, khiếu nại, nhận xét, ý kiến, đề xuất). Ví dụ: 'báo lỗi: nút xoá hội thoại bị treo'. Nếu chỉ gõ lệnh mà thiếu nội dung, hãy nhắc lại đúng mẫu kèm ví dụ. Trợ lý sẽ tự chuyển thẳng cho bộ phận kỹ thuật. Ngoài ra vẫn có thể vào Cài đặt → Góp ý & Báo lỗi nếu muốn đính kèm tệp.",
 ];
 
 export function featuresPrompt(compact = false): string {
