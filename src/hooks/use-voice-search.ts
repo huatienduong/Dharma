@@ -73,8 +73,26 @@ export function useVoiceSearch() {
   const finalTextRef = useRef("");
   /** true = không có Web Speech: chỉ ghi âm, tự chốt khi im lặng. */
   const recordOnlyRef = useRef(false);
-  const levelRef = useRef({ on: false, quiet: 0, started: 0 });
+  /**
+   * Mốc thời gian của phiên nghe đang chạy. Mọi tín hiệu (chữ từ trình duyệt,
+   * mức âm lượng) chỉ cập nhật các mốc này; quyết định "nói xong" do một
+   * đồng hồ đọc chúng. Nhờ vậy việc tự gửi không phụ thuộc vào tần số đo
+   * âm lượng — trước đây bộ đo có thể chết (rAF bị treo trên điện thoại)
+   * là người dùng nói xong mà không bao giờ gửi được.
+   */
+  const sessionRef = useRef({
+    loudSince: 0,
+    lastLoudAt: 0,
+    lastActivityAt: 0,
+    heardSomething: false,
+    watchdog: 0,
+    autoRestarts: 0,
+  });
   const busyRef = useRef(false);
+  /** Giữ `start` để `finish` có thể mở lại phiên nghe khi nghe hụt. */
+  const startRef = useRef<((onFinal: (text: string) => void) => void) | null>(
+    null,
+  );
   const transcribe = useAction(api.aiChat.transcribe);
 
   /**
@@ -111,44 +129,81 @@ export function useVoiceSearch() {
     return () => {
       recRef.current?.abort();
       recRef.current = null;
+      // Dọn đồng hồ tự gửi để không chốt câu sau khi đã rời trang.
+      if (sessionRef.current.watchdog) {
+        window.clearInterval(sessionRef.current.watchdog);
+        sessionRef.current.watchdog = 0;
+      }
       void stopMicRecording();
     };
+  }, []);
+
+  /** Bỏ đồng hồ theo dõi của phiên nghe (khi đã chốt hoặc huỷ). */
+  const stopWatchdog = useCallback(() => {
+    const s = sessionRef.current;
+    if (s.watchdog) {
+      window.clearInterval(s.watchdog);
+      s.watchdog = 0;
+    }
   }, []);
 
   /**
    * Chốt phiên nghe: dừng ghi âm, chép bằng Whisper rồi sửa chính tả.
    * Không bao giờ để người dùng mất câu nói vì bước này lỗi — luôn gọi
    * callback với bản tốt nhất trong tay.
+   *
+   * Nếu cuối cùng vẫn rỗng (nghe trúng tiếng ồn, mic bị chặn), tự mở lại
+   * phiên nghe một lần để người dùng chỉ cần nói tiếp, không phải bấm lại
+   * nút micro.
    */
   const finish = useCallback(
     async (browserText: string) => {
       if (busyRef.current) return;
       busyRef.current = true;
+      stopWatchdog();
+      // Người dùng đã mở mic nhưng không nói gì: tắt luôn, khỏi bắt họ nói
+      // lại rồi mới báo "chưa nghe rõ".
+      const spoke = sessionRef.current.heardSomething;
+      let heard = "";
       try {
         const clip = await stopMicRecording();
         const fallback = browserText.trim();
         if (!clip?.base64) {
-          if (fallback) onFinalRef.current?.(fallback);
-          return;
+          heard = fallback;
+        } else {
+          setRefining(true);
+          // Chép được thì luôn ưu tiên bản máy chủ: nó có dấu đầy đủ.
+          heard = await transcribeClip(clip, fallback);
         }
-        setRefining(true);
-        // Chép được thì luôn ưu tiên bản máy chủ: nó có dấu đầy đủ.
-        const text = await transcribeClip(clip, fallback);
-        if (text) onFinalRef.current?.(text);
+      } catch {
+        heard = browserText.trim();
       } finally {
         setRefining(false);
         setInterim("");
         setListening(false);
         busyRef.current = false;
       }
+      if (heard) {
+        onFinalRef.current?.(heard);
+        return;
+      }
+      if (!spoke) return;
+      // Không nghe được gì: báo ngắn gọn và mở lại mic một lần.
+      onFinalRef.current?.("");
+      const s = sessionRef.current;
+      if (s.autoRestarts < 1) {
+        s.autoRestarts += 1;
+        window.setTimeout(() => {
+          const again = onFinalRef.current;
+          if (again) startRef.current?.(again);
+        }, 400);
+      }
     },
-    [transcribeClip],
+    [stopWatchdog, transcribeClip],
   );
 
   const stop = useCallback(() => {
     if (recordOnlyRef.current) {
-      const started = levelRef.current.started;
-      levelRef.current = { on: false, quiet: 0, started };
       void finish(finalTextRef.current);
       return;
     }
@@ -178,30 +233,49 @@ export function useVoiceSearch() {
       recRef.current = null;
       void stopMicRecording();
 
+      const s = sessionRef.current;
+      stopWatchdog();
+      s.loudSince = 0;
+      s.lastLoudAt = 0;
+      s.lastActivityAt = Date.now();
+      s.heardSomething = false;
+      s.autoRestarts = 0;
+
       // Ghi âm song song: đây là nguồn văn bản chính xác nhất.
       const meter = (level: number) => {
-        const state = levelRef.current;
-        if (!state.started) state.started = Date.now();
+        const now = Date.now();
         if (level >= VOICE_ON) {
-          state.on = true;
-          state.quiet = 0;
-        } else if (state.on) {
-          state.quiet += 50;
-        }
-        const spokenMs = Date.now() - state.started;
-        if (state.on && state.quiet >= SILENCE_STOP_MS) {
-          // Người dùng nói xong → chốt phiên.
-          state.on = false;
-          state.quiet = 0;
-          void finish(finalTextRef.current);
-        } else if (spokenMs >= MAX_RECORD_MS) {
-          state.on = false;
-          state.quiet = 0;
-          void finish(finalTextRef.current);
+          if (!s.loudSince) s.loudSince = now;
+          s.lastLoudAt = now;
+          s.heardSomething = true;
         }
       };
-      levelRef.current = { on: false, quiet: 0, started: 0 };
       void startMicRecording(meter);
+
+      // ĐỒNG HỒ TỰ GỬI: chốt câu khi đã nghe thấy gì đó rồi im lặng đủ lâu,
+      // hoặc kể cả khi bộ đo âm lượng không còn chạy. Nhờ vậy "nói xong"
+      // luôn dẫn tới một tin nhắn được gửi đi.
+      s.watchdog = window.setInterval(() => {
+        if (busyRef.current) return;
+        const now = Date.now();
+        const heard = finalTextRef.current.trim();
+        if (heard) s.heardSomething = true;
+        // Trần chặn mic: dù đang nói hay không, quá lâu cũng phải chốt.
+        if (now - s.lastActivityAt >= MAX_RECORD_MS) {
+          stopWatchdog();
+          void finish(heard);
+          return;
+        }
+        if (!s.heardSomething) return;
+        // Đo bằng mức âm lượng khi có; nếu bộ đo chết (điện thoại bị treo,
+        // app bị đưa ra sau) thì đo bằng thời gian im lặng của chữ nhận
+        // được — nhờ đó câu nói vẫn được gửi đúng lúc người dùng dứt lời.
+        const quietFor = s.loudSince ? now - s.lastLoudAt : now - s.lastActivityAt;
+        if (quietFor >= SILENCE_STOP_MS) {
+          stopWatchdog();
+          void finish(heard);
+        }
+      }, 250);
 
       // Tầng 1 không có → chỉ ghi âm, dựa vào đo mức để tự chốt.
       if (!Ctor) {
@@ -224,6 +298,8 @@ export function useVoiceSearch() {
           if (r.isFinal) finalTextRef.current += r[0].transcript;
           else pending += r[0].transcript;
         }
+        sessionRef.current.lastActivityAt = Date.now();
+        sessionRef.current.heardSomething = true;
         setInterim(pending);
       };
       rec.onerror = () => {
@@ -247,8 +323,12 @@ export function useVoiceSearch() {
         recRef.current = null;
       }
     },
-    [finish],
+    [finish, stopWatchdog],
   );
+
+  useEffect(() => {
+    startRef.current = start;
+  }, [start]);
 
   return {
     supported,

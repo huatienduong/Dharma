@@ -19,8 +19,16 @@ let recorder: MediaRecorder | null = null;
 let chunks: BlobPart[] = [];
 let stream: MediaStream | null = null;
 let levelCtx: AudioContext | null = null;
-let levelRaf = 0;
+let levelTimer = 0;
 let levelResume: (() => void) | null = null;
+/**
+ * Số thứ tự phiên ghi âm. `getUserMedia` là bất đồng bộ, nên hai lần bật mic
+ * liên tiếp (cuộc gọi vừa đọc xong lại mở phiên nghe mới) có thể hoàn tất
+ * theo thứ tự ngược: phiên cũ ghi đè phiên mới và callback đo mức chạy hai
+ * bản → cùng một câu nói bị chốt hai lần, mic "lặp lại" câu đó. Số thứ tự
+ * giúp phiên cũ tự bỏ đi thay vì giành micro.
+ */
+let startToken = 0;
 
 export function isMicRecordingSupported(): boolean {
   return (
@@ -44,9 +52,9 @@ function pickMimeType(): string {
 }
 
 function releaseStream() {
-  if (levelRaf) {
-    cancelAnimationFrame(levelRaf);
-    levelRaf = 0;
+  if (levelTimer) {
+    window.clearInterval(levelTimer);
+    levelTimer = 0;
   }
   if (levelResume) {
     window.removeEventListener("visibilitychange", levelResume);
@@ -61,6 +69,12 @@ function releaseStream() {
 /**
  * Bật đo mức âm lượng. Nhờ đó biết khi nào người dùng im lặng để tự chốt
  * câu nói — cần thiết khi trình duyệt không có Web Speech (chỉ ghi âm).
+ *
+ * VÌ SAO KHÔNG DÙNG requestAnimationFrame:
+ *   rAF bị hệ thống dừng hoàn toàn khi trang bị đưa ra sau (điện thoại bị
+ *   gọi điện, mở ứng dụng khác, tắt màn hình). Lúc đó đo mức im lặng và
+ *   người dùng nói xong nhưng ứng dụng không bao giờ biết → câu nói bị bỏ,
+ *   không tự gửi. setInterval vẫn chạy nền nên giữ được nhịp đo.
  */
 function startLevelMeter(media: MediaStream, onLevel: MicLevelFn) {
   const Ctor =
@@ -80,12 +94,8 @@ function startLevelMeter(media: MediaStream, onLevel: MicLevelFn) {
     const data = new Uint8Array(analyser.frequencyBinCount);
     levelCtx = ctx;
     const resumeTick = () => {
-      // Rời bàn phím / quay lại tab: requestAnimationFrame bị dừng nên đo mức
-      // chết theo. Bật lại để câu nói vẫn được chốt đúng nhịp.
-      if (!levelRaf && document.visibilityState === "visible") {
-        if (ctx.state === "suspended") void ctx.resume().catch(() => {});
-        tick();
-      }
+      // Rời bàn phím / quay lại tab: AudioContext hay bị treo theo.
+      if (ctx.state === "suspended") void ctx.resume().catch(() => {});
     };
     levelResume = resumeTick;
     window.addEventListener("visibilitychange", resumeTick);
@@ -97,8 +107,9 @@ function startLevelMeter(media: MediaStream, onLevel: MicLevelFn) {
         sum += v * v;
       }
       onLevel(Math.min(1, Math.sqrt(sum / data.length) * 4));
-      levelRaf = requestAnimationFrame(tick);
     };
+    // 80ms là đủ mịn để nhận ra im lặng, mà vẫn nhẹ cho máy.
+    levelTimer = window.setInterval(tick, 80);
     tick();
   } catch {
     /* không đo được mức — vẫn ghi âm bình thường */
@@ -112,6 +123,7 @@ export async function startMicRecording(
   if (!isMicRecordingSupported()) return false;
   // Dừng phiên trước nếu còn sót.
   void stopMicRecording();
+  const token = ++startToken;
   try {
     const media = await navigator.mediaDevices.getUserMedia({
       audio: {
@@ -122,6 +134,12 @@ export async function startMicRecording(
         channelCount: 1,
       },
     });
+    // Đã có phiên mới hơn bắt đầu trong lúc chờ cấp quyền → nhả micro ngay,
+    // không giành lại từ phiên đang chạy.
+    if (token !== startToken) {
+      media.getTracks().forEach((t) => t.stop());
+      return false;
+    }
     const mimeType = pickMimeType();
     const rec = new MediaRecorder(
       media,
@@ -147,6 +165,9 @@ export async function startMicRecording(
 
 /** Dừng ghi âm và trả về clip base64 (null nếu không có gì đáng dùng). */
 export function stopMicRecording(): Promise<MicClip | null> {
+  // Vô hiệu hoá phiên đang chờ cấp quyền: sau khi dừng thì micro phải đen,
+  // không được bật lại vào lúc nào cũng.
+  startToken++;
   const rec = recorder;
   recorder = null;
   if (!rec) {

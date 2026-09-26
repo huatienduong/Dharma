@@ -244,6 +244,42 @@ const CALL_OPEN_PATTERNS = [
   /\b(toi muon|ban muon|muon|cho toi|hay|oi)\b.*\b(dam thoi|noi chuyen|tro chuyen)\b/,
 ];
 
+/**
+ * Câu nghe được có phải chính giọng trợ lý vừa đọc qua loa ngoài không.
+ *
+ * Không có bước này thì điện thoại nghe lại câu trả lời của trợ lý, gửi lại
+ * như thể người dùng hỏi, rồi trợ lý lại trả lời — hội thoại lặp vô hạn và
+ * người dùng tưởng micro bị hỏng.
+ */
+function looksLikeEcho(heard: string, spoken: string, withinMs: number): boolean {
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  const a = norm(heard);
+  const b = norm(spoken);
+  // Chỉ xét trong khoảng ngay sau khi trợ lý vừa đọc xong — tiếng vọng
+  // xuất hiện ở đúng khoảnh đó. Ngoài khoảng này thì cùng câu là người
+  // dùng thật sự hỏi lại, tuyệt đối không bỏ.
+  if (withinMs < 0 || withinMs > 8000) return false;
+  if (a.length < 12 || b.length < 12) return false;
+  if (a === b) return true;
+  if (b.includes(a)) return true;
+  const words = (x: string) => x.split(" ").filter((w) => w.length > 2);
+  const wa = words(a);
+  const wb = new Set(words(b));
+  // Câu nghe được phải dài và trùng phần lớn từ ngữ với câu đã đọc thì mới
+  // tính là vọng — tránh nuốt câu hỏi ngắn trùng chủ đề ("vô minh là gì?").
+  if (wa.length < 4) return false;
+  let hit = 0;
+  wa.forEach((w) => {
+    if (wb.has(w)) hit += 1;
+  });
+  return hit / wa.length >= 0.8;
+}
+
 function isStartCallCommand(raw: string): boolean {
   const t = deaccent(raw.toLowerCase())
     .replace(/thoai/g, "thoi") // "thoại" -> "thoi" để khớp mẫu
@@ -456,6 +492,17 @@ export default function Assistant() {
     (text: string, opts?: { fromCall?: boolean }) => Promise<void>
   >(async () => {});
   const lastAiWordAtRef = useRef(0);
+  /**
+   * Chờ một nhịp im lặng sau khi trợ lý vừa đọc xong thì mới mở lại mic.
+   * Điện thoại để loa ngoài nên âm thanh cuối của trợ lý vẫn còn vọng vào
+   * micro vài trăm mili giây; mở mic ngay lập tức thì trợ lý nghe lại chính
+   * câu mình vừa nói và tự trả lời → hội thoại lặp vô hạn.
+   */
+  const aiQuietUntilRef = useRef(0);
+  /** Câu trợ lý vừa đọc to — dùng để nhận ra tiếng vọng từ loa. */
+  const lastSpokenRef = useRef("");
+  /** Mốc lúc trợ lý ngừng đọc — chỉ trong lúc gần đó mới chặn tiếng vọng. */
+  const aiFinishedAtRef = useRef(0);
   const lastAssistantEventAtRef = useRef(0);
   const recRef = useRef<RecLike | null>(null);
   const startListeningRef = useRef<() => void>(() => {});
@@ -854,6 +901,9 @@ export default function Assistant() {
           setInterim("");
           setCallStatus("speaking");
           lastAssistantEventAtRef.current = Date.now();
+          // Đóng mic ngay khi bắt đầu đọc: không để trình duyệt nghe nhầm
+          // giọng trợ lý thành câu hỏi của người dùng.
+          aiQuietUntilRef.current = Date.now() + 400;
           // Không đọc to đường dẫn (đọc "https slash slash..." rất khó nghe);
           // người dùng vẫn thấy và bấm được link trong hội thoại.
           const spoken = reply
@@ -867,6 +917,10 @@ export default function Assistant() {
               lastAiWordAtRef.current = Date.now();
               lastAssistantEventAtRef.current = Date.now();
               if (!callActiveRef.current) return;
+              lastSpokenRef.current = spoken || reply;
+              // Đợi hết vọng cuối rồi mới mở lại mic.
+              aiFinishedAtRef.current = Date.now();
+              aiQuietUntilRef.current = Date.now() + 900;
               setCallStatus("listening");
               startListeningRef.current();
             },
@@ -987,6 +1041,9 @@ export default function Assistant() {
           lastAiWordAtRef.current = Date.now();
           lastAssistantEventAtRef.current = Date.now();
           if (!callActiveRef.current) return;
+          lastSpokenRef.current = reply;
+          aiFinishedAtRef.current = Date.now();
+          aiQuietUntilRef.current = Date.now() + 900;
           setCallStatus("listening");
           startListeningRef.current();
         },
@@ -1043,6 +1100,15 @@ export default function Assistant() {
       aiSpeakingRef.current ||
       sendingRef.current
     ) {
+      return;
+    }
+    // Vừa đọc xong: chờ hết tiếng vọng rồi mới mở mic, nếu không trợ lý
+    // nghe lại chính câu mình vừa đọc và tự hỏi lại nhau.
+    const quiet = aiQuietUntilRef.current - Date.now();
+    if (quiet > 0) {
+      window.setTimeout(() => {
+        if (callActiveRef.current) startListeningRef.current();
+      }, quiet + 40);
       return;
     }
     try {
@@ -1153,6 +1219,27 @@ export default function Assistant() {
         .replace(/\s+/g, " ")
         .trim();
       if (!force && heard.length < 2) return;
+      // Mic nghe lại chính giọng loa: bỏ qua và mở phiên nghe mới, tuyệt đối
+      // không gửi đi — nếu gửi, trợ lý sẽ trả lời câu của chính nó rồi lặp.
+      if (
+        looksLikeEcho(
+          heard,
+          lastSpokenRef.current,
+          Date.now() - aiFinishedAtRef.current,
+        )
+      ) {
+        cancelCommit();
+        stopWatchdog();
+        void stopMicRecording();
+        finalBuf = "";
+        pendingBuf = "";
+        setInterim("");
+        setCallStatus("listening");
+        window.setTimeout(() => {
+          if (callActiveRef.current) startListeningRef.current();
+        }, 500);
+        return;
+      }
       committed = true;
       finalBuf = "";
       pendingBuf = "";
