@@ -42,7 +42,7 @@ import { wantsImage } from "@/lib/imageIntent";
 import { APP_VERSION } from "@/lib/version";
 import { cn } from "@/lib/utils";
 import { useAction, useMutation } from "convex/react";
-import { ArrowLeft, Phone, Settings } from "lucide-react";
+import { ArrowLeft, Phone, Settings, Video } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -156,6 +156,10 @@ export default function Assistant() {
    */
   const [loadingTs, setLoadingTs] = useState<number | null>(null);
 
+  /* ---- Gọi video: cùng phiên đàm thoại, nhưng màn hình chính là video ---- */
+  const [callMode, setCallMode] = useState<"voice" | "video">("voice");
+  const [callVideo, setCallVideo] = useState<VideoInfo | null>(null);
+
   const loadingTsRef = useRef<number | null>(null);
 
   const markReading = useCallback((ts: number | null) => {
@@ -211,6 +215,8 @@ export default function Assistant() {
   // Nối hàm đọc-sau-khai-báo: hook đàm thoại cần đọc to, hàm đọc to lại do
   // hook trả về — dùng ref để không đụng tới mảng deps của useCallback.
   const speakThenListenRef = useRef<(text: string) => void>(() => {});
+  const openCallRef = useRef<(() => void) | null>(null);
+  const endCallRef2 = useRef<(() => void) | null>(null);
 
   /**
    * GẮN DANH SÁCH VIDEO VÀO CÂU TRẢ LỜI — người dùng chỉ cần nhắn "tôi
@@ -244,6 +250,9 @@ export default function Assistant() {
           historyRef.current = nextHistory;
           setHistory(nextHistory);
           void saveLocalChatSecure(nextHistory);
+          // Đang trong cuộc gọi video → phát luôn trên màn hình gọi, không chỉ
+          // nằm trong hội thoại.
+          if (callActiveRef.current) setCallVideo(videos[0]);
           return true;
         };
 
@@ -277,6 +286,20 @@ export default function Assistant() {
     },
     [],
   );
+
+  /** Mở cuộc gọi VIDEO — cùng phiên nói hai chiều, thêm màn player video. */
+  const openVideoCall = useCallback(() => {
+    setCallMode("video");
+    setCallVideo(null);
+    openCallRef.current?.();
+  }, []);
+
+  /** Kết thúc: trả màn hình về kiểu gọi giọng nói cho lượt sau. */
+  const endCallAndReset = useCallback(() => {
+    endCallRef2.current?.();
+    setCallMode("voice");
+    setCallVideo(null);
+  }, []);
 
   const call = useCallSession({
     micSupported,
@@ -321,6 +344,12 @@ export default function Assistant() {
   useEffect(() => {
     speakThenListenRef.current = speakThenListen;
   }, [speakThenListen]);
+
+  // Gọi video bấm trước khi hook khai báo hàm → nối qua ref như các trường hợp khác.
+  useEffect(() => {
+    openCallRef.current = openCall;
+    endCallRef2.current = endCall;
+  }, [openCall, endCall]);
 
   /* ----- Bàn phím ảo: ghim thanh tiêu đề, nâng khung nhập theo bàn phím ----- */
   const vv = useVisualViewport();
@@ -1219,6 +1248,15 @@ export default function Assistant() {
           >
             <Phone className="h-5 w-5 shrink-0" />
           </button>
+          <button
+            type="button"
+            onClick={openVideoCall}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-foreground transition hover:bg-accent hover:text-accent-foreground"
+            aria-label="Gọi video với Trợ lý Phật học"
+            title="Gọi video — nói và xem video cùng Trợ lý"
+          >
+            <Video className="h-5 w-5 shrink-0" />
+          </button>
           {!isHome && (
             <button
               type="button"
@@ -1306,7 +1344,10 @@ export default function Assistant() {
         <CallOverlay
           callStatus={callStatus}
           interim={callInterim}
-          onEnd={endCall}
+          mode={callMode}
+          video={callVideo}
+          onClearVideo={() => setCallVideo(null)}
+          onEnd={endCallAndReset}
           onToggleMute={toggleMute}
           onInterrupt={interruptSpeaking}
         />
