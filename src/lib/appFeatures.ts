@@ -23,6 +23,9 @@ export type AppFeature = {
 /** Số ảnh tối đa mỗi lượt — giữ khớp với visionChat.MAX_IMAGES_PER_REQUEST. */
 export const MAX_IMAGES_PER_MESSAGE = 6;
 
+/** Số tệp tối đa mỗi lượt — giữ khớp fileChat.MAX_FILES_PER_REQUEST. */
+export const MAX_FILES_PER_MESSAGE = 3;
+
 /** Số giọng đọc đang có trong mục Cài đặt → Giọng nói. */
 export const VOICE_COUNT = 8;
 
@@ -32,7 +35,7 @@ export const FEATURES: AppFeature[] = [
     how: "Gõ câu hỏi rồi bấm Gửi (hoặc Enter). Trợ lý nhớ toàn bộ hội thoại và tiếp tục đúng mạch.",
   },
   {
-    name: "Đàm thoại bằng giọng nói (nút tròn có sóng âm)",
+    name: "Đàm thoại bằng giọng nói (nút điện thoại ở góc trên trái)",
     how: "Nói tự nhiên như gọi điện; trợ lý tự chốt câu khi bạn ngừng nói, tự đọc trả lời rồi lại nghe tiếp. Dấu tròn đỏ để kết thúc. Cũng chỉ cần nhắn: 'mở đàm thoại'.",
   },
   {
@@ -40,12 +43,20 @@ export const FEATURES: AppFeature[] = [
     how: `Bấm nút ảnh nhiều lần để cộng dồn tối đa ${MAX_IMAGES_PER_MESSAGE} ảnh mỗi lượt (tối đa 20 MB/ảnh), rồi gửi kèm câu hỏi.`,
   },
   {
+    name: "Gửi tệp để Trợ lý đọc (nút tệp cạnh ô nhập)",
+    how: `Bấm nút tệp để chọn tối đa ${MAX_FILES_PER_MESSAGE} tệp mỗi lượt (txt, md, csv, tsv, json, log, srt, xml, html, yaml, mã nguồn và PDF), rồi gửi kèm câu hỏi.`,
+  },
+  {
     name: "Tạo hình minh hoạ Phật pháp",
     how: 'Chỉ cần nhờ bằng lời: "vẽ hình hoa sen", "minh hoạ tứ thánh đế" — hệ thống tự vẽ.',
   },
   {
-    name: "Nghe câu trả lời bằng giọng nói",
-    how: "Bấm biểu tượng loa trên câu trả lời; trong đàm thoại thì phát tự động.",
+    name: "Nghe lại câu trả lời bằng giọng nói (nút loa cạnh câu trả lời)",
+    how: "Bấm biểu tượng loa ngay dưới mỗi câu trả lời để nghe lại; bấm lần nữa thì dừng. Có thể nghe lại cả những câu cũ trong hội thoại. Trong đàm thoại thì phát tự động.",
+  },
+  {
+    name: "Báo lỗi và góp ý ngay trong khung chat",
+    how: 'Gõ "báo lỗi" hoặc "góp ý" ở ĐẦU câu rồi viết nội dung ngay sau, ví dụ "góp ý và báo lỗi: nút xoá hội thoại bị treo". Trợ lý tự chuyển thẳng cho bộ phận kỹ thuật, không cần mở Cài đặt, không cần để lại email.',
   },
   {
     name: `Chọn ${VOICE_COUNT} giọng đọc (Cài đặt → Giọng nói)`,
@@ -54,6 +65,10 @@ export const FEATURES: AppFeature[] = [
   {
     name: "Gợi ý câu hỏi",
     how: "Khi hội thoại trống, ứng dụng gợi ý câu hỏi về Bát Chánh Đạo, Tứ Thánh Đế... để bấm vào hỏi ngay.",
+  },
+  {
+    name: "Sao chép câu trả lời",
+    how: "Bấm biểu tượng sao chép dưới câu trả lời để lấy nguyên văn.",
   },
   {
     name: "Thu hồi tin nhắn",
@@ -69,7 +84,7 @@ export const FEATURES: AppFeature[] = [
   },
   {
     name: "Cài đặt",
-    how: "Vào Cài đặt để đổi giọng đọc, xem thông tin, điều khoản và gửi góp ý.",
+    how: "Vào Cài đặt để đổi giao diện, bật thông báo, chọn giọng đọc, xem thông tin ứng dụng, điều khoản và gửi góp ý kèm tệp đính kèm.",
   },
 ];
 
@@ -81,6 +96,7 @@ export const FEATURE_TIPS = [
   "Trả lời NGẮN GỌN: nêu 2–4 tính năng liên quan tới câu hỏi, kèm cách bấm cụ thể.",
   "Danh sách này do hệ thống tự động cập nhật theo ứng dụng — hãy tin danh sách, đừng bịa tính năng không có; hỏi về tính năng chưa có thì nói thẳng hiện chưa có.",
   'Muốn nói chuyện bằng giọng nói: bảo họ nhắn "mở đàm thoại" là màn đàm thoại mở ngay.',
+  'Muốn báo lỗi hoặc góp ý: bảo họ gõ "báo lỗi" hoặc "góp ý" ở đầu câu rồi viết nội dung, ví dụ "góp ý và báo lỗi: giọng đọc bị ngắt". Không cần mở Cài đặt, không cần để lại email.',
 ];
 
 /**
@@ -97,7 +113,10 @@ export const FEATURE_TIPS = [
  * một mục là mọi nhánh — chat, ảnh, đàm thoại — cùng có.
  */
 export const SUPPORT_TIPS = [
-  "TUYỆT ĐỐI không bịa đường dẫn hay nhóm cài đặt trong ứng dụng. Trong Cài đặt chỉ có: Giao diện, Thông báo, Giọng nói, Giới thiệu, Chính sách & Điều khoản, Góp ý & Báo lỗi. Các nút trong khung chat: gửi ảnh và xoá hội thoại ở góc trái ô nhập, micro và loa ở góc phải, biểu tượng bánh răng là Cài đặt, điện thoại ở góc trên trái là Đàm thoại. Ô nhập KHÔNG có nút bàn phím hay nút đính kèm khác. Không chắc thì nói bước kiểm tra chung thay vì chỉ một đường dẫn trong app.",
+  "TUYỆT ĐỐI không bịa đường dẫn hay nhóm cài đặt trong ứng dụng. Trong Cài đặt chỉ có: Giao diện, Thông báo, Giọng nói, Giới thiệu, Chính sách & Điều khoản, Góp ý & Báo lỗi. Các nút trong khung chat: góc trái ô nhập có gửi ảnh, gửi tệp và xoá hội thoại; góc phải ô nhập có micro và nút Gửi; dưới mỗi câu trả lời có loa, sao chép, chia sẻ; biểu tượng bánh răng ở góc trên phải là Cài đặt; điện thoại ở góc trên trái là Đàm thoại. Không có nút bàn phím hay nút đính kèm nào khác. Không chắc thì nói bước kiểm tra chung thay vì chỉ một đường dẫn trong app.",
+  "BÁO LỖI VÀ GÓP Ý NGAY TRONG CHAT — phần này bạn PHẢI chủ động nhắc: hãy dạy người dùng gõ từ 'báo lỗi' hoặc 'góp ý' ở ĐẦU câu rồi viết nội dung ngay sau (ví dụ 'góp ý và báo lỗi: nút xoá hội thoại bị treo'). Trợ lý tự gửi thẳng cho bộ phận kỹ thuật và báo lại là đã tiếp nhận. Nhắc cách này khi người dùng hỏi 'báo lỗi ở đâu', 'khiếu nại với ai', 'sửa lỗi thế nào', và cả khi bạn không tự khắc phục được lỗi họ đang gặp.",
+  "Chỉ nhận góp ý khi từ báo lỗi hoặc góp ý nằm ở ĐẦU câu. Nếu họ viết kiểu 'ứng dụng bị lỗi khi tôi gửi ảnh' thì đó là một câu hỏi bình thường, hãy giải thích và khắc phục trước, rồi mới nhắc họ gõ lại với từ 'báo lỗi' ở đầu câu để gửi cho bộ phận kỹ thuật.",
+  "TUYỆT ĐỐI không nêu, không gợi ý và không yêu cầu người dùng cung cấp địa chỉ email nhận báo lỗi. Trợ lý không thu thập email hay bất kỳ thông tin cá nhân nào của người dùng. Nếu họ hỏi gửi cho ai thì chỉ nói bộ phận kỹ thuật của ứng dụng, do nhà phát triển Hứa Tiến Dương trực tiếp vận hành.",
   "Hỏi cách dùng hoặc gặp lỗi → hướng dẫn theo ĐÚNG tên nút trên màn hình, theo thứ tự thao tác, mỗi bước một ý, ngắn gọn và làm được ngay. Không nói chung chung kiểu 'hãy thử lại'.",
   "Lỗi 'tạm chưa trả lời được': máy chủ AI đang bận vì nhiều người dùng. Chờ khoảng một phút rồi bấm nút Gửi lại, hoặc hỏi lại bằng câu ngắn hơn.",
   "Lỗi 'gửi yêu cầu quá nhanh': hệ thống giới hạn số câu mỗi phút, hãy chậm lại, đợi một phút rồi thử tiếp.",
@@ -106,7 +125,7 @@ export const SUPPORT_TIPS = [
   "Ảnh không phân tích được: gửi từng ảnh một, ảnh JPG hoặc PNG, dung lượng vừa phải. Nếu máy chủ báo hết hạn mức thì thử lại sau 1–2 phút.",
   "Không nghe thấy giọng đọc: kiểm tra âm lượng và chế độ im lặng của điện thoại, hoặc chọn giọng khác trong Cài đặt → Giọng nói.",
   "Muốn bắt đầu lại: nói 'xoá hội thoại' hoặc bấm biểu tượng thùng rác ở góc trái ô nhập. Muốn nói chuyện bằng giọng nói thì bấm nút điện thoại ở góc trên trái, hoặc nhắn 'mở đàm thoại'.",
-  "Báo lỗi hoặc góp ý: Cài đặt → Góp ý & Báo lỗi.",
+  "Báo lỗi hoặc góp ý: CÀCH NHANH NHẤT là gõ thẳng trong ô chat, đặt từ 'báo lỗi' hoặc 'góp ý' ở ĐẦU câu rồi viết nội dung ngay sau. Ví dụ: 'góp ý và báo lỗi: nút xoá hội thoại bị treo'. Trợ lý sẽ tự chuyển thẳng cho bộ phận kỹ thuật. Ngoài ra vẫn có thể vào Cài đặt → Góp ý & Báo lỗi nếu muốn đính kèm tệp.",
 ];
 
 export function featuresPrompt(compact = false): string {
