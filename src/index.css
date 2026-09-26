@@ -44,91 +44,92 @@
   --color-gold-soft: var(--gold-soft);
 }
 
-/* CHANGE VALUES FOR THEME — tông ĐỎ, TRẮNG VÀ KEM: nền chung TRẮNG, thẻ và
- * khung nhập trắng, thao tác chính (nút gửi, tin nhắn của bạn) đỏ chủ đạo,
- * chi tiết nhỏ và vùng bấm dùng kem đào. Chữ gần đen nâu để dễ đọc trên cả hai. */
+/* CHANGE VALUES FOR THEME — đơn sắc TRẮNG / ĐEN kiểu ChatGPT: chế độ sáng
+ * nền trắng – chữ đen – nút chính đen; chế độ tối nền gần đen – chữ trắng –
+ * nút chính trắng. Không còn màu nâu/đỏ/kem; chỉ giữ đỏ nhạt cho trạng thái
+ * lỗi (destructive) để người dùng nhận biết được ngay. */
 :root {
   --radius: 1.5rem;
-  --background: #ffffff; /* nền chung TRẮNG */
-  --foreground: #2c1a12; /* chữ gần đen nâu */
-  --card: #ffffff; /* thẻ trắng nổi trên nền kem */
-  --card-foreground: #2c1a12;
+  --background: #ffffff; /* nền chung trắng */
+  --foreground: #0d0d0d; /* chữ gần đen */
+  --card: #ffffff;
+  --card-foreground: #0d0d0d;
   --popover: #ffffff;
-  --popover-foreground: #2c1a12;
-  --primary: #b0181b; /* đỏ chủ đạo */
-  --primary-foreground: #fff7ef;
-  --secondary: #fdf3e3; /* kem rất sáng cho khung nhập, nút phụ */
-  --secondary-foreground: #5a1a14;
-  --muted: #f0dcbe;
-  --muted-foreground: #6f5741;
-  --accent: #edcfa6; /* hồng đào cho vùng bấm */
-  --accent-foreground: #4a1410;
-  --destructive: #c81e1e;
-  --border: #e0bf94; /* viền kem rõ trên nền màu */
-  --input: #e0bf94;
-  --ring: #b0181b;
-  --chart-1: #b0181b;
-  --chart-2: #8e1418;
-  --chart-3: #d1512f;
-  --chart-4: #4a1410;
-  --chart-5: #e08a3c;
-  --sidebar: #fdf6ec;
-  --sidebar-foreground: #2c1a12;
-  --sidebar-primary: #b0181b;
-  --sidebar-primary-foreground: #fff7ef;
-  --sidebar-accent: #edcfa6;
-  --sidebar-accent-foreground: #4a1410;
-  --sidebar-border: #e0bf94;
-  --sidebar-ring: #b0181b;
+  --popover-foreground: #0d0d0d;
+  --primary: #0d0d0d; /* nút chính: đen, chữ trắng */
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #171717;
+  --muted: #f5f5f5;
+  --muted-foreground: #6b6b6b;
+  --accent: #ececec; /* vùng bấm xám nhạt */
+  --accent-foreground: #0d0d0d;
+  --destructive: #cc3333; /* lỗi vẫn giữ đỏ dịu cho dễ nhận biết */
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #0d0d0d;
+  --chart-1: #0d0d0d;
+  --chart-2: #404040;
+  --chart-3: #737373;
+  --chart-4: #171717;
+  --chart-5: #a3a3a3;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #0d0d0d;
+  --sidebar-primary: #0d0d0d;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ececec;
+  --sidebar-accent-foreground: #0d0d0d;
+  --sidebar-border: #e5e5e5;
+  --sidebar-ring: #0d0d0d;
 
-  /* Token phụ trợ — đỏ chủ đạo đi kèm kem đào */
-  --brown-deep: #2c1a12;
-  --brown-mid: #8e1418;
-  --gold: #b0181b; /* đỏ chủ đạo ở chế độ sáng */
-  --gold-soft: #c9453f;
-  --lotus: #f7e6cf;
+  /* Token phụ trợ — thang xám trung tính */
+  --brown-deep: #0d0d0d;
+  --brown-mid: #404040;
+  --gold: #0d0d0d; /* điểm nhấn đơn sắc ở chế độ sáng */
+  --gold-soft: #6b6b6b;
+  --lotus: #f5f5f5;
 
   --font-size-scale: 1;
 }
 
 .dark {
-  --background: #17100a;
-  --foreground: #f3e9d8;
-  --card: #241a10;
-  --card-foreground: #f3e9d8;
-  --popover: #2b2015;
-  --popover-foreground: #f3e9d8;
-  --primary: #e0852a; /* y cà sa sáng trên nền tối */
-  --primary-foreground: #1a1108;
-  --secondary: #2f2314;
-  --secondary-foreground: #ecd9b5;
-  --muted: #2f2314;
-  --muted-foreground: #b3a184;
-  --accent: #2f2314;
-  --accent-foreground: #ecd9b5;
-  --destructive: #ef6a5a;
-  --border: #3a2c1c;
-  --input: #3a2c1c;
-  --ring: #e0852a;
-  --chart-1: #e0852a;
-  --chart-2: #c2711c;
-  --chart-3: #d4a72c;
-  --chart-4: #9a5b13;
-  --chart-5: #f0a04b;
-  --sidebar: #17100a;
-  --sidebar-foreground: #f3e9d8;
-  --sidebar-primary: #e0852a;
-  --sidebar-primary-foreground: #1a1108;
-  --sidebar-accent: #2f2314;
-  --sidebar-accent-foreground: #ecd9b5;
-  --sidebar-border: #3a2c1c;
-  --sidebar-ring: #e0852a;
+  --background: #0d0d0d;
+  --foreground: #ececec;
+  --card: #171717;
+  --card-foreground: #ececec;
+  --popover: #212121;
+  --popover-foreground: #ececec;
+  --primary: #ececec; /* nút chính: trắng, chữ đen */
+  --primary-foreground: #0d0d0d;
+  --secondary: #1f1f1f;
+  --secondary-foreground: #ececec;
+  --muted: #1f1f1f;
+  --muted-foreground: #a1a1a1;
+  --accent: #2a2a2a; /* vùng bấm xám đậm */
+  --accent-foreground: #ececec;
+  --destructive: #ff6b6b;
+  --border: #2f2f2f;
+  --input: #2f2f2f;
+  --ring: #ececec;
+  --chart-1: #ececec;
+  --chart-2: #b3b3b3;
+  --chart-3: #8c8c8c;
+  --chart-4: #4d4d4d;
+  --chart-5: #737373;
+  --sidebar: #171717;
+  --sidebar-foreground: #ececec;
+  --sidebar-primary: #ececec;
+  --sidebar-primary-foreground: #0d0d0d;
+  --sidebar-accent: #2a2a2a;
+  --sidebar-accent-foreground: #ececec;
+  --sidebar-border: #2f2f2f;
+  --sidebar-ring: #ececec;
 
-  --brown-deep: #17100a;
-  --brown-mid: #2f2314;
-  --gold: #e0852a;
-  --gold-soft: #f0a04b;
-  --lotus: #2f2314;
+  --brown-deep: #171717;
+  --brown-mid: #2a2a2a;
+  --gold: #ececec;
+  --gold-soft: #a1a1a1;
+  --lotus: #1f1f1f;
 }
 
 @layer base {
@@ -254,7 +255,7 @@ html [data-sonner-toaster] {
   position: relative;
   border-radius: 9999px;
   overflow: hidden;
-  background: rgba(41, 28, 12, 0.55);
+  background: rgba(20, 20, 20, 0.72);
   display: grid;
   place-items: center;
 }
@@ -266,13 +267,13 @@ html [data-sonner-toaster] {
   inset: -22%;
   background: conic-gradient(
     from 180deg,
-    rgba(251, 191, 36, 0.6),
-    rgba(180, 83, 9, 0.85),
-    rgba(245, 158, 11, 0.55),
-    rgba(120, 53, 15, 0.9),
-    rgba(251, 191, 36, 0.6)
+    rgba(255, 255, 255, 0.55),
+    rgba(120, 120, 120, 0.85),
+    rgba(220, 220, 220, 0.5),
+    rgba(60, 60, 60, 0.9),
+    rgba(255, 255, 255, 0.55)
   );
-  filter: blur(16px) saturate(1.15);
+  filter: blur(16px);
   animation: orb-spin 14s linear infinite;
 }
 
@@ -288,13 +289,13 @@ html [data-sonner-toaster] {
   border-radius: 9999px;
   background: radial-gradient(
     circle at 38% 32%,
-    rgba(255, 251, 235, 0.9),
-    rgba(253, 230, 138, 0.85) 38%,
-    rgba(180, 83, 9, 0.9) 100%
+    rgba(255, 255, 255, 0.95),
+    rgba(214, 214, 214, 0.85) 38%,
+    rgba(70, 70, 70, 0.95) 100%
   );
   box-shadow:
-    0 0 42px rgba(245, 158, 11, 0.45),
-    inset 0 0 24px rgba(255, 255, 255, 0.35);
+    0 0 42px rgba(255, 255, 255, 0.25),
+    inset 0 0 24px rgba(255, 255, 255, 0.3);
   animation: orb-breathe 3.6s ease-in-out infinite;
 }
 
