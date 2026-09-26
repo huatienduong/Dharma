@@ -6,9 +6,9 @@
  * tai + ăng-ten y cà sa (`--primary`). Mọi màu đều lấy từ token nên tự
  * đổi theo giao diện.
  *
- * `shell` bật VỎ NGOÀI màu nâu đồng màu nền ứng dụng — dùng cho robot
- * hiển thị lớn (màn chào, màn đàm thoại) đúng như icon khi cài đặt. Avatar
- * nhỏ trong bong bóng chat để không vỏ cho gọn.
+ * `shell` bật VỎ NGOÀI màu nâu đồng màu nền ứng dụng — CHỈ dùng ở màn
+ * chào lúc vào ứng dụng (đúng như icon khi cài đặt). Mọi chỗ khác, kể cả
+ * màn đàm thoại và bong bóng chat, để robot nền trong suốt cho gọn.
  *
  * Dùng ở: bong bóng trả lời, thẻ tiến trình, ô "đang suy nghĩ", màn đàm
  * thoại và màn chào. Kích thước co giãn theo className của vỏ ngoài.

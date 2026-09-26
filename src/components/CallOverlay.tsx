@@ -155,9 +155,8 @@ export function CallOverlay({
             <BotAvatar
               size="lg"
               glow
-              shell
               className={cn(
-                "h-full w-full",
+                "relative h-[62%] w-[62%]",
                 callStatus === "muted" && "opacity-50",
               )}
             />
