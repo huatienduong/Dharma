@@ -94,3 +94,17 @@ export function videoSearchQuery(raw: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+/**
+ * AI ĐÃ MỜI XEM VIDEO — nhận ra lời kết của chính Trợ lý kiểu "mình để video
+ * ngay dưới câu này", "bấm nút play là xem". Khi đó ứng dụng cũng phải tìm
+ * và gắn video, nếu không lời hứa trong câu trả lời sẽ hụt.
+ */
+export function aiInvitesVideo(raw: string): boolean {
+  const t = deaccent(raw.toLowerCase());
+  return (
+    /video ngay duoi|ngay duoi cau nay|duoi cau tra loi|nam nut play|bam nut play|play la xem|xem ngay trong khung chat/.test(
+      t,
+    )
+  );
+}

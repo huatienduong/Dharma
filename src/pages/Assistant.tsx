@@ -30,7 +30,11 @@ import {
   type Msg,
 } from "@/lib/chatHelpers";
 import { callConvexAction } from "@/lib/convexAction";
-import { isVideoRequest, type VideoInfo } from "@/lib/videoIntent";
+import {
+  aiInvitesVideo,
+  isVideoRequest,
+  type VideoInfo,
+} from "@/lib/videoIntent";
 import { getDeviceMeta } from "@/lib/deviceSecurity";
 import { wantsImage } from "@/lib/imageIntent";
 import { APP_VERSION } from "@/lib/version";
@@ -212,8 +216,11 @@ export default function Assistant() {
    * người dùng vẫn đọc được câu trả lời bình thường.
    */
   const attachVideo = useCallback(
-    (query: string, replyTs: number) => {
-      if (!isVideoRequest(query)) return;
+    (query: string, replyTs: number, replyText: string) => {
+      // Hai đường kích hoạt: người dùng hỏi/dán link về video, HOẶC chính
+      // Trợ lý đã mời xem video trong câu trả lời — thì phải tìm và gắn
+      // video, nếu không lời hứa trong câu trả lời sẽ hụt.
+      if (!isVideoRequest(query) && !aiInvitesVideo(replyText)) return;
       void (async () => {
         try {
           const res = await callConvexAction<{
@@ -783,7 +790,7 @@ export default function Assistant() {
           setHistory(nextHistory);
           // Người dùng hỏi về video (hoặc dán link) → sau khi trả lời xong,
           // tự tìm video và gắn thẻ xem vào đúng câu này.
-          attachVideo(userMsg.content, replyMsg.ts);
+          attachVideo(userMsg.content, replyMsg.ts, replyMsg.content);
           // Tải sẵn âm thanh câu trả lời này (chạy nền, không phát gì) để
           // khi người dùng bấm nút loa là có tiếng ngay, không phải chờ
           // máy chủ tổng hợp TTS.
