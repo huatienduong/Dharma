@@ -1294,6 +1294,9 @@ export const ask = action({
         );
       }
     }
+    // Ghi lý do thật ra log: production che lỗi thành "Server Error" nên
+    // không có dòng này thì rất khó tìm ra nguyên nhân.
+    console.error(`[aiChat] mọi provider đều lỗi: ${errors.join(" || ")}`);
     return {
       ok: false as const,
       code: "ai_unavailable",
@@ -1406,6 +1409,94 @@ export const checkVoices = action({
       .filter(([, ok]) => !ok)
       .map(([id]) => id);
     return { ok: true as const, voices, alive, dead, models };
+  },
+});
+
+/**
+ * CHẨN ĐOÁN CHAT — gọi thử từng model Groq và trả về kết quả từng model.
+ *
+ * Cần vì lỗi "trợ lý không trả lời được" trước đây báo chung chung, không
+ * biết là thiếu khóa, hết credit, model bị thu hồi hay provider chặn. Có
+ * action này thì xác định nguyên nhân trong một lần gọi thay vì đoán.
+ *
+ * Có giới hạn tốc độ (bucket "ask") để không bị lạm dụng.
+ */
+export const diagChat = action({
+  args: {
+    deviceId: v.optional(v.string()),
+    integrity: v.optional(v.string()),
+  },
+  handler: async (ctx, { deviceId, integrity }) => {
+    const denied = await checkRateLimit(ctx, "ask", deviceId, integrity);
+    if (denied) return { ok: false as const, message: denied };
+    const groqKey = process.env.GROQ_API_KEY;
+    if (!groqKey) {
+      return { ok: false as const, message: "Chưa cấu hình khóa Groq." };
+    }
+    let ids: string[] = [];
+    let listError: string | null = null;
+    try {
+      const res = await fetch(`${GROQ_BASE_URL}/models`, {
+        headers: { Authorization: `Bearer ${groqKey}` },
+        signal: AbortSignal.timeout(6_000),
+      });
+      if (!res.ok) {
+        listError = `HTTP ${res.status}`;
+      } else {
+        const json = (await res.json()) as { data?: { id?: string }[] };
+        ids = (json.data ?? []).map((m) => m.id ?? "").filter(Boolean);
+      }
+    } catch (err) {
+      listError = err instanceof Error ? err.message : String(err);
+    }
+    // Bỏ model chỉ dùng audio, thử tối đa 10 model chat.
+    const chatModels = ids
+      .filter((id) => !/-tts|whisper/.test(id))
+      .slice(0, 10);
+    const results: {
+      model: string;
+      ok: boolean;
+      ms: number;
+      note?: string;
+    }[] = [];
+    const provider = createOpenAICompatible({
+      name: "diag",
+      baseURL: GROQ_BASE_URL,
+      apiKey: groqKey,
+    });
+    for (const model of chatModels) {
+      const started = Date.now();
+      try {
+        const r = await provider(model).doGenerate({
+          prompt: [{ role: "user", content: [{ type: "text", text: "Trả lời đúng một chữ: ok" }] }],
+          maxOutputTokens: 8,
+        });
+        const text = r.content
+          .map((part) => (part.type === "text" ? part.text : ""))
+          .join("")
+          .trim();
+        results.push({
+          model,
+          ok: text.length > 0,
+          ms: Date.now() - started,
+          note: text ? text.slice(0, 30) : "trả về rỗng",
+        });
+      } catch (err) {
+        results.push({
+          model,
+          ok: false,
+          ms: Date.now() - started,
+          note: (err instanceof Error ? err.message : String(err)).slice(0, 140),
+        });
+      }
+    }
+    return {
+      ok: true as const,
+      modelCount: ids.length,
+      listError,
+      preference: GROQ_TEXT_PREFERENCE,
+      results,
+    };
   },
 });
 
