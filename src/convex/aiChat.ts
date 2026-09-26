@@ -324,8 +324,8 @@ type ServerVoice = {
  * Bản đồ giọng đọc — ĐÃ ĐỐI CHIẾN giới tính thật của từng voice Gemini:
  * • NỮ: Kore, Autonoe, Leda, Aoede · NAM: Charon, Enceladus, Algieba,
  *   Alnilam, Iapetus (lỗi cũ: karuna map "Puck" — giọng nam).
- * TTS chỉ dùng Gemini (key sống). Groq đã ngừng TTS (playai-tts bị
- * decommission), OpenAI key đã hết credit — đã loại bỏ các nhánh chết.
+ * Mỗi giọng trong danh mục client có một voice ElevenLabs tương ứng; Gemini
+ * chỉ giữ vai trò dự phòng khi ElevenLabs không dùng được.
  */
 /**
  * Model TTS, thử từ mới nhất → cũ nhất. Google thu hồi model cũ theo lịch
@@ -508,6 +508,7 @@ export const providerStatus = action({
     // (đọc to) và tạo ảnh — hai tính năng Groq không cung cấp.
     return {
       groq: !!groqKey,
+      elevenLabs: !!process.env.ELEVENLABS_API_KEY,
       geminiTts: !!process.env.GEMINI_API_KEY,
       groqModels,
     };
@@ -674,10 +675,31 @@ export const aiSelfTest = internalAction({
       );
     }
 
-    // Gemini KHÔNG còn phục vụ chat — chỉ còn TTS (đọc to). Kiểm tra model
-    // TTS thật sự sống để đàm thoại không chết âm thầm khi Google đổi model.
+    // ElevenLabs là nhánh đọc to chính — gọi /user để kiểm tra khóa mà
+    // không tốn ký tự TTS (endpoint tts sẽ trừ hạn mức ngay khi chạy thử).
+    const elevenKey = process.env.ELEVENLABS_API_KEY;
+    if (elevenKey) {
+      let note = "sống";
+      try {
+        const res = await fetch(`${ELEVENLABS_BASE_URL}/user`, {
+          headers: { "xi-api-key": elevenKey },
+          signal: AbortSignal.timeout(6_000),
+        });
+        if (!res.ok) note = `HTTP ${res.status}`;
+      } catch (err) {
+        note = err instanceof Error ? err.message : String(err);
+      }
+      if (note === "sống") {
+        await clearProviderState(ctx, "ElevenLabs", ELEVENLABS_MODEL);
+      } else {
+        await markProviderFailure(ctx, "ElevenLabs", ELEVENLABS_MODEL, note);
+      }
+      notes.push(`ElevenLabs: ${note}`);
+    }
+
+    // Gemini KHÔNG còn phục vụ chat — còn TTS dự phòng và tạo ảnh. Kiểm tra
+    // model TTS thật sự sống để đàm thoại không chết âm thầm khi Google đổi model.
     const geminiKey = process.env.GEMINI_API_KEY;
-    // nhánh dự phòng khi ElevenLabs không dùng được
     if (geminiKey) {
       let liveTts: string | null = null;
       let note = "sống";
@@ -1015,8 +1037,8 @@ export const ask = action({
 
 /**
  * TTS tiếng Việt chất lượng cao — server tổng hợp âm thanh rồi trả về base64.
- * Chỉ dùng Gemini TTS (Groq đã ngừng TTS, OpenAI key hết credit — đã bỏ).
- * Trả về null khi không có khóa → client dùng Web Speech dự phòng.
+ * Thứ tự ưu tiên: ElevenLabs (MP3, giọng đa ngôn ngữ) → Gemini TTS → null.
+ * Trả về null khi cả hai nhánh lỗi → client dùng Web Speech dự phòng.
  */
 export const speak = action({
   args: {
@@ -1063,8 +1085,6 @@ export const speak = action({
     // ƯU TIÊN 2: Gemini TTS — dự phòng khi ElevenLabs lỗi hoặc hết hạn mức.
 
     const geminiVoice = v?.gemini ?? (wantMale ? "Charon" : "Kore");
-    const elevenVoice =
-      v?.eleven ?? (wantMale ? "yoZ06aMxZJJ28mfd3POQ" : "EXAVITQu4vr4xnSDxMaL");
 
     const geminiKey = process.env.GEMINI_API_KEY;
 
