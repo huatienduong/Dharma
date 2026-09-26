@@ -1,6 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
+import {
+  startMicRecording,
+  stopMicRecording,
+} from "@/lib/micRecorder";
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 import { loadVoicePref } from "@/lib/aiVoices";
 import { wantsImage } from "@/lib/imageIntent";
@@ -208,7 +212,13 @@ export default function Assistant() {
   const [image, setImage] = useState<{ base64: string; mime: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const { supported: micSupported, listening, start, stop } = useVoiceSearch();
+  const {
+    supported: micSupported,
+    listening,
+    start,
+    stop,
+    refine: refineUtterance,
+  } = useVoiceSearch();
   const {
     speak: speakVI,
     stop: stopSpeaking,
@@ -678,7 +688,11 @@ export default function Assistant() {
         } catch {
           /* noop */
         }
-        handleUtterance(t);
+        // Dừng ghi âm rồi chép lại: văn bản chính xác hơn nhiều so với bản
+        // nghe trực tiếp của trình duyệt. Lỗi thì giữ nguyên bản gốc.
+        void stopMicRecording().then((clip) =>
+          refineUtterance(t, clip).then((better) => handleUtterance(better)),
+        );
       }
     };
     rec.onerror = (e) => {
@@ -705,6 +719,8 @@ export default function Assistant() {
     recRef.current = rec;
     try {
       rec.start();
+      // Ghi âm song song: sau khi có câu, chép lại bằng Whisper cho chính xác.
+      void startMicRecording();
     } catch {
       /* đã start — bỏ qua */
     }
@@ -749,6 +765,8 @@ export default function Assistant() {
       /* noop */
     }
     recRef.current = null;
+    // Nhả micro ngay khi kết thúc cuộc gọi, nếu không đèn ghi âm cứ sáng.
+    void stopMicRecording();
     stopSpeaking();
     sendingRef.current = false;
     aiSpeakingRef.current = false;
@@ -765,6 +783,7 @@ export default function Assistant() {
         /* noop */
       }
       recRef.current = null;
+      void stopMicRecording();
       setInterim("");
       setCallStatus("muted");
     } else {

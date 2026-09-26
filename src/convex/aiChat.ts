@@ -539,6 +539,136 @@ async function synthesizeElevenLabs(
 }
 
 /* ------------------------------------------------------------------ */
+/* CHÉP GIỌNG NÓI (STT) — Whisper qua Groq                              */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Web Speech API của trình duyệt nghe tiếng Việt khá lệch, đặc biệt trên
+ * Android và khi có tiếng ồn — nguyên nhân người dùng phải sửa lại câu hỏi
+ * trước khi gửi. Nên ta ghi âm song song rồi chép lại bằng Whisper, cho
+ * văn bản chính xác hơn nhiều. Bản trình duyệt vẫn giữ làm dự phòng.
+ */
+const GROQ_STT_PREFERENCE = [
+  "whisper-large-v3",
+  "distil-whisper-large-v3",
+];
+
+const sttModelsCache = new Map<string, { at: number; models: string[] }>();
+const STT_MODELS_TTL_MS = 30 * 60_000;
+
+/** Dò model chép lời nói đang sống (Groq có thể thu hồi tên bất cứ lúc nào). */
+async function refreshGroqSttModels(groqKey: string): Promise<void> {
+  let live: string[];
+  try {
+    const res = await fetch(`${GROQ_BASE_URL}/models`, {
+      headers: { Authorization: `Bearer ${groqKey}` },
+      signal: AbortSignal.timeout(6_000),
+    });
+    if (!res.ok) return;
+    const json = (await res.json()) as { data?: { id?: string }[] };
+    live = (json.data ?? []).map((m) => m.id ?? "").filter(Boolean);
+  } catch {
+    return;
+  }
+  const ordered: string[] = [];
+  for (const id of GROQ_STT_PREFERENCE) if (live.includes(id)) ordered.push(id);
+  for (const id of live) {
+    if (ordered.includes(id)) continue;
+    if (/whisper/i.test(id) && !id.includes("-tts")) ordered.push(id);
+  }
+  if (ordered.length > 0) {
+    sttModelsCache.set(groqKey, { at: Date.now(), models: ordered });
+  }
+}
+
+async function listGroqSttModels(groqKey: string): Promise<string[]> {
+  const cached = sttModelsCache.get(groqKey);
+  if (cached && Date.now() - cached.at < STT_MODELS_TTL_MS) {
+    return cached.models;
+  }
+  if (!cached) void refreshGroqSttModels(groqKey).catch(() => {});
+  return [...GROQ_STT_PREFERENCE];
+}
+
+/**
+ * CHÉP LỜI NÓI — nhận audio base64, trả về văn bản tiếng Việt.
+ *
+ * Cố định `temperature: 0` vì đây là bài toán nghe chính tả, không sáng tạo;
+ * nhiệt độ bằng 0 giúp ổn định kết quả giữa các lần nói khác nhau.
+ */
+export const transcribe = action({
+  args: {
+    audioBase64: v.string(),
+    audioMime: v.optional(v.string()),
+    deviceId: v.optional(v.string()),
+    integrity: v.optional(v.string()),
+  },
+  handler: async (ctx, { audioBase64, audioMime, deviceId, integrity }) => {
+    const denied = await checkRateLimit(ctx, "ask", deviceId, integrity);
+    if (denied) return { ok: false as const, message: denied };
+    const groqKey = process.env.GROQ_API_KEY;
+    if (!groqKey) {
+      return { ok: false as const, message: "Chưa cấu hình khóa Groq." };
+    }
+    if (!audioBase64) {
+      return { ok: false as const, message: "Không nhận được âm thanh." };
+    }
+    let bytes: Uint8Array;
+    try {
+      bytes = Uint8Array.from(atob(audioBase64), (c) => c.charCodeAt(0));
+    } catch {
+      return { ok: false as const, message: "Dữ liệu âm thanh không hợp lệ." };
+    }
+    if (bytes.length < 900) {
+      return { ok: false as const, message: "Bạn nói hơi ngắn, hãy thử lại." };
+    }
+    if (bytes.length > 18_000_000) {
+      return { ok: false as const, message: "Đoạn ghi âm quá dài." };
+    }
+    const type = audioMime || "audio/webm";
+    const ext = /mp4|m4a/.test(type)
+      ? "m4a"
+      : /ogg/.test(type)
+        ? "ogg"
+        : "webm";
+    const models = await listGroqSttModels(groqKey);
+    let lastError = "không rõ";
+    for (const model of models) {
+      try {
+        const form = new FormData();
+        // Sao chép sang ArrayBuffer thuần để tương thích kiểu BlobPart.
+        const buf = new ArrayBuffer(bytes.byteLength);
+        new Uint8Array(buf).set(bytes);
+        form.append("file", new Blob([buf], { type }), `speech.${ext}`);
+        form.append("model", model);
+        form.append("language", "vi");
+        form.append("task", "transcribe");
+        form.append("temperature", "0");
+        const res = await fetch(`${GROQ_BASE_URL}/audio/transcriptions`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${groqKey}` },
+          body: form,
+          signal: AbortSignal.timeout(30_000),
+        });
+        if (!res.ok) {
+          const detail = await res.text().catch(() => "");
+          lastError = `${model}: HTTP ${res.status} ${detail.slice(0, 140)}`;
+          continue;
+        }
+        const json = (await res.json()) as { text?: string };
+        const text = (json.text ?? "").trim();
+        if (text) return { ok: true as const, text };
+        lastError = `${model}: phản hồi không có văn bản`;
+      } catch (err) {
+        lastError = `${model}: ${err instanceof Error ? err.message : String(err)}`;
+      }
+    }
+    console.error(`[aiChat] chép lời nói thất bại — ${lastError}`);
+    return { ok: false as const, message: "Không nhận dạng được giọng nói." };
+  },
+});
+
+/* ------------------------------------------------------------------ */
 /* Danh sách nhà cung cấp AI — ưu tiên tốc độ, fallback chỉ khi cần     */
 /* ------------------------------------------------------------------ */
 
