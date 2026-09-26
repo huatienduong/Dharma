@@ -10,14 +10,22 @@ import {
   BUDDHIST_YEAR_OFFSET,
   LUNAR_MONTHS,
   eventsFor,
+  isVegetarianDay,
   lunarDateText,
   moonPhase,
   practiceFor,
   toLunar,
+  upcomingEvents,
   type LunarDate,
 } from "@/lib/buddhistCalendar";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  Sprout,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 /** Thứ tự cột: thứ Hai → Chủ Nhật. */
@@ -110,6 +118,9 @@ export function BuddhistCalendarScreen({ onClose }: { onClose: () => void }) {
     viewMonth,
   ]);
 
+  /** Ba ngày lễ Phật giáo sắp tới kể từ hôm nay. */
+  const nextFeasts = useMemo(() => upcomingEvents(todayLunar, 3), [todayLunar]);
+
   /** Lùi hoặc tiến một tháng dương lịch. */
   const moveMonth = (delta: number) => {
     const d = new Date(viewYear, viewMonth - 1 + delta, 1);
@@ -161,6 +172,12 @@ export function BuddhistCalendarScreen({ onClose }: { onClose: () => void }) {
               </span>
             </div>
           </div>
+          {isVegetarianDay(todayLunar) && (
+            <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-[12px] text-foreground">
+              <Sprout className="h-3.5 w-3.5 text-primary" />
+              Hôm nay là ngày ăn chay
+            </p>
+          )}
         </section>
 
         {/* Ngày đang chọn: lễ + gợi ý thực tập */}
@@ -177,7 +194,12 @@ export function BuddhistCalendarScreen({ onClose }: { onClose: () => void }) {
               {selectedEvents.map((e) => (
                 <li
                   key={e.name}
-                  className="rounded-2xl border border-primary/30 bg-primary/10 px-3 py-2"
+                  className={cn(
+                    "rounded-2xl border px-3 py-2",
+                    e.major
+                      ? "border-primary/50 bg-primary/15"
+                      : "border-border/60 bg-background/40",
+                  )}
                 >
                   <p className="text-[14px] font-semibold text-foreground">
                     {e.name}
@@ -208,6 +230,28 @@ export function BuddhistCalendarScreen({ onClose }: { onClose: () => void }) {
             </div>
           )}
         </section>
+
+        {/* Lễ Phật giáo sắp tới */}
+        {nextFeasts.length > 0 && (
+          <section className="mt-3 rounded-3xl border border-border/60 bg-card/60 p-4">
+            <p className="text-[12px] uppercase tracking-[0.18em] text-muted-foreground">
+              Lễ sắp tới
+            </p>
+            <ul className="mt-2 space-y-1.5">
+              {nextFeasts.map((e) => (
+                <li key={`${e.lunar}-${e.name}`} className="flex items-baseline gap-2">
+                  <span className="w-[74px] shrink-0 text-[12px] text-muted-foreground">
+                    {e.date.getDate()}/{e.date.getMonth() + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 text-[13px] text-foreground">
+                    {e.name}
+                    <span className="text-muted-foreground"> ({e.lunar})</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* ---------- Lịch tháng ---------- */}
         <section className="mt-3 rounded-3xl border border-border/60 bg-card/60 p-3">
@@ -245,6 +289,7 @@ export function BuddhistCalendarScreen({ onClose }: { onClose: () => void }) {
             {cells.map((l, i) => {
               if (!l) return <span key={`blank-${i}`} />;
               const events = eventsFor(l);
+              const isMajor = events.some((e) => e.major);
               const isToday = dayKey(l) === dayKey(todayLunar);
               const isSelected = dayKey(l) === dayKey(selectedLunar);
               return (
@@ -254,9 +299,11 @@ export function BuddhistCalendarScreen({ onClose }: { onClose: () => void }) {
                   onClick={() => setSelected(new Date(l.solarYear, l.solarMonth - 1, l.solarDay))}
                   className={cn(
                     "flex aspect-square flex-col items-center justify-center rounded-2xl border text-[13px] transition",
-                    events.length > 0
-                      ? "border-primary/40 bg-primary/10 font-semibold text-foreground"
-                      : "border-transparent text-foreground/85 hover:bg-accent",
+                    isMajor
+                      ? "border-primary/50 bg-primary/15 font-bold text-foreground"
+                      : events.length > 0
+                        ? "border-primary/40 bg-primary/10 font-semibold text-foreground"
+                        : "border-transparent text-foreground/85 hover:bg-accent",
                     isSelected && "border-primary/70 bg-primary/20",
                     isToday && "ring-1 ring-primary/60",
                   )}
@@ -272,9 +319,11 @@ export function BuddhistCalendarScreen({ onClose }: { onClose: () => void }) {
                   >
                     {l.day === 1
                       ? `${LUNAR_MONTHS[l.month - 1] ?? ""}${l.isLeap ? " nhuận" : ""}`
-                      : events.length > 0
-                        ? "•"
-                        : ""}
+                      : isMajor
+                        ? "★"
+                        : events.length > 0
+                          ? "•"
+                          : ""}
                   </span>
                 </button>
               );
@@ -283,7 +332,8 @@ export function BuddhistCalendarScreen({ onClose }: { onClose: () => void }) {
 
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2 px-1">
             <span className="text-[12px] text-muted-foreground">
-              Chữ nhỏ dưới ngày 1 là tên tháng âm; dấu • là ngày có lễ.
+              Chữ nhỏ dưới ngày 1 là tên tháng âm; ★ là ngày lễ lớn, • là ngày
+              có lễ.
             </span>
             {!isViewThisMonth && (
               <button
