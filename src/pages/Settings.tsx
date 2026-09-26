@@ -1,6 +1,7 @@
 import { api } from "@/convex/_generated/api";
 import { LegalDocs } from "@/components/LegalDocs";
 import { wipeSecureStorage } from "@/lib/secureStorage";
+import { clearVideoProgress } from "@/lib/videoProgress";
 import {
   APP_DEVELOPER,
   APP_NAME,
@@ -247,6 +248,8 @@ export default function Settings() {
       // wipeSecureStorage xóa cả khóa mã hóa → dữ liệu mã hóa cũ không thể đọc lại.
       localStorage.removeItem("ds-assistant-voice");
       wipeSecureStorage();
+      // Xoá luôn danh sách video đã xem đến đâu.
+      clearVideoProgress();
     } catch {
       /* bỏ qua */
     }

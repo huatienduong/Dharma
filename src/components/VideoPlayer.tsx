@@ -11,6 +11,10 @@
  * kèm Media Session API để hệ điều hành hiện tên bài và nút điều khiển.
  */
 
+import {
+  getVideoProgress,
+  rememberVideoProgress,
+} from "@/lib/videoProgress";
 import { formatTime, resolveDirectStream } from "@/lib/videoStream";
 import type { VideoInfo } from "@/lib/videoIntent";
 import { cn } from "@/lib/utils";
@@ -62,6 +66,9 @@ export function VideoPlayer({
   /** Thu nhỏ: video thu gọn ở góc màn hình, vẫn phát. */
   const [mini, setMini] = useState(false);
   const [chrome, setChrome] = useState(true);
+  /** Vị trí đã xem trước đó (giây) — 0 = xem từ đầu. */
+  const [resumeAt, setResumeAt] = useState(0);
+  const resumedRef = useRef(false);
 
   // 1) Lấy nguồn phát trực tiếp (không phụ thuộc YouTube).
   useEffect(() => {
@@ -87,6 +94,19 @@ export function VideoPlayer({
       alive = false;
       ctl.abort();
     };
+  }, [video.videoId]);
+
+  // 1b) Nhớ đã xem đến đâu: mở lại video thì nhảy thẳng về chỗ đang dừng.
+  useEffect(() => {
+    resumedRef.current = false;
+    void (async () => {
+      const saved = await getVideoProgress(video.videoId).catch(() => null);
+      if (!saved || saved.position < 10) {
+        setResumeAt(0);
+        return;
+      }
+      setResumeAt(saved.position);
+    })();
   }, [video.videoId]);
 
   // 2) Media Session: để hệ điều hành điều khiển khi ứng dụng chạy nền.
@@ -179,6 +199,26 @@ export function VideoPlayer({
     el.currentTime = v;
     setTime(v);
   };
+
+  /** Ghi nhớ ngay khi người dùng tua, dừng hoặc đóng (không chờ timer). */
+  const saveNow = useCallback(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    rememberVideoProgress(video.videoId, el.currentTime, el.duration || 0);
+  }, [video.videoId]);
+
+  useEffect(() => {
+    return () => {
+      const el = videoRef.current;
+      if (el) {
+        rememberVideoProgress(
+          video.videoId,
+          el.currentTime,
+          el.duration || 0,
+        );
+      }
+    };
+  }, [video.videoId]);
 
   const openPip = async () => {
     const el = videoRef.current;
@@ -279,6 +319,14 @@ export function VideoPlayer({
           onLoadedMetadata={(e) => {
             setDuration(e.currentTarget.duration);
             setLoading(false);
+            if (!resumedRef.current && resumeAt > 0) {
+              const total = e.currentTarget.duration || 0;
+              // Chỉ nhảy về chỗ cũ nếu video còn dài và chưa xem gần hết.
+              if (total > resumeAt + 10) {
+                e.currentTarget.currentTime = resumeAt;
+                resumedRef.current = true;
+              }
+            }
             // Bật tiếng sau cú chạm đầu tiên của người dùng.
             e.currentTarget.volume = muted ? 0 : volume;
             void e.currentTarget.play().catch(() => {});
@@ -300,6 +348,25 @@ export function VideoPlayer({
           <p className="absolute inset-x-6 text-center text-[14px] leading-relaxed text-white/85">
             {error}
           </p>
+        ) : null}
+
+        {/* Đã xem đến đâu: nhảy về chỗ cũ, cho phép xem lại từ đầu */}
+        {chrome && !mini && resumeAt > 0 && time < resumeAt - 2 ? (
+          <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-center bg-gradient-to-b from-black/70 to-transparent p-3">
+            <span className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 text-[12px] text-white">
+              Đã xem đến {formatTime(resumeAt)}
+              <button
+                type="button"
+                onClick={() => {
+                  seek(0);
+                  setResumeAt(0);
+                }}
+                className="rounded-full bg-white/20 px-2 py-0.5 transition hover:bg-white/30"
+              >
+                Xem lại từ đầu
+              </button>
+            </span>
+          </div>
         ) : null}
 
         {/* Tiêu đề: chỉ tên video, không có tên kênh hay nhãn YouTube */}
@@ -362,7 +429,10 @@ export function VideoPlayer({
 
             <button
               type="button"
-              onClick={() => seek(Math.max(0, time - 10))}
+              onClick={() => {
+                saveNow();
+                seek(Math.max(0, time - 10));
+              }}
               className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/15"
               aria-label="Lùi 10 giây"
               title="Lùi 10 giây"
@@ -371,7 +441,10 @@ export function VideoPlayer({
             </button>
             <button
               type="button"
-              onClick={() => seek(Math.min(duration || 0, time + 10))}
+              onClick={() => {
+                saveNow();
+                seek(Math.min(duration || 0, time + 10));
+              }}
               className="flex h-9 w-9 items-center justify-center rounded-full transition hover:bg-white/15"
               aria-label="Tiến 10 giây"
               title="Tiến 10 giây"

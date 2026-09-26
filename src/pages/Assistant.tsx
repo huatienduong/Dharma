@@ -31,13 +31,6 @@ import {
   type Msg,
 } from "@/lib/chatHelpers";
 import { callConvexAction } from "@/lib/convexAction";
-import {
-  aiInvitesVideo,
-  isVideoRequest,
-  type VideoInfo,
-} from "@/lib/videoIntent";
-import { keepBuddhistVideos } from "@/lib/buddhistVideoFilter";
-import { searchVideoInBrowser } from "@/lib/videoSearchClient";
 import { getDeviceMeta } from "@/lib/deviceSecurity";
 import { wantsImage } from "@/lib/imageIntent";
 import { APP_VERSION } from "@/lib/version";
@@ -216,71 +209,6 @@ export default function Assistant() {
   // hook trả về — dùng ref để không đụng tới mảng deps của useCallback.
   const speakThenListenRef = useRef<(text: string) => void>(() => {});
 
-
-  /**
-   * GẮN DANH SÁCH VIDEO VÀO CÂU TRẢ LỜI — người dùng chỉ cần nhắn "tôi
-   * muốn xem video về …", AI trả lời xong ứng dụng tự tìm video YouTube và
-   * gắn tối đa 3 video đề xuất vào đúng câu đó trong khung chat; bấm video nào
-   * thì phát ngay tại chỗ. Chạy nền, không chặn câu trả lời.
-   *
-   * Hai đường tìm, thử theo thứ tự: máy chủ Convex (YouTube Data API, có
-   * khoá → tên kênh + thời lượng chuẩn), rồi mới tới tìm trực tiếp trong
-   * trình duyệt (Invidious) để tính năng vẫn chạy khi máy chủ chưa sẵn sàng.
-   */
-  const attachVideo = useCallback(
-    (query: string, replyTs: number, replyText: string) => {
-      // Hai đường kích hoạt: người dùng hỏi/dán link về video, HOẶC chính
-      // Trợ lý đã mời xem video trong câu trả lời — thì phải tìm và gắn
-      // video, nếu không lời hứa trong câu trả lời sẽ hụt.
-      if (!isVideoRequest(query) && !aiInvitesVideo(replyText)) return;
-      let warned = false;
-      void (async () => {
-        const apply = (list: VideoInfo[]) => {
-          // Chỉ gắn video về Phật giáo — nội dung khác không hiển thị.
-          const videos = keepBuddhistVideos(list).slice(0, 3);
-          if (!videos.length) return false;
-          // Sửa đúng câu trả lời đang chờ; nếu người dùng đã xoá hội thoại
-          // thì `ts` không còn trong lịch sử → không làm gì cả.
-          const nextHistory = historyRef.current.map((m) =>
-            m.ts === replyTs
-              ? { ...m, videos, videoQuery: query.trim() }
-              : m,
-          );
-          if (nextHistory === historyRef.current) return false;
-          historyRef.current = nextHistory;
-          setHistory(nextHistory);
-          void saveLocalChatSecure(nextHistory);
-          return true;
-        };
-
-        // 1. Máy chủ Convex (có khoá API YouTube).
-        try {
-          const res = await callConvexAction<{
-            ok: boolean;
-            videos: VideoInfo[];
-            message?: string;
-          }>("videoSearch:find", { query }, 20_000);
-          if (res?.ok && apply(res.videos)) return;
-          if (res?.message && !warned) {
-            warned = true;
-            toast.info(res.message);
-          }
-        } catch (err) {
-          console.warn("[video] máy chủ chưa sẵn sàng, thử tìm trực tiếp:", err);
-        }
-
-        // 2. Dự phòng: tìm ngay trong trình duyệt (dán link là xem được
-        // luôn; ngoài ra thử server Invidious công khai).
-        const local = await searchVideoInBrowser(query).catch(() => []);
-        if (apply(local)) return;
-        if (!warned) {
-          warned = true;
-          toast.info("Chưa tìm được video về chủ đề này nhé.");
-        }
-      })();
-    },
-    [],
-  );
 
   const call = useCallSession({
     micSupported,
@@ -826,9 +754,6 @@ export default function Assistant() {
           const nextHistory = [...historyRef.current, messageToSave, replyMsg];
           historyRef.current = nextHistory;
           setHistory(nextHistory);
-          // Người dùng hỏi về video (hoặc dán link) → sau khi trả lời xong,
-          // tự tìm video và gắn thẻ xem vào đúng câu này.
-          attachVideo(userMsg.content, replyMsg.ts, replyMsg.content);
           // Tải sẵn âm thanh câu trả lời này (chạy nền, không phát gì) để
           // khi người dùng bấm nút loa là có tiếng ngay, không phải chờ
           // máy chủ tổng hợp TTS.

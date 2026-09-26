@@ -6,11 +6,9 @@
  */
 
 import { BotAvatar } from "@/components/BotAvatar";
-import { VideoListCard } from "@/components/VideoListCard";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { formatTs, plainText, type Msg } from "@/lib/chatHelpers";
-import type { VideoInfo } from "@/lib/videoIntent";
 import { cn } from "@/lib/utils";
 import { useQuery } from "convex/react";
 import {
@@ -96,8 +94,6 @@ export function ChatThread({
             grouped={grouped}
             image={m.image}
             imageStorageId={m.imageStorageId}
-            videos={m.videos}
-            videoQuery={m.videoQuery}
             onSpeak={() => onSpeakMessage(m)}
             speaking={readingTs === m.ts}
             loading={loadingTs === m.ts}
@@ -188,8 +184,6 @@ export function AssistantMessage({
   grouped,
   image,
   imageStorageId,
-  videos,
-  videoQuery,
   onSpeak,
   speaking,
   loading,
@@ -201,10 +195,6 @@ export function AssistantMessage({
   image?: { base64: string; mime: string };
   /** storageId ảnh AI tạo trong Convex File Storage */
   imageStorageId?: string;
-  /** Danh sách video YouTube đề xuất — hiện ngay dưới câu trả lời */
-  videos?: VideoInfo[];
-  /** Chủ đề đã tìm, hiện trên đầu danh sách video. */
-  videoQuery?: string;
   /**
    * Bấm nút loa → đọc to câu này (bấm lại khi đang đọc thì dừng).
    * Không truyền (undefined) thì không hiện nút — dùng cho câu đang hiện dần
@@ -274,9 +264,6 @@ export function AssistantMessage({
         <div className="inline-block max-w-full whitespace-pre-wrap break-words rounded-3xl rounded-bl-md border border-border/50 bg-card px-4 py-2.5 text-[18px] leading-[1.8] text-foreground/95 shadow-sm sm:text-[19px]">
           {text}
         </div>
-        {videos && videos.length > 0 && (
-          <VideoListCard query={videoQuery ?? ""} videos={videos} />
-        )}
         <div className="mt-1 flex items-center gap-1 pl-2 text-[12px] text-muted-foreground/70">
           <span>{formatTs(ts)}</span>
           {onSpeak && (
