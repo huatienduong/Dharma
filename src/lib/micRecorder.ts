@@ -20,6 +20,7 @@ let chunks: BlobPart[] = [];
 let stream: MediaStream | null = null;
 let levelCtx: AudioContext | null = null;
 let levelRaf = 0;
+let levelResume: (() => void) | null = null;
 
 export function isMicRecordingSupported(): boolean {
   return (
@@ -47,6 +48,10 @@ function releaseStream() {
     cancelAnimationFrame(levelRaf);
     levelRaf = 0;
   }
+  if (levelResume) {
+    window.removeEventListener("visibilitychange", levelResume);
+    levelResume = null;
+  }
   void levelCtx?.close().catch(() => {});
   levelCtx = null;
   stream?.getTracks().forEach((t) => t.stop());
@@ -65,12 +70,25 @@ function startLevelMeter(media: MediaStream, onLevel: MicLevelFn) {
   if (!Ctor) return;
   try {
     const ctx = new Ctor();
+    // iOS/Safari tạo AudioContext ở trạng thái suspended nếu không có cử chỉ
+    // người dùng → AnalyserNode không chạy, đo mức luôn 0 và câu nói bị bỏ.
+    if (ctx.state === "suspended") void ctx.resume().catch(() => {});
     const source = ctx.createMediaStreamSource(media);
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 1024;
     source.connect(analyser);
     const data = new Uint8Array(analyser.frequencyBinCount);
     levelCtx = ctx;
+    const resumeTick = () => {
+      // Rời bàn phím / quay lại tab: requestAnimationFrame bị dừng nên đo mức
+      // chết theo. Bật lại để câu nói vẫn được chốt đúng nhịp.
+      if (!levelRaf && document.visibilityState === "visible") {
+        if (ctx.state === "suspended") void ctx.resume().catch(() => {});
+        tick();
+      }
+    };
+    levelResume = resumeTick;
+    window.addEventListener("visibilitychange", resumeTick);
     const tick = () => {
       analyser.getByteTimeDomainData(data);
       let sum = 0;

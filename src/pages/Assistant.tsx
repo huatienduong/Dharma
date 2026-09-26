@@ -305,6 +305,8 @@ export default function Assistant() {
     "listening" | "thinking" | "speaking" | "muted"
   >("listening");
   const [interim, setInterim] = useState("");
+  /** Số lần thử lại khi trợ lý còn đang bận (để không bỏ rơi câu nói). */
+  const busyWaitsRef = useRef(0);
 
   /** Im lặng bao lâu thì coi là nói xong (ms) — chống cắt cụt "Xin chào". */
   const CALL_SILENCE_MS = 1000;
@@ -764,9 +766,13 @@ export default function Assistant() {
         return;
       }
       if (busyRef.current || sendingRef.current) {
-        window.setTimeout(() => startListeningRef.current(), 600);
+        // Trợ lý còn đang trả lời: thử lại nhiều lần thay vì một lần rồi bỏ.
+        if (++busyWaitsRef.current <= 10) {
+          window.setTimeout(() => startListeningRef.current(), 500);
+        }
         return;
       }
+      busyWaitsRef.current = 0;
       // Lời chào/cảm ơn thuần → đáp ngay, khỏi chờ chép lại rồi gọi AI.
       const fast = smallTalkReply(text);
       if (fast) {
@@ -794,6 +800,9 @@ export default function Assistant() {
       return;
     }
     try {
+      // Bỏ onend của phiên cũ TRƯỚC khi hủy: nếu không, onend của phiên cũ
+      // chạy và chốt nhầm câu của phiên mới.
+      if (recRef.current) recRef.current.onend = null;
       recRef.current?.abort();
     } catch {
       /* noop */
@@ -828,6 +837,10 @@ export default function Assistant() {
       if (micSupported) {
         micDeniedRef.current = false;
         setCallStatus("listening");
+        // Báo người dùng biết đang dùng nhánh ghi âm, không phải bị treo.
+        toast.info(
+          "Trình duyệt không nhận dạng giọng nói trực tiếp — Trợ lý đang ghi âm rồi chép lại, bạn cứ nói bình thường.",
+        );
         startRecordOnly();
       } else {
         micDeniedRef.current = true;
@@ -843,9 +856,13 @@ export default function Assistant() {
     let pendingBuf = "";
     let lastSpeechAt = 0;
     let speechStartedAt = 0;
+    let lastEventAt = 0;
+    let sessionStartedAt = 0;
     let commitTimer: number | null = null;
     let committed = false;
     let waitRetries = 0;
+    let watchdog = 0;
+    let errorStreak = 0;
     // Đo âm lượng: dự phòng cho trình duyệt không có/không nghe được Web
     // Speech — khi đó người dùng nói xong vẫn chốt câu để Whisper tự nghe.
     let loudSince = 0;
@@ -856,6 +873,29 @@ export default function Assistant() {
         window.clearTimeout(commitTimer);
         commitTimer = null;
       }
+    };
+    const stopWatchdog = () => {
+      if (watchdog) {
+        window.clearInterval(watchdog);
+        watchdog = 0;
+      }
+    };
+    // Dựng lại phiên nghe khi trình duyệt treo hoặc báo lỗi tạm. Đây là
+    // nguyên nhân "nói mà trợ lý không nghe": phiên nghe chết âm thầm.
+    const restartSession = () => {
+      if (committed || !callActiveRef.current) return;
+      stopWatchdog();
+      try {
+        rec.onend = null;
+        rec.onerror = null;
+        rec.abort();
+      } catch {
+        /* noop */
+      }
+      recRef.current = null;
+      window.setTimeout(() => {
+        if (callActiveRef.current && !committed) startListeningRef.current();
+      }, 350);
     };
 
     // Chốt câu: dừng ghi âm rồi chép lại bằng Whisper (chính xác hơn bản nghe
@@ -871,6 +911,7 @@ export default function Assistant() {
       finalBuf = "";
       pendingBuf = "";
       recRef.current = null;
+      stopWatchdog();
       try {
         rec.onend = null;
         rec.stop();
@@ -936,6 +977,7 @@ export default function Assistant() {
     };
 
     rec.onstart = () => {
+      errorStreak = 0;
       lastAssistantEventAtRef.current = Date.now();
       if (callActiveRef.current) setCallStatus("listening");
     };
@@ -948,6 +990,8 @@ export default function Assistant() {
       }
       pendingBuf = pending;
       const now = Date.now();
+      errorStreak = 0;
+      lastEventAt = now;
       if (!lastSpeechAt) speechStartedAt = now;
       lastSpeechAt = now;
       // Nối dấu thay vì ghi đè, để câu hiện ra đúng như đang nói.
@@ -955,14 +999,28 @@ export default function Assistant() {
       scheduleCommit();
     };
     rec.onerror = (e) => {
-      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+      const code = e.error ?? "";
+      if (code === "not-allowed" || code === "service-not-allowed") {
         micDeniedRef.current = true;
         setCallStatus("muted");
         toast.error("Cần cấp quyền micro để đàm thoại bằng giọng nói.");
+        return;
       }
+      // Lỗi tạm (no-speech / aborted / network / audio-capture): mở lại phiên
+      // nghe. Trước đây im lặng bỏ qua → micro như bị treo.
+      if (Date.now() - sessionStartedAt < 800 && ++errorStreak > 4) {
+        micDeniedRef.current = true;
+        setCallStatus("muted");
+        toast.error(
+          "Trình duyệt không nhận dạng được giọng nói. Hãy dùng Chrome/Safari mới nhất.",
+        );
+        return;
+      }
+      restartSession();
     };
     rec.onend = () => {
       recRef.current = null;
+      stopWatchdog();
       cancelCommit();
       // Trình duyệt tự kết thúc phiên nghe: vẫn chốt câu đang dở nếu có.
       if (!committed) commit();
@@ -980,6 +1038,19 @@ export default function Assistant() {
       }
     };
     recRef.current = rec;
+    sessionStartedAt = Date.now();
+    lastEventAt = sessionStartedAt;
+    // Bảo vệ: Chrome/Safari đôi khi treo phiên nghe mà không báo lỗi. Không có
+    // gì trong 12 giây → tự dựng lại phiên nghe để không "chết âm thầm".
+    stopWatchdog();
+    watchdog = window.setInterval(() => {
+      if (committed || !callActiveRef.current) return;
+      // Đang có tiếng (đo được) → để đo mức lo, không dựng lại phiên nghe.
+      if (loudSince) return;
+      if (Date.now() - lastEventAt < 12_000) return;
+      lastEventAt = Date.now();
+      restartSession();
+    }, 2000);
     try {
       rec.start();
       // Ghi âm song song: sau khi có câu, chép lại bằng Whisper cho chính xác.
