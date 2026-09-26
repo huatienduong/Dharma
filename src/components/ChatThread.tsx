@@ -15,6 +15,7 @@ import {
   Check,
   Copy,
   Loader2,
+  PhoneCall,
   Share2,
   Square,
   Undo2,
@@ -49,6 +50,8 @@ export type ChatThreadProps = {
   readingTs: number | null;
   /** Mốc thời gian của câu đang chờ máy chủ tổng hợp giọng — null = không chờ. */
   loadingTs: number | null;
+  /** Tóm tắt cuộc gọi vừa kết thúc — dòng ghi chú trong hội thoại. */
+  callSummary: { at: number; durationMs: number } | null;
 };
 
 export function ChatThread({
@@ -66,10 +69,12 @@ export function ChatThread({
   onSpeakMessage,
   readingTs,
   loadingTs,
+  callSummary,
 }: ChatThreadProps) {
   // Chưa có tin nhắn nào: để trống hoàn toàn, vào thẳng khung chat. Lời
-  // chào và danh sách câu hỏi đề xuất đã được gỡ theo yêu cầu.
-  if (isEmpty) return null;
+  // chào và danh sách câu hỏi đề xuất đã được gỡ theo yêu cầu. Riêng dòng
+  // tóm tắt cuộc gọi thì vẫn hiện, vì đó là thông tin người dùng cần thấy.
+  if (isEmpty && !callSummary) return null;
 
   return (
     <div className="mx-auto w-full max-w-3xl px-3 pb-8 pt-3 sm:px-4 [&>*:first-child]:mt-0">
@@ -174,6 +179,44 @@ export function ChatThread({
       {busy && streamingReply === null && imageProgress === null && (
         <AssistantThinking />
       )}
+      {callSummary && <CallSummaryLine summary={callSummary} />}
+    </div>
+  );
+}
+
+/** "14:32" — giờ kết thúc cuộc gọi, theo giờ địa phương. */
+function callEndTime(at: number) {
+  const d = new Date(at);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+/** "01:23" — thời lượng cuộc gọi (phút:giây). */
+function callDuration(durationMs: number) {
+  const total = Math.max(0, Math.round(durationMs / 1000));
+  const mm = String(Math.floor(total / 60)).padStart(2, "0");
+  const ss = String(total % 60).padStart(2, "0");
+  return `${mm}:${ss}`;
+}
+
+/**
+ * DÒNG GHI CHÚ CUỘC GỌI — hiện ngay trong hội thoại sau khi kết thúc đàm
+ * thoại: giờ kết thúc + thời lượng. Không lưu vào lịch sử hội thoại và không
+ * gửi lên AI; chỉ để người dùng nhìn lại vừa nói chuyện bao lâu.
+ */
+function CallSummaryLine({ summary }: { summary: { at: number; durationMs: number } }) {
+  return (
+    <div className="mt-4 flex justify-center">
+      <div className="flex max-w-full items-center gap-2 rounded-full border border-border/60 bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
+        <PhoneCall className="h-3.5 w-3.5 shrink-0 text-primary" />
+        <span className="truncate">
+          Cuộc gọi đã kết thúc lúc {callEndTime(summary.at)} • Thời lượng{" "}
+          <span className="tabular-nums text-foreground/85">
+            {callDuration(summary.durationMs)}
+          </span>
+        </span>
+      </div>
     </div>
   );
 }

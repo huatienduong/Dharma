@@ -148,6 +148,8 @@ export default function Assistant() {
    * thì vòng quay, đang đọc thì nút vuông dừng.
    */
   const [loadingTs, setLoadingTs] = useState<number | null>(null);
+  /** Tóm tắt cuộc gọi vừa kết thúc (giờ kết thúc + thời lượng). */
+  const [callSummary, setCallSummary] = useState<{ at: number; durationMs: number } | null>(null);
   const loadingTsRef = useRef<number | null>(null);
 
   const markReading = useCallback((ts: number | null) => {
@@ -226,6 +228,7 @@ export default function Assistant() {
     busyRef,
     setBusy,
     getVoiceId: () => voiceIdRef.current,
+    onCallEnded: (info) => setCallSummary(info),
   });
   const {
     callOpen,
@@ -1000,6 +1003,7 @@ export default function Assistant() {
     setPending([]);
     setHistory([]);
     setFailedReply(null);
+    setCallSummary(null);
     setFiles([]);
     clearLocalChat();
     toast.success("Đã xóa hội thoại.");
@@ -1194,6 +1198,7 @@ export default function Assistant() {
           onSpeakMessage={speakMessage}
           readingTs={readingTs}
           loadingTs={loadingTs}
+          callSummary={callOpen ? null : callSummary}
         />
       </div>
 

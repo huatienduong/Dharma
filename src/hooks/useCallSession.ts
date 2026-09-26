@@ -65,6 +65,11 @@ export type CallDeps = {
   setBusy: (v: boolean) => void;
   /** Lấy giọng đọc người dùng đã chọn. */
   getVoiceId: () => string;
+  /**
+   * Báo giờ kết thúc và thời lượng cuộc gọi vừa rồi — trang hiển thị thành
+   * một dòng ghi chú trong khung chat.
+   */
+  onCallEnded?: (info: { at: number; durationMs: number }) => void;
 };
 
 export function useCallSession(deps: CallDeps) {
@@ -80,6 +85,7 @@ export function useCallSession(deps: CallDeps) {
     busyRef,
     setBusy,
     getVoiceId,
+    onCallEnded,
   } = deps;
 
   const [callOpen, setCallOpen] = useState(false);
@@ -177,6 +183,8 @@ export function useCallSession(deps: CallDeps) {
   const startListeningRef = useRef<() => void>(() => {});
   /** Gọi kết thúc cuộc gọi từ trong `handleUtterance` (định nghĩa sau đó). */
   const endCallRef = useRef<() => void>(() => {});
+  /** Mốc mở cuộc gọi (0 = chưa mở) — dùng tính thời lượng khi kết thúc. */
+  const callStartedAtRef = useRef(0);
 
   /** Gọi xong lượt đọc: trả trạng thái về "đang nghe" và mở lại mic. */
   const finishSpeaking = useCallback((spoken: string) => {
@@ -739,12 +747,21 @@ export function useCallSession(deps: CallDeps) {
     setInterim("");
     setCallStatus("listening");
     setCallOpen(true);
+    callStartedAtRef.current = Date.now();
     callActiveRef.current = true;
     lastAssistantEventAtRef.current = Date.now();
     window.setTimeout(() => startListeningRef.current(), 400);
   }, [busyRef, micSupported, primeSpeechAudio, stopSpeaking]);
 
   const endCall = useCallback(() => {
+    // Báo trước khi dọn trạng thái: cần đúng giờ kết thúc + thời lượng để
+    // trang ghi dòng tóm tắt vào khung chat.
+    const startedAt = callStartedAtRef.current;
+    if (startedAt) {
+      callStartedAtRef.current = 0;
+      const at = Date.now();
+      onCallEnded?.({ at, durationMs: Math.max(0, at - startedAt) });
+    }
     callActiveRef.current = false;
     sessionLiveRef.current = false;
     // Vô hiệu thẻ của mọi phiên đang chờ → callback cũ tự bỏ qua.
@@ -771,7 +788,7 @@ export function useCallSession(deps: CallDeps) {
     setInterim("");
     setCallOpen(false);
     setCallStatus("listening");
-  }, [stopSpeaking]);
+  }, [stopSpeaking, onCallEnded]);
 
   // Nối `endCall` cho `handleUtterance` dùng khi nghe lệnh xoá hội thoại.
   useEffect(() => {
