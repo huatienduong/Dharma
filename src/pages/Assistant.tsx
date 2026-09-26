@@ -1176,8 +1176,9 @@ export default function Assistant() {
           !isEmpty && image && "pb-48",
         )}
       >
-        {/* Hội thoại trống: chỉ logo robot + lời chào. */}
-        {isEmpty && <HomeGreeting />}
+        {/* Hội thoại trống: chỉ logo robot + lời chào. Nội dung nâng lên
+            theo bàn phím để không bị khung nhập che. */}
+        {isEmpty && <HomeGreeting keyboardInset={vv.keyboardInset} />}
         <ChatThread
           messages={messages}
           isEmpty={isEmpty}

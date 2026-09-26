@@ -10,9 +10,19 @@
 
 import { BotAvatar } from "@/components/BotAvatar";
 
-export function HomeGreeting() {
+export function HomeGreeting({
+  /** Chiều cao bàn phím ảo đang che (px); dùng để nâng nội dung lên. */
+  keyboardInset = 0,
+}: {
+  keyboardInset?: number;
+}) {
   return (
-    <div className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center gap-6 overflow-hidden text-center">
+    <div
+      // Bàn phím bật thì khung nhập nổi lên che phần dưới — đệm đáy bằng
+      // đúng chiều cao bàn phím để logo và chữ luôn nằm trong vùng nhìn.
+      style={keyboardInset ? { paddingBottom: keyboardInset } : undefined}
+      className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center gap-6 overflow-hidden text-center"
+    >
       {/* ---------- Logo robot ---------- */}
       <div className="relative flex shrink-0 items-center justify-center">
         <span
