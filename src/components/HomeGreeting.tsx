@@ -34,7 +34,7 @@ export function HomeGreeting({
           Xin chào, mình là Trợ lý Phật học
         </h1>
         <p className="mt-2 text-base font-bold text-primary sm:text-lg">
-          Bạn cần được hỗ trợ gì?
+          Bạn có thể đặt câu hỏi và yêu cầu trợ giúp ngay bây giờ nha.
         </p>
       </div>
     </div>
