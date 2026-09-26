@@ -42,7 +42,12 @@ export type CallDeps = {
   /** Đọc to (server TTS trước, rồi tới giọng trình duyệt). */
   speak: (
     text: string,
-    opts?: { voice?: string | null; onDone?: () => void },
+    opts?: {
+      voice?: string | null;
+      onDone?: () => void;
+      /** Báo lúc ÂM THANH BẮT ĐẦU phát (không phải lúc bắt đầu gọi máy chủ). */
+      onStart?: () => void;
+    },
   ) => Promise<void> | void;
   /** Dừng mọi âm thanh đang phát. */
   stopSpeaking: () => void;
@@ -134,6 +139,20 @@ export function useCallSession(deps: CallDeps) {
   const lastAssistantEventAtRef = useRef(0);
   const recRef = useRef<RecLike | null>(null);
   /**
+   * Đang ở nhánh DỰ PHÒNG: không có Web Speech, chỉ ghi âm rồi chép lại bằng
+   * Whisper. Khi đó phiên nghe vẫn “sống” (micro đang mở) nên phải đánh dấu
+   * riêng — nếu không, lớp giám sát 5s cứ gọi lại `startListening` và dựng
+   * phiên mới liên tục.
+   */
+  const recordOnlyRef = useRef(false);
+  /**
+   * Đang ở bước ghi âm → chép lại (Whisper). Nếu bước này treo (mạng lỗi, tab
+   * bị đưa ra sau) thì cuộc gọi đứng ở “đang nghĩ” và micro không bao giờ mở
+   * lại — người dùng tưởng Trợ lý “không nghe”.
+   */
+  const transcribingRef = useRef(false);
+  const transcribeSinceRef = useRef(0);
+  /**
    * Phiên nghe hiện tại còn sống không.
    *
    * QUAN TRỌNG: trước đây mọi lớp giám sát (3s, 5s, 12s) đều gọi thẳng vào
@@ -207,14 +226,20 @@ export function useCallSession(deps: CallDeps) {
       // giọng trợ lý thành câu hỏi của người dùng.
       aiQuietUntilRef.current = Date.now() + CALL_ECHO_GUARD_MS;
       const onDone = () => finishSpeaking(text);
+      // Đồng hồ canh phải đo THỜI GIAN PHÁT, không phải thời gian chờ máy
+      // chủ: TTS mất vài giây, nếu tính luôn vào 25s thì câu trả lời dài bị
+      // cắt giữa chừng và người dùng nghe được nửa câu rồi micro lại mở.
+      const onStart = () => {
+        speakSinceRef.current = Date.now();
+      };
       // ĐỒNG HỒ CANH: dù bất kỳ lý do nào (Web Speech nuốt lệnh đọc,
       // AudioContext bị khoá, máy chủ TTS im) khiến onDone không chạy thì vẫn
       // phải mở lại mic — nếu không, cuộc gọi đứng im ở “đang nói” vĩnh viễn.
-      speakGuardRef.current = window.setTimeout(onDone, 60_000);
+      speakGuardRef.current = window.setTimeout(onDone, 75_000);
       // `speak` có thể trả về promise hoặc không; bọc qua Promise.resolve để
       // chờ được cả hai. Lời gọi kết thúc mà onDone không chạy thì vẫn phải
       // trả lại mic.
-      void Promise.resolve(speak(text, { voice: getVoiceId(), onDone }))
+      void Promise.resolve(speak(text, { voice: getVoiceId(), onDone, onStart }))
         .catch(() => undefined)
         .then(() => {
           if (aiSpeakingRef.current) onDone();
@@ -226,6 +251,7 @@ export function useCallSession(deps: CallDeps) {
   /** Đàm thoại: xử lý một câu người dùng vừa nói. */
   const handleUtterance = useCallback(
     (text: string) => {
+      transcribingRef.current = false;
       // "Xoá hội thoại" trong đàm thoại → xóa sạch và kết thúc cuộc gọi.
       if (isClearHistoryCommand(text)) {
         onClearAll();
@@ -305,30 +331,65 @@ export function useCallSession(deps: CallDeps) {
     }
     recRef.current = null;
 
-    // Trình duyệt không có Web Speech (Firefox, một số WebView): chỉ ghi âm
-    // rồi chép lại bằng Whisper. Trước đây nhánh này báo "micro đã tắt" và
-    // chết luôn → không nghe được lệnh trong cuộc gọi.
-    const startRecordOnly = () => {
+    // Trình duyệt không có Web Speech (Firefox, một số WebView) HOẶC Web
+    // Speech bị lỗi (không có dịch vụ nhận dạng, bị chặn, mất mạng): chỉ ghi
+    // âm rồi chép lại bằng Whisper.
+    //
+    // TRƯỚC ĐÂY nhánh dự phòng này chỉ chạy khi `newRecognition()` trả về
+    // null. Nhưng trên điện thoại, Web Speech CÓ tồn tại lại hỏng ngay khi
+    // bật (lỗi `network`/`not-allowed`/`audio-capture`), lúc đó cả cuộc gọi
+    // bị chuyển sang trạng thái "tắt micro" và người dùng nói gì cũng không
+    // ai nghe — dù micro đã được cấp quyền và ghi âm vẫn chạy tốt. Nay mọi
+    // lỗi Web Speech đều tự chuyển sang nhánh dự phòng này.
+    const startRecordOnly = (): boolean => {
       let loudSince = 0;
       let lastLoudAt = 0;
+      /**
+       * Ngưỡng coi là có tiếng NGƯỜI DÙNG, tự thích nghi với tiếng ồn nền.
+       *
+       * LÝ DO: nếu dùng cố định CALL_VOICE_ON thì trên máy thu âm yếu (hoặc
+       * trong phòng ồn) mức giọng nói không bao giờ vượt ngưỡng → không ai
+       * chốt câu → đúng triệu chứng “nói gì cũng không nghe”. Nay lấy nền
+       * tiếng ồn làm chuẩn và chỉ coi là nói khi vượt gấp 2.5 lần nền.
+       */
+      let noiseFloor = 0.01;
+      recordOnlyRef.current = true;
+      sessionLiveRef.current = true;
       void startMicRecording((level) => {
         if (!callActiveRef.current) return;
         const now = Date.now();
-        if (level >= CALL_VOICE_ON) {
+        const threshold = Math.max(CALL_VOICE_ON, noiseFloor * 2.5);
+        if (level >= threshold) {
           if (!loudSince) loudSince = now;
           lastLoudAt = now;
           // Có tiếng → phiên nghe còn sống: chặn lớp giám sát dựng lại.
           lastAssistantEventAtRef.current = now;
           return;
         }
-        if (!loudSince) return;
+        if (!loudSince) {
+          // Đang im lặng → cập nhật tiếng ồn nền (lọc mượt để không nhảy).
+          noiseFloor = noiseFloor * 0.9 + level * 0.1;
+          return;
+        }
         if (now - lastLoudAt < CALL_SILENCE_MS || now - loudSince < 700) return;
         loudSince = 0;
         setCallStatus("thinking");
+        transcribingRef.current = true;
+        transcribeSinceRef.current = now;
         void stopMicRecording().then((clip) =>
           transcribeClip(clip, "").then((heard) => handleUtterance(heard)),
         );
+      }).then((ok) => {
+        // Không bật được micro → lần này mới đúng là không dùng được.
+        if (!ok && callActiveRef.current) {
+          recordOnlyRef.current = false;
+          sessionLiveRef.current = false;
+          micDeniedRef.current = true;
+          setCallStatus("muted");
+          toast.error("Cần cấp quyền micro để đàm thoại bằng giọng nói.");
+        }
       });
+      return true;
     };
 
     const rec = newRecognition();
@@ -439,6 +500,7 @@ export function useCallSession(deps: CallDeps) {
       pendingBuf = "";
       recRef.current = null;
       sessionLiveRef.current = false;
+      recordOnlyRef.current = false;
       stopWatchdog();
       try {
         rec.onend = null;
@@ -454,6 +516,10 @@ export function useCallSession(deps: CallDeps) {
         handleUtterance(heard);
         return;
       }
+      // Ghi âm xong, đang chép lại: đánh dấu để lớp giám sát cứu nếu bước
+      // này treo vĩnh viễn (mạng lỗi, tab bị đưa ra sau).
+      transcribingRef.current = true;
+      transcribeSinceRef.current = Date.now();
       void stopMicRecording().then((clip) =>
         transcribeClip(clip, heard).then((better) => handleUtterance(better)),
       );
@@ -538,23 +604,39 @@ export function useCallSession(deps: CallDeps) {
       // Lỗi đến từ phiên đã bị thay → bỏ qua, không được giết phiên mới.
       if (gen !== sessionGenRef.current) return;
       const code = e.error ?? "";
-      if (code === "not-allowed" || code === "service-not-allowed") {
-        micDeniedRef.current = true;
-        setCallStatus("muted");
-        toast.error("Cần cấp quyền micro để đàm thoại bằng giọng nói.");
+      // BỎ NHÁNH "TẮT MICRO" CŨ: trước đây mọi lỗi Web Speech (kể cả lỗi
+      // mạng, hay `not-allowed` của DỊCH VỤ nhận dạng) đều chuyển cả cuộc
+      // gọi sang trạng thái tắt micro → người dùng nói gì cũng không ai
+      // nghe, dù quyền micro đã cấp và ghi âm vẫn chạy tốt. Nay chỉ khi bản
+      // thân micro cũng không bật được mới báo cần cấp quyền.
+      errorStreak++;
+      if (code === "no-speech" && errorStreak < 3) {
+        // Chỉ không nghe thấy gì trong lượt này → mở lại phiên nghe bình thường.
+        restartSession();
         return;
       }
-      // Lỗi tạm (no-speech / aborted / network / audio-capture): mở lại phiên
-      // nghe. Trước đây im lặng bỏ qua → micro như bị treo.
-      if (Date.now() - sessionStartedAt < 800 && ++errorStreak > 4) {
-        micDeniedRef.current = true;
-        setCallStatus("muted");
-        toast.error(
-          "Trình duyệt không nhận dạng được giọng nói. Hãy dùng Chrome/Safari mới nhất.",
+      // Lỗi thật của dịch vụ nhận dạng (network / not-allowed của dịch vụ /
+      // audio-capture / ngôn ngữ không hỗ trợ) → tự chuyển sang ghi âm rồi
+      // chép lại bằng Whisper. Đây là đường cứu: micro vẫn nghe và Trợ lý
+      // vẫn trả lời bằng giọng nói.
+      stopWatchdog();
+      try {
+        rec.onend = null;
+        rec.onerror = null;
+        rec.abort();
+      } catch {
+        /* noop */
+      }
+      recRef.current = null;
+      sessionLiveRef.current = false;
+      setInterim("");
+      if (callActiveRef.current) {
+        toast.info(
+          "Trình duyệt không nhận dạng giọng nói trực tiếp — Trợ lý đang ghi âm rồi chép lại, bạn cứ nói bình thường.",
         );
-        return;
+        setCallStatus("listening");
+        startRecordOnly();
       }
-      restartSession();
     };
     rec.onend = () => {
       if (gen !== sessionGenRef.current) return;
@@ -794,6 +876,18 @@ export function useCallSession(deps: CallDeps) {
       }
       // Không còn đọc → xoá mốc để lượt sau tính lại từ đầu.
       speakSinceRef.current = 0;
+      // 1b) Kẹt ở bước chép lại giọng nói quá 12s (mạng lỗi, tab bị treo)
+      //     → trả lại micro. Trước đây không có bước này nên cuộc gọi đứng
+      //     im ở “đang nghĩ” và người dùng nói tiếp không ai nghe.
+      if (transcribingRef.current && now - transcribeSinceRef.current > 12_000) {
+        transcribingRef.current = false;
+        if (callActiveRef.current) {
+          setCallStatus("listening");
+          lastAssistantEventAtRef.current = now;
+          startListeningRef.current();
+        }
+        return;
+      }
       // 2) Kẹt ở “đang gửi” quá 40s (máy chủ treo) → nhả trạng thái.
       if (sendingRef.current && now - sendSinceRef.current > 40_000) {
         sendingRef.current = false;
