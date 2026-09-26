@@ -8,6 +8,7 @@ import { ChatThread, type FailedReply } from "@/components/ChatThread";
 import { api } from "@/convex/_generated/api";
 import { useCallSession } from "@/hooks/useCallSession";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
+import { useVisualViewport } from "@/hooks/use-visual-viewport";
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 import { loadVoicePref, VOICE_PREF_EVENT } from "@/lib/aiVoices";
 import { MAX_IMAGES_PER_MESSAGE } from "@/lib/appFeatures";
@@ -245,6 +246,9 @@ export default function Assistant() {
   useEffect(() => {
     speakThenListenRef.current = speakThenListen;
   }, [speakThenListen]);
+
+  /* ----- Bàn phím ảo: ghim thanh tiêu đề, nâng khung nhập theo bàn phím ----- */
+  const vv = useVisualViewport();
 
   /* ----- Gộp lịch sử cục bộ + tin nhắn phiên ----- */
   const messages: Msg[] = [...history, ...pending];
@@ -1105,9 +1109,21 @@ export default function Assistant() {
   /* FULL MÀN HÌNH — cả viewport là Trợ lý Phật học Dharma AI            */
   /* ================================================================ */
   return (
-    <div className="fb-bg flex h-[100dvh] flex-col overflow-hidden">
+    <div
+      className="fb-bg flex h-[100dvh] flex-col overflow-hidden"
+      // Khi bàn phím ảo bật, vùng nhìn thật ngắn lại — đặt chiều cao theo vùng
+      // nhìn để khung hội thoại vừa khít phần còn thấy, không bị tràn xuống
+      // dưới bàn phím.
+      style={vv.height ? { height: `${vv.height}px` } : undefined}
+    >
       {/* ---------- Header: gọi bên trái, tên ở giữa, điều khiển bên phải ---------- */}
-      <header className="fixed inset-x-0 top-0 z-40 grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-1 border-b border-border/60 bg-background/95 px-2 backdrop-blur-md sm:px-4">
+      <header
+        // Bàn phím bật làm trình duyệt đẩy layout viewport; dịch thanh tiêu
+        // đề xuống đúng mép trên của vùng nhìn thật để nó CỐ ĐỊNH, không bị
+        // đẩy lên hay bị che.
+        style={vv.offsetTop ? { transform: `translateY(${vv.offsetTop}px)` } : undefined}
+        className="fixed inset-x-0 top-0 z-40 grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-1 border-b border-border/60 bg-background/95 px-2 backdrop-blur-md sm:px-4"
+      >
         <div className="flex min-w-0 items-center gap-1 justify-self-start">
           <button
             type="button"
@@ -1196,6 +1212,7 @@ export default function Assistant() {
         micInterim={micInterim}
         onMicToggle={() => (listening ? stop() : start(onVoiceChat))}
         onClearAll={() => void clearAll()}
+        liftUp={vv.keyboardInset}
       />
 
       {callOpen && (

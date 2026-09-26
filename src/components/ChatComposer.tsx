@@ -48,6 +48,12 @@ export type ChatComposerProps = {
   onRemoveFile: (index: number) => void;
 
   micSupported: boolean;
+  /**
+   * Dịch lên (px) khi bàn phím ảo bật. Khung nhập là `position: fixed`
+   * bám theo layout viewport nên bị chìm xuống dưới bàn phím — số này nâng
+   * nó lên đúng mép trên của bàn phím. 0 = không bàn phím.
+   */
+  liftUp?: number;
   listening: boolean;
   micRefining: boolean;
   micInterim: string;
@@ -76,6 +82,7 @@ export function ChatComposer({
   onPickFiles,
   onRemoveFile,
   micSupported,
+  liftUp = 0,
   listening,
   micRefining,
   micInterim,
@@ -92,6 +99,7 @@ export function ChatComposer({
         e.preventDefault();
         onSubmit();
       }}
+      style={liftUp ? { transform: `translateY(-${liftUp}px)` } : undefined}
       className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-3xl bg-background/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md sm:px-4"
     >
       {/* ---------- Đính kèm đang chờ gửi ---------- */}
