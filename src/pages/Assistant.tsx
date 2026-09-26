@@ -510,6 +510,9 @@ export default function Assistant() {
    * bằng cách cưỡng bức — nếu không, cuộc gọi đứng im ở “đang nói” vĩnh viễn.
    */
   const speakGuardRef = useRef(0);
+  /** Mốc bắt đầu lượt đọc to / lượt gửi — giám sát dùng để cứu vòng lặp. */
+  const speakSinceRef = useRef(0);
+  const sendSinceRef = useRef(0);
   /** 1 = đang tự gửi lại câu hỏi trong đàm thoại (giữ mic đóng trong lúc đó). */
   const callRetryPendingRef = useRef(0);
   /** Để hàng đợi câu nói gọi lại được chính `handleUtterance`. */
@@ -583,6 +586,64 @@ export default function Assistant() {
     }, 5_000);
     return () => window.clearInterval(id);
   }, []);
+
+  /* ----- GIÁM SÁT AN TOÀN cho vòng đàm thoại -----
+   *
+   * Mọi lớp bên dưới (ghi âm, chép lại, giọng đọc) đều đã có chốt chặn, nhưng
+   * chỉ cần MỘT chỗ kẹt là micro đóng vĩnh viễn và người dùng thấy “không
+   * phản hồi”. Vì vậy có thêm lớp giám sát độc lập: cứ 3 giây kiểm tra
+   * trạng thái, thấy kẹt thì cưỡng bức trả lại micro cho người dùng. ----- */
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (!callActiveRef.current || mutedRef.current || micDeniedRef.current) {
+        return;
+      }
+      const now = Date.now();
+      // 1) Kẹt ở “đang trả lời” quá 25s → cưỡng bức kết thúc lượt đọc.
+      if (aiSpeakingRef.current) {
+        if (speakSinceRef.current > 0 && now - speakSinceRef.current > 25_000) {
+          aiSpeakingRef.current = false;
+          stopSpeaking();
+          setCallStatus("listening");
+          lastAssistantEventAtRef.current = now;
+          startListeningRef.current();
+        }
+        return;
+      }
+      // Không còn đọc → xoá mốc để lượt sau tính lại từ đầu.
+      speakSinceRef.current = 0;
+      // 2) Kẹt ở “đang gửi” quá 40s (máy chủ treo) → nhả trạng thái.
+      if (sendingRef.current && now - sendSinceRef.current > 40_000) {
+        sendingRef.current = false;
+        busyRef.current = false;
+        setBusy(false);
+        setCallStatus("listening");
+        lastAssistantEventAtRef.current = now;
+        startListeningRef.current();
+        return;
+      }
+      // 3) Đang nghe nhưng phiên nghe chết âm thầm → dựng lại (nhanh hơn
+      //    đồng hồ 12 giây bên trên để người dùng ít phải chờ).
+      if (!sendingRef.current && now - lastAssistantEventAtRef.current > 8_000) {
+        lastAssistantEventAtRef.current = now;
+        startListeningRef.current();
+      }
+    }, 3_000);
+    return () => window.clearInterval(id);
+  }, [stopSpeaking]);
+
+  /* ----- Khi đang đàm thoại: chỉ dùng giọng nói, không gõ chữ -----
+   *
+   * Màn đàm thoại phủ kín màn hình nhưng BÀN PHÍM của trình duyệt vẫn mở và
+   * con trỏ vẫn nằm trong ô nhập phía sau — người dùng gõ được rồi gửi tin
+   * nhắn lệch ra ngoài cuộc gọi. Đóng bàn phím và xoá phần chữ dở khi vào
+   * cuộc gọi. ----- */
+  useEffect(() => {
+    if (!callOpen) return;
+    setInput("");
+    const active = document.activeElement;
+    if (active instanceof HTMLElement) active.blur();
+  }, [callOpen]);
 
   // Đồng hồ phòng treo: nếu AI không trả lời trong 60s → báo lỗi ra UI
   useEffect(() => {
@@ -678,6 +739,9 @@ export default function Assistant() {
   const send = useCallback(
     async (text: string, opts?: { fromCall?: boolean }) => {
       const q = text.trim();
+      // Mốc bắt đầu lượt gửi trong đàm thoại (giám sát dùng để cứu vòng lặp
+      // khi máy chủ treo).
+      if (opts?.fromCall) sendSinceRef.current = Date.now();
       // Lệnh xóa hội thoại: xóa sạch ngay và kết thúc cuộc trò chuyện.
       if (isClearHistoryCommand(q)) {
         setInput("");
@@ -968,6 +1032,7 @@ export default function Assistant() {
           // duyệt; đọc xong tự nghe tiếp → đàm thoại 2 chiều liền mạch.
           if (!callActiveRef.current) return;
           aiSpeakingRef.current = true;
+          speakSinceRef.current = Date.now();
           sendingRef.current = false;
           setInterim("");
           setCallStatus("speaking");
