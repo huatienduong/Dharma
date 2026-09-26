@@ -152,7 +152,10 @@ export function ChatComposer({
         </div>
       )}
 
-      <div className="flex items-end gap-1 rounded-[24px] border border-border/70 bg-card p-1.5 shadow-lg transition focus-within:border-gold/50 focus-within:ring-2 focus-within:ring-gold/15">
+      {/* Khung nhập: ở GIAO DIỆN SÁNG nền trắng làm thẻ trắng + viền nhạt
+          bị "mờ" mất. Vì vậy ở chế độ sáng dùng nền cát nâu + viền nâu rõ,
+          bấm vào thì viền đậm hẳn lên; chế độ tối giữ nguyên như cũ. */}
+      <div className="flex items-end gap-1 rounded-[24px] border border-gold/40 bg-secondary p-1.5 shadow-[0_2px_14px_-6px_rgba(111,66,38,0.35)] transition focus-within:border-gold focus-within:ring-2 focus-within:ring-gold/25 dark:border-border/70 dark:bg-card dark:shadow-lg dark:focus-within:border-gold/50 dark:focus-within:ring-gold/15">
         <input
           ref={imageInputRef}
           type="file"
@@ -178,7 +181,7 @@ export function ChatComposer({
           <button
             type="button"
             onClick={() => imageInputRef.current?.click()}
-            className="flex h-8 w-8 items-center justify-center rounded-2xl text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+            className="flex h-8 w-8 items-center justify-center rounded-2xl text-foreground/70 transition hover:bg-accent hover:text-foreground"
             aria-label="Gửi ảnh cho trợ lý"
             title="Tải lên hình ảnh"
           >
@@ -187,7 +190,7 @@ export function ChatComposer({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex h-8 w-8 items-center justify-center rounded-2xl text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+            className="flex h-8 w-8 items-center justify-center rounded-2xl text-foreground/70 transition hover:bg-accent hover:text-foreground"
             aria-label="Gửi tệp cho trợ lý"
             title="Tải lên tệp (CSV, TXT, JSON, PDF…)"
           >
@@ -196,7 +199,7 @@ export function ChatComposer({
           <button
             type="button"
             onClick={onClearAll}
-            className="flex h-8 w-8 items-center justify-center rounded-2xl text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+            className="flex h-8 w-8 items-center justify-center rounded-2xl text-foreground/70 transition hover:bg-accent hover:text-foreground"
             title="Xóa hội thoại"
             aria-label="Xóa hội thoại"
           >
@@ -215,7 +218,7 @@ export function ChatComposer({
           }}
           rows={1}
           placeholder=""
-          className="max-h-32 min-h-9 flex-1 resize-none self-center bg-transparent py-2 text-[16px] leading-relaxed outline-none placeholder:text-muted-foreground/60 sm:text-[17px]"
+          className="max-h-32 min-h-9 flex-1 resize-none self-center bg-transparent py-2 text-[16px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/60 sm:text-[17px]"
         />
 
         {micSupported && (
@@ -225,7 +228,7 @@ export function ChatComposer({
             disabled={micRefining}
             aria-label={listening ? "Dừng nghe" : "Hỏi bằng giọng nói"}
             className={cn(
-              "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-accent-foreground disabled:opacity-60",
+              "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground/70 transition hover:bg-accent hover:text-foreground disabled:opacity-60",
               listening && "bg-destructive/10 text-destructive",
             )}
           >
