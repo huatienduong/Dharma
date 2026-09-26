@@ -22,6 +22,8 @@ export type VideoInfo = {
   thumbnail: string;
   /** Thời lượng dạng "12:34" nếu lấy được. */
   duration?: string;
+  /** Số lượt xem (dùng ở danh sách gợi ý). */
+  viewCount?: number;
 };
 
 const ID = "[A-Za-z0-9_-]{11}";

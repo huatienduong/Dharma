@@ -12,12 +12,25 @@ import {
   keepBuddhistVideos,
   NO_BUDDHIST_VIDEO_MESSAGE,
 } from "@/lib/buddhistVideoFilter";
-import { searchVideoInBrowser } from "@/lib/videoSearchClient";
+import {
+  fetchSuggestedVideos,
+  searchVideoInBrowser,
+  viewCountText,
+} from "@/lib/videoSearchClient";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
 import type { VideoInfo } from "@/lib/videoIntent";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Loader2, Mic, MicOff, Play, Search, X } from "lucide-react";
-import { useState } from "react";
+import {
+  ArrowLeft,
+  Eye,
+  Loader2,
+  Mic,
+  MicOff,
+  Play,
+  Search,
+  X,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 
 export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("");
@@ -26,6 +39,23 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [playing, setPlaying] = useState<VideoInfo | null>(null);
   const [message, setMessage] = useState("");
+
+  // Danh sách gợi ý: video Phật giáo hay xem, tối đa 20, tải khi mở màn hình.
+  const [suggested, setSuggested] = useState<VideoInfo[]>([]);
+  const [suggestBusy, setSuggestBusy] = useState(true);
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const list = await fetchSuggestedVideos(20).catch(() => []);
+      if (alive) {
+        setSuggested(list);
+        setSuggestBusy(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // Nói thẳng chủ đề vào ô tìm kiếm: cùng bộ nghe 3 tầng như ô nhập câu hỏi
   // của khung chat (Web Speech → Whisper → sửa dấu tiếng Việt).
@@ -78,35 +108,8 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
         </p>
       </div>
 
-      {/* ---------- Nội dung cuộn ---------- */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-8 sm:px-4">
-        {/* Video đang phát */}
-        {playing ? (
-          <div className="mt-3 overflow-hidden rounded-2xl border border-border/60 bg-black">
-            <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
-              <iframe
-                className="absolute inset-0 h-full w-full"
-                src={`https://www.youtube-nocookie.com/embed/${playing.videoId}?autoplay=1&rel=0&modestbranding=1`}
-                title={playing.title || "Video trên YouTube"}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-            <div className="flex items-center justify-between gap-2 px-3 py-2">
-              <p className="min-w-0 flex-1 truncate text-[13px] text-foreground/90">
-                {playing.title || "Video đang xem"}
-              </p>
-              <button
-                type="button"
-                onClick={() => setPlaying(null)}
-                className="shrink-0 text-[12px] text-muted-foreground transition hover:text-foreground"
-              >
-                Đóng
-              </button>
-            </div>
-          </div>
-        ) : null}
-
+      {/* ---------- THANH TÌM KIẾM: CỐ ĐỊNH, không cuộn theo danh sách ---------- */}
+      <div className="shrink-0 border-b border-border/60 bg-background/95 px-3 pb-3 backdrop-blur-md sm:px-4">
         {/* Ô tìm kiếm: micro và kính lúp nằm TRONG ô, không có nút bên ngoài */}
         <div className="mt-3 flex items-center gap-2 rounded-2xl border border-border/70 bg-card pl-3 pr-1.5">
           <input
@@ -213,6 +216,38 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
           </p>
         ) : null}
 
+      </div>
+
+      {/* ---------- Nội dung cuộn: video đang phát, kết quả, gợi ý ---------- */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-8 sm:px-4">
+        {/* Video đang phát */}
+        {playing ? (
+          <div className="mt-3 overflow-hidden rounded-2xl border border-border/60 bg-black">
+            <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
+              <iframe
+                className="absolute inset-0 h-full w-full"
+                src={`https://www.youtube-nocookie.com/embed/${playing.videoId}?autoplay=1&rel=0&modestbranding=1`}
+                title={playing.title || "Video trên YouTube"}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            <div className="flex items-center justify-between gap-2 px-3 py-2">
+              <p className="min-w-0 flex-1 truncate text-[13px] text-foreground/90">
+                {playing.title || "Video đang xem"}
+              </p>
+              <button
+                type="button"
+                onClick={() => setPlaying(null)}
+                className="shrink-0 text-[12px] text-muted-foreground transition hover:text-foreground"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+
         {/* Kết quả */}
         {message ? (
           <p className="mt-4 rounded-2xl border border-border/50 bg-muted/40 px-4 py-3 text-[13px] leading-relaxed text-muted-foreground">
@@ -274,6 +309,71 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
             </ul>
           </section>
         ) : null}
+
+
+        <section>
+          <h2 className="flex items-center gap-1.5 text-[13px] font-semibold text-muted-foreground">
+            <Play className="h-3.5 w-3.5 text-gold" />
+            Video gợi ý
+          </h2>
+
+          {suggestBusy ? (
+            <p className="mt-4 flex items-center justify-center gap-2 text-[13px] text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin text-gold" />
+              Đang tải video gợi ý…
+            </p>
+          ) : null}
+
+          {!suggestBusy && !suggested.length ? (
+            <p className="mt-3 text-[13px] text-muted-foreground">
+              Chưa tải được danh sách gợi ý. Bạn thử tìm theo chủ đề ở ô trên nhé.
+            </p>
+          ) : null}
+
+          <ul className="mt-3 space-y-1.5">
+            {suggested.map((v) => (
+              <li key={v.videoId}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlaying(v);
+                    setVideos([]);
+                    setSearched("");
+                    setMessage("");
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl p-1.5 text-left transition hover:bg-muted/50"
+                >
+                  {/* Ảnh nhỏ bên trái */}
+                  <span className="relative shrink-0">
+                    <img
+                      src={v.thumbnail}
+                      alt=""
+                      loading="lazy"
+                      className="h-12 w-20 rounded-lg object-cover"
+                    />
+                    {v.duration ? (
+                      <span className="absolute bottom-0.5 right-0.5 rounded bg-black/80 px-1 text-[10px] tabular-nums text-white">
+                        {v.duration}
+                      </span>
+                    ) : null}
+                  </span>
+                  {/* Tiêu đề + số lượt xem bên phải */}
+                  <span className="min-w-0 flex-1">
+                    <span className="line-clamp-2 block text-[13px] font-medium leading-snug text-foreground/95">
+                      {v.title || "Video trên YouTube"}
+                    </span>
+                    {viewCountText(v.viewCount) ? (
+                      <span className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <Eye className="h-3 w-3" />
+                        {viewCountText(v.viewCount)}
+                      </span>
+                    ) : null}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
 
       </div>
     </div>

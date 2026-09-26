@@ -39,16 +39,29 @@ function isoDuration(raw: string | undefined): string | undefined {
     : `${min}:${String(sec).padStart(2, "0")}`;
 }
 
+/** "1.234.567" → "1,2 triệu lượt xem" (gọn cho danh sách gợi ý). */
+export function viewCountText(n: number | undefined): string {
+  if (!n || n <= 0) return "";
+  if (n >= 1_000_000) {
+    return `${(n / 1_000_000).toFixed(1).replace(".", ",")} triệu lượt xem`;
+  }
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)} nghìn lượt xem`;
+  return `${n} lượt xem`;
+}
+
 /**
- * Tìm bằng YouTube Data API v3 ngay trên máy người dùng (Google cho phép
- * gọi chéo miền). Trả về [] nếu lỗi để lượt sau thử đường khác.
+ * Gọi YouTube Data API v3: tìm video (có thêm số lượt xem từ `statistics`).
+ * Dùng chung cho tìm theo chủ đề và cho danh sách gợi ý.
  */
-async function searchWithApiKey(query: string): Promise<VideoInfo[]> {
+async function searchYouTube(
+  query: string,
+  maxResults: number,
+): Promise<VideoInfo[]> {
   const ctl = new AbortController();
   const timer = window.setTimeout(() => ctl.abort(), 9000);
   try {
     const res = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&relevanceLanguage=vi&q=${encodeURIComponent(query)}&key=${encodeURIComponent(YOUTUBE_API_KEY)}`,
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=${maxResults}&relevanceLanguage=vi&q=${encodeURIComponent(query)}&key=${encodeURIComponent(YOUTUBE_API_KEY)}`,
       { signal: ctl.signal },
     );
     if (!res.ok) return [];
@@ -67,26 +80,38 @@ async function searchWithApiKey(query: string): Promise<VideoInfo[]> {
       .map((it) => it.id?.videoId)
       .filter((x): x is string => Boolean(x));
 
-    // Thời lượng lấy thêm ở nhịp hai; không được thì bỏ trống cũng được.
-    let durations: Record<string, string | undefined> = {};
+    // Nhịp hai: thời lượng + số lượt xem cho các video vừa tìm.
+    let extra: Record<
+      string,
+      { duration?: string; viewCount?: number }
+    > = {};
     if (ids.length) {
       try {
         const detail = await fetch(
-          `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids.join(",")}&key=${encodeURIComponent(YOUTUBE_API_KEY)}`,
+          `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${ids.join(",")}&key=${encodeURIComponent(YOUTUBE_API_KEY)}`,
         );
         if (detail.ok) {
           const dj = (await detail.json()) as {
-            items?: { id?: string; contentDetails?: { duration?: string } }[];
+            items?: {
+              id?: string;
+              contentDetails?: { duration?: string };
+              statistics?: { viewCount?: string };
+            }[];
           };
-          durations = Object.fromEntries(
+          extra = Object.fromEntries(
             (dj.items ?? []).map((it) => [
               it.id ?? "",
-              isoDuration(it.contentDetails?.duration),
+              {
+                duration: isoDuration(it.contentDetails?.duration),
+                viewCount: it.statistics?.viewCount
+                  ? Number(it.statistics.viewCount)
+                  : undefined,
+              },
             ]),
           );
         }
       } catch {
-        /* bỏ qua */
+        /* thiếu số liệu thì bỏ trống, không sao */
       }
     }
 
@@ -102,7 +127,8 @@ async function searchWithApiKey(query: string): Promise<VideoInfo[]> {
             it.snippet?.thumbnails?.high?.url ??
             it.snippet?.thumbnails?.medium?.url ??
             `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
-          duration: durations[videoId],
+          duration: extra[videoId]?.duration,
+          viewCount: extra[videoId]?.viewCount,
         };
       })
       .filter((x): x is VideoInfo => x !== null);
@@ -111,6 +137,32 @@ async function searchWithApiKey(query: string): Promise<VideoInfo[]> {
   } finally {
     window.clearTimeout(timer);
   }
+}
+
+/**
+ * DANH SÁCH GỢI Ý — video Phật giáo hay xem, tối đa `limit` video, tải khi
+ * mở màn hình. Trả về [] nếu mạng lỗi thì màn hình vẫn dùng được.
+ */
+export async function fetchSuggestedVideos(limit = 20): Promise<VideoInfo[]> {
+  const queries = [
+    "phat hoc",
+    "giao ly phat gia",
+    "thien tap",
+    "kinh phat gia",
+  ];
+  const seen = new Set<string>();
+  const out: VideoInfo[] = [];
+  for (const q of queries) {
+    if (out.length >= limit) break;
+    const batch = await searchYouTube(q, 10);
+    for (const v of batch) {
+      if (out.length >= limit) break;
+      if (seen.has(v.videoId)) continue;
+      seen.add(v.videoId);
+      out.push(v);
+    }
+  }
+  return out.slice(0, limit);
 }
 
 /** Các instance Invidious công khai, thử theo thứ tự. */
@@ -171,7 +223,7 @@ export async function searchVideoInBrowser(raw: string): Promise<VideoInfo[]> {
   if (!query) return [];
 
   // 2. Hỏi bằng lời → tìm bằng YouTube Data API (có tên kênh + thời lượng).
-  const byKey = await searchWithApiKey(query);
+  const byKey = await searchYouTube(query, 5);
   if (byKey.length) return byKey;
 
   // 3. Không được thì thử instance Invidious công khai.
