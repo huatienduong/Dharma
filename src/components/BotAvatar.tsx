@@ -2,9 +2,13 @@
  * AVATAR TRỢ LÝ PHẬT HỌC — robot AI vẽ tay bằng SVG.
  *
  * Nền ứng dụng là nâu rất đậm, nên robot được vẽ theo hướng NỔI HẲN:
- * KHÔNG có vỏ ngoài (nền trong suốt), đầu kem sáng (`--foreground`), mắt gần
- * đen (`--primary-foreground`), tai + ăng-ten y cà sa (`--primary`).
- * Mọi màu đều lấy từ token nên tự đổi theo giao diện.
+ * đầu kem sáng (`--foreground`), mắt gần đen (`--primary-foreground`),
+ * tai + ăng-ten y cà sa (`--primary`). Mọi màu đều lấy từ token nên tự
+ * đổi theo giao diện.
+ *
+ * `shell` bật VỎ NGOÀI màu nâu đồng màu nền ứng dụng — dùng cho robot
+ * hiển thị lớn (màn chào, màn đàm thoại) đúng như icon khi cài đặt. Avatar
+ * nhỏ trong bong bóng chat để không vỏ cho gọn.
  *
  * Dùng ở: bong bóng trả lời, thẻ tiến trình, ô "đang suy nghĩ", màn đàm
  * thoại và màn chào. Kích thước co giãn theo className của vỏ ngoài.
@@ -25,24 +29,36 @@ export function BotAvatar({
   className,
   /** Bật/tắt quầng sáng y cà sa quanh mắt (màn đàm thoại dùng bật) */
   glow = false,
+  /** Bật vỏ ngoài màu nâu đồng màu nền ứng dụng (giống icon khi cài) */
+  shell = false,
 }: {
   size?: BotAvatarSize;
   className?: string;
   glow?: boolean;
+  shell?: boolean;
 }) {
   return (
     <span
       className={cn(
         "relative flex shrink-0 items-center justify-center",
+        shell &&
+          "overflow-hidden rounded-[30%] bg-card ring-1 ring-border/70 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.8)]",
         SIZES[size],
         className,
       )}
     >
+      {/* Quầng sáng y cà sa trong vỏ — cùng hồng y cà sa như icon cài đặt */}
+      {shell ? (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_45%_at_50%_18%,rgba(224,133,42,0.28),transparent_70%)]"
+        />
+      ) : null}
       <svg
         viewBox="0 0 48 48"
         role="img"
         aria-label="Avatar Trợ lý Phật học"
-        className="relative h-[88%] w-[88%]"
+        className={cn("relative", shell ? "h-[76%] w-[76%]" : "h-[88%] w-[88%]")}
       >
         {/* Ăng-ten: que y cà sa + hạt kem sáng */}
         <g>

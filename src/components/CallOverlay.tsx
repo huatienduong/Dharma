@@ -152,14 +152,15 @@ export function CallOverlay({
                 live && "animate-pulse",
               )}
             />
-            <div
+            <BotAvatar
+              size="lg"
+              glow
+              shell
               className={cn(
-                "relative flex h-full w-full items-center justify-center rounded-full border border-white/10 bg-white/5",
+                "h-full w-full",
                 callStatus === "muted" && "opacity-50",
               )}
-            >
-              <BotAvatar size="lg" className="h-[62%] w-[62%]" />
-            </div>
+            />
           </div>
 
           <p className="mt-6 text-center text-[22px] font-semibold tracking-tight">
