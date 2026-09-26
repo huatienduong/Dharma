@@ -7,7 +7,6 @@ import { ServiceNotice } from "@/components/ServiceNotice";
 import { SplashScreen } from "@/components/SplashScreen";
 import { UpdateChecker } from "@/components/UpdateChecker";
 import { SettingsProvider } from "@/lib/settings";
-import { VlyToolbar } from "../vly-toolbar-readonly.tsx";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 import { ConvexReactClient } from "convex/react";
 import React, { StrictMode, useEffect, lazy, Suspense } from "react";
@@ -22,6 +21,20 @@ import { startContentProtection } from "@/lib/contentProtection";
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const SettingsPage = lazy(() => import("./pages/Settings.tsx"));
 const Assistant = lazy(() => import("./pages/Assistant.tsx"));
+// Trợ lý là màn chính nhưng đang lazy load → người dùng phải chờ thêm một
+// vòng tải chunk sau khi app vừa hiện. Tải trước lúc rảnh để mở app là
+// vào thẳng màn hình, không thấy màn chờ trắng.
+if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+  window.requestIdleCallback(() => {
+    void import("./pages/Assistant.tsx");
+  });
+}
+
+// Thanh công cụ dùng framer-motion (~127KB) — chỉ cần sau khi màn hình đã
+// hiện, nạp động để không kéo thêm 127KB vào gói phải tải ngay.
+const VlyToolbar = lazy(() =>
+  import("../vly-toolbar-readonly.tsx").then((m) => ({ default: m.VlyToolbar })),
+);
 
 // Fallback chuyển route — nền phẳng sạch, không logo
 function RouteLoading() {
@@ -151,7 +164,9 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <RootErrorBoundary>
       <ToolbarErrorBoundary>
-        <VlyToolbar />
+        <Suspense fallback={null}>
+          <VlyToolbar />
+        </Suspense>
       </ToolbarErrorBoundary>
       <ConvexAuthProvider client={convex}>
         {/* Splash logo chính thức — hiện ngay từ giây đầu khi vào ứng dụng.

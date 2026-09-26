@@ -496,11 +496,14 @@ const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
  * nhất: listGroqModels sẽ hỏi API /models và dùng những tên còn sống.
  */
 const GROQ_TEXT_PREFERENCE = [
-  "openai/gpt-oss-120b",
-  "openai/gpt-oss-20b",
+  // Xếp theo TỐC ĐỘ trước, chất lượng sau: model nhỏ trả token đầu tiên
+  // nhanh hơn hẳn MoE 120B, mà người dùng cảm nhận độ trễ chính là lúc
+  // "chưa thấy gì". Các model mạnh hơn vẫn còn trong danh sách dự phòng.
   "qwen/qwen3-8b",
   "llama-3.1-8b-instant",
   "gemma2-9b-it",
+  "openai/gpt-oss-20b",
+  "openai/gpt-oss-120b",
 ];
 const GROQ_VISION_PREFERENCE = [
   "qwen/qwen3.8-27b",
@@ -517,7 +520,7 @@ const liveModelsCache = new Map<
   string,
   { at: number; text: string; vision: string }
 >();
-const LIVE_MODELS_TTL_MS = 10 * 60_000;
+const LIVE_MODELS_TTL_MS = 30 * 60_000;
 
 /**
  * Chẩn đoán: nhà cung cấp nào đã cấu hình khóa (chỉ trả boolean, không lộ giá trị).
@@ -560,6 +563,60 @@ export const providerStatus = action({
  * tiên quá tải / bị thu hồi / trả lỗi sẽ tự chuyển sang model kế tiếp thay
  * vì để trợ lý ngừng hoạt động.
  */
+/**
+ * DÒ MODEL CHẠY NỀN — gọi /models để làm mới danh sách model còn sống.
+ * Tách riêng khỏi listGroqModels để lượt hỏi không phải chờ: xem bên dưới.
+ */
+async function refreshGroqModels(groqKey: string): Promise<void> {
+  let live: Set<string>;
+  try {
+    const res = await fetch(`${GROQ_BASE_URL}/models`, {
+      headers: { Authorization: `Bearer ${groqKey}` },
+      signal: AbortSignal.timeout(6_000),
+    });
+    if (!res.ok) return;
+    const json = (await res.json()) as { data?: { id?: string }[] };
+    live = new Set((json.data ?? []).map((m) => m.id ?? "").filter(Boolean));
+    if (live.size === 0) return;
+  } catch {
+    return;
+  }
+
+  const build = (preference: string[], pattern: RegExp) => {
+    // Ưu tiên: các tên trong danh sách đang sống, theo thứ tự ưu tiên; sau đó
+    // bổ sung model phù hợp còn lại để dự phòng. Loại model chỉ dùng TTS
+    // (audio) vì không trả lời được câu hỏi bằng chữ.
+    const ordered: string[] = [];
+    for (const id of preference) if (live.has(id)) ordered.push(id);
+    for (const id of live) {
+      if (ordered.includes(id)) continue;
+      if (id.includes("-tts") || id.includes("whisper")) continue;
+      if (pattern.test(id)) ordered.push(id);
+    }
+    return ordered;
+  };
+
+  const textOrdered = build(GROQ_TEXT_PREFERENCE, /gpt|llama|qwen|gemma|mistral|kimi/i);
+  const visionOrdered = build(GROQ_VISION_PREFERENCE, /vision|vl|scout|qwen/i);
+  const text =
+    live.has(GROQ_TEXT_PREFERENCE[0]) || textOrdered.length === 0
+      ? GROQ_TEXT_PREFERENCE[0]
+      : textOrdered[0];
+  const vision =
+    live.has(GROQ_VISION_PREFERENCE[0]) || visionOrdered.length === 0
+      ? GROQ_VISION_PREFERENCE[0]
+      : visionOrdered[0];
+  liveModelsCache.set(groqKey, { at: Date.now(), text, vision });
+}
+
+/**
+ * Danh sách model để gọi.
+ *
+ * QUAN TRỌNG VỀ ĐỘ TRỄ: cache rỗng thì KHÔNG chờ gọi /models. Trước đây mỗi
+ * 10 phút lượt hỏi đầu tiên phải chờ tới 4s cho một lệnh gọi mà người dùng
+ * không cần biết. Nay lượt đó dùng luôn model ưu tiên, còn việc dò chạy nền
+ * và lượt sau mới dùng danh sách đã xác minh.
+ */
 async function listGroqModels(
   groqKey: string,
   needVision: boolean,
@@ -569,39 +626,8 @@ async function listGroqModels(
   if (cached && Date.now() - cached.at < LIVE_MODELS_TTL_MS && cached.text) {
     return needVision ? [cached.vision] : [cached.text];
   }
-  let live: Set<string>;
-  try {
-    const res = await fetch(`${GROQ_BASE_URL}/models`, {
-      headers: { Authorization: `Bearer ${groqKey}` },
-      signal: AbortSignal.timeout(4_000),
-    });
-    if (!res.ok) return [preference[0]];
-    const json = (await res.json()) as { data?: { id?: string }[] };
-    live = new Set((json.data ?? []).map((m) => m.id ?? "").filter(Boolean));
-    if (live.size === 0) return [preference[0]];
-  } catch {
-    return [preference[0]];
-  }
-
-  // Ưu tiên: các tên trong danh sách đang sống, theo thứ tự ưu tiên; sau đó
-  // bổ sung model phù hợp còn lại để dự phòng. Loại model chỉ dùng TTS
-  // (audio) vì không trả lời được câu hỏi bằng chữ.
-  const pattern = needVision
-    ? /vision|vl|scout|qwen/i
-    : /gpt|llama|qwen|gemma|mistral|kimi/i;
-  const ordered: string[] = [];
-  for (const id of preference) if (live.has(id)) ordered.push(id);
-  for (const id of live) {
-    if (ordered.includes(id)) continue;
-    if (id.includes("-tts") || id.includes("whisper")) continue;
-    if (pattern.test(id)) ordered.push(id);
-  }
-  if (ordered.length === 0) return [preference[0]];
-
-  const text = live.has(GROQ_TEXT_PREFERENCE[0]) ? GROQ_TEXT_PREFERENCE[0] : ordered[0];
-  const vision = live.has(GROQ_VISION_PREFERENCE[0]) ? GROQ_VISION_PREFERENCE[0] : ordered[0];
-  liveModelsCache.set(groqKey, { at: Date.now(), text, vision });
-  return needVision ? [vision, ...ordered] : [text, ...ordered];
+  if (!cached) void refreshGroqModels(groqKey).catch(() => {});
+  return [preference[0]];
 }
 
 async function listAllProviders(needVision: boolean): Promise<ProviderChoice[]> {
@@ -694,11 +720,14 @@ export const aiSelfTest = internalAction({
       // Kiểm tra các model chat THỰC SỰ dùng (dò từ /models) thay vì so
       // từng tên trong danh sách ưu tiên — danh sách ưu tiên cố tình chứa
       // cả các model đã bị thu hồi để dòng dự phòng.
-      const [liveText, liveVision] = await Promise.all([
-        listGroqModels(groqKey, false),
-        listGroqModels(groqKey, true),
-      ]);
-      const checkModels = [...new Set([...liveText, ...liveVision])];
+      // Cron thì chờ được: dò cho xong rồi đọc cache, khác với lượt hỏi của
+      // người dùng vốn không được chờ lệnh gọi /models.
+      await refreshGroqModels(groqKey);
+      const known = liveModelsCache.get(groqKey);
+      const checkModels = [
+        known?.text ?? GROQ_TEXT_PREFERENCE[0],
+        known?.vision ?? GROQ_VISION_PREFERENCE[0],
+      ];
       for (const model of checkModels) {
         const ok = availableModels.includes(model);
         const modelNote = ok
@@ -1042,12 +1071,8 @@ export const ask = action({
     integrity: v.optional(v.string()),
   },
   handler: async (ctx, { messages, imageBase64, imageMime, deviceId, integrity }) => {
-    // Chặn bot / thiết bị bị can thiệp đốt hạn mức AI trước khi gọi provider.
     // Các lỗi nghiệp vụ trả về có cấu trúc để production không bị che thành
     // "Server Error"; lỗi hạ tầng/action thật sự vẫn để client tự retry.
-    const denied = await checkRateLimit(ctx, "ask", deviceId, integrity);
-    if (denied) return { ok: false as const, code: "rate_limited", message: denied };
-
     const userId = await getAuthUserId(ctx);
     void userId;
 
@@ -1084,7 +1109,15 @@ export const ask = action({
       };
     }
 
-    const providers = await listProviders(ctx, Boolean(imageBase64));
+    // Chặn bot / thiết bị bị can thiệp đốt hạn mức AI trước khi gọi provider.
+    // Kiểm tra giới hạn và dò model chạy SONG SONG: tiết kiệm trọn một vòng
+    // mạng. Nhưng vẫn tôn trọng giới hạn vì phía dưới mới quyết định có gọi
+    // provider hay không.
+    const [denied, providers] = await Promise.all([
+      checkRateLimit(ctx, "ask", deviceId, integrity),
+      listProviders(ctx, Boolean(imageBase64)),
+    ]);
+    if (denied) return { ok: false as const, code: "rate_limited", message: denied };
     if (providers.length === 0) {
       // Không có model nào cấu hình được — thường là thiếu GROQ_API_KEY.
       return {
@@ -1139,6 +1172,10 @@ export const ask = action({
             messages: payload as never,
             temperature: 0.35,
             maxOutputTokens: MAX_TOKENS,
+            // Mặc định AI SDK retry 2 lần kèm backoff — mỗi lần chờ thêm
+            // vài giây trước khi chuyển sang model kế tiếp. Tự chuyển model
+            // nhanh hơn nhiều so với chờ retry cùng một model.
+            maxRetries: 0,
           }),
           new Promise<never>((_, reject) =>
             setTimeout(
