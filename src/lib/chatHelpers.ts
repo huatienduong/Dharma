@@ -408,3 +408,128 @@ export function convexErrMessage(err: unknown): string {
   }
   return String(err);
 }
+
+/* ------------------------------------------------------------------ */
+/* Góp ý / báo lỗi ngay trong khung chat                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Bỏ dấu tiếng Việt trước khi so khớp từ khoá.
+ *
+ * BẮT BUỘC phải bỏ dấu thay vì viết lớp ký tự như `[oóô]`: “lỗi” có ký tự
+ * ỗ là U+1ED7, KHÁC HẲN ô (U+00F4), nên lớp ký tự viết tay dễ bỏ sót và
+ * không khớp. Bỏ dấu thì “lỗi”/“loi”/“Lỗi” đều về cùng một chuỗi.
+ * Riêng “đ” không tự tách dấu theo NFD nên phải thay tay.
+ */
+function deaccentForMatch(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase();
+}
+
+/**
+ * Bỏ dấu kèm bản đồ chỉ số: `map[i]` là vị trí trong chuỗi GỐC của ký tự
+ * thứ i của chuỗi đã bỏ dấu.
+ *
+ * Cần bản đồ vì bỏ dấu KHÔNG bảo toàn độ dài ở mọi vị trí, nên dùng độ dài
+ * để cắt chuỗi gốc sẽ cắt lệch và làm mất đầu câu (đã thử và thấy hỏng).
+ */
+function deaccentWithMap(value: string): { flat: string; map: number[] } {
+  let flat = "";
+  const map: number[] = [];
+  let i = 0;
+  for (const ch of value) {
+    const d = deaccentOne(ch);
+    for (let k = 0; k < d.length; k++) {
+      flat += d[k];
+      map.push(i);
+    }
+    i += ch.length;
+  }
+  return { flat, map };
+}
+
+/** Bỏ dấu một ký tự đơn (dùng cho bản đồ chỉ số). */
+function deaccentOne(ch: string): string {
+  const base = ch.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+  if (base === "đ") return "d";
+  if (base === "Đ") return "D";
+  return base;
+}
+
+/*
+ * Người dùng gõ thẳng trong khung chat: “góp ý và báo lỗi: ...”. Yêu cầu:
+ * đẩy nội dung tới hộp thư hỗ trợ và Trợ lý đáp lại, không hiện email.
+ *
+ * CỐ Ý VỀ ĐỘ CHÍNH XÁC: chỉ nhận khi CỤM MỞ ĐẦU nằm ngay đầu câu. Nếu
+ * nhận “lỗi” ở bất kỳ đâu thì câu hỏi Phật học thường gặp sẽ bị nuốt
+ * nhầm (ví dụ “làm sao khắc phục đau khổ vô minh?”), nên phải bám đầu câu.
+ */
+const FEEDBACK_LEAD_PATTERNS = [
+  /^gop\s*y\s*(va\s*bao\s*loi)?/i,
+  /^bao\s*loi\s*(va\s*gop\s*y)?/i,
+  /^phan\s*hoi/i,
+  /^khieu\s*nai/i,
+];
+
+/**
+ * Bỏ cụm mở đầu và dấu câu ở đầu, giữ lại phần thân.
+ *
+ * KHÔNG `.trim()` ở cuối: hàm này chạy trên bản đã bỏ dấu, và độ dài phần
+ * thân được dùng để suy ra vị trí cắt trong chuỗi gốc. Cắt bớt khoảng trắng
+ * cuối sẽ làm vị trí cắt lệch.
+ */
+function stripFeedbackLead(text: string): string {
+  return text
+    .replace(
+      /^\s*(gop\s*y|bao\s*loi|phan\s*hoi|khieu\s*nai)\s*(va\s*(gop\s*y|bao\s*loi)\s*)?/i,
+      "",
+    )
+    .replace(/^[\s:.,\-–—]+/, "");
+}
+
+/** Từ khoá cho thấy đây là báo lỗi kỹ thuật chứ không phải góp ý chung. */
+const BUG_KEYWORDS =
+  /loi|hong|sap|treo|khong hoat dong|bug|crash|dong bang|khong phan hoi|khong nghe|mat tieng|khong ra tieng|doc qua nho|mic/;
+
+export type ChatFeedback = {
+  /** "bug" = báo lỗi, "idea" = góp ý. */
+  type: "bug" | "idea";
+  /**
+   * Nội dung người dùng muốn gửi, giữ NGUYÊN DẤU tiếng Việt — đây là thứ
+   * đọc trong thư hỗ trợ, mất dấu thì người nhận khó hiểu.
+   */
+  message: string;
+};
+
+/**
+ * Nhận diện tin nhắn góp ý / báo lỗi trong khung chat.
+ *
+ * Trả về `null` khi đó là câu hỏi thường — đây là nhánh quyết định có chặn
+ * lượt hỏi của Trợ lý hay không, nên phải thật hẹn.
+ */
+export function parseChatFeedback(text: string): ChatFeedback | null {
+  const raw = text.trim();
+  if (!raw) return null;
+  // So khớp trên bản BỎ DẤU cho chắc ăn, nhưng phần gửi đi lấy từ bản GỐC
+  // để giữ dấu tiếng Việt.
+  //
+  // Việc bỏ dấu (NFD rồi xoá dấu) giữ nguyên ĐỘ DÀI chuỗi với tiếng Việt,
+  // nên độ dài phần đã bỏ cụm mở đầu dùng để cắt trên chính `raw`.
+  const { flat, map } = deaccentWithMap(raw);
+  if (!FEEDBACK_LEAD_PATTERNS.some((re) => re.test(flat))) return null;
+  const bodyFlat = stripFeedbackLead(flat);
+  // Cụm mở đầu trần (chỉ gõ “góp ý”) thì chưa có gì để gửi — để nơi gọi
+  // hỏi lại, tuyệt đối không gửi thư rỗng.
+  if (bodyFlat.trim().length < 3) return null;
+  // Vị trí bắt đầu phần thân = vị trí của ký tự ngay SAU phần đã bỏ.
+  // Phần đã bỏ dài bằng (độ dài chuỗi đã bỏ dấu) − (độ dài phần thân).
+  const removed = flat.length - bodyFlat.length;
+  const start = removed < map.length ? map[removed] : raw.length;
+  const message = raw.slice(start).replace(/^[\s:.,\-–—]+/, "").trim();
+  if (message.length < 3) return null;
+  return { type: BUG_KEYWORDS.test(bodyFlat) ? "bug" : "idea", message };
+}

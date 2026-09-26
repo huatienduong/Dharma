@@ -18,6 +18,7 @@ import {
   isClearHistoryCommand,
   isStartCallCommand,
   loadLocalChatSecure,
+  parseChatFeedback,
   plainText,
   saveLocalChatSecure,
   speakableSummary,
@@ -27,8 +28,9 @@ import {
 import { callConvexAction } from "@/lib/convexAction";
 import { getDeviceMeta } from "@/lib/deviceSecurity";
 import { wantsImage } from "@/lib/imageIntent";
+import { APP_VERSION } from "@/lib/version";
 import { cn } from "@/lib/utils";
-import { useAction } from "convex/react";
+import { useAction, useMutation } from "convex/react";
 import { ArrowLeft, Phone, Settings } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
@@ -47,6 +49,10 @@ export default function Assistant() {
   const isHome = location.pathname === "/" || location.pathname === "/home";
   const ask = useAction(api.aiChat.ask);
   const createImage = useAction(api.aiChat.createImage);
+  // Góp ý / báo lỗi gửi thẳng từ khung chat: lưu phiếu rồi gửi thư hỗ trợ.
+  // Dùng lại đúng hạ tầng của mục Góp ý trong Cài đặt, không thêm dịch vụ mới.
+  const submitFeedback = useMutation(api.library.submitFeedback);
+  const sendFeedbackEmail = useAction(api.library.emailFeedback);
 
   const [history, setHistory] = useState<Msg[]>([]);
   const historyRef = useRef<Msg[]>([]);
@@ -357,6 +363,15 @@ export default function Assistant() {
       // Mốc bắt đầu lượt gửi trong đàm thoại (giám sát dùng để cứu vòng lặp
       // khi máy chủ treo).
       if (opts?.fromCall) call.sendSinceRef.current = Date.now();
+      // Góp ý / báo lỗi gõ thẳng trong khung chat: chuyển thẳng tới bộ phận
+      // kỹ thuật, KHÔNG hỏi AI và không gửi kèm bất kỳ thông tin nào của
+      // người dùng (không có ô email, không lưu email).
+      const feedback = parseChatFeedback(q);
+      if (feedback) {
+        setInput("");
+        await sendChatFeedback(feedback, q);
+        return;
+      }
       // Lệnh xóa hội thoại: xóa sạch ngay và kết thúc cuộc trò chuyện.
       if (isClearHistoryCommand(q)) {
         setInput("");
@@ -874,6 +889,69 @@ export default function Assistant() {
       });
     },
     [markLoading, markReading, speakVI, stopSpeaking],
+  );
+
+  /* ----- Góp ý / báo lỗi gửi thẳng từ khung chat -----
+   *
+   * Luồng: hiện tin người dùng → lưu phiếu (sinh mã) → gửi thư hỗ trợ →
+   * Trợ lý đáp lại. KHÔNG thu thập, không lưu và không hiện email của
+   * người dùng ở bất kỳ đâu trong cuộc hội thoại.
+   */
+  const sendChatFeedback = useCallback(
+    async (
+      feedback: { type: "bug" | "idea"; message: string },
+      rawText: string,
+    ) => {
+      const userMsg: Msg = { role: "user", content: rawText, ts: Date.now() };
+      pendingRef.current = [...pendingRef.current, userMsg];
+      setPending(pendingRef.current);
+      busyRef.current = true;
+      setBusy(true);
+
+      const answer = async (text: string) => {
+        const replyMsg: Msg = {
+          role: "assistant",
+          content: text,
+          ts: Date.now(),
+        };
+        pendingRef.current = pendingRef.current.filter(
+          (m) => m !== userMsg,
+        );
+        setPending(pendingRef.current);
+        const nextHistory = [...historyRef.current, userMsg, replyMsg];
+        historyRef.current = nextHistory;
+        setHistory(nextHistory);
+        void saveLocalChatSecure(nextHistory);
+      };
+
+      try {
+        // Lưu phiếu trước để có mã định danh, kể cả khi gửi thư thất bại.
+        const ticket = await submitFeedback({
+          type: feedback.type,
+          message: feedback.message,
+          appVersion: APP_VERSION,
+        });
+        // `email` cố tình bỏ trống: thư chỉ nhận nội dung góp ý, không kèm
+        // địa chỉ nào của người dùng.
+        await sendFeedbackEmail({
+          type: feedback.type,
+          message: feedback.message,
+          appVersion: APP_VERSION,
+          ticketCode: ticket.ticketCode,
+        });
+        await answer(
+          "🙏 Đã tiếp nhận góp ý của bạn. Bộ phận kỹ thuật sẽ sớm xem xét, xử lý và khắc phục. Cảm ơn bạn đã giúp Trợ lý Phật học hoàn thiện hơn!",
+        );
+      } catch {
+        await answer(
+          "🙏 Trợ lý đã nhận được góp ý của bạn, nhưng lưu phiếu gặp sự cố. Bạn thử gửi lại sau ít giây, hoặc ghi lại ở mục Góp ý trong Cài đặt để chắc chắn bộ phận kỹ thuật nhận được.",
+        );
+      } finally {
+        busyRef.current = false;
+        setBusy(false);
+      }
+    },
+    [sendFeedbackEmail, submitFeedback],
   );
 
   /* ----- Gửi lại câu vừa bị lỗi (nút "Gửi lại" trong hội thoại) ----- */
