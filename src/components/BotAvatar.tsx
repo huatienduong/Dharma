@@ -1,13 +1,10 @@
 /**
- * AVATAR TRợ LÝ PHẬT HỌC — robot theo phong cách Phật giáo.
+ * AVATAR TRỢ LÝ PHẬT HỌC — robot AI vẽ tay bằng SVG.
  *
- * Gộp hai hình ảnh: mặt robot hiện đại (vỏ sứ, tai nghe) với các nét đặc
- * trưng của tượng Phật — Đỉnh Uṣṇīṣa vàng trên đỉnh đầu, tai dài, hạt
- * Urna giữa hai lông mày, mắt khép nghiền an tịnh, và đài sen nở dưới thân.
- *
- * Nhấn mạnh sự an tịnh nhưng vẫn là robot (vỏ sứ bo góc, kính mắt, nụ
- * cười nhẹ) để hợp với vai trò trợ lý. Tông nâu mập ong – vàng ấm, không
- * dùng vòng hào quang chồng nhau.
+ * Thiết kế gọn, hiện đại: vỏ sứ kem bo góc mềm, mắt tròn xoe có đốm sáng,
+ * tai nghe nhỏ, ăng-ten kết hạt kim loại. KHÔNG dùng ký hiệu Phật giáo
+ * (không đỉnh uṣṇīṣa, không đài sen, không hạt urna, không tai dài) — avatar
+ * thuần robot, giữ tông nâu vàng của ứng dụng.
  *
  * Dùng ở: bong bóng trả lời, thẻ tiến trình, ô "đang suy nghĩ", màn đàm
  * thoại và màn chào. Kích thước co giãn theo className của vỏ ngoài.
@@ -37,7 +34,7 @@ export function BotAvatar({
     <span
       className={cn(
         "relative flex shrink-0 items-center justify-center rounded-[28%]",
-        "bg-gradient-to-b from-[#FBEED2] to-[#EBD09A]",
+        "bg-gradient-to-b from-[#FDF6E9] to-[#F1DCB4]",
         "shadow-[0_2px_10px_-4px_rgba(111,66,38,0.45)]",
         SIZES[size],
         className,
@@ -47,133 +44,86 @@ export function BotAvatar({
         viewBox="0 0 48 48"
         role="img"
         aria-label="Avatar Trợ lý Phật học"
-        className="relative h-[88%] w-[88%]"
+        className="relative h-[86%] w-[86%]"
       >
         <defs>
           <linearGradient id="bot-shell" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#FFFDF8" />
-            <stop offset="100%" stopColor="#F4E3C4" />
+            <stop offset="0%" stopColor="#FFFFFF" />
+            <stop offset="100%" stopColor="#F3E2C4" />
           </linearGradient>
-          <linearGradient id="bot-gold" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#F7CE84" />
-            <stop offset="100%" stopColor="#D18A24" />
+          <linearGradient id="bot-bead" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#F5C877" />
+            <stop offset="100%" stopColor="#D98C2B" />
           </linearGradient>
-          <linearGradient id="bot-lotus" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#F3C173" />
-            <stop offset="100%" stopColor="#C77C1C" />
+          <linearGradient id="bot-eye" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#5A3A1E" />
+            <stop offset="100%" stopColor="#33200F" />
           </linearGradient>
         </defs>
 
-        {/* ---------- Đài sen nở dưới thân ---------- */}
+        {/* Ăng-ten kết hạt kim loại */}
         <g>
-          <path
-            d="M24 38.6c-1.7-1.5-2.6-3-2.6-4.6 0-1.5 1-2.7 2.6-3.3 1.6.6 2.6 1.8 2.6 3.3 0 1.6-.9 3.1-2.6 4.6z"
-            fill="url(#bot-lotus)"
+          <rect
+            x="23.1"
+            y="6.2"
+            width="1.8"
+            height="6.6"
+            rx="0.9"
+            fill="#C79A57"
           />
-          <path
-            d="M20.4 41.2c-1.9-.6-3.3-1.6-4-3-.6-1.3-.4-2.8.5-4 1.3.1 2.5.7 3.4 1.7.9 1 1.2 2.1 1.1 3.3z"
-            fill="url(#bot-lotus)"
-            opacity="0.85"
-          />
-          <path
-            d="M27.6 41.2c1.9-.6 3.3-1.6 4-3 .6-1.3.4-2.8-.5-4-1.3.1-2.5.7-3.4 1.7-.9 1-1.2 2.1-1.1 3.3z"
-            fill="url(#bot-lotus)"
-            opacity="0.85"
-          />
+          <circle cx="24" cy="5.6" r="2.9" fill="url(#bot-bead)" />
+          <circle cx="23.2" cy="4.8" r="0.9" fill="#FFF8EC" opacity="0.9" />
         </g>
 
-        {/* ---------- Thân robot ---------- */}
-        <path
-          d="M13 39.6c0-3.9 4.9-6.4 11-6.4s11 2.5 11 6.4z"
-          fill="url(#bot-shell)"
-          stroke="#C79A57"
-          strokeWidth="1"
-        />
+        {/* Tai nghe hai bên */}
+        <rect x="8.6" y="21" width="3.4" height="8" rx="1.7" fill="#E4C795" />
+        <rect x="36" y="21" width="3.4" height="8" rx="1.7" fill="#E4C795" />
 
-        {/* ---------- Tai dài (nét đặc trưng của tượng Phật) ---------- */}
+        {/* Đầu robot sứ trắng */}
         <rect
-          x="9.9"
-          y="17.4"
-          width="3.2"
-          height="12"
-          rx="1.6"
-          fill="#EFDCBB"
-          stroke="#C79A57"
-          strokeWidth="0.8"
-        />
-        <rect
-          x="34.9"
-          y="17.4"
-          width="3.2"
-          height="12"
-          rx="1.6"
-          fill="#EFDCBB"
-          stroke="#C79A57"
-          strokeWidth="0.8"
-        />
-
-        {/* ---------- Đầu sứ ---------- */}
-        <rect
-          x="12.4"
-          y="12.6"
-          width="23.2"
-          height="21.6"
-          rx="9.2"
+          x="11.4"
+          y="12.4"
+          width="25.2"
+          height="24"
+          rx="9.4"
           fill="url(#bot-shell)"
           stroke="#C79A57"
           strokeWidth="1.1"
         />
-
-        {/* ---------- Đỉnh Uṣṇīṣa ---------- */}
-        <g>
-          <rect x="21.7" y="6.6" width="4.6" height="7" rx="2.3" fill="url(#bot-gold)" />
-          <circle cx="24" cy="7.4" r="4.4" fill="url(#bot-gold)" />
-          <ellipse cx="22.6" cy="5.9" rx="1.5" ry="1" fill="#FFF0CB" opacity="0.85" />
-        </g>
-
         {/* Ánh sáng trên vòm đầu */}
         <path
-          d="M16.8 17c1.6-1.8 4.3-2.8 7.2-2.8s5.6 1 7.2 2.8"
+          d="M16.4 16.6c1.9-2 4.9-3.1 7.6-3.1s5.7 1.1 7.6 3.1"
           fill="none"
           stroke="#FFFFFF"
           strokeOpacity="0.95"
-          strokeWidth="1.8"
+          strokeWidth="1.9"
           strokeLinecap="round"
         />
 
-        {/* ---------- Hạt Urna giữa hai lông mày ---------- */}
-        <circle cx="24" cy="19.6" r="1" fill="url(#bot-gold)" />
+        {/* Má hồng nhẹ cho thân thiện */}
+        <ellipse cx="16.4" cy="27.4" rx="2.6" ry="1.7" fill="#F3B27A" opacity="0.4" />
+        <ellipse cx="31.6" cy="27.4" rx="2.6" ry="1.7" fill="#F3B27A" opacity="0.4" />
 
-        {/* ---------- Quầng sáng mắt (chỉ khi bật glow) ---------- */}
+        {/* Quầng sáng mắt (chỉ khi bật glow) */}
         {glow ? (
           <>
-            <ellipse cx="19" cy="24.6" rx="4" ry="3" fill="#F0A63A" opacity="0.18" />
-            <ellipse cx="29" cy="24.6" rx="4" ry="3" fill="#F0A63A" opacity="0.18" />
+            <circle cx="19.2" cy="24.4" r="4.2" fill="#F0A63A" opacity="0.2" />
+            <circle cx="28.8" cy="24.4" r="4.2" fill="#F0A63A" opacity="0.2" />
           </>
         ) : null}
 
-        {/* ---------- Mắt khép nghiền an tịnh ---------- */}
-        <path
-          d="M16.2 24.2c.9 1.5 2 2.2 2.8 2.2s1.9-.7 2.8-2.2"
-          fill="none"
-          stroke="#5A3A1E"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-        />
-        <path
-          d="M26.2 24.2c.9 1.5 2 2.2 2.8 2.2s1.9-.7 2.8-2.2"
-          fill="none"
-          stroke="#5A3A1E"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-        />
+        {/* Mắt tròn xoe, có đốm sáng */}
+        <ellipse cx="19.2" cy="24.4" rx="2.6" ry="3.1" fill="url(#bot-eye)" />
+        <ellipse cx="28.8" cy="24.4" rx="2.6" ry="3.1" fill="url(#bot-eye)" />
+        <circle cx="18.4" cy="23.1" r="0.95" fill="#FFFFFF" opacity="0.95" />
+        <circle cx="28" cy="23.1" r="0.95" fill="#FFFFFF" opacity="0.95" />
 
-        {/* ---------- Nụ cười nhẹ ---------- */}
+        {/* Nụ cười thân thiện */}
         <path
-          d="M21.6 29.4c.8 1.2 1.6 1.8 2.4 1.8s1.6-.6 2.4-1.8"
+          d="M21.4 30.2c.9 1.3 2 1.9 2.6 1.9s1.7-.6 2.6-1.9"
           fill="none"
           stroke="#8A5A2B"
-          strokeWidth="1.4"
+          strokeWidth="1.5"
           strokeLinecap="round"
         />
       </svg>
