@@ -204,8 +204,9 @@ function callDuration(durationMs: number) {
 
 /**
  * DÒNG GHI CHÚ CUỘC GỌI — tin hệ thống trong lịch sử hội thoại, hiện sau
- * khi kết thúc đàm thoại: NGÀY, GIỜ và THỜI LƯỢNG, tách thành từng mảnh
- * thông tin rõ ràng. Không gửi lên AI và không đọc to.
+ * khi kết thúc đàm thoại. Kiểu dòng ghi nhỏ giữa khung chat giống Messenger:
+ * chữ nhỏ mờ, không viền, không nền — không tranh chỗ với tin nhắn thật.
+ * Không gửi lên AI và không đọc to.
  */
 function CallSummaryLine({
   summary,
@@ -213,20 +214,16 @@ function CallSummaryLine({
   summary: { at: number; durationMs: number };
 }) {
   return (
-    <div className="mt-4 flex justify-center">
-      <div className="flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full border border-border/60 bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
-        <PhoneCall className="h-3.5 w-3.5 shrink-0 text-primary" />
+    <div className="flex justify-center py-1.5">
+      <div className="flex max-w-full flex-wrap items-center justify-center gap-x-1.5 text-[11px] leading-4 text-muted-foreground/70">
+        <PhoneCall className="h-3 w-3 shrink-0" />
         <span>Kết thúc lúc</span>
-        <span className="font-medium tabular-nums text-foreground">
-          {callEndTime(summary.at)}
-        </span>
-        <span aria-hidden>·</span>
+        <span className="tabular-nums">{callEndTime(summary.at)}</span>
+        <span>·</span>
         <span className="tabular-nums">{callEndDate(summary.at)}</span>
-        <span aria-hidden>·</span>
+        <span>·</span>
         <span>Thời lượng</span>
-        <span className="font-medium tabular-nums text-foreground">
-          {callDuration(summary.durationMs)}
-        </span>
+        <span className="tabular-nums">{callDuration(summary.durationMs)}</span>
       </div>
     </div>
   );
