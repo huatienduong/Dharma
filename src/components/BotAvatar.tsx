@@ -1,9 +1,10 @@
 /**
  * AVATAR TRỢ LÝ PHẬT HỌC — robot AI vẽ tay bằng SVG.
  *
- * Đơn sắc trắng/đen: MỌI màu đều lấy từ token giao diện (bg-muted, fill-…,
- * stroke-…) nên avatar tự đổi theo chế độ sáng/tối mà không cần sửa mã.
- * Sáng: xám nhạt – viền đen – mắt đen. Tối: xám đậm – viền trắng – mắt trắng.
+ * Nền ứng dụng là nâu rất đậm, nên robot được vẽ theo hướng NỔI HẲN:
+ * vỏ ngoài nâu ấm, đầu kem sáng (`--foreground`), mắt gần đen
+ * (`--primary-foreground`), tai + ăng-ten y cà sa (`--primary`).
+ * Mọi màu đều lấy từ token giao diện nên tự đổi theo giao diện.
  *
  * Dùng ở: bong bóng trả lời, thẻ tiến trình, ô "đang suy nghĩ", màn đàm
  * thoại và màn chào. Kích thước co giãn theo className của vỏ ngoài.
@@ -22,7 +23,7 @@ export type BotAvatarSize = keyof typeof SIZES;
 export function BotAvatar({
   size = "md",
   className,
-  /** Bật/tắt độ phát sáng quanh mắt (màn đàm thoại dùng bật) */
+  /** Bật/tắt quầng sáng y cà sa quanh mắt (màn đàm thoại dùng bật) */
   glow = false,
 }: {
   size?: BotAvatarSize;
@@ -33,7 +34,7 @@ export function BotAvatar({
     <span
       className={cn(
         "relative flex shrink-0 items-center justify-center rounded-[28%]",
-        "bg-card",
+        "bg-primary/25",
         SIZES[size],
         className,
       )}
@@ -42,9 +43,9 @@ export function BotAvatar({
         viewBox="0 0 48 48"
         role="img"
         aria-label="Avatar Trợ lý Phật học"
-        className="relative h-[86%] w-[86%]"
+        className="relative h-[88%] w-[88%]"
       >
-        {/* Ăng-ten kết hạt kim loại */}
+        {/* Ăng-ten: que y cà sa + hạt kem sáng */}
         <g>
           <rect
             x="23.1"
@@ -52,100 +53,73 @@ export function BotAvatar({
             width="1.8"
             height="6.6"
             rx="0.9"
-            className="fill-muted-foreground"
+            className="fill-primary"
           />
-          <circle cx="24" cy="5.6" r="2.9" className="fill-primary" />
-          <circle cx="23.2" cy="4.8" r="0.9" className="fill-background" opacity="0.4" />
+          <circle cx="24" cy="5.6" r="3" className="fill-foreground" />
+          <circle cx="23.1" cy="4.7" r="0.95" className="fill-background" opacity="0.35" />
         </g>
 
-        {/* Tai nghe hai bên */}
+        {/* Tai nghe y cà sa — nổi rõ trên nền nâu */}
         <rect
-          x="8.6"
-          y="21"
-          width="3.4"
-          height="8"
-          rx="1.7"
-          className="fill-border"
+          x="8.4"
+          y="20.8"
+          width="3.6"
+          height="8.4"
+          rx="1.8"
+          className="fill-primary"
         />
         <rect
           x="36"
-          y="21"
-          width="3.4"
-          height="8"
-          rx="1.7"
-          className="fill-border"
+          y="20.8"
+          width="3.6"
+          height="8.4"
+          rx="1.8"
+          className="fill-primary"
         />
 
-        {/* Đầu robot — KHÔNG viền bo; nền nhạt hơn vỏ ngoài để tách bạch
-            trên giao diện tối nâu */}
+        {/* Đầu kem sáng — KHÔNG viền bo, nét liền mềm */}
         <rect
-          x="11.4"
-          y="12.4"
-          width="25.2"
-          height="24"
-          rx="9.4"
-          className="fill-muted"
+          x="11.2"
+          y="12.2"
+          width="25.6"
+          height="24.4"
+          rx="9.6"
+          className="fill-foreground"
         />
-        {/* Ánh sáng trên vòm đầu */}
+        {/* Ánh sáng nhẹ trên vòm đầu */}
         <path
-          d="M16.4 16.6c1.9-2 4.9-3.1 7.6-3.1s5.7 1.1 7.6 3.1"
+          d="M16.2 16.4c1.9-2 4.9-3.1 7.8-3.1s5.9 1.1 7.8 3.1"
           fill="none"
-          className="stroke-foreground"
-          strokeOpacity="0.22"
-          strokeWidth="1.9"
+          className="stroke-primary"
+          strokeOpacity="0.45"
+          strokeWidth="2"
           strokeLinecap="round"
         />
 
-        {/* Má hồng nhẹ cho thân thiện */}
-        <ellipse
-          cx="16.4"
-          cy="27.4"
-          rx="2.6"
-          ry="1.7"
-          className="fill-primary"
-          opacity="0.2"
-        />
-        <ellipse
-          cx="31.6"
-          cy="27.4"
-          rx="2.6"
-          ry="1.7"
-          className="fill-primary"
-          opacity="0.2"
-        />
+        {/* Má hồng ấm trên nền kem */}
+        <ellipse cx="16.3" cy="27.6" rx="2.7" ry="1.7" className="fill-primary" opacity="0.4" />
+        <ellipse cx="31.7" cy="27.6" rx="2.7" ry="1.7" className="fill-primary" opacity="0.4" />
 
-        {/* Quầng sáng mắt (chỉ khi bật glow) */}
+        {/* Quầng sáng quanh mắt (chỉ khi bật glow) */}
         {glow ? (
           <>
-            <circle
-              cx="19.2"
-              cy="24.4"
-              r="4.2"
-              className="fill-primary"
-              opacity="0.25"
-            />
-            <circle
-              cx="28.8"
-              cy="24.4"
-              r="4.2"
-              className="fill-primary"
-              opacity="0.25"
-            />
+            <circle cx="19.1" cy="24.3" r="4.6" className="fill-primary" opacity="0.3" />
+            <circle cx="28.9" cy="24.3" r="4.6" className="fill-primary" opacity="0.3" />
           </>
         ) : null}
 
-        {/* Mắt tròn xoe, có đốm sáng */}
-        <ellipse cx="19.2" cy="24.4" rx="2.6" ry="3.1" className="fill-foreground" />
-        <ellipse cx="28.8" cy="24.4" rx="2.6" ry="3.1" className="fill-foreground" />
-        <circle cx="18.4" cy="23.1" r="0.95" className="fill-muted" />
-        <circle cx="28" cy="23.1" r="0.95" className="fill-muted" />
+        {/* Mắt gần đen trên đầu kem — tương phản mạnh nhất */}
+        <ellipse cx="19.1" cy="24.3" rx="2.8" ry="3.3" className="fill-primary-foreground" />
+        <ellipse cx="28.9" cy="24.3" rx="2.8" ry="3.3" className="fill-primary-foreground" />
+        <circle cx="18.2" cy="22.9" r="1" className="fill-foreground" />
+        <circle cx="28" cy="22.9" r="1" className="fill-foreground" />
 
         {/* Nụ cười thân thiện */}
         <path
-          d="M21.4 30.2c.9 1.3 2 1.9 2.6 1.9s1.7-.6 2.6-1.9"
+          d="M21.2 30c.9 1.4 2.1 2.1 2.8 2.1s1.9-.7 2.8-2.1"
           fill="none"
-          className="stroke-foreground"
-          strokeWidth="1.5"
+          className="stroke-primary-foreground"
+          strokeWidth="1.7"
           strokeLinecap="round"
         />
       </svg>
