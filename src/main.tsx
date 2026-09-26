@@ -1,5 +1,5 @@
 import '@vly-ai/integrations';
-import { Toaster } from "@/components/ui/sonner";
+import { NotificationHost } from "@/components/NotificationHost";
 import { ChatScreenShield } from "@/components/ChatScreenShield";
 import { ConvexHealth } from "@/components/ConvexHealth";
 import { DeviceGuard } from "@/components/DeviceGuard";
@@ -199,7 +199,7 @@ createRoot(document.getElementById("root")!).render(
             </Suspense>
           </BrowserRouter>
         </SettingsProvider>
-        <Toaster />
+        <NotificationHost />
       </ConvexAuthProvider>
     </RootErrorBoundary>
   </StrictMode>,

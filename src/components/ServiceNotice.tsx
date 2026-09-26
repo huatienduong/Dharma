@@ -1,47 +1,36 @@
 import { cn } from "@/lib/utils";
-import { Bot, RotateCw, Settings, WifiOff, Wrench } from "lucide-react";
+import { RotateCw, Settings, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
 /* ------------------------------------------------------------------ */
-/* THÔNG BÁO DỊCH VỤ — hiển thị khi ứng dụng mất kết nối hoặc được    */
-/* yêu cầu thông báo.                                                  */
-/*                                                                     */
-/* Nguồn kích hoạt:                                                     */
-/*   • Trình duyệt mất mạng (offline)                                   */
-/*   • Tính năng chủ động phát sự kiện service-notice                  */
-/*   • Lỗi runtime tự phục hồi không được chặn toàn màn hình           */
+/* MÀN THÔNG BÁO MẤT KẾT NỐI MẠNG                                     */
+/*                                                                      */
+/* Trước đây file này còn hỗ trợ cả "sự cố tạm thời" qua hàm           */
+/* `showServiceNotice()` + sự kiện `dharma:service-notice`. NHƯNG không  */
+/* có chỗ nào gọi hàm đó (grep toàn bộ src/ không có kết quả), nên    */
+/* nhánh đó là code chết và đã được gỡ.                                */
+/*                                                                      */
+/* Thứ tự lớp hiển thị (xem thêm ghi chú trong src/index.css):       */
+/*   nội dung z-40 < thông báo tức thời z-90 < banner cập nhật z-100  */
+/*   < màn thông báo này z-[200]                                      */
+/*                                                                      */
+/* Màn này KHÔNG bị công tắc "Thông báo ứng dụng" tắt: mất mạng thì  */
+/* người dùng không gửi được câu hỏi, chặn lại mới đúng và tránh kẹt  */
+/* trong màn hình không dùng được.                                     */
 /* ------------------------------------------------------------------ */
-
-export const SERVICE_NOTICE_EVENT = "dharma:service-notice";
-
-export type ServiceNoticeReason = "offline" | "error" | "upgrade";
-
-/** Bất kỳ tính năng nào cũng có thể gọi hàm này khi bị treo/lỗi tạm thời. */
-export function showServiceNotice(reason: ServiceNoticeReason = "upgrade") {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(
-    new CustomEvent(SERVICE_NOTICE_EVENT, { detail: { reason } }),
-  );
-}
-
-const UPGRADE_MESSAGE =
-  "Đội ngũ kỹ thuật đang tiến hành nâng cấp hệ thống hoặc ứng dụng đang gặp vấn đề sự cố tạm thời. Xin vui lòng quay lại sau!";
 
 export function ServiceNotice() {
   const navigate = useNavigate();
-  const [reason, setReason] = useState<ServiceNoticeReason | null>(
-    typeof navigator !== "undefined" && navigator.onLine === false
-      ? "offline"
-      : null,
+  const [offline, setOffline] = useState(
+    typeof navigator !== "undefined" && navigator.onLine === false,
   );
   const [reloading, setReloading] = useState(false);
 
   /* Mất / có lại kết nối mạng */
   useEffect(() => {
-    const onOffline = () => setReason("offline");
-    const onOnline = () =>
-      setReason((cur) => (cur === "offline" ? null : cur));
+    const onOffline = () => setOffline(true);
+    const onOnline = () => setOffline(false);
     window.addEventListener("offline", onOffline);
     window.addEventListener("online", onOnline);
     return () => {
@@ -50,63 +39,37 @@ export function ServiceNotice() {
     };
   }, []);
 
-  /* Không chặn cả màn hình chỉ vì vài lỗi runtime/unhandled rejection có thể
-     tự phục hồi (Convex tự kết nối lại, request AI retry...). Màn hình này chỉ
-     hiện khi mất mạng thật hoặc một tính năng chủ động yêu cầu thông báo. */
-
-  /* Tính năng tự báo sự cố */
-  useEffect(() => {
-    const onNotice = (e: Event) => {
-      const detail = (e as CustomEvent<{ reason?: ServiceNoticeReason }>).detail;
-      setReason(detail?.reason ?? "upgrade");
-    };
-    window.addEventListener(SERVICE_NOTICE_EVENT, onNotice);
-    return () => window.removeEventListener(SERVICE_NOTICE_EVENT, onNotice);
-  }, []);
-
   const reload = useCallback(() => {
     setReloading(true);
     window.location.reload();
   }, []);
 
-  if (!reason) return null;
-
-  const offline = reason === "offline";
+  if (!offline) return null;
 
   return (
     <div
       role="alertdialog"
       aria-modal="true"
-      aria-label="Thông báo từ Trợ lý Phật học"
+      aria-label="Thông báo mất kết nối mạng"
       className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-background/95 px-4 py-10 backdrop-blur-sm"
     >
       <div className="w-full max-w-lg rounded-3xl border border-border/60 bg-card/90 p-6 text-center shadow-xl sm:p-8">
         <span
           className={cn(
             "mx-auto flex h-16 w-16 items-center justify-center rounded-full",
-            offline
-              ? "bg-muted text-muted-foreground"
-              : "bg-gold/15 text-gold",
+            "bg-muted text-muted-foreground",
           )}
         >
-          {offline ? (
-            <WifiOff className="h-7 w-7" />
-          ) : (
-            <span className="relative" aria-hidden>
-              <Bot className="h-9 w-9" />
-              <Wrench className="absolute -bottom-1 -right-1 h-4 w-4 animate-pulse text-primary" />
-            </span>
-          )}
+          <WifiOff className="h-7 w-7" />
         </span>
 
         <h2 className="mt-5 text-lg font-bold tracking-tight">
-          {offline ? "Mất kết nối mạng" : "Trợ lý Phật học đang được nâng cấp"}
+          Mất kết nối mạng
         </h2>
 
         <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
-          {offline
-            ? "Ứng dụng đang mất kết nối mạng. Vui lòng kiểm tra kết nối rồi quay lại sau."
-            : UPGRADE_MESSAGE}
+          Ứng dụng đang mất kết nối mạng. Vui lòng kiểm tra kết nối rồi quay lại
+          sau.
         </p>
 
         <div className="mt-6 flex flex-col items-center justify-center gap-2.5 sm:flex-row">
@@ -122,7 +85,7 @@ export function ServiceNotice() {
           <button
             type="button"
             onClick={() => {
-              setReason(null);
+              setOffline(false);
               navigate("/settings");
             }}
             className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-border/70 px-5 py-2.5 text-sm font-medium text-foreground transition hover:bg-accent sm:w-auto"

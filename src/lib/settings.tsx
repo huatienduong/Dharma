@@ -28,6 +28,27 @@ const DEFAULTS: AppSettings = {
 
 const LS_KEY = "dhamma-stream-settings";
 
+/**
+ * Sự kiện bảo cho các nơi NGOÀI provider biết cờ thông báo vừa đổi (khung
+ * thông báo, banner cập nhật) — hai nơi đó không nằm trong SettingsProvider.
+ */
+export const NOTIFICATIONS_PREF_EVENT = "dhamma:notifications-pref";
+
+/**
+ * Đọc cờ thông báo ngoài React. Nguồn duy nhất vẫn là localStorage nên không
+ * lệch với `useSettings()`.
+ */
+export function readNotificationsPref(): boolean {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return DEFAULTS.notifications;
+    const parsed = JSON.parse(raw) as { notifications?: unknown };
+    return parsed.notifications !== false;
+  } catch {
+    return DEFAULTS.notifications;
+  }
+}
+
 function loadLocal(): AppSettings {
   try {
     const raw = localStorage.getItem(LS_KEY);
@@ -104,6 +125,13 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     root.style.removeProperty("--font-size-scale");
     root.lang = settings.language === "en" ? "en" : "vi";
     saveLocal(settings);
+    // Báo sau khi ĐÃ ghi xong xuống localStorage, để nơi nhận sự kiện đọc
+    // được giá trị mới chứ không phải giá trị cũ.
+    window.dispatchEvent(
+      new CustomEvent(NOTIFICATIONS_PREF_EVENT, {
+        detail: { notifications: settings.notifications },
+      }),
+    );
   }, [settings]);
 
   const persist = useCallback(

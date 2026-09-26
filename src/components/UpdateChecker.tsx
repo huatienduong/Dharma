@@ -1,4 +1,5 @@
 import { api } from "@/convex/_generated/api";
+import { useSettings } from "@/lib/settings";
 import { APP_VERSION } from "@/lib/version";
 import { useMutation, useQuery } from "convex/react";
 import { Download, X } from "lucide-react";
@@ -24,6 +25,10 @@ function isNewer(latest: string, current: string): boolean {
  * - Nút "Cập nhật ngay" tải lại ứng dụng để nhận bản mới.
  */
 export function UpdateChecker() {
+  // Công tắc "Thông báo ứng dụng" trong Cài đặt tắt được cả banner này,
+  // không chỉ toast — nếu không, người dùng tắt thông báo vẫn thấy nó.
+  const { settings } = useSettings();
+  const notifications = settings.notifications;
   const meta = useQuery(api.library.getAppVersion, {});
   const seedVersion = useMutation(api.library.seedAppVersion);
   const [dismissed, setDismissed] = useState<string | null>(null);
@@ -50,19 +55,21 @@ export function UpdateChecker() {
 
   // Toast một lần cho mỗi phiên bản mới
   useEffect(() => {
-    if (hasUpdate && latest && toasted !== latest) {
+    if (notifications && hasUpdate && latest && toasted !== latest) {
       toast(`Phiên bản mới ${latest} đã sẵn sàng`, {
         description: meta?.releaseNotes?.slice(0, 120),
         duration: 6000,
       });
       setToasted(latest);
     }
-  }, [hasUpdate, latest, toasted, meta?.releaseNotes]);
+  }, [notifications, hasUpdate, latest, toasted, meta?.releaseNotes]);
 
-  if (!hasUpdate || !latest) return null;
+  if (!notifications || !hasUpdate || !latest) return null;
 
   return (
-    <div className="fixed inset-x-0 top-0 z-[200] flex justify-center px-3 pt-2">
+    // z-[100]: nằm trên nội dung (z-40) và trên thông báo tức thời (z-90),
+    // nhưng vẫn dưới màn thông báo chặn toàn màn hình (z-[200]).
+    <div className="fixed inset-x-0 top-0 z-[100] flex justify-center px-3 pt-2">
       <div className="flex w-full max-w-md items-center gap-2.5 rounded-full border border-gold/50 bg-gold/10 px-4 py-2 shadow-lg backdrop-blur">
         <Download className="h-4 w-4 shrink-0 text-gold" />
         <div className="min-w-0 flex-1">
