@@ -7,7 +7,6 @@
  * không phải mở ứng dụng khác.
  */
 
-import { Button } from "@/components/ui/button";
 import { BotAvatar } from "@/components/BotAvatar";
 import {
   isBuddhistTopic,
@@ -15,9 +14,10 @@ import {
   NO_BUDDHIST_VIDEO_MESSAGE,
 } from "@/lib/buddhistVideoFilter";
 import { searchVideoInBrowser } from "@/lib/videoSearchClient";
+import { useVoiceSearch } from "@/hooks/use-voice-search";
 import type { VideoInfo } from "@/lib/videoIntent";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, Loader2, Play, Search, X } from "lucide-react";
+import { ArrowLeft, Loader2, Mic, MicOff, Play, Search, X } from "lucide-react";
 import { useState } from "react";
 
 export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
@@ -27,6 +27,10 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [playing, setPlaying] = useState<VideoInfo | null>(null);
   const [message, setMessage] = useState("");
+
+  // Nói thẳng chủ đề vào ô tìm kiếm: cùng bộ nghe 3 tầng như ô nhập câu hỏi
+  // của khung chat (Web Speech → Whisper → sửa dấu tiếng Việt).
+  const voice = useVoiceSearch();
 
   const run = async (q: string) => {
     const topic = q.trim();
@@ -104,47 +108,111 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
           </div>
         ) : null}
 
-        {/* Ô tìm kiếm */}
-        <div className="mt-3 flex items-center gap-2">
-          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl border border-border/70 bg-card px-3">
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void run(query);
+        {/* Ô tìm kiếm: micro và kính lúp nằm TRONG ô, không có nút bên ngoài */}
+        <div className="mt-3 flex items-center gap-2 rounded-2xl border border-border/70 bg-card pl-3 pr-1.5">
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void run(query);
+              }
+            }}
+            aria-label="Nhập chủ đề muốn xem video"
+            className="h-12 min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none"
+          />
+
+          {/* Xoá nội dung */}
+          {query ? (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              aria-label="Xoá nội dung tìm kiếm"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          ) : null}
+
+          {/* Micro: nói chủ đề thay vì gõ */}
+          {voice.supported ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (voice.listening) {
+                  voice.stop();
+                  return;
                 }
+                voice.start((text) => {
+                  const spoken = text.trim();
+                  if (!spoken) return;
+                  setQuery(spoken);
+                  void run(spoken);
+                });
               }}
-              aria-label="Nhập chủ đề muốn xem video"
-              className="h-11 w-full bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground/60"
-            />
-            {query ? (
-              <button
-                type="button"
-                onClick={() => setQuery("")}
-                className="shrink-0 text-muted-foreground transition hover:text-foreground"
-                aria-label="Xoá nội dung tìm kiếm"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            ) : null}
-          </div>
-          <Button
+              disabled={voice.refining}
+              aria-label={voice.listening ? "Dừng nói" : "Nói chủ đề muốn xem"}
+              className={cn(
+                "relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
+                voice.listening
+                  ? "bg-destructive/15 text-destructive"
+                  : "text-foreground/70 hover:bg-muted hover:text-foreground",
+                voice.refining && "opacity-60",
+              )}
+            >
+              {voice.refining ? (
+                <Loader2 className="h-4 w-4 animate-spin text-gold" />
+              ) : voice.listening ? (
+                <MicOff className="h-4 w-4" />
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
+              {voice.listening ? (
+                <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-destructive" />
+                </span>
+              ) : null}
+            </button>
+          ) : null}
+
+          {/* Kính lúp: chạy tìm ngay trong ô */}
+          <button
             type="button"
             onClick={() => void run(query)}
             disabled={!query.trim() || busy}
-            className="h-11 shrink-0 gap-1.5 rounded-full"
+            aria-label="Tìm video"
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
+              query.trim() && !busy
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground/60",
+            )}
           >
             {busy ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Search className="h-4 w-4" />
             )}
-            Tìm
-          </Button>
+          </button>
         </div>
+
+        {/* Câu đang nói vào ô tìm kiếm */}
+        {voice.listening || voice.refining || voice.interim ? (
+          <p className="mt-2 flex items-center gap-2 px-1 text-[13px] text-muted-foreground">
+            {voice.refining ? (
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-gold" />
+            ) : (
+              <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-destructive" />
+            )}
+            {voice.interim ? (
+              <span className="truncate">{voice.interim}</span>
+            ) : (
+              <span>{voice.refining ? "Đang chép lại…" : "Đang nghe…"}</span>
+            )}
+          </p>
+        ) : null}
 
         {/* Kết quả */}
         {message ? (
