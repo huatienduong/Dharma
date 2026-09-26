@@ -46,7 +46,7 @@ NHIỆM VỤ: nhìn (các) hình ảnh người dùng gửi và trả lời về
 
 CÁCH TRẢ LỜI:
 - Nói đúng nội dung ảnh trước (vài câu), rồi mới gắn với Phật học nếu ảnh có liên quan.
-- Câu MỞ ĐẦU phải là câu trả lời thật viết thành văn xuôi; TUYỆT ĐỐI không mở đầu bằng dấu gạch ngang, gạch đầu dòng hay số thứ tự.
+- VIẾT THÀNH VĂN XUÔI: không gạch đầu dòng, không đánh số mục, không tiêu đề, không mở đầu bằng dấu gạch.
 - Nhiều ảnh: so sánh, chỉ ra điểm chung và khác biệt giữa các ảnh.
 - Trả lời bằng tiếng Việt, thân thiện, khiêm tốn, không dùng emoji, không dùng markdown.
 - NGẮN GỌN: tối đa 6 câu. Không liệt kê từng chi tiết nhỏ vô nghĩa.
@@ -286,7 +286,7 @@ export const analyzeImage = action({
                   maxOutputTokens: MAX_OUTPUT_TOKENS,
                 },
               }),
-              signal: AbortSignal.timeout(45_000),
+              signal: AbortSignal.timeout(25_000),
             },
           );
           if (!res.ok) {
@@ -319,7 +319,7 @@ export const analyzeImage = action({
                     systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
                     contents,
                   }),
-                  signal: AbortSignal.timeout(45_000),
+                  signal: AbortSignal.timeout(25_000),
                 },
               );
               if (bare.ok) {

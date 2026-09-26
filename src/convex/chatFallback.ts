@@ -50,6 +50,10 @@ const GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3-fl
  * tốn hạn mức của những người đang dùng thật.
  */
 const MODEL_COOLDOWN_MS = 60_000;
+/** Ngân sách thời gian cho cả lượt trả lời (ms). */
+const TOTAL_BUDGET_MS = 25_000;
+/** Một lần gọi provider không vượt quá ngân sách này. */
+const PROVIDER_TIMEOUT_MS = 18_000;
 /** Hết hạn mức cả ngày thì nghỉ lâu hơn, tránh gọi vô ích. */
 const MODEL_QUOTA_COOLDOWN_MS = 10 * 60_000;
 const modelCooldown = new Map<string, number>();
@@ -111,8 +115,8 @@ const FALLBACK_SYSTEM = `Bạn là "Trợ lý Phật học" — một PHẬT T�
 
 CÁCH TRẢ LỜI:
 - Nền tảng Theravāda: Tứ Diệu Đế, Bát Chánh Đạo, Thánh Đạo 8 chi, Vô Thường - Khổ - Vô Ngã, Thiền, Luật tạng, Dhammapada. Mở rộng cho mọi chủ đề liên quan đời sống.
-- Trả lời đúng trọng tâm, ngắn gọn: câu hỏi ngắn thì 1–3 đoạn ngắn, đáp án nằm ở câu đầu. Chỉ dùng gạch đầu dòng "–" và đánh số "1.".
-- Câu MỞ ĐẦU mỗi câu trả lời phải là câu trả lời thật, viết thành văn xuôi. TUYỆT ĐỐI không mở đầu bằng dấu gạch ngang, gạch đầu dòng, số thứ tự hay dấu hai chấm.
+- Trả lời đúng trọng tâm, ngắn gọn: câu hỏi ngắn thì 1–3 đoạn ngắn, đáp án nằm ở câu đầu.
+- VIẾT THÀNH VĂN XUÔI. TUYỆT ĐỐI không dùng gạch đầu dòng, không đánh số mục, không dùng tiêu đề. Nhiều ý thì tách bằng dấu chấm và xuống dòng; hướng dẫn thao tác thì viết liên tiếp bằng các từ nối "Trước tiên...", "Tiếp theo...", "Sau đó...".
 - Giải thích thuật ngữ Pāli ngay sau khi dùng (dukkha = khổ, vipassanā = quán chiếu...).
 - Trò chuyện như người bạn thật: đồng cảm trước khi vào giáo lý, nhớ và nhắc lại chuyện người dùng đã kể, quan tâm chủ động.
 - KHÔNG dùng emoji. KHÔNG dùng ký tự markdown (###, **, *, ---, |). Trả lời bằng tiếng Việt.
@@ -250,6 +254,15 @@ export const chatFallback = action({
       content: m.content.slice(0, 700),
     }));
     const errors: string[] = [];
+    /**
+     * Trần thời gian cho CẢ lượt trả lời, không phải từng provider.
+     *
+     * Trước đây mỗi provider có thể chờ 40s, nên một lượt hỏi xấu xa có thể
+     * treo người dùng hơn một phút rồi mới báo lỗi — tệ hơn cả việc không có
+     * câu trả lời. Nay hết giờ là chuyển tiếp hoặc kết thúc.
+     */
+    const deadline = Date.now() + TOTAL_BUDGET_MS;
+    const outOfTime = () => Date.now() > deadline - 1_500;
     /** Câu hỏi cuối cùng — dùng để biết người dùng có hỏi về nguồn không. */
     const lastQuestion = context[context.length - 1]?.content ?? "";
     /** true = mọi lỗi đều do hết hạn mức (429), thông báo sẽ dịu hơn */
@@ -273,6 +286,10 @@ export const chatFallback = action({
           errors.push(`${model}: đang nghỉ sau lần bị giới hạn gần nhất`);
           continue;
         }
+        if (outOfTime()) {
+          errors.push("hết thời gian chờ trước khi thử model tiếp theo");
+          break;
+        }
         try {
           const httpRes = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
             method: "POST",
@@ -289,7 +306,7 @@ export const chatFallback = action({
               temperature: 0.35,
               max_tokens: 700,
             }),
-            signal: AbortSignal.timeout(40_000),
+            signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
           });
           if (!httpRes.ok) {
             const detail = await httpRes.text().catch(() => "");
@@ -330,6 +347,10 @@ export const chatFallback = action({
           errors.push(`${model}: đang nghỉ sau lần bị giới hạn gần nhất`);
           continue;
         }
+        if (outOfTime()) {
+          errors.push("hết thời gian chờ trước khi thử model tiếp theo");
+          break;
+        }
         try {
           const httpRes = await fetch(`${GEMINI_BASE}/models/${model}:generateContent`, {
             method: "POST",
@@ -342,7 +363,7 @@ export const chatFallback = action({
               contents,
               generationConfig: { temperature: 0.6, maxOutputTokens: 1500 },
             }),
-            signal: AbortSignal.timeout(40_000),
+            signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
           });
           if (!httpRes.ok) {
             const detail = await httpRes.text().catch(() => "");

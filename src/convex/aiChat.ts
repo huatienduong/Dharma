@@ -13,6 +13,7 @@ import {
 import type { ActionCtx } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { featuresPrompt } from "../lib/appFeatures";
+import { cleanPlainText } from "../lib/textClean";
 
 /* ------------------------------------------------------------------ */
 /* Hướng dẫn nhân cách của trợ lý Phật pháp (Theravāda)                */
@@ -111,11 +112,11 @@ PHÁP ĐỘI:
 - Giải thích thuật ngữ Pāli ngay sau khi dùng (dukkha = khổ, vipassanā = quán chiếu...), dùng ví dụ đời thường gần gũi.
 
 CÁCH TRẢ LỜI:
-- Giải quyết đúng điều người dùng hỏi, không lan man. Câu hỏi ngắn → 1–3 đoạn ngắn, đáp án ở câu đầu; câu hỏi về khái niệm/lời khuyên → phần cốt lõi, tối đa 2–4 gạch đầu dòng; chỉ trình bày nhiều tầng khi hỏi sâu.
-- Câu MỞ ĐẦU mỗi câu trả lời phải là câu trả lời thật, viết thành văn xuôi. TUYỆT ĐỐI không mở đầu bằng dấu gạch ngang, gạch đầu dòng, số thứ tự hay dấu hai chấm.
+- Giải quyết đúng điều người dùng hỏi, không lan man. Câu hỏi ngắn → 1–3 đoạn ngắn, đáp án ở câu đầu; chỉ trình bày nhiều tầng khi hỏi sâu.
+- VIẾT THÀNH VĂN XUÔI. TUYỆT ĐỐI không dùng gạch đầu dòng, không đánh số mục, không dùng tiêu đề, không mở đầu bằng dấu gạch hay dấu hai chấm. Nhiều ý thì tách bằng dấu chấm và xuống dòng; hướng dẫn thao tác thì viết liên tiếp bằng các từ nối "Trước tiên...", "Tiếp theo...", "Sau đó...".
 - KHÔNG lặp lại câu hỏi, KHÔNG lời dẫn dài, KHÔNG thêm lời chào/chúc/hỏi thăm thừa. Câu hỏi không rõ thì hỏi lại đúng chỗ cần làm rõ.
 - Nói thẳng khi không biết; không hành xử như bậc đạo, không ban giới, không thay thầy giảng. Không chẩn đoán y khoa/tâm lý; người khủng hoảng thì đồng cảm trước và khuyên tìm hỗ trợ chuyên môn, nguy hiểm tâm lý thì khuyên liên hệ người thân hoặc đường dây nóng ngay.
-- KHÔNG dùng emoji. KHÔNG dùng ký tự markdown (###, **, *, ---, |) — dùng gạch đầu dòng "–" và đánh số "1.". Xưng "mình – bạn". Luôn trả lời bằng TIẾNG VIỆT.
+- KHÔNG dùng emoji. KHÔNG dùng ký tự markdown (###, **, *, ---, |). Xưng "mình – bạn". Luôn trả lời bằng TIẾNG VIỆT.
 
 NGƯỜI BẠN TRI KỶ:
 - Như bạn thân, quan tâm chuyện đời trước chuyện pháp; tuyệt đối không giảng đạo.
@@ -135,30 +136,14 @@ XÓA HỘI THOẠI: hệ thống tự xóa sạch và kết thúc cuộc trò ch
 
 ${featuresPrompt()}`;
 
-type ChatMessage = { role: "user" | "assistant"; content: string };
-
-/**
- * Làm sạch ký tự markdown — khung chat hiển thị chữ thuần: bỏ tiêu đề #,
- * đường kẻ ---, in đậm **, mọi dấu * sót lại, biến gạch đầu dòng * / •
- * thành "–". Đảm bảo văn bản thuần đúng chính tả bất kể model có lèn
- * ký tự định dạng hay không.
+type ChatMessage = { role: "user" | "assistant"; content: string };/**
+ * Làm sạch ký tự markdown và gạch đầu dòng — khung chat hiển thị chữ thuần
+ * đúng chính tả bất kể model có lèn ký tự định dạng hay không. Dùng chung
+ * hàm dọn với nhánh chat và nhánh ảnh để cả ba nơi cho ra cùng một kiểu
+ * văn bản.
  */
 function cleanMarkdown(text: string): string {
-  return text
-    // Link markdown [chữ](https://...) → đường dẫn thuần để người dùng bấm
-    // được; bỏ link không phải http(s) (javascript:, data:...) cho an toàn.
-    .replace(/\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g, "$2")
-    .replace(/\[([^\]]*)\]\((?!https?:)[^)]*\)/g, "$1")
-    .replace(/\r\n?/g, "\n")
-    .replace(/^#{1,6}\s*/gm, "")
-    .replace(/^\s*([-*_]\s*){3,}$/gm, "")
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/\*([^*\n]+)\*/g, "$1")
-    .replace(/^\s*[*•]+\s+/gm, "– ")
-    .replace(/\s*\*\s*/g, " ")
-    .replace(/\s+" /g, '" ')
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  return cleanPlainText(text);
 }
 
 /* ------------------------------------------------------------------ */
