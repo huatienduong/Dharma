@@ -31,6 +31,15 @@ import {
   type AskResult,
   type Msg,
 } from "@/lib/chatHelpers";
+import {
+  addIcon,
+  clearLocalReactions,
+  loadReactions,
+  reactionKey,
+  removeIcon,
+  saveReactions,
+  type ReactionMap,
+} from "@/lib/chatReactions";
 import { callConvexAction } from "@/lib/convexAction";
 import { getDeviceMeta } from "@/lib/deviceSecurity";
 import { wantsImage } from "@/lib/imageIntent";
@@ -79,6 +88,41 @@ export default function Assistant() {
   }, []);
 
   const [input, setInput] = useState("");
+  /**
+   * Icon đã thả cho từng câu trả lời (khoá = mốc thời gian của tin nhắn).
+   * Cờ `reactionsReady` chặn việc ghi đè dữ liệu cũ trước khi nạp xong.
+   */
+  const [reactions, setReactions] = useState<ReactionMap>({});
+  const reactionsReadyRef = useRef(false);
+  useEffect(() => {
+    let alive = true;
+    void loadReactions().then((saved) => {
+      if (alive && saved) setReactions(saved);
+      reactionsReadyRef.current = true;
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (!reactionsReadyRef.current) return;
+    void saveReactions(reactions);
+  }, [reactions]);
+
+  /** Thả icon vào câu trả lời; bấm lại icon đã thả thì gỡ đi một cái. */
+  const toggleIcon = useCallback((m: Msg, icon: string) => {
+    setReactions((prev) => {
+      const key = reactionKey(m.ts);
+      const current = prev[key];
+      const next = (current ?? "").includes(icon)
+        ? removeIcon(current, icon)
+        : addIcon(current, icon);
+      const out = { ...prev };
+      if (next) out[key] = next;
+      else delete out[key];
+      return out;
+    });
+  }, []);
   const [pending, setPending] = useState<Msg[]>([]);
   const [busy, setBusy] = useState(false);
   // FIX "không phản hồi": đếm thời gian chờ AI — quá lâu hiển thị lỗi
@@ -1017,6 +1061,8 @@ export default function Assistant() {
     setHistory([]);
     setFailedReply(null);
     setFiles([]);
+    setReactions({});
+    clearLocalReactions();
     clearLocalChat();
     toast.success("Đã xóa hội thoại.");
   }, []);
@@ -1227,6 +1273,8 @@ export default function Assistant() {
           onSpeakMessage={speakMessage}
           readingTs={readingTs}
           loadingTs={loadingTs}
+          reactions={reactions}
+          onToggleIcon={toggleIcon}
         />
       </div>
 

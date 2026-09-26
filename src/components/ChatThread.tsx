@@ -9,11 +9,13 @@ import { BotAvatar } from "@/components/BotAvatar";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { formatTs, plainText, type Msg } from "@/lib/chatHelpers";
+import { REACTION_ICONS, type ReactionMap } from "@/lib/chatReactions";
 import { cn } from "@/lib/utils";
 import { useQuery } from "convex/react";
 import {
   Check,
   Copy,
+  Heart,
   Loader2,
   Share2,
   Square,
@@ -49,6 +51,10 @@ export type ChatThreadProps = {
   readingTs: number | null;
   /** Mốc thời gian của câu đang chờ máy chủ tổng hợp giọng — null = không chờ. */
   loadingTs: number | null;
+  /** Icon đã thả cho từng câu trả lời (khoá là mốc thời gian của tin nhắn). */
+  reactions?: ReactionMap;
+  /** Thả hoặc gỡ một icon ở câu trả lời này. */
+  onToggleIcon?: (m: Msg, icon: string) => void;
 }
 
 export function ChatThread({
@@ -66,6 +72,8 @@ export function ChatThread({
   onSpeakMessage,
   readingTs,
   loadingTs,
+  reactions,
+  onToggleIcon,
 }: ChatThreadProps) {
   // Chưa có tin nhắn nào: để trống hoàn toàn, vào thẳng khung chat. Lời
   // chào và danh sách câu hỏi đề xuất đã được gỡ theo yêu cầu.
@@ -97,6 +105,8 @@ export function ChatThread({
             onSpeak={() => onSpeakMessage(m)}
             speaking={readingTs === m.ts}
             loading={loadingTs === m.ts}
+            icons={reactions?.[String(m.ts)]}
+            onToggleIcon={onToggleIcon ? (icon) => onToggleIcon(m, icon) : undefined}
           />
         );
       })}
@@ -187,6 +197,8 @@ export function AssistantMessage({
   onSpeak,
   speaking,
   loading,
+  icons,
+  onToggleIcon,
 }: {
   content: string;
   ts: number;
@@ -205,8 +217,14 @@ export function AssistantMessage({
   speaking?: boolean;
   /** Câu này đang chờ máy chủ tổng hợp giọng đọc. */
   loading?: boolean;
+  /** Chuỗi icon đã thả vào câu trả lời này. */
+  icons?: string;
+  /** Thả hoặc gỡ một icon. */
+  onToggleIcon?: (icon: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const iconList = (icons ?? "").split("").filter((c) => c.trim());
   const text = plainText(content);
   // Nạp URL ảnh từ storage — URL ổn định nên lịch sử cũ vẫn xem lại được.
   const imageUrl = useQuery(
@@ -264,6 +282,23 @@ export function AssistantMessage({
         <div className="inline-block max-w-full whitespace-pre-wrap break-words rounded-3xl rounded-bl-md border border-border/50 bg-card px-4 py-2.5 text-[18px] leading-[1.8] text-foreground/95 shadow-sm sm:text-[19px]">
           {text}
         </div>
+        {/* Icon đã thả vào câu trả lời — bấm icon là gỡ đi một cái */}
+        {iconList.length > 0 && (
+          <div className="mt-1 flex flex-wrap items-center gap-0.5 pl-2">
+            {iconList.map((ic, k) => (
+              <button
+                key={`${ic}-${k}`}
+                type="button"
+                onClick={() => onToggleIcon?.(ic)}
+                className="rounded px-0.5 text-[17px] leading-none transition hover:bg-muted active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`Bỏ icon ${ic}`}
+                title="Bấm để bỏ icon này"
+              >
+                {ic}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="mt-1 flex items-center gap-1 pl-2 text-[12px] text-muted-foreground/70">
           <span>{formatTs(ts)}</span>
           {onSpeak && (
@@ -317,7 +352,44 @@ export function AssistantMessage({
           >
             <Share2 className="h-3.5 w-3.5" />
           </button>
+          {onToggleIcon && (
+            <button
+              type="button"
+              onClick={() => setPickerOpen((v) => !v)}
+              className="inline-flex items-center justify-center rounded px-1 py-0.5 transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Thả icon vào câu trả lời"
+              title="Thả icon"
+              aria-expanded={pickerOpen}
+            >
+              <Heart
+                className={cn(
+                  "h-3.5 w-3.5",
+                  iconList.length > 0 && "fill-primary text-primary",
+                )}
+              />
+            </button>
+          )}
         </div>
+        {/* Bảng chọn icon */}
+        {onToggleIcon && pickerOpen && (
+          <div className="mt-1 flex flex-wrap items-center gap-1 pl-2">
+            {REACTION_ICONS.map(({ icon, label }) => (
+              <button
+                key={icon}
+                type="button"
+                onClick={() => {
+                  onToggleIcon(icon);
+                  setPickerOpen(false);
+                }}
+                className="flex h-8 w-8 items-center justify-center rounded-xl border border-border/50 bg-card text-[16px] leading-none transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`Thả ${label}`}
+                title={label}
+              >
+                {icon}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
