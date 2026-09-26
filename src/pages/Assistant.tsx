@@ -339,6 +339,46 @@ function smallTalkReply(raw: string): string | null {
   return null;
 }
 
+/**
+ * Rút gọn câu trả lời để ĐỌC TO trong chế độ đàm thoại.
+ *
+ * Một câu trả lời đầy đủ có thể dài 2.000 ký tự — đọc to mất hơn 2 phút,
+ * người dùng phải ngồi nghe hết rồi mới nói tiếp được, dễ tưởng app treo.
+ * Ở đây chỉ đọc phần đầu (tối đa 3 câu / 320 ký tự) và nhắc xem phần đầy đủ
+ * trong khung chat. Toàn bộ câu trả lời vẫn hiện đầy đủ trong hội thoại.
+ */
+function speakableSummary(
+  raw: string,
+  maxChars = 320,
+  maxSentences = 3,
+): { spoken: string; truncated: boolean } {
+  const text = raw
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\s*\n+\s*/g, " ")
+    .trim();
+  if (!text) return { spoken: "", truncated: false };
+  const sentences = text.match(/[^.!?…]+[.!?…]+/g) ?? [text];
+  let spoken = "";
+  for (let i = 0; i < sentences.length; i++) {
+    const s = sentences[i].trim();
+    if (i >= maxSentences) break;
+    if (spoken && spoken.length + s.length > maxChars) break;
+    spoken += s + " ";
+    if (spoken.length >= maxChars) break;
+  }
+  spoken = spoken.trim();
+  if (!spoken) spoken = text.slice(0, maxChars);
+  // So sánh trên dạng đã bỏ dấu kết câu cuối, nếu không “Xin chào.” bị
+  // tưởng là đã bị cắt bớt.
+  const bare = (s: string) => s.replace(/[.!?…\s]+$/, "").trim();
+  const truncated = bare(spoken).length < bare(text).length;
+  return {
+    spoken: truncated ? `${spoken} Phần đầy đủ bạn xem trong khung chat nhé.` : spoken,
+    truncated,
+  };
+}
+
 async function saveLocalChatSecure(msgs: Msg[]) {
   try {
     const enc = await encryptString(JSON.stringify(msgs.slice(-100)));
@@ -464,6 +504,16 @@ export default function Assistant() {
   const clearAllRef = useRef<(() => Promise<void> | void) | null>(null);
   const endCallRef = useRef<(() => void) | null>(null);
   const openCallRef = useRef<(() => void) | null>(null);
+  /**
+   * Đồng hồ canh giọng nói: nếu trợ lý đã đọc xong mà `onDone` không chạy
+   * (lỗi hiếm gặp trong Web Speech/máy chủ TTS) thì mic phải được mở lại
+   * bằng cách cưỡng bức — nếu không, cuộc gọi đứng im ở “đang nói” vĩnh viễn.
+   */
+  const speakGuardRef = useRef(0);
+  /** 1 = đang tự gửi lại câu hỏi trong đàm thoại (giữ mic đóng trong lúc đó). */
+  const callRetryPendingRef = useRef(0);
+  /** Để hàng đợi câu nói gọi lại được chính `handleUtterance`. */
+  const handleUtteranceRef = useRef<(text: string) => void>(() => {});
   // Nối các hàm được khai báo phía dưới trong file. Dùng ref để lệnh trong
   // khung chat ("xoá hội thoại", "mở đàm thoại") gọi được chúng mà không
   // phải đụng tới mảng deps của useCallback.
@@ -471,6 +521,7 @@ export default function Assistant() {
     clearAllRef.current = clearAll;
     endCallRef.current = endCall;
     openCallRef.current = openCall;
+    handleUtteranceRef.current = handleUtterance;
   });
 
   /** Im lặng bao lâu thì coi là nói xong (ms) — chống cắt cụt "Xin chào". */
@@ -926,25 +977,37 @@ export default function Assistant() {
           aiQuietUntilRef.current = Date.now() + 400;
           // Không đọc to đường dẫn (đọc "https slash slash..." rất khó nghe);
           // người dùng vẫn thấy và bấm được link trong hội thoại.
-          const spoken = reply
-            .replace(/https?:\/\/\S+/g, "")
-            .replace(/[ \t]{2,}/g, " ")
-            .trim();
+          const spoken = speakableSummary(reply).spoken;
+          const finishSpeaking = () => {
+            if (speakGuardRef.current) {
+              window.clearTimeout(speakGuardRef.current);
+              speakGuardRef.current = 0;
+            }
+            aiSpeakingRef.current = false;
+            lastAiWordAtRef.current = Date.now();
+            lastAssistantEventAtRef.current = Date.now();
+            if (!callActiveRef.current) return;
+            lastSpokenRef.current = spoken || reply;
+            // Đợi hết vọng cuối rồi mới mở lại mic.
+            aiFinishedAtRef.current = Date.now();
+            aiQuietUntilRef.current = Date.now() + 900;
+            setCallStatus("listening");
+            startListeningRef.current();
+          };
+          // ĐỒNG HỒ CANH: dù bất kỳ lý do nào (Web Speech nuốt lệnh đọc,
+          // AudioContext bị khoá, máy chủ TTS im) khiến onDone không chạy
+          // thì vẫn phải mở lại mic — nếu không, cuộc gọi đứng im ở “đang
+          // nói” vĩnh viễn và người dùng không nói được nữa.
+          speakGuardRef.current = window.setTimeout(finishSpeaking, 60_000);
           void speakVI(spoken || reply, {
             voice: voiceIdRef.current,
-            onDone: () => {
-              aiSpeakingRef.current = false;
-              lastAiWordAtRef.current = Date.now();
-              lastAssistantEventAtRef.current = Date.now();
-              if (!callActiveRef.current) return;
-              lastSpokenRef.current = spoken || reply;
-              // Đợi hết vọng cuối rồi mới mở lại mic.
-              aiFinishedAtRef.current = Date.now();
-              aiQuietUntilRef.current = Date.now() + 900;
-              setCallStatus("listening");
-              startListeningRef.current();
-            },
-          });
+            onDone: finishSpeaking,
+          })
+            .catch(() => finishSpeaking())
+            .finally(() => {
+              // Lời gọi kết thúc mà không có onDone: vẫn phải trả lại mic.
+              if (aiSpeakingRef.current) finishSpeaking();
+            });
         } else {
           // Backend trả về câu trả lời đầy đủ; hiển thị từng phần để người dùng
           // đọc tự nhiên, không bị kéo xuống đáy liên tục khi chữ đang hiện.
@@ -995,6 +1058,7 @@ export default function Assistant() {
             // không phản hồi" là người dùng phải nói lại từ đầu.
             if (callRetryRef.current < 1) {
               callRetryRef.current += 1;
+              callRetryPendingRef.current = 1;
               window.setTimeout(() => {
                 if (callActiveRef.current) {
                   void sendRef.current(question, { fromCall: true });
@@ -1010,6 +1074,12 @@ export default function Assistant() {
         finishImageProgress();
         busyRef.current = false;
         setBusy(false);
+        // Sổ trạng thái: nếu một đường thoát nào đó (tin nhắn bị thu hồi,
+        // người dùng ngắt cuộc gọi giữa chừng) quên mở lại cờ này thì
+        // `startListening` chặn vĩnh viễn → mic chết sau đúng một câu, đúng
+        // triệu chứng “hỏi xong không trả lời, micro không nghe lại”.
+        if (!callRetryPendingRef.current) sendingRef.current = false;
+        callRetryPendingRef.current = 0;
         // Trả lời xong → tự gửi câu hỏi đang xếp hàng bằng callback mới nhất,
         // để lượt tiếp theo nhận đủ vừa được câu trả lời vừa lưu vào lịch sử.
         if (!opts?.fromCall) {
@@ -1037,7 +1107,9 @@ export default function Assistant() {
     // Gỡ bong bóng lỗi cũ khỏi hàng chờ để không hiện hai lần cùng một câu.
     pendingRef.current = pendingRef.current.filter((m) => m !== failed.msg);
     setPending(pendingRef.current);
-    void send(failed.question);
+    // Đang trong đàm thoại thì phải đọc to câu trả lời, nếu không người dùng
+    // thấy câu trả lời hiện trong khung mà không nghe thấy gì.
+    void send(failed.question, callActiveRef.current ? { fromCall: true } : undefined);
   }, [failedReply, send]);
 
   /* ----- Đàm thoại: trả lời tại chỗ cho lời chào (không gọi AI) ----- */

@@ -175,32 +175,55 @@ export function stopMicRecording(): Promise<MicClip | null> {
     return Promise.resolve(null);
   }
   return new Promise<MicClip | null>((resolve) => {
-    rec.onstop = () => {
+    let settled = false;
+    const done = (clip: MicClip | null) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(guard);
       releaseStream();
+      resolve(clip);
+    };
+    // Gom các đoạn đã gom được thành clip base64 (dùng chung cho onstop và
+    // chốt chặn bên dưới).
+    const buildClip = (): Promise<MicClip | null> => {
       const type = rec.mimeType || "audio/webm";
       const blob = new Blob(chunks, { type });
       chunks = [];
       // Đoạn cực ngắn (dưới ~0.4s) gần như chỉ là tiếng bật mic — bỏ qua
       // để không gửi câu rỗng lên máy chủ. Ngưỡng thấp vì lời chào ngắn
       // ("Xin chào") cũng phải chép được.
-      if (!blob.size || blob.size < 700) {
-        resolve(null);
-        return;
-      }
-      const reader = new FileReader();
-      reader.onerror = () => resolve(null);
-      reader.onloadend = () => {
-        const result = String(reader.result ?? "");
-        const base64 = result.includes(",") ? result.split(",")[1] : "";
-        resolve(base64 ? { base64, mime: type } : null);
-      };
-      reader.readAsDataURL(blob);
+      if (!blob.size || blob.size < 700) return Promise.resolve(null);
+      return new Promise<MicClip | null>((res) => {
+        const reader = new FileReader();
+        reader.onerror = () => res(null);
+        reader.onloadend = () => {
+          const result = String(reader.result ?? "");
+          const base64 = result.includes(",") ? result.split(",")[1] : "";
+          res(base64 ? { base64, mime: type } : null);
+        };
+        reader.readAsDataURL(blob);
+      });
     };
+    rec.onstop = () => {
+      void buildClip().then(done);
+    };
+    // CHỐT CHẶN: một số WebView Android KHÔNG bắn `onstop` khi dừng ghi âm
+    // (hay gặp khi tab vừa bị đưa ra sau, hoặc khi phiên nghe bị hủy giữa
+    // chừng). Promise treo mãi ở đây khiến chế độ đàm thoại kẹt ở bước
+    // "đang chép lại" — mic không bao giờ mở lại, cuộc gọi chết âm thầm.
+    // Sau 1,2s không có gì thì tự dựng clip từ những đoạn đã gom được.
+    const guard = window.setTimeout(() => {
+      try {
+        rec.stop();
+      } catch {
+        /* noop */
+      }
+      void buildClip().then(done);
+    }, 1200);
     try {
       rec.stop();
     } catch {
-      releaseStream();
-      resolve(null);
+      void buildClip().then(done);
     }
   });
 }

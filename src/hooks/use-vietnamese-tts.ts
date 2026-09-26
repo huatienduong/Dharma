@@ -293,15 +293,32 @@ export function useVietnameseTTS() {
       if (cur.trim()) chunks.push(cur.trim());
 
       let idx = 0;
+      let chunkGuard = 0;
+      let stallGuard = 0;
+      let finished = false;
+      const clearGuards = () => {
+        if (chunkGuard) window.clearTimeout(chunkGuard);
+        if (stallGuard) window.clearTimeout(stallGuard);
+        chunkGuard = 0;
+        stallGuard = 0;
+      };
+      // onDone ĐÚNG MỘT LẦN — bất kể đi đến đâu. Vòng đàm thoại treo vài
+      // giây sau mỗi câu trả lời chính là do onDone không chạy: mic không
+      // bao giờ mở lại, trạng thái kẹt “đang nói”.
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        clearGuards();
+        setSpeaking(false);
+        onDone?.();
+      };
       const speakNext = () => {
         if (stopFlagRef.current) {
-          setSpeaking(false);
-          onDone?.();
+          finish();
           return;
         }
         if (idx >= chunks.length) {
-          setSpeaking(false);
-          onDone?.();
+          finish();
           return;
         }
         const chunk = chunks[idx++];
@@ -313,29 +330,46 @@ export function useVietnameseTTS() {
         u.volume = 1;
         const vi = pickVoice();
         if (vi) u.voice = vi;
-        u.onend = () => speakNext();
+        const advance = () => {
+          clearGuards();
+          speakNext();
+        };
+        u.onend = advance;
         u.onerror = () => {
           if (errorRetries < 1) {
             errorRetries++;
             idx--;
+            clearGuards();
             synth.cancel();
             synth.resume();
             window.setTimeout(speakNext, 180);
             return;
           }
-          setSpeaking(false);
-          onDone?.();
+          finish();
         };
         synth.speak(u);
         // Một số WebView Android tạm dừng synth sau khi nhận mic.
         synth.resume();
+        // CHỐT CHẶN 1: Chrome/WebView đôi khi NUỐT lệnh đọc — `speak()` được
+        // gọi nhưng synth không phát gì và onend không bắn. Sau 1,2s mà
+        // không có gì phát ra thì coi như đã đọc xong phần này.
+        stallGuard = window.setTimeout(() => {
+          if (synth.speaking || synth.pending) return;
+          advance();
+        }, 1200);
+        // CHỐT CHẶN 2: trần thời gian theo độ dài câu. onend có thể không
+        // bắn khi tab bị ẩn/treo giữa lúc đang đọc.
+        chunkGuard = window.setTimeout(
+          advance,
+          Math.max(5000, chunk.length * 110) + 3000,
+        );
       };
 
       setSpeaking(true);
       // Voices có thể tải trễ (Chrome) — thử phát sau 250ms nếu rỗng
       const tryStart = (attempt: number) => {
-        if (stopFlagRef.current) {
-          onDone?.();
+        if (stopFlagRef.current || finished) {
+          finish();
           return;
         }
         if (synth.getVoices().length === 0 && attempt < 8) {
@@ -378,7 +412,14 @@ export function useVietnameseTTS() {
         settled = true;
         interruptRef.current = null;
         setSpeaking(false);
-        fn?.();
+        try {
+          fn?.();
+        } catch {
+          // `fn` thường là webSpeak. Nếu nó ném lỗi, onDone vẫn PHẢI chạy —
+          // nếu không, vòng đàm thoại kẹt vĩnh viễn ở trạng thái “đang nói”
+          // và micro không bao giờ mở lại được nữa.
+          opts.onDone?.();
+        }
       };
       // Đăng ký hủy có kiểm soát: stop() giữa chừng sẽ gọi onDone một lần
       interruptRef.current = () => {

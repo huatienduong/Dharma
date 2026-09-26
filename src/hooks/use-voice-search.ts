@@ -106,13 +106,21 @@ export function useVoiceSearch() {
       if (!clip?.base64) return fallback;
       setRefining(true);
       try {
-        const res = await transcribe({
-          audioBase64: clip.base64,
-          audioMime: clip.mime,
-          browserText: fallback || undefined,
-          ...getDeviceMeta(),
-        });
-        return res.ok && res.text.trim() ? res.text.trim() : fallback;
+        // CHỐT CHẶN 12s: máy chủ có thể treo (hết hạn mức, provider không
+        // trả). Nếu không chốt chặn, lời gọi đứng ở bước “đang chép lại” vĩnh
+        // viễn — mic không bao giờ mở lại và người dùng tưởng app treo.
+        const res = await Promise.race([
+          transcribe({
+            audioBase64: clip.base64,
+            audioMime: clip.mime,
+            browserText: fallback || undefined,
+            ...getDeviceMeta(),
+          }),
+          new Promise<null>((r) => {
+            window.setTimeout(() => r(null), 12_000);
+          }),
+        ]);
+        return res && res.ok && res.text.trim() ? res.text.trim() : fallback;
       } catch {
         return fallback;
       } finally {
