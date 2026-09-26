@@ -688,8 +688,8 @@ async function refreshGroqSttModels(groqKey: string): Promise<void> {
     return;
   }
   const ordered: string[] = [];
-  for (const id of GROQ_STT_PREFERENCE) if (live.includes(id)) ordered.push(id);
-  for (const id of live) {
+  for (const id of GROQ_STT_PREFERENCE) if (live.includes(id))ordered.push(id);
+    for (const id of live) {
     if (ordered.includes(id)) continue;
     if (/whisper/i.test(id) && !id.includes("-tts")) ordered.push(id);
   }
@@ -896,11 +896,10 @@ const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 const GROQ_TEXT_PREFERENCE = [
   // Xếp theo TỐC ĐỘ trước, chất lượng sau: model nhỏ trả token đầu tiên
   // nhanh hơn hẳn MoE 120B, mà người dùng cảm nhận độ trễ chính là lúc
-  // "chưa thấy gì". Các model mạnh hơn vẫn còn trong danh sách dự phòng.
-  "qwen/qwen3-8b",
-  "llama-3.1-8b-instant",
-  "gemma2-9b-it",
-  "openai/gpt-oss-20b",
+  // "chưa thấy gì". Tên phải KHỚP CHÍNH XÁC danh sách /models của Groq —
+  // sai một ký tự là model chết và cả trợ lý ngừng hoạt động.
+  "qwen/qwen3.8-27b",
+  "llama-3.3-70b-versatile",
   "openai/gpt-oss-120b",
 ];
 const GROQ_VISION_PREFERENCE = [
@@ -908,6 +907,123 @@ const GROQ_VISION_PREFERENCE = [
   "meta-llama/llama-4-scout-17b-16e-instruct",
   "meta-llama/llama-4-scout-17b",
 ];
+
+/**
+ * NHÁNH DỰ PHÒNG GEMINI — bảo đảm trợ lý không bao giờ "chết".
+ *
+ * Groq liên tục thu hồi model và có lúc trả về rỗng. Khi chỉ dựa vào Groq,
+ * một lần model hỏng là toàn bộ ứng dụng ngừng hoạt động. Gemini dùng hạn
+ * mức và hạ tầng riêng nên chỉ cần một nhánh dự phòng là đủ; ưu tiên sau
+ * cùng nhưng luôn được thử trước khi báo lỗi cho người dùng.
+ */
+const GEMINI_TEXT_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-3-flash-preview",
+  "gemini-2.5-pro",
+];
+const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
+
+/**
+ * Gọi Gemini để trả lời hội thoại. Thử lần lượt các model cho tới khi có
+ * câu trả lời; trả null khi mọi model lỗi. Dùng REST trực tiếp vì AI SDK
+ * của Gemini yêu cầu adapter riêng, trong khi Groq đã đủ dùng AI SDK.
+ */
+async function askGemini(
+  geminiKey: string,
+  messages: ChatMessage[],
+  imageBase64?: string,
+  imageMime?: string,
+): Promise<string | null> {
+  const contents = messages
+    .filter((m) => m.role !== "assistant" || true)
+    .map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts:
+        m.role === "user" && imageBase64 && m === messages[messages.length - 1]
+          ? [
+              { text: m.content },
+              {
+                inlineData: {
+                  mimeType: imageMime ?? "image/jpeg",
+                  data: imageBase64,
+                },
+              },
+            ]
+          : [{ text: m.content }],
+    }));
+  // Gemini yêu cầu lượt đầu tiên phải là "user".
+  while (contents.length > 0 && contents[0].role !== "user") contents.shift();
+
+  let lastError = "không rõ";
+  for (const model of GEMINI_TEXT_MODELS) {
+    try {
+      const res = await fetch(`${GEMINI_BASE}/models/${model}:generateContent`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": geminiKey,
+        },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents,
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: MAX_TOKENS,
+          },
+        }),
+        signal: AbortSignal.timeout(40_000),
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        lastError = `${model}: HTTP ${res.status} ${detail.slice(0, 140)}`;
+        continue;
+      }
+      const json = (await res.json()) as {
+        candidates?: {
+          content?: { parts?: { text?: string }[] };
+          finishReason?: string;
+        }[];
+        promptFeedback?: { blockReason?: string };
+      };
+      const text = (json.candidates?.[0]?.content?.parts ?? [])
+        .map((p) => p.text ?? "")
+        .join("")
+        .trim();
+      if (text) return text;
+      lastError = `${model}: ${json.promptFeedback?.blockReason ?? "rỗng"}`;
+    } catch (err) {
+      lastError = `${model}: ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
+  console.error(`[aiChat] Gemini chat thất bại — ${lastError}`);
+  return null;
+}
+
+/**
+ * Model KHÔNG dùng để trả lời chat, dù Groq vẫn liệt kê là đang sống.
+ *
+ * Đây chính là nguyên nhân "Trợ lý Phật học không hoạt động": /models của
+ * Groq lẫn model chặn nội dung (prompt-guard, safeguard), model TTS, model
+ * bị khoá ở cấp tổ chức... Chúng trả HTTP 200 nên bộ dò tưởng còn dùng
+ * được, nhưng thật ra trả về rỗng hoặc không phải câu trả lời.
+ */
+const GROQ_EXCLUDE_PATTERNS = [
+  /-tts/i,
+  /whisper/i,
+  /guard/i,
+  /safeguard/i,
+  /orpheus/i,
+  /allam/i,
+  /-audio/i,
+  /vision/i,
+  /scout/i,
+];
+
+/** Model này có dùng được để trả lời hội thoại chữ không? */
+function isUsableChatModel(id: string): boolean {
+  return !GROQ_EXCLUDE_PATTERNS.some((re) => re.test(id));
+}
 
 /**
  * Cache danh sách model sống trong chính action runtime. Một lần dò mất
