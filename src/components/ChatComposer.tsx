@@ -255,18 +255,11 @@ export function ChatComposer({
       {(listening || micRefining || micInterim) && (
         <div className="mt-2 flex items-center gap-2 px-1 text-[13px] text-muted-foreground">
           {micRefining ? (
-            <>
-              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-gold" />
-              <span>Đang chép lại cho rõ và đúng dấu…</span>
-            </>
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-gold" />
           ) : (
-            <>
-              <span className="flex h-2 w-2 shrink-0 animate-pulse rounded-full bg-destructive" />
-              <span className="truncate">
-                {micInterim || "Đang nghe… nói xong bấm lại để gửi"}
-              </span>
-            </>
+            <span className="flex h-2 w-2 shrink-0 animate-pulse rounded-full bg-destructive" />
           )}
+          {micInterim && <span className="truncate">{micInterim}</span>}
         </div>
       )}
     </form>

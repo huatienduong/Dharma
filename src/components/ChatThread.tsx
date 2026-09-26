@@ -16,7 +16,6 @@ import {
   Copy,
   Loader2,
   Share2,
-  Sparkles,
   Square,
   Undo2,
   Volume2,
@@ -164,26 +163,13 @@ export function ChatThread({
                   style={{ width: `${imageProgress}%` }}
                 />
               </div>
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                Trợ lý đang phác họa — vui lòng chờ thêm ít giây.
-              </p>
             </div>
           </div>
         </div>
       )}
-      {busy && streamingReply === null && imageProgress === null &&
-        (stalled ? (
-          <div className="flex items-start gap-3">
-            <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-              <Sparkles className="h-4 w-4" />
-            </span>
-            <p className="pt-2 text-sm text-muted-foreground">
-              Trả lời quá lâu hoặc kết nối không ổn định — hãy thử gửi lại câu hỏi.
-            </p>
-          </div>
-        ) : (
-          <AssistantThinking />
-        ))}
+      {busy && streamingReply === null && imageProgress === null && (
+        <AssistantThinking />
+      )}
     </div>
   );
 }

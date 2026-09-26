@@ -1003,11 +1003,7 @@ export default function Assistant() {
           )}
         </div>
 
-        <div className="flex min-w-0 items-center justify-center gap-2">
-          <p className="max-w-[9.5rem] truncate text-center text-[13px] font-extrabold uppercase tracking-[0.12em] text-foreground sm:max-w-none sm:text-[15px] sm:tracking-[0.18em]">
-            Trợ lý Phật học
-          </p>
-        </div>
+        <div className="flex min-w-0 items-center justify-center gap-2" />
 
         <div className="flex shrink-0 items-center gap-1 justify-self-end">
           <button

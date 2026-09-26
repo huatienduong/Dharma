@@ -51,11 +51,6 @@ export function CallOverlay({
         <div className="flex w-full items-center justify-between px-5 pt-5 sm:px-8">
           <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-2 backdrop-blur-sm">
             <BotAvatar size="lg" glow />
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/50">
-                Trợ lý Phật học
-              </p>
-            </div>
           </div>
 
           <button
