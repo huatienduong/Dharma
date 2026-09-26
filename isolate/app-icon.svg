@@ -1,18 +1,32 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Trợ lý Phật học">
-  <rect width="512" height="512" rx="112" fill="#6b3f1d"/>
-  <circle cx="256" cy="256" r="158" fill="#f8ead0" opacity=".1"/>
-  <g fill="none" stroke="#f4d58d" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M256 379c-64-39-94-91-91-156 52 11 85 40 91 86 6-46 39-75 91-86 3 65-27 117-91 156Z" stroke-width="18"/>
-    <path d="M181 350c-49-8-81-37-96-86 43-14 80-4 111 29-29-17-62-12-99 15" stroke-width="18"/>
-    <path d="M331 350c49-8 81-37 96-86-43-14-80-4-111 29 29-17 62-12 99 15" stroke-width="18"/>
-    <path d="M256 123v256M123 256h266" stroke-width="12" opacity=".55"/>
-    <circle cx="256" cy="256" r="92" stroke-width="16"/>
-    <circle cx="256" cy="256" r="27" fill="#f4d58d" stroke="none"/>
-  </g>
-  <g fill="#f4d58d">
-    <circle cx="256" cy="164" r="9"/><circle cx="348" cy="256" r="9"/>
-    <circle cx="256" cy="348" r="9"/><circle cx="164" cy="256" r="9"/>
-    <circle cx="323" cy="189" r="9"/><circle cx="323" cy="323" r="9"/>
-    <circle cx="189" cy="323" r="9"/><circle cx="189" cy="189" r="9"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="512" height="512" role="img" aria-label="Trợ lý Phật học">
+  <title>Trợ lý Phật học</title>
+  <!-- Nền nâu đúng màu giao diện (token secondary) -->
+  <rect width="48" height="48" rx="10.6" fill="#2f2314"/>
+
+  <!-- Robot: cùng hình với BotAvatar trong ứng dụng (khung 48, vẽ ở 88%) -->
+  <g transform="translate(2.88 2.88) scale(0.88)">
+    <!-- Ăng-ten: que y cà sa + hạt kem sáng -->
+    <rect x="23.1" y="6.2" width="1.8" height="6.6" rx="0.9" fill="#e0852a"/>
+    <circle cx="24" cy="5.6" r="3" fill="#f3e9d8"/>
+    <circle cx="23.1" cy="4.7" r="0.95" fill="#17100a" opacity="0.35"/>
+
+    <!-- Tai nghe y cà sa -->
+    <rect x="8.4" y="20.8" width="3.6" height="8.4" rx="1.8" fill="#e0852a"/>
+    <rect x="36" y="20.8" width="3.6" height="8.4" rx="1.8" fill="#e0852a"/>
+
+    <!-- Đầu kem sáng -->
+    <rect x="11.2" y="12.2" width="25.6" height="24.4" rx="9.6" fill="#f3e9d8"/>
+    <!-- Ánh sáng trên vòm đầu -->
+    <path d="M16.2 16.4c1.9-2 4.9-3.1 7.8-3.1s5.9 1.1 7.8 3.1" fill="none" stroke="#e0852a" stroke-opacity="0.45" stroke-width="2" stroke-linecap="round"/>
+    <!-- Má hồng ấm -->
+    <ellipse cx="16.3" cy="27.6" rx="2.7" ry="1.7" fill="#e0852a" opacity="0.4"/>
+    <ellipse cx="31.7" cy="27.6" rx="2.7" ry="1.7" fill="#e0852a" opacity="0.4"/>
+    <!-- Mắt gần đen + đốm sáng -->
+    <ellipse cx="19.1" cy="24.3" rx="2.8" ry="3.3" fill="#1a1108"/>
+    <ellipse cx="28.9" cy="24.3" rx="2.8" ry="3.3" fill="#1a1108"/>
+    <circle cx="18.2" cy="22.9" r="1" fill="#f3e9d8"/>
+    <circle cx="28" cy="22.9" r="1" fill="#f3e9d8"/>
+    <!-- Nụ cười -->
+    <path d="M21.2 30c.9 1.4 2.1 2.1 2.8 2.1s1.9-.7 2.8-2.1" fill="none" stroke="#1a1108" stroke-width="1.7" stroke-linecap="round"/>
   </g>
 </svg>

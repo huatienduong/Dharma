@@ -2,17 +2,14 @@
 <html lang="vi">
   <head>
     <meta charset="UTF-8" />
-    <!-- Logo runtime sẽ thay favicon và apple-touch-icon bằng ảnh mới trong Convex Storage. -->
-    <!-- Mở kết nối tới máy chủ Convex NGAY từ đầu: app dùng websocket + API
-         + ảnh logo. Không có preconnect thì mỗi lần mở app phải chờ bắt
+    <!-- Mở kết nối tới máy chủ Convex NGAY từ đầu: app dùng websocket + API.
+         Không có preconnect thì mỗi lần mở app phải chờ bắt
          tay/TLS riêng cho từng origin → vài trăm ms trên mạng chậm. -->
     <link rel="preconnect" href="https://determined-rabbit-619.convex.cloud" crossorigin />
-    <link rel="dns-prefetch" href="https://determined-rabbit-619.convex.site" />
-    <link rel="preconnect" href="https://determined-rabbit-619.convex.site" crossorigin />
-    <link rel="icon" type="image/png" href="https://determined-rabbit-619.convex.site/logo" />
+    <link rel="icon" type="image/svg+xml" href="./app-icon.svg" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="apple-touch-icon" type="image/png" href="https://determined-rabbit-619.convex.site/logo" />
-    <meta name="theme-color" content="#6b3f1d" />
+    <link rel="apple-touch-icon" href="./app-icon.svg" />
+    <meta name="theme-color" content="#17100a" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Trợ lý Phật học" />
@@ -31,7 +28,9 @@
         overscroll-behavior: none;
         touch-action: pan-x pan-y;
         margin: 0;
-        background: #ffffff;
+        /* Nền trước khi React kịp vẽ: đúng màu giao diện tối nâu, tránh
+           lóe trắng lúc mở ứng dụng. */
+        background: #17100a;
       }
       #root {
         min-height: 100dvh;
@@ -89,12 +88,12 @@
       // Zoom bị chặn HOÀN TOÀN: viewport user-scalable=no + touch-action
       // pan-x/pan-y + các listener ở trên (pinch, ctrl+wheel, double-tap).
     </script>
-    <script type="module" crossorigin src="./assets/index-DuaGhaun.js"></script>
+    <script type="module" crossorigin src="./assets/index-Bybg5DHK.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/react-vendor-HUYbX3RT.js">
     <link rel="modulepreload" crossorigin href="./assets/framer-motion-XclcQDpB.js">
     <link rel="modulepreload" crossorigin href="./assets/radix-ui-DQsKouou.js">
     <link rel="modulepreload" crossorigin href="./assets/charts-DIZ-Qg1Y.js">
-    <link rel="stylesheet" crossorigin href="./assets/index-BLWh06Fe.css">
+    <link rel="stylesheet" crossorigin href="./assets/index-69DoyjNb.css">
   </head>
   <body>
     <div id="root"></div>
