@@ -63,8 +63,8 @@ export const FEATURES: AppFeature[] = [
     how: "Vào Cài đặt → Giọng nói, nghe thử và chọn; dùng cho cả chat lẫn đàm thoại.",
   },
   {
-    name: "Gợi ý câu hỏi",
-    how: "Khi hội thoại trống, màn chào hiện lời chào, hướng dẫn sử dụng và các câu hỏi gợi ý về Bát Chánh Đạo, Tứ Thánh Đế... Các câu gợi ý tự đổi liên tục, bấm vào câu nào thì hỏi câu đó ngay.",
+    name: "Màn chào và hướng dẫn sử dụng",
+    how: "Khi hội thoại còn trống, màn chào hiện lời chào và sáu mục hướng dẫn nhanh: hỏi về Phật học, gửi hình ảnh, gửi tệp, đàm thoại, nghe lại câu trả lời, và cách báo lỗi góp ý. Gõ câu hỏi vào ô nhập bên dưới để bắt đầu.",
   },
   {
     name: "Sao chép câu trả lời",

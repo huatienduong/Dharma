@@ -1162,7 +1162,7 @@ export default function Assistant() {
       >
         {/* Màn chào chỉ hiện khi hội thoại còn trống; vùng này
             overflow-hidden nên khối chào phải tự vừa tầm nhìn, không cuộn. */}
-        {isEmpty && <HomeWelcome onPick={(q) => void send(q)} />}
+        {isEmpty && <HomeWelcome />}
         <ChatThread
           messages={messages}
           isEmpty={isEmpty}
