@@ -16,6 +16,7 @@ import type * as http from "../http.js";
 import type * as legalContent from "../legalContent.js";
 import type * as library from "../library.js";
 import type * as users from "../users.js";
+import type * as visionChat from "../visionChat.js";
 
 import type {
   ApiFromModules,
@@ -32,6 +33,7 @@ declare const fullApi: ApiFromModules<{
   legalContent: typeof legalContent;
   library: typeof library;
   users: typeof users;
+  visionChat: typeof visionChat;
 }>;
 
 /**
