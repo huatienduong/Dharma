@@ -95,10 +95,6 @@ export function CallOverlay({
               >
                 {interim}
               </p>
-            ) : callStatus === "listening" ? (
-              <p className="text-center text-[15px] text-white/40">
-                Bạn cứ nói bình thường — nói xong Trợ lý sẽ tự gửi.
-              </p>
             ) : null}
           </div>
         </div>
