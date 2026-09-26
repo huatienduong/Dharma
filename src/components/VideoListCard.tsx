@@ -23,7 +23,7 @@ export function VideoListCard({
 
   if (playing) {
     return (
-      <div className="mt-2 max-w-[420px] overflow-hidden rounded-3xl rounded-bl-md border border-border/50 bg-black shadow-sm">
+      <div className="mt-2 max-w-[420px] overflow-hidden border border-border/50 bg-black shadow-sm">
         <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
           <iframe
             className="absolute inset-0 h-full w-full"
@@ -48,7 +48,7 @@ export function VideoListCard({
   }
 
   return (
-    <div className="mt-2 max-w-[420px] overflow-hidden rounded-3xl rounded-bl-md border border-border/50 bg-card shadow-sm">
+    <div className="mt-2 max-w-[420px] border border-border/50 bg-card shadow-sm">
       <p className="flex items-center gap-1.5 border-b border-border/50 px-3 py-2 text-[12px] text-muted-foreground">
         <Search className="h-3.5 w-3.5 shrink-0" />
         <span className="truncate">
@@ -69,9 +69,9 @@ export function VideoListCard({
                   src={v.thumbnail}
                   alt=""
                   loading="lazy"
-                  className="h-14 w-24 rounded-lg object-cover"
+                  className="h-14 w-24 object-cover"
                 />
-                <span className="absolute inset-0 flex items-center justify-center rounded-lg bg-black/25">
+                <span className="absolute inset-0 flex items-center justify-center bg-black/25">
                   <Play className="h-4 w-4 fill-white text-white" />
                 </span>
                 {v.duration ? (

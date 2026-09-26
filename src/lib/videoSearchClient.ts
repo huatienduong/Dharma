@@ -40,14 +40,15 @@ function isoDuration(raw: string | undefined): string | undefined {
     : `${min}:${String(sec).padStart(2, "0")}`;
 }
 
-/** "1.234.567" → "1,2 triệu lượt xem" (gọn cho danh sách gợi ý). */
+/**
+ * SỐ LƯỢT XEM dạng gọn: "812", "24K", "1,2 triệu". Danh sách chỉ cần con
+ * số cỡ này, không kèm chữ "lượt xem" cho rườm rà.
+ */
 export function viewCountText(n: number | undefined): string {
   if (!n || n <= 0) return "";
-  if (n >= 1_000_000) {
-    return `${(n / 1_000_000).toFixed(1).replace(".", ",")} triệu lượt xem`;
-  }
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)} nghìn lượt xem`;
-  return `${n} lượt xem`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(".", ",")} triệu`;
+  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
+  return String(n);
 }
 
 /**

@@ -260,16 +260,16 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
                   <button
                     type="button"
                     onClick={() => setPlaying(v)}
-                    className="flex w-full items-center gap-3 rounded-2xl border border-border/50 bg-card p-2 text-left transition hover:bg-muted/40"
+                    className="flex w-full items-center gap-3 border border-border/50 bg-card p-2 text-left transition hover:bg-muted/40"
                   >
                     <span className="relative shrink-0">
                       <img
                         src={v.thumbnail}
                         alt=""
                         loading="lazy"
-                        className="h-20 w-36 rounded-xl object-cover"
+                        className="h-20 w-36 object-cover"
                       />
-                      <span className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/25">
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/25">
                         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-500/90 pl-0.5 text-white">
                           <Play className="h-4 w-4 fill-current" />
                         </span>
@@ -328,7 +328,7 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
                     setSearched("");
                     setMessage("");
                   }}
-                  className="flex w-full items-center gap-3 rounded-xl p-1.5 text-left transition hover:bg-muted/50"
+                  className="flex w-full items-center gap-3 p-1.5 text-left transition hover:bg-muted/50"
                 >
                   {/* Ảnh nhỏ bên trái */}
                   <span className="relative shrink-0">
@@ -336,7 +336,7 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
                       src={v.thumbnail}
                       alt=""
                       loading="lazy"
-                      className="h-12 w-20 rounded-lg object-cover"
+                      className="h-12 w-20 object-cover"
                     />
                     {v.duration ? (
                       <span className="absolute bottom-0.5 right-0.5 rounded bg-black/80 px-1 text-[10px] tabular-nums text-white">
