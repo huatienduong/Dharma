@@ -702,18 +702,36 @@ export default function Assistant() {
       // Nhánh dự phòng: khi `ask` báo máy chủ chính đang lỗi, gọi nhánh Groq
       // REST/Gemini riêng để người dùng VẪN được trả lời ngay.
       const askResilient = async (): Promise<AskResult> => {
-        const primary = await askOnce();
-        if (primary.ok || primary.code !== "ai_unavailable") return primary;
+        // Nhánh dự phòng: gọi trước, vì khi máy chủ chính đang lỗi thì chờ nó
+        // trả về cũng chẳng có kết quả — cứ gọi song song cho chắc.
+        const fallback = async (): Promise<AskResult | null> => {
+          try {
+            const fb = await callConvexAction<AskResult>(
+              "chatFallback:chatFallback",
+              { messages: payloadMessages, ...getDeviceMeta() },
+            );
+            return fb.ok ? fb : null;
+          } catch {
+            return null;
+          }
+        };
         try {
-          const fb = await callConvexAction<AskResult>(
-            "chatFallback:chatFallback",
-            { messages: payloadMessages, ...getDeviceMeta() },
-          );
-          if (fb.ok) return fb;
+          const fb = await fallback();
+          if (fb) return fb;
         } catch {
-          /* hết đường dự phòng */
+          /* bỏ qua, thử nhánh chính */
         }
-        return primary;
+        try {
+          const primary = await askOnce();
+          if (primary.ok || primary.code !== "ai_unavailable") return primary;
+        } catch (err) {
+          // `ask` ném lỗi (Server Error / mất kết nối) — thử nhánh dự phòng
+          // một lần nữa trước khi báo cho người dùng.
+          const fb = await fallback();
+          if (fb) return fb;
+          throw err;
+        }
+        return { ok: false, code: "ai_unavailable", message: "Trợ lý Phật học tạm chưa trả lời được. Vui lòng thử lại sau ít phút." };
       };
       const askWithRetry = async () => {
         let lastError: unknown = new Error("Không gửi được câu hỏi.");

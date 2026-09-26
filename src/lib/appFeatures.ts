@@ -29,31 +29,31 @@ export const VOICE_COUNT = 8;
 export const FEATURES: AppFeature[] = [
   {
     name: "Trò chuyện bằng văn bản",
-    how: "Gõ câu hỏi rồi bấm nút Gửi (hoặc Enter). Trợ lý nhớ toàn bộ nội dung hội thoại trong phiên này và tiếp tục đúng mạch.",
+    how: "Gõ câu hỏi rồi bấm Gửi (hoặc Enter). Trợ lý nhớ toàn bộ hội thoại và tiếp tục đúng mạch.",
   },
   {
     name: "Đàm thoại bằng giọng nói (nút tròn có sóng âm)",
-    how: "Bấm để mở màn đàm thoại, nói tự nhiên như gọi điện. Trợ lý tự chốt câu khi bạn ngừng nói, tự trả lời bằng giọng rồi lại nghe tiếp. Bấm dấu tròn đỏ để kết thúc, bấm mic để tắt/bật. Người dùng cũng chỉ cần nhắn trong chat: 'mở đàm thoại'.",
+    how: "Nói tự nhiên như gọi điện; trợ lý tự chốt câu khi bạn ngừng nói, tự đọc trả lời rồi lại nghe tiếp. Dấu tròn đỏ để kết thúc. Cũng chỉ cần nhắn: 'mở đàm thoại'.",
   },
   {
     name: "Gửi ảnh để phân tích (nút ảnh cạnh ô nhập)",
-    how: `Chọn tối đa ${MAX_IMAGES_PER_MESSAGE} ảnh mỗi lượt (bấm nút ảnh nhiều lần để cộng dồn), rồi gửi kèm câu hỏi. Trợ lý nhìn và giải thích từng ảnh, có so sánh giữa các ảnh. Ảnh quá 20 MB sẽ được báo để chọn ảnh nhỏ hơn.`,
+    how: `Bấm nút ảnh nhiều lần để cộng dồn tối đa ${MAX_IMAGES_PER_MESSAGE} ảnh mỗi lượt (tối đa 20 MB/ảnh), rồi gửi kèm câu hỏi.`,
   },
   {
     name: "Tạo hình minh hoạ Phật pháp",
-    how: 'Chỉ cần nhờ bằng lời, ví dụ "vẽ hình hoa sen", "minh hoạ tứ thánh đế" — hệ thống tự vẽ và hiện ảnh kèm câu giải thích.',
+    how: 'Chỉ cần nhờ bằng lời: "vẽ hình hoa sen", "minh hoạ tứ thánh đế" — hệ thống tự vẽ.',
   },
   {
     name: "Nghe câu trả lời bằng giọng nói",
-    how: "Bấm biểu tượng loa trên câu trả lời để nghe lại. Trong đàm thoại, giọng đọc phát tự động.",
+    how: "Bấm biểu tượng loa trên câu trả lời; trong đàm thoại thì phát tự động.",
   },
   {
     name: `Chọn ${VOICE_COUNT} giọng đọc (Cài đặt → Giọng nói)`,
-    how: "Vào Cài đặt, mục Giọng nói, nghe thử và chọn giọng mình thích — giọng đã chọn được dùng cho cả chat lẫn đàm thoại.",
+    how: "Vào Cài đặt → Giọng nói, nghe thử và chọn; dùng cho cả chat lẫn đàm thoại.",
   },
   {
     name: "Gợi ý câu hỏi",
-    how: "Khi hội thoại còn trống, ứng dụng gợi ý các câu hỏi về Bát Chánh Đạo, Tứ Thánh Đế... để bạn bấm vào hỏi ngay.",
+    how: "Khi hội thoại trống, ứng dụng gợi ý câu hỏi về Bát Chánh Đạo, Tứ Thánh Đế... để bấm vào hỏi ngay.",
   },
   {
     name: "Thu hồi tin nhắn",
@@ -61,15 +61,15 @@ export const FEATURES: AppFeature[] = [
   },
   {
     name: "Chia sẻ cuộc trò chuyện",
-    how: "Bấm biểu tượng chia sẻ để sao chép nội dung hội thoại ra ngoài.",
+    how: "Bấm biểu tượng chia sẻ để sao chép hội thoại ra ngoài.",
   },
   {
     name: "Xóa hội thoại",
-    how: 'Bấm biểu tượng thùng rác, hoặc chỉ cần nói với trợ lý: "xoá hội thoại", "bắt đầu lại", "quên hết đi" — trợ lý sẽ xóa sạch và kết thúc cuộc trò chuyện.',
+    how: 'Bấm biểu tượng thùng rác, hoặc nói "xoá hội thoại", "bắt đầu lại", "quên hết đi" — sẽ xóa sạch và kết thúc cuộc trò chuyện.',
   },
   {
     name: "Cài đặt",
-    how: "Vào Cài đặt để đổi giọng đọc, xem thông tin ứng dụng, điều khoản và gửi góp ý.",
+    how: "Vào Cài đặt để đổi giọng đọc, xem thông tin, điều khoản và gửi góp ý.",
   },
 ];
 
@@ -78,11 +78,9 @@ export const FEATURES: AppFeature[] = [
  * tính năng gì", "làm sao dùng...", "có thể làm gì...".
  */
 export const FEATURE_TIPS = [
-  "Trả lời NGẮN GỌN: nêu đúng 2–4 tính năng liên quan tới câu hỏi, kèm cách bấm cụ thể.",
-  'Khi người dùng hỏi chung "có tính năng gì" thì liệt kê tên các tính năng chính, không dàn trải hết mọi chi tiết.',
-  "Danh sách tính năng được hệ thống tự động cập nhật theo ứng dụng — hãy tin danh sách này, đừng bịa thêm tính năng không có.",
-  "Nếu người dùng hỏi về tính năng chưa có trong danh sách, nói thẳng là hiện chưa có và gợi ý tính năng gần nhất.",
-  'Nếu người dùng muốn nói chuyện bằng giọng nói: bảo họ chỉ cần nhắn "mở đàm thoại" (hoặc bấm nút tròn có sóng âm) là màn đàm thoại mở ngay.',
+  "Trả lời NGẮN GỌN: nêu 2–4 tính năng liên quan tới câu hỏi, kèm cách bấm cụ thể.",
+  "Danh sách này do hệ thống tự động cập nhật theo ứng dụng — hãy tin danh sách, đừng bịa tính năng không có; hỏi về tính năng chưa có thì nói thẳng hiện chưa có.",
+  'Muốn nói chuyện bằng giọng nói: bảo họ nhắn "mở đàm thoại" là màn đàm thoại mở ngay.',
 ];
 
 /** Dựng phần mô tả tính năng để chèn vào system prompt. */
