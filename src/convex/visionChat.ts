@@ -45,12 +45,13 @@ NHIỆM VỤ: nhìn (các) hình ảnh người dùng gửi và trả lời về
 
 CÁCH TRẢ LỜI:
 - Nói đúng nội dung ảnh trước (vài câu), rồi mới gắn với Phật học nếu ảnh có liên quan.
+- Câu MỞ ĐẦU phải là câu trả lời thật viết thành văn xuôi; TUYỆT ĐỐI không mở đầu bằng dấu gạch ngang, gạch đầu dòng hay số thứ tự.
 - Nhiều ảnh: so sánh, chỉ ra điểm chung và khác biệt giữa các ảnh.
 - Trả lời bằng tiếng Việt, thân thiện, khiêm tốn, không dùng emoji, không dùng markdown.
 - NGẮN GỌN: tối đa 6 câu. Không liệt kê từng chi tiết nhỏ vô nghĩa.
 - Nếu ảnh không rõ hoặc không có gì để nói, nói thẳng là không nhìn rõ và mời người dùng gửi ảnh khác.
 - Không bịa chi tiết không có trong ảnh. Không khẳng định điều không chắc chắn.
-- Nếu ảnh có liên quan tới kinh điển, được phép dẫn nguồn tối đa 1–2 đường dẫn thật ở cuối câu trả lời, viết thuần dạng https://... (chỉ dùng nguồn như suttacentral.net, dhammatalks.org, cbetaonline.dila.edu.tw, dhammaloka.org); TUYỆT ĐỐI không bịa đường dẫn — không chắc thì chỉ nêu tên kinh.
+- TUYỆT ĐỐI không tự chèn đường dẫn nguồn ở cuối câu trả lời. Chỉ khi người dùng hỏi rõ ("nguồn ở đâu", "trích dẫn", "link", "theo kinh nào") thì mới nêu tối đa 1–2 đường dẫn thật (suttacentral.net, dhammatalks.org, cbetaonline.dila.edu.tw); không bịa đường dẫn.
 
 - Ghi nhớ toàn bộ cuộc trò chuyện, không chỉ lượt gần nhất.
 
@@ -354,7 +355,9 @@ export const analyzeImage = action({
             .filter((p) => !p.thought)
             .map((p) => p.text ?? "")
             .join("")
-            .trim();
+            .trim()
+            // Gỡ gạch đầu dòng hay bị model đặt ở câu mở đầu.
+            .replace(/^[\s–\-•*]+/, "");
           if (text) {
             return {
               ok: true as const,

@@ -111,12 +111,16 @@ const FALLBACK_SYSTEM = `Bạn là "Trợ lý Phật học" — một PHẬT T�
 CÁCH TRẢ LỜI:
 - Nền tảng Theravāda: Tứ Diệu Đế, Bát Chánh Đạo, Thánh Đạo 8 chi, Vô Thường - Khổ - Vô Ngã, Thiền, Luật tạng, Dhammapada. Mở rộng cho mọi chủ đề liên quan đời sống.
 - Trả lời đúng trọng tâm, ngắn gọn: câu hỏi ngắn thì 1–3 đoạn ngắn, đáp án nằm ở câu đầu. Chỉ dùng gạch đầu dòng "–" và đánh số "1.".
+- Câu MỞ ĐẦU mỗi câu trả lời phải là câu trả lời thật, viết thành văn xuôi. TUYỆT ĐỐI không mở đầu bằng dấu gạch ngang, gạch đầu dòng, số thứ tự hay dấu hai chấm.
 - Giải thích thuật ngữ Pāli ngay sau khi dùng (dukkha = khổ, vipassanā = quán chiếu...).
 - Trò chuyện như người bạn thật: đồng cảm trước khi vào giáo lý, nhớ và nhắc lại chuyện người dùng đã kể, quan tâm chủ động.
 - KHÔNG dùng emoji. KHÔNG dùng ký tự markdown (###, **, *, ---, |). Trả lời bằng tiếng Việt.
 - Không biết thì nói không biết; không chẩn đoán y khoa/tâm lý; không hành xử như bậc đạo hạnh thực thụ.
 - Nhớ toàn bộ cuộc trò chuyện, không chỉ lượt gần nhất.
-- Khi có căn cứ kinh điển thì nêu tên kinh + số hiệu (SN 56.11, Dhammapada 183...) và tối đa 1 đường dẫn thật ở cuối (suttacentral.net, dhammatalks.org, cbetaonline.dila.edu.tw). TUYỆT ĐỐI không bịa đường dẫn.
+
+DẪN NGUỒN — CHỈ KHI NGƯỜI DÙNG HỎI:
+- TUYỆT ĐỐI KHÔNG tự ý chèn đường dẫn hay danh sách nguồn ở cuối câu trả lời. Nói về kinh điển thì chỉ nêu TÊN KINH + SỐ HIỆU ngay trong câu (ví dụ "Kinh Tứ Thánh Đế, Saṃyutta Nikāya 56.11", "Dhammapada 183").
+- Chỉ khi người dùng hỏi rõ ("nguồn ở đâu", "trích dẫn", "dẫn chứng", "link", "theo kinh nào", "tìm đọc ở đâu") thì mới đưa tối đa 1–2 đường dẫn thật ở cuối (suttacentral.net, dhammatalks.org, cbetaonline.dila.edu.tw). TUYỆT ĐỐI không bịa đường dẫn.
 
 ${featuresPrompt(true)}`;
 
@@ -169,6 +173,35 @@ function firstText(json: unknown): string {
   return (c ?? "").trim();
 }
 
+/** Người dùng có đang hỏi về nguồn / trích dẫn không. */
+function askedForSource(text: string): boolean {
+  return /ngu[oồ]n|tr[ií]ch d[aâ]n|d[aâ]n ch[aứ]ng|https?:|link|tra c[uứ]u|tham kh[aả]o|t[ií]m đ[oọ]c|\burl\b/i.test(
+    text,
+  );
+}
+
+/**
+ * Dọn câu trả lời cho sạch trước khi hiện lên.
+ *
+ * Prompt đã dặn không mở đầu bằng gạch đầu dòng và không tự chèn nguồn,
+ * nhưng model vẫn hay bịa quen đọng. Hai việc này làm chắc chắn hơn:
+ *   1. Gỡ dấu gạch ở đầu câu mở đầu (hay gặp: "– Tứ Thánh Đế là…").
+ *   2. Khi người dùng KHÔNG hỏi nguồn thì bỏ các dòng chỉ chứa đường dẫn
+ *      ở cuối câu trả lời. Họ hỏi nguồn thì vẫn giữ nguyên.
+ */
+function tidyReply(text: string, question: string): string {
+  const out = text.trim().replace(/^[\s–\-•*]+/, "");
+  if (askedForSource(question)) return out;
+  const lines = out.split("\n");
+  while (
+    lines.length > 1 &&
+    /^\s*(?:https?:\/\/\S+\s*)+$/.test(lines[lines.length - 1])
+  ) {
+    lines.pop();
+  }
+  return lines.join("\n").trim();
+}
+
 export const chatFallback = action({
   args: {
     messages: v.array(
@@ -216,6 +249,8 @@ export const chatFallback = action({
       content: m.content.slice(0, 700),
     }));
     const errors: string[] = [];
+    /** Câu hỏi cuối cùng — dùng để biết người dùng có hỏi về nguồn không. */
+    const lastQuestion = context[context.length - 1]?.content ?? "";
     /** true = mọi lỗi đều do hết hạn mức (429), thông báo sẽ dịu hơn */
     let allRateLimited = true;
     const groqKeyPresent = Boolean(process.env.GROQ_API_KEY);
@@ -268,8 +303,9 @@ export const chatFallback = action({
           }
           const text = firstText(await httpRes.json());
           if (text) {
-            writeCache(cacheKey, text, model);
-            return { ok: true as const, reply: text, provider: model };
+            const reply = tidyReply(text, lastQuestion);
+            writeCache(cacheKey, reply, model);
+            return { ok: true as const, reply, provider: model };
           }
           allRateLimited = false;
           errors.push(`${model}: trả lời rỗng`);
@@ -333,8 +369,9 @@ export const chatFallback = action({
             .join("")
             .trim();
           if (text) {
-            writeCache(cacheKey, text, model);
-            return { ok: true as const, reply: text, provider: model };
+            const reply = tidyReply(text, lastQuestion);
+            writeCache(cacheKey, reply, model);
+            return { ok: true as const, reply, provider: model };
           }
           allRateLimited = false;
           errors.push(`${model}: trả lời rỗng`);

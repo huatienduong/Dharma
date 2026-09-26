@@ -91,12 +91,32 @@ export const FEATURE_TIPS = [
  * (chỉ 8.000 token/phút), nên mỗi prompt thừa một câu cũng có thể khiến
  * cả nhóm người dùng bị chặn. Nhánh chính dùng bản đầy đủ.
  */
+/**
+ * Sổ "hỗ trợ kỹ thuật" — nguyên liệu để trợ lý tự hướng dẫn và khắc phục
+ * lỗi cho người dùng. Nằm ở đây (không nhúng cứng trong prompt) để thêm
+ * một mục là mọi nhánh — chat, ảnh, đàm thoại — cùng có.
+ */
+export const SUPPORT_TIPS = [
+  "Hỏi cách dùng hoặc gặp lỗi → hướng dẫn theo ĐÚNG tên nút trên màn hình, theo thứ tự thao tác, mỗi bước một ý, ngắn gọn và làm được ngay. Không nói chung chung kiểu 'hãy thử lại'.",
+  "Lỗi 'tạm chưa trả lời được': máy chủ AI đang bận vì nhiều người dùng. Chờ khoảng một phút rồi bấm nút Gửi lại, hoặc hỏi lại bằng câu ngắn hơn.",
+  "Lỗi 'gửi yêu cầu quá nhanh': hệ thống giới hạn số câu mỗi phút, hãy chậm lại, đợi một phút rồi thử tiếp.",
+  "Micro không nghe: kiểm tra trình duyệt đã được cấp quyền micro chưa, tắt các ứng dụng khác đang dùng micro, nói cách xa micro một chút và chọn nơi yên tĩnh.",
+  "Nói xong không tự gửi: giữ yên lặng khoảng 1 giây sau câu cuối, hoặc bấm nút Dừng nghe. Nếu vẫn không được thì gõ câu hỏi bằng chữ.",
+  "Ảnh không phân tích được: gửi từng ảnh một, ảnh JPG hoặc PNG, dung lượng vừa phải. Nếu máy chủ báo hết hạn mức thì thử lại sau 1–2 phút.",
+  "Không nghe thấy giọng đọc: kiểm tra âm lượng và chế độ im lặng của điện thoại, hoặc đổi giọng khác trong Cài đặt → Giọng nói.",
+  "Muốn bắt đầu lại: nói 'xoá hội thoại' hoặc bấm biểu tượng thùng rác. Muốn nói chuyện bằng giọng nói thì bấm nút tròn có sóng âm ở góc trên trái, hoặc nhắn 'mở đàm thoại'.",
+];
+
 export function featuresPrompt(compact = false): string {
   if (compact) {
     return [
       "## TÍNH NĂNG ỨNG DỤNG (tự động cập nhật)",
       "Khi người dùng hỏi về ứng dụng, chỉ được nói các tính năng có trong danh sách này:",
       FEATURES.map((f) => `- ${f.name}`).join("\n"),
+      "",
+      "## HỖ TRỢ KỸ THUẬT",
+      "Người dùng hỏi cách dùng hoặc gặp lỗi thì hướng dẫn đúng tên nút trên màn hình, theo thứ tự từng bước, làm được ngay:",
+      SUPPORT_TIPS.map((t) => `- ${t}`).join("\n"),
     ].join("\n");
   }
   const lines = FEATURES.map(
@@ -109,5 +129,9 @@ export function featuresPrompt(compact = false): string {
     "",
     "CÁCH TRẢ LỜI VỀ ỨNG DỤNG:",
     ...FEATURE_TIPS.map((t) => `- ${t}`),
+    "",
+    "## HỖ TRỢ KỸ THUẬT VÀ KHẮC PHỤC LỖI",
+    "Đây là vai trò thường xuyên của bạn: người dùng hỏi cách dùng tính năng, gặp lỗi, hoặc thao tác chưa được. Hãy hướng dẫn cụ thể, đúng tên nút trên màn hình, theo đúng thứ tự thao tác, mỗi bước một ý, làm được ngay. Không nói chung chung kiểu \"hãy thử lại\".",
+    ...SUPPORT_TIPS.map((t) => `- ${t}`),
   ].join("\n");
 }
