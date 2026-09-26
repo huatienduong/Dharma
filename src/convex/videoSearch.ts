@@ -62,6 +62,14 @@ type SearchItem = {
   duration?: string;
 };
 
+/** Tín hiệu huỷ sau `ms` — runtime của Convex không bảo đảm có
+ *  `AbortSignal.timeout`, nên tự đặt hẹn giờ cho chắc chắn. */
+function timeoutSignal(ms: number): AbortSignal {
+  const ctl = new AbortController();
+  setTimeout(() => ctl.abort(), ms);
+  return ctl.signal;
+}
+
 /** Server Invidious công khai — dự phòng khi chưa có khoá API. */
 const INVIDIOUS_INSTANCES = [
   "https://inv.nadeko.net",
@@ -75,7 +83,7 @@ async function searchViaInvidious(query: string): Promise<SearchItem[]> {
     try {
       const res = await fetch(
         `${base}/api/v1/search?q=${encodeURIComponent(query)}&type=video`,
-        { signal: AbortSignal.timeout(6000) },
+        { signal: timeoutSignal(6000) },
       );
       if (!res.ok) continue;
       const data = (await res.json()) as {
@@ -172,7 +180,7 @@ export const find = action({
       try {
         const searchRes = await fetch(
           `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=3&relevanceLanguage=vi&q=${encodeURIComponent(query)}&key=${key}`,
-          { signal: AbortSignal.timeout(8000) },
+          { signal: timeoutSignal(8000) },
         );
         if (searchRes.ok) {
           const searchJson = (await searchRes.json()) as {
@@ -194,7 +202,7 @@ export const find = action({
             try {
               const detailRes = await fetch(
                 `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids.join(",")}&key=${key}`,
-                { signal: AbortSignal.timeout(8000) },
+                { signal: timeoutSignal(8000) },
               );
               if (detailRes.ok) {
                 const detailJson = (await detailRes.json()) as {
