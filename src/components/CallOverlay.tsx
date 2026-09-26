@@ -9,7 +9,6 @@
  */
 
 import type { CallStatus } from "@/hooks/useCallSession";
-import type { VideoInfo } from "@/lib/videoIntent";
 import { cn } from "@/lib/utils";
 import { BotAvatar } from "@/components/BotAvatar";
 import {
@@ -25,12 +24,6 @@ import { useEffect, useState, type ReactNode } from "react";
 
 export type CallOverlayProps = {
   callStatus: CallStatus;
-  /** "video" = gọi video: màn hình chính là player, robot thu nhỏ lại góc. */
-  mode?: "voice" | "video";
-  /** Video đang được xem trong cuộc gọi video (null = chưa có video nào). */
-  video?: VideoInfo | null;
-  /** Bỏ video, quay lại màn hình robot. */
-  onClearVideo?: () => void;
   /** Lời người dùng đang nói, do trình duyệt nghe được. */
   interim: string;
   onEnd: () => void;
@@ -77,9 +70,6 @@ export function CallOverlay({
   onEnd,
   onToggleMute,
   onInterrupt,
-  mode = "voice",
-  video = null,
-  onClearVideo,
 }: CallOverlayProps) {
   const statusText =
     callStatus === "listening"
@@ -146,7 +136,6 @@ export function CallOverlay({
               )}
             />
             {statusText}
-            {mode === "video" ? " · gọi video" : ""}
           </div>
 
           <span aria-hidden className="h-10 w-10" />
@@ -154,72 +143,27 @@ export function CallOverlay({
 
         {/* Giữa màn hình: tên + thời lượng, bên dưới là câu đang nghe */}
         <div className="flex flex-1 flex-col items-center justify-center px-6">
-          {/* GỌI VIDEO: màn hình chính là player. Chưa có video thì hiện robot
-              kèm lời nhắc, người dùng chỉ cần nói là Trợ lý tự tìm và phát. */}
-          {mode === "video" && video ? (
-            <div className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-white/10 bg-black shadow-xl">
-              <div className="relative w-full" style={{ paddingTop: "56.25%" }}>
-                <iframe
-                  className="absolute inset-0 h-full w-full"
-                  src={`https://www.youtube-nocookie.com/embed/${video.videoId}?autoplay=1&rel=0&modestbranding=1`}
-                  title={video.title || "Video trong cuộc gọi"}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-              {/* Robot thu nhỏ làm góc tròn, kiểu khung hình nhỏ trong cuộc gọi */}
-              <span
-                aria-hidden
-                className={cn(
-                  "absolute bottom-2.5 right-2.5 flex h-12 w-12 items-center justify-center rounded-full bg-black/60 ring-1 ring-white/15 backdrop-blur",
-                  live && "ring-2 ring-emerald-400/60",
-                )}
-              >
-                <BotAvatar size="lg" glow className="h-[70%] w-[70%]" />
-              </span>
-              {onClearVideo ? (
-                <button
-                  type="button"
-                  onClick={onClearVideo}
-                  className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-black/65 px-2.5 py-1 text-[11px] text-white/90 backdrop-blur transition hover:bg-black/80"
-                >
-                  <VideoOff className="h-3.5 w-3.5" />
-                  Tắt video
-                </button>
-              ) : null}
-            </div>
-          ) : null}
+          {/* Avatar tròn kiểu Zalo: vòng sáng nhẹ quanh robot, chập nháy nhẹ
+              khi Trợ lý đang nghe hoặc đang trả lời. */}
+          <div className="relative flex h-36 w-36 items-center justify-center sm:h-44 sm:w-44">
+            <span
+              aria-hidden
+              className={cn(
+                "absolute inset-2 rounded-full bg-primary/25 blur-2xl",
+                live && "animate-pulse",
+              )}
+            />
+            <BotAvatar
+              size="lg"
+              glow
+              className={cn(
+                "relative h-[62%] w-[62%]",
+                callStatus === "muted" && "opacity-50",
+              )}
+            />
+          </div>
 
-          {mode === "voice" || !video ? (
-            <>
-              {/* Avatar tròn kiểu Zalo: vòng sáng nhẹ quanh robot, chập nháy nhẹ
-                  khi Trợ lý đang nghe hoặc đang trả lời. */}
-              <div className="relative flex h-36 w-36 items-center justify-center sm:h-44 sm:w-44">
-                <span
-                  aria-hidden
-                  className={cn(
-                    "absolute inset-2 rounded-full bg-primary/25 blur-2xl",
-                    live && "animate-pulse",
-                  )}
-                />
-                <BotAvatar
-                  size="lg"
-                  glow
-                  className={cn(
-                    "relative h-[62%] w-[62%]",
-                    callStatus === "muted" && "opacity-50",
-                  )}
-                />
-              </div>
-              {mode === "video" ? (
-                <p className="mt-5 text-center text-sm text-white/60">
-                  Nói với Trợ lý: “cho tôi xem video về …”
-                </p>
-              ) : null}
-            </>
-          ) : null}
-
-          <p className={cn("text-center text-[22px] font-semibold tracking-tight", mode === "video" && video ? "mt-4" : "mt-6")}>
+          <p className="mt-6 text-center text-[22px] font-semibold tracking-tight">
             Trợ lý Phật học
           </p>
           <p
