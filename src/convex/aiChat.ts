@@ -312,7 +312,13 @@ const AI_TIMEOUT_MS = 60_000; // cho phép Gemini đủ thời gian sinh câu tr
 /* Client gửi voice id + male; máy chủ chọn giọng Gemini tương ứng.      */
 /* ------------------------------------------------------------------ */
 
-type ServerVoice = { gemini: string; male: boolean };
+type ServerVoice = {
+  /** Voice Gemini (dự phòng khi ElevenLabs không dùng được) */
+  gemini: string;
+  /** Voice ElevenLabs tương ứng (ưu tiên đọc to) */
+  eleven: string;
+  male: boolean;
+};
 
 /**
  * Bản đồ giọng đọc — ĐÃ ĐỐI CHIẾN giới tính thật của từng voice Gemini:
@@ -333,16 +339,105 @@ const GEMINI_TTS_MODELS = [
   "gemini-2.5-flash-preview-tts",
 ] as const;
 
+/* ------------------------------------------------------------------ */
+/* ElevenLabs — nhánh đọc to CHÍNH. Giọng đa ngôn ngữ đọc tiếng Việt   */
+/* tự nhiên hơn hẳn Gemini, và trả về MP3 nên client khỏi bọc WAV.    */
+/* ------------------------------------------------------------------ */
+
+const ELEVENLABS_BASE_URL = "https://api.elevenlabs.io/v1";
+const ELEVENLABS_MODEL = "eleven_multilingual_v2";
+
+/**
+ * Danh sách voice dự phòng theo giới tính. Voice ElevenLabs thuộc về
+ * từng tài khoản (mỗi người thấy tập voice khác nhau), nên nếu voice đã
+ * chọn trả 404 ta thử lần lượt các voice phổ biến thay vì im lặng.
+ */
+const ELEVENLABS_FALLBACK_VOICES = {
+  female: [
+    "EXAVITQu4vr4xnSDxMaL",
+    "21m00Tcm4TlvDq8ikWAM",
+    "MF3mGyEYCl7XYWbV9V6O",
+    "Xb7hH8MSUJpSbSDYk0k2",
+    "XB0fDUnXU5powFXDhCwa",
+  ],
+  male: [
+    "yoZ06aMxZJJ28mfd3POQ",
+    "TX3LPaxmHKxFdv7VOQHJ",
+    "pNInz6obpgDQGcFmaJgB",
+    "IKne3meq5aSn9XLyUdCD",
+    "onwK4e9ZLuTAKqWW03F9",
+  ],
+} as const;
+
 const SERVER_VOICES: Record<string, ServerVoice> = {
-  metta: { gemini: "Kore", male: false },
-  karuna: { gemini: "Autonoe", male: false },
-  panna: { gemini: "Leda", male: false },
-  sati: { gemini: "Aoede", male: false },
-  mettam: { gemini: "Enceladus", male: true },
-  adosa: { gemini: "Algieba", male: true },
-  upekkha: { gemini: "Alnilam", male: true },
-  sila: { gemini: "Iapetus", male: true },
+  metta: { gemini: "Kore", eleven: "EXAVITQu4vr4xnSDxMaL", male: false },
+  karuna: { gemini: "Autonoe", eleven: "21m00Tcm4TlvDq8ikWAM", male: false },
+  panna: { gemini: "Leda", eleven: "MF3mGyEYCl7XYWbV9V6O", male: false },
+  sati: { gemini: "Aoede", eleven: "Xb7hH8MSUJpSbSDYk0k2", male: false },
+  mettam: { gemini: "Enceladus", eleven: "yoZ06aMxZJJ28mfd3POQ", male: true },
+  adosa: { gemini: "Algieba", eleven: "TX3LPaxmHKxFdv7VOQHJ", male: true },
+  upekkha: { gemini: "Alnilam", eleven: "IKne3meq5aSn9XLyUdCD", male: true },
+  sila: { gemini: "Iapetus", eleven: "pNInz6obpgDQGcFmaJgB", male: true },
 };
+
+/**
+ * Gọi ElevenLabs tổng hợp MP3. Trả null khi không dùng được (khóa sai,
+ * hết hạn mức, mạng lỗi) để chuyển nhánh dự phòng.
+ * 401 = khóa sai/hết hạn mức → dừng thử ngay, không gọi lại 5 lần.
+ */
+async function synthesizeElevenLabs(
+  key: string,
+  text: string,
+  voiceId: string,
+  wantMale: boolean,
+): Promise<{ audioBase64: string; mime: string } | null> {
+  const candidates = [
+    voiceId,
+    ...ELEVENLABS_FALLBACK_VOICES[wantMale ? "male" : "female"],
+  ];
+  for (const id of [...new Set(candidates)]) {
+    try {
+      const res = await fetch(
+        `${ELEVENLABS_BASE_URL}/text-to-speech/${id}?output_format=mp3_44100_128`,
+        {
+          method: "POST",
+          headers: {
+            "xi-api-key": key,
+            "Content-Type": "application/json",
+            Accept: "audio/mpeg",
+          },
+          body: JSON.stringify({
+            text,
+            model_id: ELEVENLABS_MODEL,
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.8,
+              style: 0.15,
+              use_speaker_boost: true,
+              // Chậm rãi, trang nghiêm — đúng nhịp tụng đọc kinh.
+              speed: 0.92,
+            },
+          }),
+        },
+      );
+      if (res.status === 401 || res.status === 403) return null;
+      // 404 = voice không có trong tài khoản này → thử voice kế tiếp
+      if (!res.ok) continue;
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      if (bytes.length < 512) continue;
+      // Gom base64 theo từng khối: trải toàn bộ byte vào một lời gọi
+      // fromCharCode sẽ vượt ngăn xếp khi đoạn văn dài.
+      let binary = "";
+      for (let i = 0; i < bytes.length; i += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      }
+      return { audioBase64: btoa(binary), mime: "audio/mpeg" };
+    } catch {
+      /* lỗi mạng/voice → thử voice tiếp theo */
+    }
+  }
+  return null;
+}
 
 /* ------------------------------------------------------------------ */
 /* Danh sách nhà cung cấp AI — ưu tiên tốc độ, fallback chỉ khi cần     */
@@ -582,6 +677,7 @@ export const aiSelfTest = internalAction({
     // Gemini KHÔNG còn phục vụ chat — chỉ còn TTS (đọc to). Kiểm tra model
     // TTS thật sự sống để đàm thoại không chết âm thầm khi Google đổi model.
     const geminiKey = process.env.GEMINI_API_KEY;
+    // nhánh dự phòng khi ElevenLabs không dùng được
     if (geminiKey) {
       let liveTts: string | null = null;
       let note = "sống";
@@ -947,7 +1043,28 @@ export const speak = action({
         ? "Đọc bằng tiếng Việt, giọng NAM trầm ấm, chậm rãi trang nghiêm:"
         : "Đọc bằng tiếng Việt, giọng NỮ nhẹ nhàng, chậm rãi trang nghiêm:";
     const v = SERVER_VOICES[voice ?? ""];
+    const elevenVoice =
+      v?.eleven ?? (wantMale ? "yoZ06aMxZJJ28mfd3POQ" : "EXAVITQu4vr4xnSDxMaL");
+
+    // ƯU TIÊN 1: ElevenLabs — giọng đa ngôn ngữ đọc tiếng Việt tự nhiên
+    // và trả MP3 nên client khỏi bọc WAV. Gửi NỘI DUNG THÔ (không thêm lệnh
+    // đọc như Gemini, vì ElevenLabs sẽ đọc luôn cả lệnh thành tiếng).
+    const elevenKey = process.env.ELEVENLABS_API_KEY;
+    if (elevenKey) {
+      const eleven = await synthesizeElevenLabs(
+        elevenKey,
+        clean,
+        elevenVoice,
+        wantMale,
+      );
+      if (eleven) return eleven;
+    }
+
+    // ƯU TIÊN 2: Gemini TTS — dự phòng khi ElevenLabs lỗi hoặc hết hạn mức.
+
     const geminiVoice = v?.gemini ?? (wantMale ? "Charon" : "Kore");
+    const elevenVoice =
+      v?.eleven ?? (wantMale ? "yoZ06aMxZJJ28mfd3POQ" : "EXAVITQu4vr4xnSDxMaL");
 
     const geminiKey = process.env.GEMINI_API_KEY;
 
