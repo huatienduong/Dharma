@@ -156,40 +156,6 @@ export default function Assistant() {
    */
   const [loadingTs, setLoadingTs] = useState<number | null>(null);
 
-  /* ---- Ô tìm video YouTube ngay trong khung chat ---- */
-  const [videoSearchOpen, setVideoSearchOpen] = useState(false);
-  const [videoQuery, setVideoQuery] = useState("");
-  const [videoSearching, setVideoSearching] = useState(false);
-
-  /** Chạy tìm kiếm video và đưa kết quả thẳng vào hội thoại. */
-  const runVideoSearch = useCallback(async () => {
-    const q = videoQuery.trim();
-    if (!q || videoSearching) return;
-    setVideoSearching(true);
-    try {
-      const key = await loadYouTubeKey().catch(() => "");
-      const videos = await searchVideoInBrowser(q, key);
-      const userMsg: Msg = {
-        role: "user",
-        content: q,
-        ts: Date.now(),
-        videoSearch: { query: q, videos },
-      };
-      const nextHistory = [...historyRef.current, userMsg];
-      historyRef.current = nextHistory;
-      setHistory(nextHistory);
-      void saveLocalChatSecure(nextHistory);
-      if (!videos.length) {
-        toast.info(
-          "Chưa tìm được video. Nếu bạn dán khoá YouTube ở Cài đặt → Video YouTube thì tìm theo chủ đề sẽ chính xác hơn.",
-        );
-      }
-    } catch {
-      toast.error("Chưa tìm được video. Bạn thử lại sau nhé.");
-    } finally {
-      setVideoSearching(false);
-    }
-  }, [videoQuery, videoSearching]);
   const loadingTsRef = useRef<number | null>(null);
 
   const markReading = useCallback((ts: number | null) => {
@@ -598,18 +564,15 @@ export default function Assistant() {
 
       // Gửi kèm lượt gần nhất đúng với ngữ cảnh backend sử dụng. Cắt bớt ký
       // tự phòng khi lịch sử cũ chứa câu trả lời rất dài.
-      // Lượt tìm video là người dùng tự tìm trong ứng dụng, không phải câu
-      // hỏi AI → không gửi lên (chỉ giữ để người dùng xem lại).
-      const baseForAi = base.filter((m) => !m.videoSearch);
       // Câu hỏi về video: kèm chỉ dẫn ngắn để AI trả lời đúng ý và mời xem
-      // video (đồng thời nhắc ô tìm video trong khung chat) — nhờ vậy tính
-      // này chạy đúng ngay cả khi phần prompt phía máy chủ chưa cập nhật.
+      // video — nhờ vậy tính năng chạy đúng ngay cả khi phần prompt phía máy
+      // chủ chưa cập nhật. Người dùng chỉ cần nhắn "tôi muốn xem video…".
       const questionForAi =
         isVideoRequest(question)
-          ? `${question}\n\n(Gợi ý nội bộ, người dùng không nhìn thấy: câu này hướng tới xem video. Hãy trả lời thẳng và ngắn, kết bằng câu mời xem video vừa được gắn ngay dưới câu trả lời; tuyệt đối không nói bạn không xem được video, không bịa tên kênh hay đường dẫn. Nếu họ chưa biết, nhắc rằng khung chat có nút ▶ (cạnh nút gửi ảnh) để mở ô tìm video YouTube ngay tại ô chat.)`
+          ? `${question}\n\n(Gợi ý nội bộ, người dùng không nhìn thấy: câu này hướng tới xem video. Hãy trả lời thẳng và ngắn, kết bằng câu mời xem video vừa được gắn ngay dưới câu trả lời; tuyệt đối không nói bạn không xem được video, không bịa tên kênh hay đường dẫn. Nếu chưa tìm được video thì bảo họ dán thẳng link YouTube vào ô chat là xem ngay.)`
           : question;
       const payloadMessages = [
-        ...baseForAi,
+        ...base,
         { role: "user" as const, content: questionForAi },
       ]
         .slice(-CONTEXT_MESSAGES)
@@ -1337,12 +1300,6 @@ export default function Assistant() {
         onMicToggle={() => (listening ? stop() : start(onVoiceChat))}
         onClearAll={() => void clearAll()}
         liftUp={vv.keyboardInset}
-        videoSearchOpen={videoSearchOpen}
-        onToggleVideoSearch={() => setVideoSearchOpen((v) => !v)}
-        videoQuery={videoQuery}
-        onVideoQueryChange={setVideoQuery}
-        onVideoSearch={() => void runVideoSearch()}
-        videoSearching={videoSearching}
       />
 
       {callOpen && (

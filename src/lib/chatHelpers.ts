@@ -34,11 +34,6 @@ export type Msg = {
    * khung chat, bấm là phát. Không gửi lên AI (chỉ lấy `role` + `content`).
    */
   video?: VideoInfo;
-  /**
-   * Kết quả tìm video ngay tại ô chat — người dùng tự gõ tìm kiếm, không
-   * phải hỏi AI nên không gửi lên AI (chỉ lưu để xem lại).
-   */
-  videoSearch?: { query: string; videos: VideoInfo[] };
 };
 
 /* ------------------------------------------------------------------ */
