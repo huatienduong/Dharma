@@ -369,6 +369,59 @@ const ELEVENLABS_FALLBACK_VOICES = {
   ],
 } as const;
 
+/**
+ * MÔ TẢ GIỌNG ĐỌC — một nguồn duy nhất cho cả hai nhánh TTS.
+ * Gemini nhận lệnh dạng chữ (được hiểu là chỉ dẫn, KHÔNG đọc to); ElevenLabs
+ * không nhận lệnh chữ (sẽ bị đọc thành tiếng) nên mô tả được quyết ra tham số
+ * kỹ thuật tương đương. Nhờ vậy giọng nam/nữ nghe "cùng một người" dù đổi nhà
+ * cung cấp, và sửa mô tả chỉ phải sửa một chỗ.
+ */
+type VoiceTone = "male" | "female";
+
+/** Câu mô tả dùng cho cả nhánh Gemini (lệnh) và hiển thị/log phía server. */
+const VOICE_TONE_DESC: Record<VoiceTone, string> = {
+  male: "giọng nam trầm ấm, chậm rãi trang nghiêm",
+  female: "giọng nữ nhẹ nhàng, chậm rãi trang nghiêm",
+};
+
+/** Lệnh chỉ dẫn cho Gemini TTS — tiền tố này KHÔNG bị đọc thành tiếng. */
+const GEMINI_TONE_PREFIX: Record<VoiceTone, string> = {
+  male: "Đọc bằng tiếng Việt, giọng NAM trầm ấm, chậm rãi trang nghiêm:",
+  female: "Đọc bằng tiếng Việt, giọng NỮ nhẹ nhàng, chậm rãi trang nghiêm:",
+};
+
+/**
+ * Dịch mô tả giọng sang tham số ElevenLabs:
+ *  • Nam  — stability cao hơn để giữ chất trầm, ổn định (không bị run).
+ *  • Nữ   — stability thấp hơn để mềm mại, tự nhiên hơn.
+ * Cả hai đều chậm rãi (speed < 1) để hợp nhịp tụng đọc kinh.
+ */
+const ELEVENLABS_VOICE_SETTINGS: Record<
+  VoiceTone,
+  {
+    stability: number;
+    similarity_boost: number;
+    style: number;
+    use_speaker_boost: boolean;
+    speed: number;
+  }
+> = {
+  male: {
+    stability: 0.62,
+    similarity_boost: 0.82,
+    style: 0.1,
+    use_speaker_boost: true,
+    speed: 0.9,
+  },
+  female: {
+    stability: 0.45,
+    similarity_boost: 0.78,
+    style: 0.2,
+    use_speaker_boost: true,
+    speed: 0.94,
+  },
+};
+
 const SERVER_VOICES: Record<string, ServerVoice> = {
   metta: { gemini: "Kore", eleven: "EXAVITQu4vr4xnSDxMaL", male: false },
   karuna: { gemini: "Autonoe", eleven: "21m00Tcm4TlvDq8ikWAM", male: false },
@@ -389,12 +442,9 @@ async function synthesizeElevenLabs(
   key: string,
   text: string,
   voiceId: string,
-  wantMale: boolean,
+  tone: VoiceTone,
 ): Promise<{ audioBase64: string; mime: string } | null> {
-  const candidates = [
-    voiceId,
-    ...ELEVENLABS_FALLBACK_VOICES[wantMale ? "male" : "female"],
-  ];
+  const candidates = [voiceId, ...ELEVENLABS_FALLBACK_VOICES[tone]];
   for (const id of [...new Set(candidates)]) {
     try {
       const res = await fetch(
@@ -409,14 +459,7 @@ async function synthesizeElevenLabs(
           body: JSON.stringify({
             text,
             model_id: ELEVENLABS_MODEL,
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.8,
-              style: 0.15,
-              use_speaker_boost: true,
-              // Chậm rãi, trang nghiêm — đúng nhịp tụng đọc kinh.
-              speed: 0.92,
-            },
+            voice_settings: ELEVENLABS_VOICE_SETTINGS[tone],
           }),
         },
       );
@@ -1169,13 +1212,14 @@ export const speak = action({
     // Hướng dẫn giọng đọc theo lựa chọn của người dùng (tiếng Việt)
     const wantMale =
       male ?? (voice ? SERVER_VOICES[voice]?.male ?? false : false);
-    const toneHint =
-      wantMale
-        ? "Đọc bằng tiếng Việt, giọng NAM trầm ấm, chậm rãi trang nghiêm:"
-        : "Đọc bằng tiếng Việt, giọng NỮ nhẹ nhàng, chậm rãi trang nghiêm:";
+    // Mô tả giọng đọc dùng chung cho cả hai nhánh: ElevenLabs nhận qua
+    // voice_settings, Gemini nhận qua lệnh chỉ dẫn — cùng một chuẩn nghe.
+    const tone: VoiceTone = wantMale ? "male" : "female";
+    const toneHint = GEMINI_TONE_PREFIX[tone];
     const v = SERVER_VOICES[voice ?? ""];
     const elevenVoice =
-      v?.eleven ?? (wantMale ? "yoZ06aMxZJJ28mfd3POQ" : "EXAVITQu4vr4xnSDxMaL");
+      v?.eleven ??
+      (tone === "male" ? "yoZ06aMxZJJ28mfd3POQ" : "EXAVITQu4vr4xnSDxMaL");
 
     // ƯU TIÊN 1: ElevenLabs — giọng đa ngôn ngữ đọc tiếng Việt tự nhiên
     // và trả MP3 nên client khỏi bọc WAV. Gửi NỘI DUNG THÔ (không thêm lệnh
@@ -1186,14 +1230,17 @@ export const speak = action({
         elevenKey,
         clean,
         elevenVoice,
-        wantMale,
+        tone,
       );
       if (eleven) return eleven;
+      console.warn(
+        `[aiChat] ElevenLabs không dùng được, chuyển sang Gemini TTS (${VOICE_TONE_DESC[tone]})`,
+      );
     }
 
     // ƯU TIÊN 2: Gemini TTS — dự phòng khi ElevenLabs lỗi hoặc hết hạn mức.
 
-    const geminiVoice = v?.gemini ?? (wantMale ? "Charon" : "Kore");
+    const geminiVoice = v?.gemini ?? (tone === "male" ? "Charon" : "Kore");
 
     const geminiKey = process.env.GEMINI_API_KEY;
 

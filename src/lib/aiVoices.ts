@@ -1,6 +1,8 @@
 /**
  * Danh mục GIỌNG NÓI của Trợ lý Phật học — đồng bộ với SERVER_VOICES trong
  * convex/aiChat.ts (máy chủ nhận voice id + male để chọn giọng TTS).
+ * Mô tả giọng chung (nam trầm ấm / nữ nhẹ nhàng) nằm ở máy chủ: VOICE_TONE_DESC
+ * cho ElevenLabs (qua voice_settings) và GEMINI_TONE_PREFIX cho Gemini.
  *
  * Tên hiển thị tiếng Việt cho người dùng; id giữ nguyên (máy server dùng).
  *  • metta   — Nữ, từ ái      ấm áp dịu dàng
