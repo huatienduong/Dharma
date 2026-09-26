@@ -13,6 +13,106 @@
 
 import { youtubeVideoId, type VideoInfo } from "@/lib/videoIntent";
 
+/**
+ * KHOÁ API YOUTUBE (tạm thời đặt ở client).
+ *
+ * Máy chủ Convex chưa deploy được nên nhánh tìm chính thức chưa chạy; để
+ * người dùng vẫn tìm được video theo chủ đề, ứng dụng gọi thẳng YouTube
+ * Data API v3 bằng khoá này. Khi function máy chủ lên, xoá hằng số này và
+ * để `videoSearch:find` dùng khoá trong môi trường Convex — như vậy khoá
+ * không còn nằm trong gói mã gửi tới trình duyệt.
+ *
+ * Khoá nên được giới hạn trong Google Cloud: API → YouTube Data API v3,
+ * và hạn chế HTTP referrer.
+ */
+const YOUTUBE_API_KEY = "AIzaSyCi2pjHLYet8nhf6XIdhf_saL6SgXy5yBg";
+
+/** "PT1H2M10S" → "1:02:10" hoặc "02:10". */
+function isoDuration(raw: string | undefined): string | undefined {
+  const m = raw?.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
+  if (!m) return undefined;
+  const h = Number(m[1] ?? 0);
+  const min = Number(m[2] ?? 0);
+  const sec = Number(m[3] ?? 0);
+  return h > 0
+    ? `${h}:${String(min).padStart(2, "0")}:${String(sec).padStart(2, "0")}`
+    : `${min}:${String(sec).padStart(2, "0")}`;
+}
+
+/**
+ * Tìm bằng YouTube Data API v3 ngay trên máy người dùng (Google cho phép
+ * gọi chéo miền). Trả về [] nếu lỗi để lượt sau thử đường khác.
+ */
+async function searchWithApiKey(query: string): Promise<VideoInfo[]> {
+  const ctl = new AbortController();
+  const timer = window.setTimeout(() => ctl.abort(), 9000);
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=5&relevanceLanguage=vi&q=${encodeURIComponent(query)}&key=${encodeURIComponent(YOUTUBE_API_KEY)}`,
+      { signal: ctl.signal },
+    );
+    if (!res.ok) return [];
+    const json = (await res.json()) as {
+      items?: {
+        id?: { videoId?: string };
+        snippet?: {
+          title?: string;
+          channelTitle?: string;
+          thumbnails?: { medium?: { url?: string }; high?: { url?: string } };
+        };
+      }[];
+    };
+    const items = json.items ?? [];
+    const ids = items
+      .map((it) => it.id?.videoId)
+      .filter((x): x is string => Boolean(x));
+
+    // Thời lượng lấy thêm ở nhịp hai; không được thì bỏ trống cũng được.
+    let durations: Record<string, string | undefined> = {};
+    if (ids.length) {
+      try {
+        const detail = await fetch(
+          `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids.join(",")}&key=${encodeURIComponent(YOUTUBE_API_KEY)}`,
+        );
+        if (detail.ok) {
+          const dj = (await detail.json()) as {
+            items?: { id?: string; contentDetails?: { duration?: string } }[];
+          };
+          durations = Object.fromEntries(
+            (dj.items ?? []).map((it) => [
+              it.id ?? "",
+              isoDuration(it.contentDetails?.duration),
+            ]),
+          );
+        }
+      } catch {
+        /* bỏ qua */
+      }
+    }
+
+    return items
+      .map((it): VideoInfo | null => {
+        const videoId = it.id?.videoId;
+        if (!videoId) return null;
+        return {
+          videoId,
+          title: it.snippet?.title ?? "",
+          channel: it.snippet?.channelTitle ?? "",
+          thumbnail:
+            it.snippet?.thumbnails?.high?.url ??
+            it.snippet?.thumbnails?.medium?.url ??
+            `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+          duration: durations[videoId],
+        };
+      })
+      .filter((x): x is VideoInfo => x !== null);
+  } catch {
+    return [];
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
 /** Các instance Invidious công khai, thử theo thứ tự. */
 const INVIDIOUS_INSTANCES = [
   "https://inv.nadeko.net",
@@ -70,7 +170,11 @@ export async function searchVideoInBrowser(raw: string): Promise<VideoInfo[]> {
   const query = toQuery(raw);
   if (!query) return [];
 
-  // 2. Hỏi bằng lời → tìm qua instance Invidious công khai.
+  // 2. Hỏi bằng lời → tìm bằng YouTube Data API (có tên kênh + thời lượng).
+  const byKey = await searchWithApiKey(query);
+  if (byKey.length) return byKey;
+
+  // 3. Không được thì thử instance Invidious công khai.
   for (const base of INVIDIOUS_INSTANCES) {
     try {
       const ctl = new AbortController();
