@@ -1,100 +1,57 @@
 /**
  * MÀN CHÀO TRANG CHỦ — chỉ hiện khi hội thoại còn trống.
  *
- * Hai phần: lời chào và hướng dẫn sử dụng. Danh sách câu hỏi đề xuất đã
- * được gỡ, nên phần còn lại được phóng to cho dễ đọc, dễ bấm.
+ * Chỉ còn MỘT hình ảnh Đức Phật Thích Ca Mâu Ni theo phong cách Phật giáo
+ * Theravāda (tượng Lan Na, thếp bụi quán) và tên hiện bên dưới.
+ *
+ * Ảnh: "Seated Buddha from Lan-Na, Bangkok Museum" — Wikimedia Commons,
+ * CC BY-SA 4.0 (hiện dòng ghi nguồn ở dưới ảnh).
+ *
+ * Vì ảnh tải từ Internet nên PHẢI có đường lui: nếu mạng chặn ảnh, hiện
+ * avatar robot sẵn có thay vì để trống màn hình.
  *
  * RẤT QUAN TRỌNG: khối này nằm trong vùng `overflow-hidden` của trang chat
- * nên TUYỆT ĐỐI không được sinh nội dung dài hơn tầm nhìn — vì vậy dùng
- * `h-full` thay vì `min-h-full` (min-height sẽ đẩy trang dài ra và tạo
- * thanh cuộn, đúng thứ cần tránh) và `overflow-hidden` để chặn tràn.
+ * nên phải dùng `h-full` + `max-h` cho ảnh, tuyệt đối không sinh nội dung
+ * dài hơn tầm nhìn (sẽ tạo thanh cuộn — đúng thứ cần tránh).
  */
 
 import { BotAvatar } from "@/components/BotAvatar";
-import {
-  BookOpen,
-  FileText,
-  Image as ImageIcon,
-  MessageSquareWarning,
-  Phone,
-  Volume2,
-} from "lucide-react";
+import { useState } from "react";
 
-type Guide = {
-  Icon: typeof BookOpen;
-  title: string;
-  text: string;
-};
-
-const GUIDES: Guide[] = [
-  {
-    Icon: BookOpen,
-    title: "Hỏi về Phật học",
-    text: "Gõ câu hỏi bằng chữ, mình giải thích theo giáo lý Theravāda.",
-  },
-  {
-    Icon: ImageIcon,
-    title: "Gửi hình ảnh",
-    text: "Chọn ảnh ở góc trái ô nhập để nhờ đọc chữ hoặc giải thích hình.",
-  },
-  {
-    Icon: FileText,
-    title: "Gửi tệp",
-    text: "Gửi tệp văn bản, CSV, JSON, PDF để mình đọc và tóm tắt.",
-  },
-  {
-    Icon: Phone,
-    title: "Đàm thoại",
-    text: "Bấm biểu tượng điện thoại ở góc trên trái để nói bằng giọng nói.",
-  },
-  {
-    Icon: Volume2,
-    title: "Nghe lại",
-    text: "Bấm biểu tượng loa dưới câu trả lời để nghe lại bằng giọng đọc.",
-  },
-  {
-    Icon: MessageSquareWarning,
-    title: "Báo lỗi, góp ý",
-    text: 'Gõ "báo lỗi: nội dung cụ thể" ở đầu câu để gửi thẳng cho bộ phận kỹ thuật.',
-  },
-];
+/** Ảnh tượng Phật Lan Na (thếp bụi quán) — bản 960px, ~115 KB. */
+const BUDDHA_IMG =
+  "https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Seated_Buddha_from_Lan-Na._Bangkok_Museum%2C_b118.jpg/960px-Seated_Buddha_from_Lan-Na._Bangkok_Museum%2C_b118.jpg";
 
 export function HomeWelcome() {
+  const [imgFailed, setImgFailed] = useState(false);
+
   return (
-    <div className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center gap-4 overflow-hidden sm:gap-6">
-      {/* ---------- Lời chào ---------- */}
-      <div className="flex shrink-0 flex-col items-center gap-2.5 text-center">
-        <BotAvatar size="lg" glow className="size-16 shadow-lg sm:size-20" />
-        <h1 className="text-xl font-extrabold tracking-tight text-foreground sm:text-2xl">
-          Xin chào, mình là Trợ lý Phật học
+    <div className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center gap-3 overflow-hidden sm:gap-4">
+      {imgFailed ? (
+        /* Mạng chặn ảnh: vẫn có hình đại diện Trợ lý, không để trống màn hình. */
+        <BotAvatar size="lg" glow className="size-28 shadow-lg sm:size-36" />
+      ) : (
+        <img
+          src={BUDDHA_IMG}
+          alt="Tượng Đức Phật Thích Ca Mâu Ni, phong cách Phật giáo Theravāda"
+          onError={() => setImgFailed(true)}
+          referrerPolicy="no-referrer"
+          draggable={false}
+          className="max-h-[min(46vh,320px)] w-auto max-w-[70vw] rounded-3xl object-contain opacity-95 shadow-[0_18px_50px_-24px_rgba(111,66,38,0.75)] sm:max-h-[min(52vh,420px)]"
+        />
+      )}
+
+      <div className="shrink-0 text-center">
+        <h1 className="text-lg font-extrabold tracking-tight text-foreground sm:text-2xl">
+          Đức Phật Thích Ca Mâu Ni
         </h1>
-        <p className="max-w-md text-sm leading-relaxed text-muted-foreground sm:text-[15px]">
-          Hỏi về Phật học, gửi hình hoặc tệp, hay nói chuyện bằng giọng nói —
-          tất cả ngay tại đây.
+        <p className="mt-1 text-xs text-muted-foreground sm:text-[13px]">
+          Giáo lý Theravāda — Thế Tôn từ bi
+        </p>
+        <p className="mt-2 text-[9px] leading-tight text-muted-foreground/60">
+          Ảnh: Wikimedia Commons — “Seated Buddha from Lan-Na, Bangkok Museum”, CC BY-SA 4.0
         </p>
       </div>
-
-      {/* ---------- Hướng dẫn sử dụng ----------
-          Màn hình thấp (điện thoại nằm ngang) thì ẩn hẳn khối này để mọi thứ
-          vẫn vừa tầm nhìn — tuyệt đối không để trang phải cuộn. */}
-      <ul className="grid w-full shrink-0 grid-cols-1 gap-2.5 [@media(max-height:620px)]:hidden sm:grid-cols-2 sm:gap-3">
-        {GUIDES.map(({ Icon, title, text }) => (
-          <li
-            key={title}
-            className="flex min-w-0 items-start gap-3 rounded-3xl border border-border/60 bg-card/60 px-3.5 py-3"
-          >
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary sm:size-10">
-              <Icon className="size-5" />
-            </span>
-            <p className="min-w-0 text-sm leading-snug text-muted-foreground sm:text-[15px]">
-              <span className="mb-0.5 block text-[15px] font-bold text-foreground sm:text-base">
-                {title}
-              </span>
-              {text}
-            </p>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
