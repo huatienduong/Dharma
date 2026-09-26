@@ -292,6 +292,7 @@ export const chatFallback = action({
             candidates?: { content?: { parts?: { text?: string }[] } }[];
           };
           const text = (json.candidates?.[0]?.content?.parts ?? [])
+            .filter((p) => !(p as { thought?: boolean }).thought)
             .map((p) => p.text ?? "")
             .join("")
             .trim();

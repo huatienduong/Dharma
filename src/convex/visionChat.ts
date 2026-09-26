@@ -56,7 +56,7 @@ CÁCH TRẢ LỜI:
 
 ${featuresPrompt(true)}`;
 
-const MAX_OUTPUT_TOKENS = 700;
+const MAX_OUTPUT_TOKENS = 2048;
 /** Khớp HISTORY_LIMIT của aiChat.ask để ngữ cảnh gửi lên giống nhau. */
 const HISTORY_LIMIT = 4;
 
@@ -217,6 +217,8 @@ export const analyzeImage = action({
 
     let lastError = "không rõ";
     let quotaHit = false;
+    /** Đã thử lại một lần bằng yêu cầu tối giản chưa. */
+    let retriedBare = false;
     for (const model of VISION_MODELS) {
       try {
         const res = await fetch(`${GEMINI_BASE}/models/${model}:generateContent`, {
@@ -228,8 +230,11 @@ export const analyzeImage = action({
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
             contents,
+            // KHÔNG gửi `temperature`: các model Gemini thế hệ mới từ chối
+            // tham số này (HTTP 400) khiến nhánh ảnh chết ngay. Ngân sách
+            // token cũng phải rộng vì model dùng token "suy nghĩ" trước khi
+            // trả lời — để hẹp thì phần trả lời về tới không còn chỗ.
             generationConfig: {
-              temperature: 0.5,
               maxOutputTokens: MAX_OUTPUT_TOKENS,
             },
           }),
@@ -247,16 +252,57 @@ export const analyzeImage = action({
             quotaHit = true;
             break;
           }
+          // Google đổi yêu cầu API không báo trước (từ chối tham số cũ):
+          // gặp 4xx thử lại một lần với yêu cầu tối giản thay vì bỏ ảnh.
+          if (!retriedBare && (res.status === 400 || res.status === 422)) {
+            retriedBare = true;
+            const bare = await fetch(
+              `${GEMINI_BASE}/models/${model}:generateContent`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "x-goog-api-key": geminiKey,
+                },
+                body: JSON.stringify({ contents }),
+                signal: AbortSignal.timeout(45_000),
+              },
+            );
+            if (bare.ok) {
+              const bareJson = (await bare.json()) as {
+                candidates?: {
+                  content?: { parts?: { text?: string; thought?: boolean }[] };
+                }[];
+              };
+              const bareText = (bareJson.candidates?.[0]?.content?.parts ?? [])
+                .filter((p) => !p.thought)
+                .map((p) => p.text ?? "")
+                .join("")
+                .trim();
+              if (bareText) {
+                return {
+                  ok: true as const,
+                  reply: bareText,
+                  provider: model,
+                  imageCount: kept.length,
+                  dropped,
+                };
+              }
+            }
+          }
           continue;
         }
         const json = (await res.json()) as {
           candidates?: {
-            content?: { parts?: { text?: string }[] };
+            content?: { parts?: { text?: string; thought?: boolean }[] };
             finishReason?: string;
           }[];
           promptFeedback?: { blockReason?: string };
         };
+        // Bỏ phần "suy nghĩ" của model: đó là lời bàn nội tâm, không phải
+        // câu trả lời cho người dùng.
         const text = (json.candidates?.[0]?.content?.parts ?? [])
+          .filter((p) => !p.thought)
           .map((p) => p.text ?? "")
           .join("")
           .trim();

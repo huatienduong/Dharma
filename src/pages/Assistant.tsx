@@ -731,6 +731,11 @@ export default function Assistant() {
                 { ...shape, ...getDeviceMeta() },
               );
               if (vision.ok || vision.code === "rate_limited") return vision;
+              // Nhánh đọc ảnh đã chạy và báo lỗi nghiệp vụ (hết hạn mức, ảnh
+              // không đọc được…) → trả nguyên lỗi đó ra. Trước đây im lặng
+              // rơi xuống `ask` vốn KHÔNG đọc ảnh, nên trợ lý trả lời như thể
+              // không có ảnh nào — người dùng tưởng hệ thống không thấy ảnh.
+              if (vision.message) return vision;
             } catch {
               /* thử cấu trúc tiếp theo */
             }

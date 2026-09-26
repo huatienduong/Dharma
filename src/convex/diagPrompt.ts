@@ -109,6 +109,85 @@ export const diagPrompt = action({
  * (`x-ratelimit-*`, `retry-after`) cùng mã lỗi — để biết chính xác trần
  * mỗi phút thay vì suy đoán từ số lần gọi.
  */
+/**
+ * CHẨN ĐOÁN NHÁNH ĐỌC ẢNH — trả về nguyên văn lỗi HTTP của từng model.
+ *
+ * Nhánh ảnh chỉ log lỗi ở máy chủ nên người dùng chỉ thấy "chưa phân tích
+ * được". Action này dựng đúng một yêu cầu như `analyzeImage` (kèm ảnh 1x1
+ * thật) rồi trả về mã lỗi + nội dung phản hồi, để biết chính xác model nào
+ * chết và vì lý do gì thay vì đoán.
+ */
+export const diagVision = action({
+  args: {},
+  handler: async () => {
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (!geminiKey) return { ok: false, message: "Thiếu GEMINI_API_KEY." };
+    // Ảnh PNG 1x1, đủ nhỏ để gọi nhanh nhưng là ảnh thật.
+    const png =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const models = [
+      "gemini-3.8-flash",
+      "gemini-3.5-flash-lite",
+      "gemini-3-flash-preview",
+    ];
+    const results: Record<string, unknown>[] = [];
+    for (const model of models) {
+      // Thử cả hai cách gửi tham số: có temperature (như code cũ) và không.
+      for (const withTemp of [true, false]) {
+        const started = Date.now();
+        try {
+          const res = await fetch(
+            `${GEMINI_BASE}/models/${model}:generateContent`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": geminiKey,
+              },
+              body: JSON.stringify({
+                systemInstruction: {
+                  parts: [{ text: "Bạn mô tả hình ảnh bằng tiếng Việt, ngắn gọn." }],
+                },
+                contents: [
+                  {
+                    role: "user",
+                    parts: [
+                      { text: "Ảnh này có gì?" },
+                      { inlineData: { mimeType: "image/png", data: png } },
+                    ],
+                  },
+                ],
+                generationConfig: {
+                  ...(withTemp ? { temperature: 0.5 } : {}),
+                  maxOutputTokens: 2048,
+                },
+              }),
+              signal: AbortSignal.timeout(60_000),
+            },
+          );
+          const body = await res.text();
+          results.push({
+            model,
+            withTemp,
+            status: res.status,
+            ok: res.ok,
+            ms: Date.now() - started,
+            body: body.slice(0, 260),
+          });
+        } catch (err) {
+          results.push({
+            model,
+            withTemp,
+            ms: Date.now() - started,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+    }
+    return { ok: true, results };
+  },
+});
+
 export const diagProviders = action({
   args: {},
   handler: async () => {
