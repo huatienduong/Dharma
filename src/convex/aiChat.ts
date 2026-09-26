@@ -12,6 +12,7 @@ import {
 } from "./_generated/server";
 import type { ActionCtx } from "./_generated/server";
 import { api, internal } from "./_generated/api";
+import { featuresPrompt } from "../lib/appFeatures";
 
 /* ------------------------------------------------------------------ */
 /* Hướng dẫn nhân cách của trợ lý Phật pháp (Theravāda)                */
@@ -86,7 +87,17 @@ const SYSTEM_PROMPT = `Bạn là "Trợ lý Phật học" — một PHẬT TỬ 
 ## KHI NGƯỜI DÙNG YÊU CẦU TẠO HÌNH
 - Nếu người dùng yêu cầu vẽ / tạo / sinh / phác họa một hình ảnh (kể cả hình minh họa Phật pháp: hoa sen, chánh niệm, tăng bảo, Bát Chánh Đạo...): hệ thống sẽ tự sinh ảnh và hiển thị kèm câu trả lời của bạn.
 - Vì vậy: trả lời NGẮN, tối đa 2–3 câu giới thiệu ngắn gọn nội dung hình sẽ được tạo (chủ đề, bối cảnh, ý nghĩa Phật học nếu có). TUYỆT ĐỐI không mô tả chi tiết từng chi tiết thị giác của bức hình, không dùng emoji, không hứa sẽ vẽ gì — chỉ nói ngắn.
-- Nếu không thể tạo hình (không có dịch vụ vẽ), chỉ cần nói thẳng là hiện chưa tạo được hình và trả lời bằng chữ.`;
+- Nếu không thể tạo hình (không có dịch vụ vẽ), chỉ cần nói thẳng là hiện chưa tạo được hình và trả lời bằng chữ.
+
+## GHI NHỚ TOÀN BỘ CÂU CHUYỆN
+- Hãy NHỚ đầy đủ nội dung cuộc trò chuyện: tên gọi, việc làm, hoàn cảnh gia đình, chuyện đã kể, những gì người dùng đã thích/hỏi. Người dùng quay lại sau vài ngày mà bạn vẫn nhận ra và tiếp tục đúng chỗ.
+- Lúc đầu cuộc trò chuyện mới, CHỈ chào và hỏi thăm; tuyệt đối không tự kể lại chuyện cũ nếu người dùng chưa nhắc.
+- Khi người dùng nói "nhớ không", "lần trước tôi nói gì" → trả lời thẳng nội dung đã họ trong cuộc trò chuyện này. Nếu thật sự không có trong lịch sử thì nói thật là chưa có, không bịa.
+
+## KHI NGƯỜI DÙNG YÊU CẦU XÓA HỘI THOẠI
+- Khi người dùng nói "xoá hội thoại", "xóa cuộc trò chuyện", "bắt đầu lại", "quên hết đi", "xoá lịch sử"... thì hệ thống SẼ TỰ XÓA SẠCH và kết thúc cuộc trò chuyện. Hãy trả lời thật ngắn, vui vẻ: "Mình đã xóa hội thoại rồi, mình cùng bạn bắt đầu lại từ đây nhé." — đừng kể lại nội dung cũ sau khi xóa.
+
+${featuresPrompt()}`;
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
@@ -318,7 +329,9 @@ export const clearProviderFailure = internalMutation({
   },
 });
 
-const HISTORY_LIMIT = 4; // ngữ cảnh gọn → phản hồi nhanh hơn
+// Ngữ cảnh gửi cho AI. Trước đây chỉ 4 lượt nên AI "quên" gần hết cuộc
+// trò chuyện; nay đủ 24 lượt để nhớ xuyên suốt mà độ trễ vẫn không đáng kể.
+const HISTORY_LIMIT = 24;
 const MAX_TOKENS = 4096; // giới hạn trần, không phải độ dài bắt buộc
 const AI_TIMEOUT_MS = 60_000; // cho phép Gemini đủ thời gian sinh câu trả lời dài
 

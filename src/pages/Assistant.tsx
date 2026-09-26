@@ -8,6 +8,7 @@ import {
 import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 import { loadVoicePref } from "@/lib/aiVoices";
 import { wantsImage } from "@/lib/imageIntent";
+import { MAX_IMAGES_PER_MESSAGE } from "@/lib/appFeatures";
 import { callConvexAction } from "@/lib/convexAction";
 import { getDeviceMeta } from "@/lib/deviceSecurity";
 import {
@@ -178,11 +179,58 @@ async function loadLocalChatSecure(): Promise<Msg[] | null> {
 
 /** Lưu lịch sử — LUÔN mã hóa AES-256-GCM trước khi ghi xuống thiết bị. */
 /**
- * Trần số ảnh gửi kèm trong một lượt — khớp với `MAX_IMAGES_PER_REQUEST`
- * của action `visionChat.analyzeImage`. Vượt trần thì ảnh dư bị cắt bớt,
- * người dùng vẫn nhận được câu trả lời từ AI.
+ * Bỏ dấu tiếng Việt để nhận lệnh kể cả khi người dùng gõ/nói thiếu dấu.
  */
-const MAX_IMAGES_PER_MESSAGE = 6;
+function deaccent(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D");
+}
+
+/** Câu HỎI CÁCH xóa ("làm sao xóa hội thoại") — KHÔNG phải lệnh xóa. */
+const CLEAR_QUESTION =
+  /(lam sao|co cach nao|the nao|lam the nao|huong dan|tai sao|bang cach|o dau|nut nao|thao tac)/;
+/** Động từ xóa. */
+const CLEAR_VERB = /(xoa|quen|bo|reset|clear)/;
+/** Đối tượng cần xóa. */
+const CLEAR_TOPIC =
+  /(hoi thoai|tro chuyen|lich su|chat|nhac|moi|bat dau|tu dau|tat ca|het di|thu muc)/;
+
+/**
+ * Người dùng yêu cầu xóa toàn bộ hội thoại bằng lời hoặc chữ
+ * ("xoá hội thoại", "bắt đầu lại", "quên hết đi") → ứng dụng tự xóa sạch
+ * và kết thúc cuộc trò chuyện, không cần qua AI.
+ *
+ * Rất thận trọng: câu hỏi về CÁCH xóa không phải lệnh xóa; câu dài không phải
+ * lệnh ngắn. Chỉ nhận lệnh ngắn, không dấu hỏi, không có từ hỏi cách.
+ */
+function isClearHistoryCommand(raw: string): boolean {
+  const t = deaccent(raw.toLowerCase())
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!t) return false;
+  const words = t.split(" ").filter(Boolean);
+  if (words.length > 8) return false;
+  if (/[?]/.test(raw)) return false;
+  if (CLEAR_QUESTION.test(t)) return false;
+  // Lệnh ngắn trần trụi ("xóa hết", "quên đi", "reset lại") cũng là lệnh xóa —
+  // nhưng phải bắt đầu bằng động từ xóa và rất ngắn, để không nuốt nhầm câu
+  // kể chuyện dài ("quên hết chuyện đó đi").
+  if (words.length <= 3 && /^(xoa|quen|bo|reset|clear)/.test(words[0])) {
+    return true;
+  }
+  if (CLEAR_VERB.test(t)) return CLEAR_TOPIC.test(t);
+  return /(bat dau lai|tu dau lai|tro chuyen moi|reset lai)/.test(t);
+}
+
+/**
+ * Số lượt hội thoại gửi kèm cho AI. Phải khớp `HISTORY_LIMIT` ở
+ * `convex/aiChat.ts` (24) — đủ để trợ lý nhớ xuyên suốt cuộc trò chuyện.
+ */
+const CONTEXT_MESSAGES = 24;
 
 /**
  * Lời chào / cảm ơn thuần túy — trả lời ngay tại máy, không gọi AI.
@@ -333,6 +381,15 @@ export default function Assistant() {
   const busyWaitsRef = useRef(0);
   /** Số lần tự gửi lại trong đàm thoại khi request lỗi (1 lần cho đủ). */
   const callRetryRef = useRef(0);
+  /** Gọi xóa hội thoại / kết thúc cuộc gọi từ nơi định nghĩa trước trong file. */
+  const clearAllRef = useRef<(() => Promise<void> | void) | null>(null);
+  const endCallRef = useRef<(() => void) | null>(null);
+  // Nối hai hàm được khai báo phía dưới trong file. Dùng ref để lệnh "xoá hội
+  // thoại" gọi được chúng mà không phải đụng tới mảng deps của useCallback.
+  useEffect(() => {
+    clearAllRef.current = clearAll;
+    endCallRef.current = endCall;
+  });
 
   /** Im lặng bao lâu thì coi là nói xong (ms) — chống cắt cụt "Xin chào". */
   const CALL_SILENCE_MS = 1000;
@@ -473,6 +530,15 @@ export default function Assistant() {
   const send = useCallback(
     async (text: string, opts?: { fromCall?: boolean }) => {
       const q = text.trim();
+      // Lệnh xóa hội thoại: xóa sạch ngay và kết thúc cuộc trò chuyện.
+      if (isClearHistoryCommand(q)) {
+        setInput("");
+        setImage(null);
+        setFailedReply(null);
+        void clearAllRef.current?.();
+        if (callActiveRef.current) endCallRef.current?.();
+        return;
+      }
       // Gom ảnh đính kèm theo hạn mức gói. Ảnh vượt hạn mức vẫn KHÔNG chặn
       // người dùng: cắt bớt rồi vẫn gửi đi để AI trả lời các ảnh còn lại.
       const allImages: { base64: string; mime: string }[] = !opts?.fromCall
@@ -538,7 +604,7 @@ export default function Assistant() {
       // Tự phục hồi khi kết nối chập chờn: thử lại tối đa 3 lần với khoảng
       // chờ tăng dần. Các lỗi nghiệp vụ vẫn dừng ngay để không gửi sai.
       const payloadMessages = [...base, { role: "user" as const, content: question }]
-        .slice(-4)
+        .slice(-CONTEXT_MESSAGES)
         .map((m) => ({
           role: m.role,
           content: m.content.slice(0, 7500),
@@ -577,7 +643,7 @@ export default function Assistant() {
           }
         }
         return ask({
-          // Chỉ gửi 4 lượt gần nhất đúng với ngữ cảnh backend sử dụng. Cắt bớt
+          // Gửi kèm 24 lượt gần nhất đúng với ngữ cảnh backend sử dụng. Cắt bớt
           // ký tự phòng khi lịch sử cũ chứa câu trả lời rất dài để lượt hỏi
           // sau không bị từ chối; tin nhắn hiện tại luôn nằm cuối.
           messages: payloadMessages,
@@ -586,11 +652,27 @@ export default function Assistant() {
           ...getDeviceMeta(),
         });
       };
+      // Nhánh dự phòng: khi `ask` báo máy chủ chính đang lỗi, gọi nhánh Groq
+      // REST/Gemini riêng để người dùng VẪN được trả lời ngay.
+      const askResilient = async (): Promise<AskResult> => {
+        const primary = await askOnce();
+        if (primary.ok || primary.code !== "ai_unavailable") return primary;
+        try {
+          const fb = await callConvexAction<AskResult>(
+            "chatFallback:chatFallback",
+            { messages: payloadMessages, ...getDeviceMeta() },
+          );
+          if (fb.ok) return fb;
+        } catch {
+          /* hết đường dự phòng */
+        }
+        return primary;
+      };
       const askWithRetry = async () => {
         let lastError: unknown = new Error("Không gửi được câu hỏi.");
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
-            const result = await askOnce();
+            const result = await askResilient();
             if (result.ok) return result;
             // Lỗi nghiệp vụ đã được backend phân loại: trả về client thay vì
             // ném ConvexError (production thường che thành "Server Error").
@@ -846,6 +928,12 @@ export default function Assistant() {
   /* ----- Đàm thoại: xử lý một câu người dùng vừa nói ----- */
   const handleUtterance = useCallback(
     (text: string) => {
+      // "Xoá hội thoại" trong đàm thoại → xóa sạch và kết thúc cuộc gọi.
+      if (isClearHistoryCommand(text)) {
+        clearAllRef.current?.();
+        if (callActiveRef.current) endCallRef.current?.();
+        return;
+      }
       // Câu rỗng (nghe ra tiếng ồn) → nghe lại, không gửi lên trợ lý.
       if (!text.trim()) {
         setInterim("");

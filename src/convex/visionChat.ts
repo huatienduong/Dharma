@@ -21,6 +21,7 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { featuresPrompt } from "../lib/appFeatures";
 
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -44,7 +45,11 @@ CÁCH TRẢ LỜI:
 - NGẮN GỌN: tối đa 6 câu. Không liệt kê từng chi tiết nhỏ vô nghĩa.
 - Nếu ảnh không rõ hoặc không có gì để nói, nói thẳng là không nhìn rõ và mời người dùng gửi ảnh khác.
 - Không bịa chi tiết không có trong ảnh. Không khẳng định điều không chắc chắn.
-- Nếu ảnh có liên quan tới kinh điển, được phép dẫn nguồn tối đa 1–2 đường dẫn thật ở cuối câu trả lời, viết thuần dạng https://... (chỉ dùng nguồn như suttacentral.net, dhammatalks.org, cbetaonline.dila.edu.tw, dhammaloka.org); TUYỆT ĐỐI không bịa đường dẫn — không chắc thì chỉ nêu tên kinh.`;
+- Nếu ảnh có liên quan tới kinh điển, được phép dẫn nguồn tối đa 1–2 đường dẫn thật ở cuối câu trả lời, viết thuần dạng https://... (chỉ dùng nguồn như suttacentral.net, dhammatalks.org, cbetaonline.dila.edu.tw, dhammaloka.org); TUYỆT ĐỐI không bịa đường dẫn — không chắc thì chỉ nêu tên kinh.
+
+- Ghi nhớ toàn bộ cuộc trò chuyện, không chỉ lượt gần nhất.
+
+${featuresPrompt()}`;
 
 const MAX_OUTPUT_TOKENS = 700;
 /** Khớp HISTORY_LIMIT của aiChat.ask để ngữ cảnh gửi lên giống nhau. */
