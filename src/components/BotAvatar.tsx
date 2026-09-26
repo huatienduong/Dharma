@@ -76,15 +76,14 @@ export function BotAvatar({
           className="fill-accent"
         />
 
-        {/* Đầu robot */}
+        {/* Đầu robot — KHÔNG viền bo, chỉ nền trơn cho gọn */}
         <rect
           x="11.4"
           y="12.4"
           width="25.2"
           height="24"
           rx="9.4"
-          className="fill-card stroke-foreground"
-          strokeWidth="1.4"
+          className="fill-card"
         />
         {/* Ánh sáng trên vòm đầu */}
         <path
