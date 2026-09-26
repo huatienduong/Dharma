@@ -213,9 +213,10 @@ export default function Assistant() {
   const speakThenListenRef = useRef<(text: string) => void>(() => {});
 
   /**
-   * GẮN VIDEO VÀO CÂU TRẢ LỜI — người dùng chỉ cần hỏi hoặc dán link, AI
-   * trả lời xong ứng dụng tự tìm video YouTube và thêm thẻ xem vào đúng câu
-   * đó trong khung chat. Chạy nền, không chặn câu trả lời.
+   * GẮN DANH SÁCH VIDEO VÀO CÂU TRẢ LỜI — người dùng chỉ cần nhắn "tôi
+   * muốn xem video về …", AI trả lời xong ứng dụng tự tìm video YouTube và
+   * gắn tối đa 3 video đề xuất vào đúng câu đó trong khung chat; bấm video nào
+   * thì phát ngay tại chỗ. Chạy nền, không chặn câu trả lời.
    *
    * Hai đường tìm, thử theo thứ tự: máy chủ Convex (YouTube Data API, có
    * khoá → tên kênh + thời lượng chuẩn), rồi mới tới tìm trực tiếp trong
@@ -229,12 +230,15 @@ export default function Assistant() {
       if (!isVideoRequest(query) && !aiInvitesVideo(replyText)) return;
       let warned = false;
       void (async () => {
-        const apply = (video: VideoInfo | undefined) => {
-          if (!video) return false;
+        const apply = (list: VideoInfo[]) => {
+          const videos = list.slice(0, 3);
+          if (!videos.length) return false;
           // Sửa đúng câu trả lời đang chờ; nếu người dùng đã xoá hội thoại
           // thì `ts` không còn trong lịch sử → không làm gì cả.
           const nextHistory = historyRef.current.map((m) =>
-            m.ts === replyTs ? { ...m, video } : m,
+            m.ts === replyTs
+              ? { ...m, videos, videoQuery: query.trim() }
+              : m,
           );
           if (nextHistory === historyRef.current) return false;
           historyRef.current = nextHistory;
@@ -250,8 +254,7 @@ export default function Assistant() {
             videos: VideoInfo[];
             message?: string;
           }>("videoSearch:find", { query }, 20_000);
-          const video = res?.ok ? res.videos[0] : undefined;
-          if (video && apply(video)) return;
+          if (res?.ok && apply(res.videos)) return;
           if (res?.message && !warned) {
             warned = true;
             toast.info(res.message);
@@ -264,7 +267,7 @@ export default function Assistant() {
         // dán ở Cài đặt (lưu mã hoá trên thiết bị).
         const key = await loadYouTubeKey().catch(() => "");
         const local = await searchVideoInBrowser(query, key).catch(() => []);
-        if (local[0] && apply(local[0])) return;
+        if (apply(local)) return;
         if (!warned) {
           toast.info(
             "Chưa tìm được video. Bạn dán link YouTube cụ thể là Trợ lý mở xem ngay trong khung chat nhé.",
@@ -569,7 +572,7 @@ export default function Assistant() {
       // chủ chưa cập nhật. Người dùng chỉ cần nhắn "tôi muốn xem video…".
       const questionForAi =
         isVideoRequest(question)
-          ? `${question}\n\n(Gợi ý nội bộ, người dùng không nhìn thấy: câu này hướng tới xem video. Hãy trả lời thẳng và ngắn, kết bằng câu mời xem video vừa được gắn ngay dưới câu trả lời; tuyệt đối không nói bạn không xem được video, không bịa tên kênh hay đường dẫn. Nếu chưa tìm được video thì bảo họ dán thẳng link YouTube vào ô chat là xem ngay.)`
+          ? `${question}\n\n(Gợi ý nội bộ, người dùng không nhìn thấy: câu này hướng tới xem video. Hãy trả lời thẳng và ngắn, kết bằng câu mời xem 3 video đề xuất vừa được gắn ngay dưới câu trả lời; tuyệt đối không nói bạn không xem được video, không bịa tên kênh hay đường dẫn. Nếu chưa tìm được video thì bảo họ dán thẳng link YouTube vào ô chat là xem ngay.)`
           : question;
       const payloadMessages = [
         ...base,

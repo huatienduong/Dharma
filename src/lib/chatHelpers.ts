@@ -30,10 +30,13 @@ export type Msg = {
   /** storageId ảnh AI tạo — nạp URL từ Convex File Storage khi hiển thị */
   imageStorageId?: string;
   /**
-   * Video YouTube gợi ý cho câu trả lời này — hiển thị thẻ xem ngay trong
-   * khung chat, bấm là phát. Không gửi lên AI (chỉ lấy `role` + `content`).
+   * Danh sách video YouTube đề xuất cho câu trả lời này — hiện ngay trong
+   * khung chat, bấm video nào thì phát video đó. Không gửi lên AI (chỉ lấy
+   * `role` + `content`).
    */
-  video?: VideoInfo;
+  videos?: VideoInfo[];
+  /** Chủ đề đã tìm video — hiện trên đầu danh sách video cho dễ hiểu. */
+  videoQuery?: string;
 };
 
 /* ------------------------------------------------------------------ */
