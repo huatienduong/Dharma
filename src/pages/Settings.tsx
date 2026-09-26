@@ -276,47 +276,8 @@ export default function Settings() {
         </h1>
 
       <div className="space-y-3.5">
-        {/* ---------- Giao diện ---------- */}
-        <RowCard
-          label={t("sectionAppearance")}
-          open={openCard === "appearance"}
-          onClick={() => toggle("appearance")}
-        >
-          <div className="grid grid-cols-2 gap-2.5 pt-1">
-            {(
-              [
-                {
-                  key: "light",
-                  label: t("themeLight"),
-                  icon: <Sun className="h-5 w-5" />,
-                },
-                {
-                  key: "dark",
-                  label: t("themeDark"),
-                  icon: <Moon className="h-5 w-5" />,
-                },
-              ] as { key: ThemeMode; label: string; icon: React.ReactNode }[]
-            ).map((opt) => (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => setTheme(opt.key)}
-                aria-pressed={settings.theme === opt.key}
-                className={cn(
-                  "flex items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-semibold transition",
-                  settings.theme === opt.key
-                    ? "border-primary/60 bg-primary/10 text-primary"
-                    : "border-border/60 bg-muted/50 text-foreground/80 hover:bg-accent",
-                )}
-              >
-                {opt.icon}
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
-
-        </RowCard>
+        {/* Giao diện: ứng dụng chỉ có MỘT tông màu nâu, đã bỏ tuỳ chọn
+            Sáng/Tối nên không còn mục này ở đây. */}
 
         {/* ---------- Thông báo (toggle ngay trên hàng) ---------- */}
         <div className="ds-card flex items-center justify-between gap-4 px-5 py-5">

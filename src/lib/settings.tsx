@@ -118,10 +118,11 @@ const SettingsContext = createContext<SettingsContextValue | null>(null);
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(loadLocal);
 
-  // Áp dụng chủ đề lên <html> — cỡ chữ cố định, không set biến điều chỉnh
+  // Ứng dụng chỉ dùng MỘT giao diện màu nâu nên KHÔNG gắn class `dark`
+  // nữa — tuỳ chọn Sáng/Tối đã được bỏ khỏi Cài đặt.
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.toggle("dark", settings.theme === "dark");
+    root.classList.remove("dark");
     root.style.removeProperty("--font-size-scale");
     root.lang = settings.language === "en" ? "en" : "vi";
     saveLocal(settings);

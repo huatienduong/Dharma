@@ -80,7 +80,7 @@ export const FEATURES: AppFeature[] = [
   },
   {
     name: "Cài đặt",
-    how: "Vào Cài đặt để đổi giao diện, bật thông báo, chọn giọng đọc, xem thông tin ứng dụng, điều khoản và gửi góp ý kèm tệp đính kèm.",
+    how: "Vào Cài đặt để bật/tắt thông báo, chọn giọng đọc, xem thông tin ứng dụng, điều khoản và gửi góp ý kèm tệp đính kèm. Ứng dụng chỉ dùng một giao diện màu nâu, không có tuỳ chọn sáng/tối.",
   },
 ];
 
@@ -109,7 +109,7 @@ export const FEATURE_TIPS = [
  * một mục là mọi nhánh — chat, ảnh, đàm thoại — cùng có.
  */
 export const SUPPORT_TIPS = [
-  "TUYỆT ĐỐI không bịa đường dẫn hay nhóm cài đặt trong ứng dụng. Trong Cài đặt chỉ có: Giao diện, Thông báo, Giọng nói, Giới thiệu, Chính sách & Điều khoản, Góp ý & Báo lỗi. Các nút trong khung chat: góc trái ô nhập có gửi ảnh, gửi tệp và xoá hội thoại; góc phải ô nhập có micro và nút Gửi; dưới mỗi câu trả lời có loa, sao chép, chia sẻ; biểu tượng bánh răng ở góc trên phải là Cài đặt; điện thoại ở góc trên trái là Đàm thoại. Không có nút bàn phím hay nút đính kèm nào khác. Không chắc thì nói bước kiểm tra chung thay vì chỉ một đường dẫn trong app.",
+  "TUYỆT ĐỐI không bịa đường dẫn hay nhóm cài đặt trong ứng dụng. Trong Cài đặt chỉ có: Thông báo, Giọng nói, Giới thiệu, Chính sách & Điều khoản, Góp ý & Báo lỗi — KHÔNG có mục Giao diện, ứng dụng chỉ dùng một giao diện màu nâu. Các nút trong khung chat: góc trái ô nhập có gửi ảnh, gửi tệp và xoá hội thoại; góc phải ô nhập có micro và nút Gửi; dưới mỗi câu trả lời có loa, sao chép, chia sẻ; biểu tượng bánh răng ở góc trên phải là Cài đặt; điện thoại ở góc trên trái là Đàm thoại. Không có nút bàn phím hay nút đính kèm nào khác. Không chắc thì nói bước kiểm tra chung thay vì chỉ một đường dẫn trong app.",
   "BÁO LỖI VÀ GÓP Ý NGAY TRONG CHAT — phần này bạn PHẢI chủ động nhắc. Muốn gửi góp ý / báo lỗi trực tiếp trong khung chat thì BẮT BUỘC phải viết theo mẫu 'LỆNH: NỘI DUNG CỤ THỂ CẦN HỖ TRỢ', trong đó LỆNH nằm ở ĐẦU câu. Các lệnh được chấp nhận: 'báo lỗi', 'góp ý', 'hỗ trợ kỹ thuật', 'khắc phục sự cố', 'khiếu nại', 'nhận xét', 'ý kiến', 'đề xuất'. Ví dụ đúng: 'báo lỗi: nút xoá hội thoại bị treo', 'góp ý: xin thêm chủ đề về Trung đạo', 'hỗ trợ kỹ thuật: giọng đọc bị ngắt giữa chừng', 'khắc phục sự cố: ứng dụng đóng băng khi mở lại'. Trợ lý tự gửi thẳng cho bộ phận kỹ thuật và báo lại là đã tiếp nhận. Nhắc cách này khi người dùng hỏi 'báo lỗi ở đâu', 'khiếu nại với ai', 'sửa lỗi thế nào', và cả khi bạn không tự khắc phục được lỗi họ đang gặp.",
   "NẾU NGƯỜI DÙNG CHỈ GÕ LỆNH MÀ CHƯA VIẾT NỘI DUNG (ví dụ chỉ gõ 'báo lỗi', 'góp ý', 'hỗ trợ kỹ thuật' rồi Enter) thì phải GIẢI THÍCH NGẮN GỌN rằng câu đó chưa có nội dung nên chưa gửi được, và hướng dẫn họ viết lại đúng mẫu 'LỆNH: NỘI DUNG CỤ THỂ' kèm 2–3 ví dụ mẫu. Tuyệt đối không im lặng, không tự bịa ra một nội dung góp ý thay họ, và không gửi đi bất cứ thư góp ý nào khi người dùng chưa viết nội dung.",
   "Chỉ nhận góp ý khi LỆNH nằm ở ĐẦU câu và có nội dung cụ thể sau đó. Nếu họ viết kiểu 'ứng dụng bị lỗi khi tôi gửi ảnh' thì đó là một câu hỏi bình thường, hãy giải thích và khắc phục trước, rồi mới nhắc họ gõ lại theo mẫu 'báo lỗi: nội dung cụ thể' để gửi cho bộ phận kỹ thuật.",
