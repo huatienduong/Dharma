@@ -430,6 +430,12 @@ export default function Assistant() {
   } | null>(null);
   // Tiến trình tạo ảnh: null = không tạo, số 0–100 = phần trăm đang chạy.
   const [imageProgress, setImageProgress] = useState<number | null>(null);
+  /**
+   * Đang phân tích ảnh người dùng gửi. Lượt phân tích ảnh có thể mất vài
+   * giây; nói rõ đang xem ảnh thay vì để người dùng tưởng app bị treo rồi
+   * bấm gửi lại.
+   */
+  const [analyzingImage, setAnalyzingImage] = useState(false);
   const imageProgressRef = useRef<number | null>(null);
   // Nhịp tăng phần trăm giả lập cho tới khi máy chủ trả ảnh về.
   const imageTickRef = useRef<number | null>(null);
@@ -533,9 +539,13 @@ export default function Assistant() {
       setStalled(false);
       return;
     }
-    const id = window.setTimeout(() => setStalled(true), 30_000);
+    // Lượt phân tích ảnh chậm hơn lượt chat thường (model phải "nhìn" ảnh rồi
+    // soạn câu trả lời), nên cho thêm thời gian thay vì báo treo sớm rồi khiến
+    // người dùng tưởng ảnh không được gửi đi.
+    const limit = analyzingImage ? 45_000 : 30_000;
+    const id = window.setTimeout(() => setStalled(true), limit);
     return () => window.clearTimeout(id);
-  }, [busy]);
+  }, [busy, analyzingImage]);
 
   /* ----- Mở khóa autoplay âm thanh (chạm/bấm đầu tiên) ----- */
   useEffect(() => {
@@ -707,6 +717,8 @@ export default function Assistant() {
       // Hỏng/thiếu thì tự lùi về `ask` y như cũ — không mất tính năng cũ.
       const askOnce = async (): Promise<AskResult> => {
         if (attachedImages.length > 0) {
+          setAnalyzingImage(true);
+          try {
           // Gửi nhiều ảnh theo cấu trúc mới; nếu máy chủ chưa có bản mới (hoặc
           // lỗi) thì thử lại bằng cấu trúc một ảnh cũ, cuối cùng mới lùi về
           // `ask` — luôn có đường ra, không bao giờ chết cứng ở bước này.
@@ -739,6 +751,9 @@ export default function Assistant() {
             } catch {
               /* thử cấu trúc tiếp theo */
             }
+          }
+          } finally {
+            setAnalyzingImage(false);
           }
         }
         return ask({

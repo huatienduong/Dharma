@@ -313,7 +313,12 @@ export const analyzeImage = action({
                     "Content-Type": "application/json",
                     "x-goog-api-key": geminiKey,
                   },
-                  body: JSON.stringify({ contents }),
+                  body: JSON.stringify({
+                    // Giữ nguyên giọng ứng dụng, chỉ bỏ phần tham số sinh
+                    // nội dung bị từ chối.
+                    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+                    contents,
+                  }),
                   signal: AbortSignal.timeout(45_000),
                 },
               );
