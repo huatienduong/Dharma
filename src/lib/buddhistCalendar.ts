@@ -366,20 +366,6 @@ export function toLunar(date: Date): LunarDate {
   };
 }
 
-/** Ngày dương lịch tương ứng với một ngày âm lịch (năm Bảo Tháp). */
-export function fromLunar(beYear: number, month: number, day: number): Date | null {
-  const year = beYear - BUDDHIST_YEAR_OFFSET;
-  if (year < MIN_YEAR || year > MAX_YEAR) return null;
-  if (!monthIndex) buildIndex();
-  for (const m of monthIndex ?? []) {
-    if (m.lunarYear === year && m.month === month && day >= 1 && day <= m.length) {
-      const d = new Date((m.start + day - 1 - 2440588) * 86400000);
-      return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-    }
-  }
-  return null;
-}
-
 /** Một ngày lệ sắp tới, kèm ngày dương lịch tương ứng. */
 export type UpcomingEvent = CalendarEvent & {
   /** Ngày dương lịch (đọc theo giờ Việt Nam). */
@@ -614,17 +600,8 @@ export function practiceFor(l: LunarDate): string[] {
     out.push("Rằm thượng nguyên: thời khóa tụng kinh, tọa thiền và phát tâm hồi hướng.");
   }
   if (!isVegetarianDay(l)) {
-    out.push("Ngày thường: giữ năm giới, chỉ tỉnh trong ăn mặc và nói nói đúng phép.");
+    out.push("Ngày thường: giữ năm giới, tỉnh thức trong ăn mặc và lời nói.");
   }
 
   return out;
-}
-
-/** "15 tháng 4 âm lịch" → chuỗi đọc gọn. */
-export function lunarDateText(l: LunarDate): string {
-  if (l.month === 0) return `Ngoài phạm vi lịch âm ${MIN_YEAR}–${MAX_YEAR}`;
-  const name = LUNAR_MONTHS[l.month - 1] ?? "";
-  return `Ngày ${l.day} tháng ${l.month}${l.isLeap ? " nhuận" : ""} (${name}) năm Bảo Tháp ${
-    l.lunarYear + BUDDHIST_YEAR_OFFSET
-  }`;
 }
