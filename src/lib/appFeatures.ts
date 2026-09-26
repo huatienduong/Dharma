@@ -35,7 +35,7 @@ export const FEATURES: AppFeature[] = [
     how: "Gõ câu hỏi rồi bấm Gửi (hoặc Enter). Trợ lý nhớ toàn bộ hội thoại và tiếp tục đúng mạch.",
   },
   {
-    name: "Đàm thoại bằng giọng nói (nút điện thoại ở góc trên trái)",
+    name: "Đàm thoại bằng giọng nói (nút điện thoại ở góc trên phải)",
     how: "Nói tự nhiên như gọi điện; trợ lý tự chốt câu khi bạn ngừng nói, tự đọc trả lời rồi lại nghe tiếp. Dấu tròn đỏ để kết thúc. Cũng chỉ cần nhắn: 'mở đàm thoại'.",
   },
   {
@@ -47,12 +47,16 @@ export const FEATURES: AppFeature[] = [
     how: `Bấm nút tệp để chọn tối đa ${MAX_FILES_PER_MESSAGE} tệp mỗi lượt (txt, md, csv, tsv, json, log, srt, xml, html, yaml, mã nguồn và PDF), rồi gửi kèm câu hỏi.`,
   },
   {
-    name: "Xem video cùng Trợ lý (nút TV cạnh nút điện thoại)",
-    how: "Bấm nút TV ở góc trên trái (ngay cạnh nút điện thoại) để mở màn hình 'Xem video cùng Trợ lý Phật học': gõ chủ đề rồi bấm 'Tìm', kết quả hiện ngay, bấm video nào là phát ngay trong màn hình đó. Cuối màn hình có mục 'Đề xuất chủ đề' (Tứ Đế, Tánh niệm, Vipassana…) — bấm một chủ đề là có video, không cần gõ. Màn hình này CHỈ tìm và hiện video về Phật giáo; nếu họ hỏi chủ đề khác thì nói thẳng là Trợ lý chỉ làm video Phật học. Nút mũi tên quay lại khung chat.",
+    name: "Xem video cùng Trợ lý (nút TV ở góc trên phải)",
+    how: "Bấm nút TV ở góc trên phải (ngay cạnh nút điện thoại) để mở màn hình 'Xem video cùng Trợ lý Phật học': gõ chủ đề rồi bấm 'Tìm', kết quả hiện ngay, bấm video nào là phát ngay trong màn hình đó. Cuối màn hình có mục 'Đề xuất chủ đề' (Tứ Đế, Tánh niệm, Vipassana…) — bấm một chủ đề là có video, không cần gõ. Màn hình này CHỈ tìm và hiện video về Phật giáo; nếu họ hỏi chủ đề khác thì nói thẳng là Trợ lý chỉ làm video Phật học. Nút mũi tên quay lại khung chat.",
   },
   {
-    name: "Xem video (nút TV ở góc trên trái)",
-    how: "Trợ lý KHÔNG tự tìm và không chèn video vào khung chat. Muốn xem video, người dùng tự bấm nút TV ở góc trên trái (cạnh nút điện thoại) để mở màn hình 'Xem video cùng Trợ lý Phật học': gõ hoặc nói chủ đề rồi bấm kính lúp, cuối màn hình có danh sách video gợi ý. Ứng dụng nhớ video đã xem đến đâu và cho xem lại đúng chỗ đó.",
+    name: "Xem video (nút TV ở góc trên phải)",
+    how: "Trợ lý KHÔNG tự tìm và không chèn video vào khung chat. Muốn xem video, người dùng tự bấm nút TV ở góc trên phải (cạnh nút điện thoại) để mở màn hình 'Xem video cùng Trợ lý Phật học': gõ hoặc nói chủ đề rồi bấm kính lúp, cuối màn hình có danh sách video gợi ý. Ứng dụng nhớ video đã xem đến đâu và cho xem lại đúng chỗ đó.",
+  },
+  {
+    name: "Phật lịch (nút lịch ở góc trên phải)",
+    how: "Bấm nút lịch ở góc trên phải (ngay cạnh nút TV) để mở màn hình 'Phật lịch': xem ngày âm lịch và năm Bảo Tháp, trạng thái trăng (trăng non, thượng nguyên, trung nguyên, trăng khuyết), ngày lễ Phật giáo trong tháng (Tết Phật, Khánh thành, Phật Đản, Vu Lan, các ngày rằm) kèm gợi ý thực tập như ngày chay trai hay ngày Vô Lượng. Bấm một ô ngày để xem chi tiết ngày đó, có nút mũi tên để chuyển tháng.",
   },
   {
     name: "Tạo hình minh hoạ Phật pháp",
@@ -118,8 +122,9 @@ export const FEATURE_TIPS = [
  * một mục là mọi nhánh — chat, ảnh, đàm thoại — cùng có.
  */
 export const SUPPORT_TIPS = [
-  "XEM VIDEO — CHỈ HƯỚNG DẪN, TUYỆT ĐỐI KHÔNG TỰ TÌM VÀ KHÔNG CHÈN VIDEO VÀO CHAT. Trợ lý không có khả năng tự tìm video, không gửi kèm video, không nhúng video, không bịa tên video hay đường dẫn. Khi người dùng hỏi về video, bảo giáo, bài giảng, nghi lễ theo video, hoặc nói 'cho tôi xem video về…' thì trả lời nội dung câu hỏi trước, rồi hướng dẫn cụ thể: bấm nút TV ở góc trên trái (ngay cạnh nút điện thoại) để mở màn hình xem video, sau đó gõ hoặc nói chủ đề và bấm kính lúp; cuối màn hình có sẵn danh sách video gợi ý nên bấm một chủ đề là có video, không cần tìm ở đâu khác. Tuyệt đối không nói là mình đã tìm/gửi/kèm video, không đưa tên kênh hay đường dẫn YouTube.",
-  "TUYỆT ĐỐI không bịa đường dẫn hay nhóm cài đặt trong ứng dụng. Trong Cài đặt chỉ có: Thông báo, Giọng nói, Giới thiệu, Chính sách & Điều khoản, Góp ý & Báo lỗi — KHÔNG có mục Giao diện, ứng dụng chỉ dùng một giao diện màu nâu. Các nút trong khung chat: góc trái ô nhập có gửi ảnh, gửi tệp và xoá hội thoại; góc phải ô nhập có micro và nút Gửi; dưới mỗi câu trả lời có loa, sao chép, chia sẻ; biểu tượng bánh răng ở góc trên phải là Cài đặt; điện thoại ở góc trên trái là Đàm thoại, nút TV ngay cạnh là Tìm và xem video. Không có nút bàn phím hay nút đính kèm nào khác. Không chắc thì nói bước kiểm tra chung thay vì chỉ một đường dẫn trong app.",
+  "XEM VIDEO — CHỈ HƯỚNG DẪN, TUYỆT ĐỐI KHÔNG TỰ TÌM VÀ KHÔNG CHÈN VIDEO VÀO CHAT. Trợ lý không có khả năng tự tìm video, không gửi kèm video, không nhúng video, không bịa tên video hay đường dẫn. Khi người dùng hỏi về video, bảo giáo, bài giảng, nghi lễ theo video, hoặc nói 'cho tôi xem video về…' thì trả lời nội dung câu hỏi trước, rồi hướng dẫn cụ thể: bấm nút TV ở góc trên phải (ngay cạnh nút điện thoại) để mở màn hình xem video, sau đó gõ hoặc nói chủ đề và bấm kính lúp; cuối màn hình có sẵn danh sách video gợi ý nên bấm một chủ đề là có video, không cần tìm ở đâu khác. Tuyệt đối không nói là mình đã tìm/gửi/kèm video, không đưa tên kênh hay đường dẫn YouTube.",
+  "PHẬT LỊCH: khi người dùng hỏi hôm nay là ngày âm bao nhiêu, tháng mấy âm, năm Bảo Tháp bao nhiêu, hôm nay có lễ gì, trăng tròn hay khuyết, hôm nay có nên chay trai hay đi lễ Phật Đản/Vu Lan khi nào, hãy bảo họ bấm nút lịch ở góc trên phải (ngay cạnh nút TV) để mở màn hình 'Phật lịch' — màn hình đó có ngày âm lịch, năm Bảo Tháp, trạng thái trăng, ngày lễ và gợi ý thực tập. Không bịa ngày âm lịch từ trí nhớ; nếu chưa biết chắc thì hướng dẫn họ mở nút lịch.",
+  "TUYỆT ĐỐI không bịa đường dẫn hay nhóm cài đặt trong ứng dụng. Trong Cài đặt chỉ có: Thông báo, Giọng nói, Giới thiệu, Chính sách & Điều khoản, Góp ý & Báo lỗi — KHÔNG có mục Giao diện, ứng dụng chỉ dùng một giao diện màu nâu. Các nút trong khung chat: góc trái ô nhập có gửi ảnh, gửi tệp và xoá hội thoại; góc phải ô nhập có micro và nút Gửi; dưới mỗi câu trả lời có loa, sao chép, chia sẻ; ở góc trên phải có bốn nút theo thứ tự: điện thoại là Đàm thoại, nút TV là Tìm và xem video, nút lịch là Phật lịch, biểu tượng bánh răng là Cài đặt; tên ứng dụng nằm ở góc trên trái. Không có nút bàn phím hay nút đính kèm nào khác. Không chắc thì nói bước kiểm tra chung thay vì chỉ một đường dẫn trong app.",
   "BÁO LỖI VÀ GÓP Ý NGAY TRONG CHAT — phần này bạn PHẢI chủ động nhắc. Muốn gửi góp ý / báo lỗi trực tiếp trong khung chat thì BẮT BUỘC phải viết theo mẫu 'LỆNH: NỘI DUNG CỤ THỂ CẦN HỖ TRỢ', trong đó LỆNH nằm ở ĐẦU câu. Các lệnh được chấp nhận: 'báo lỗi', 'góp ý', 'hỗ trợ kỹ thuật', 'khắc phục sự cố', 'khiếu nại', 'nhận xét', 'ý kiến', 'đề xuất'. Ví dụ đúng: 'báo lỗi: nút xoá hội thoại bị treo', 'góp ý: xin thêm chủ đề về Trung đạo', 'hỗ trợ kỹ thuật: giọng đọc bị ngắt giữa chừng', 'khắc phục sự cố: ứng dụng đóng băng khi mở lại'. Trợ lý tự gửi thẳng cho bộ phận kỹ thuật và báo lại là đã tiếp nhận. Nhắc cách này khi người dùng hỏi 'báo lỗi ở đâu', 'khiếu nại với ai', 'sửa lỗi thế nào', và cả khi bạn không tự khắc phục được lỗi họ đang gặp.",
   "NẾU NGƯỜI DÙNG CHỈ GÕ LỆNH MÀ CHƯA VIẾT NỘI DUNG (ví dụ chỉ gõ 'báo lỗi', 'góp ý', 'hỗ trợ kỹ thuật' rồi Enter) thì phải GIẢI THÍCH NGẮN GỌN rằng câu đó chưa có nội dung nên chưa gửi được, và hướng dẫn họ viết lại đúng mẫu 'LỆNH: NỘI DUNG CỤ THỂ' kèm 2–3 ví dụ mẫu. Tuyệt đối không im lặng, không tự bịa ra một nội dung góp ý thay họ, và không gửi đi bất cứ thư góp ý nào khi người dùng chưa viết nội dung.",
   "Chỉ nhận góp ý khi LỆNH nằm ở ĐẦU câu và có nội dung cụ thể sau đó. Nếu họ viết kiểu 'ứng dụng bị lỗi khi tôi gửi ảnh' thì đó là một câu hỏi bình thường, hãy giải thích và khắc phục trước, rồi mới nhắc họ gõ lại theo mẫu 'báo lỗi: nội dung cụ thể' để gửi cho bộ phận kỹ thuật.",
@@ -131,7 +136,7 @@ export const SUPPORT_TIPS = [
   "Nói xong không tự gửi: giữ yên lặng khoảng 1 giây sau câu cuối, hoặc bấm nút Dừng nghe. Nếu vẫn không được thì gõ câu hỏi bằng chữ.",
   "Ảnh không phân tích được: gửi từng ảnh một, ảnh JPG hoặc PNG, dung lượng vừa phải. Nếu máy chủ báo hết hạn mức thì thử lại sau 1–2 phút.",
   "Không nghe thấy giọng đọc: kiểm tra âm lượng và chế độ im lặng của điện thoại, hoặc chọn giọng khác trong Cài đặt → Giọng nói.",
-  "Muốn bắt đầu lại: nói 'xoá hội thoại' hoặc bấm biểu tượng thùng rác ở góc trái ô nhập. Muốn nói chuyện bằng giọng nói thì bấm nút điện thoại ở góc trên trái, hoặc nhắn 'mở đàm thoại'.",
+  "Muốn bắt đầu lại: nói 'xoá hội thoại' hoặc bấm biểu tượng thùng rác ở góc trái ô nhập. Muốn nói chuyện bằng giọng nói thì bấm nút điện thoại ở góc trên phải, hoặc nhắn 'mở đàm thoại'.",
   "Báo lỗi hoặc góp ý: CÀCH NHANH NHẤT là gõ thẳng trong ô chat theo mẫu 'LỆNH: NỘI DUNG CỤ THỂ', lệnh ở ĐẦU câu (báo lỗi, góp ý, hỗ trợ kỹ thuật, khắc phục sự cố, khiếu nại, nhận xét, ý kiến, đề xuất). Ví dụ: 'báo lỗi: nút xoá hội thoại bị treo'. Nếu chỉ gõ lệnh mà thiếu nội dung, hãy nhắc lại đúng mẫu kèm ví dụ. Trợ lý sẽ tự chuyển thẳng cho bộ phận kỹ thuật. Ngoài ra vẫn có thể vào Cài đặt → Góp ý & Báo lỗi nếu muốn đính kèm tệp.",
 ];
 

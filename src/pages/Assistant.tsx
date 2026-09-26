@@ -1,3 +1,4 @@
+import { BuddhistCalendarScreen } from "@/components/BuddhistCalendarScreen";
 import { CallOverlay } from "@/components/CallOverlay";
 import { VideoSearchScreen } from "@/components/VideoSearchScreen";
 import {
@@ -36,7 +37,7 @@ import { wantsImage } from "@/lib/imageIntent";
 import { APP_VERSION } from "@/lib/version";
 import { cn } from "@/lib/utils";
 import { useAction, useMutation } from "convex/react";
-import { ArrowLeft, Phone, Settings, TvMinimalPlay } from "lucide-react";
+import { ArrowLeft, Calendar, Phone, Settings, TvMinimalPlay } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -152,6 +153,7 @@ export default function Assistant() {
 
   /* ---- Màn tìm video YouTube (mở từ nút TV cạnh nút đàm thoại) ---- */
   const [videoScreen, setVideoScreen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const loadingTsRef = useRef<number | null>(null);
 
@@ -1156,7 +1158,7 @@ export default function Assistant() {
           </p>
         </div>
 
-        {/* Bên phải: đàm thoại, xem video, cài đặt */}
+        {/* Bên phải: đàm thoại, xem video, phật lịch, cài đặt */}
         <div className="flex shrink-0 items-center gap-1 justify-self-end">
           <button
             type="button"
@@ -1175,6 +1177,15 @@ export default function Assistant() {
             title="Tìm và xem video"
           >
             <TvMinimalPlay className="h-5 w-5 shrink-0" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setCalendarOpen(true)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-foreground transition hover:bg-accent hover:text-accent-foreground"
+            aria-label="Xem Phật lịch"
+            title="Xem Phật lịch"
+          >
+            <Calendar className="h-5 w-5 shrink-0" />
           </button>
           <button
             type="button"
@@ -1241,6 +1252,10 @@ export default function Assistant() {
       />
 
       {videoScreen && <VideoSearchScreen onClose={() => setVideoScreen(false)} />}
+
+      {calendarOpen && (
+        <BuddhistCalendarScreen onClose={() => setCalendarOpen(false)} />
+      )}
 
       {callOpen && (
         <CallOverlay
