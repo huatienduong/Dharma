@@ -37,7 +37,6 @@ import {
 } from "@/lib/videoIntent";
 import { searchVideoInBrowser } from "@/lib/videoSearchClient";
 import { loadYouTubeKey } from "@/lib/youtubeKey";
-import { appManifestText } from "@/lib/appManifest";
 import { getDeviceMeta } from "@/lib/deviceSecurity";
 import { wantsImage } from "@/lib/imageIntent";
 import { APP_VERSION } from "@/lib/version";
@@ -568,23 +567,13 @@ export default function Assistant() {
 
       // Gửi kèm lượt gần nhất đúng với ngữ cảnh backend sử dụng. Cắt bớt ký
       // tự phòng khi lịch sử cũ chứa câu trả lời rất dài.
-      // Lượt đầu tiên của mỗi cuộc trò chuyện: kèm BẢN KÊ ứNG dụng do máy
-      // sinh ra từ đúng bản đang chạy. Nhờ vậy AI tự biết app có gì và
-      // hướng dẫn đúng tên nút/mục, kể cả khi ứng dụng vừa được cập nhật —
-      // không phụ thuộc prompt viết tay phía máy chủ.
-      const isFirstTurn = base.length === 0;
-      const questionForAi = isFirstTurn
-        ? `${appManifestText()}\n\n[Câu hỏi của người dùng]\n${question}`
-        : question;
-      // Câu hỏi về video: kèm chỉ dẫn ngắn để AI trả lời đúng ý và mời xem
-      // video. Người dùng chỉ cần nhắn "tôi muốn xem video…".
-      const questionForVideo =
-        isVideoRequest(question)
-          ? `${questionForAi}\n\n(Gợi ý nội bộ, người dùng không nhìn thấy: câu này hướng tới xem video. Hãy trả lời thẳng và ngắn, kết bằng câu mời xem 3 video đề xuất vừa được gắn ngay dưới câu trả lời; tuyệt đối không nói bạn không xem được video, không bịa tên kênh hay đường dẫn. Nếu chưa tìm được video thì bảo họ dán thẳng link YouTube vào ô chat là xem ngay.)`
-          : questionForAi;
+      // Gửi lên AI ĐÚNG NỘI DUNG HỘI THOẠI — không chèn bản kê tính năng,
+      // không chèn chỉ dẫn nội bộ vào câu hỏi. Mọi hướng dẫn cho AI nằm
+      // trong system prompt của máy chủ (featuresPrompt), để câu trả lời về
+      // Phật học luôn sạch, không bị lẫn chỉ dẫn kỹ thuật.
       const payloadMessages = [
         ...base,
-        { role: "user" as const, content: questionForVideo },
+        { role: "user" as const, content: question },
       ]
         .slice(-CONTEXT_MESSAGES)
         .map((m) => ({
