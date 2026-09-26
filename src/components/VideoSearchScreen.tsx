@@ -15,6 +15,7 @@ import {
 } from "@/lib/videoSearchClient";
 import { useVoiceSearch } from "@/hooks/use-voice-search";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { keepBuddhistVideos } from "@/lib/buddhistVideoFilter";
 import type { VideoInfo } from "@/lib/videoIntent";
 import { cn } from "@/lib/utils";
 import {
@@ -51,7 +52,11 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
       suggestBusyRef.current = true;
       if (page === 0) setSuggestBusy(true);
       else setSuggestMore(true);
-      const batch = await fetchSuggestedPage(page).catch(() => []);
+      // Chỉ đề xuất video về Phật giáo: lọc cứng, video lạc đề không hiện.
+      const batch = keepBuddhistVideos(
+        await fetchSuggestedPage(page).catch(() => []),
+        true,
+      );
       if (batch.length) {
         setSuggested((prev) => {
           const seen = new Set(prev.map((v) => v.videoId));
@@ -62,6 +67,11 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
       setSuggestBusy(false);
       setSuggestMore(false);
       suggestBusyRef.current = false;
+      // Trang này bị lọc hết (không còn nội dung Phật giáo) → lấy tiếp trang
+      // kế tiếp, đừng để danh sách đứng trống.
+      if (!batch.length && page === 0) {
+        void loadMoreSuggested(page + 1);
+      }
     },
     [],
   );
@@ -103,7 +113,10 @@ export function VideoSearchScreen({ onClose }: { onClose: () => void }) {
       relatedBusyRef.current = true;
       if (page === 0) setRelatedBusy(true);
       else setRelatedMore(true);
-      const batch = await fetchRelatedPage(video, page).catch(() => []);
+      const batch = keepBuddhistVideos(
+        await fetchRelatedPage(video, page).catch(() => []),
+        true,
+      );
       if (batch.length) {
         setRelated((prev) => {
           const seen = new Set(prev.map((v) => v.videoId));
