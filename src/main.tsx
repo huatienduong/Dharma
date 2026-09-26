@@ -4,7 +4,6 @@ import { ChatScreenShield } from "@/components/ChatScreenShield";
 import { ConvexHealth } from "@/components/ConvexHealth";
 import { DeviceGuard } from "@/components/DeviceGuard";
 import { ServiceNotice } from "@/components/ServiceNotice";
-import { SplashScreen } from "@/components/SplashScreen";
 import { UpdateChecker } from "@/components/UpdateChecker";
 import { SettingsProvider } from "@/lib/settings";
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
@@ -170,10 +169,7 @@ createRoot(document.getElementById("root")!).render(
         </Suspense>
       </ToolbarErrorBoundary>
       <ConvexAuthProvider client={convex}>
-        {/* Splash logo chính thức — hiện ngay từ giây đầu khi vào ứng dụng.
-            PHẢI nằm trong ConvexAuthProvider vì dùng useQuery lấy logo;
-            đặt ngoài provider làm hook ném lỗi → toàn cây bị gỡ → TRẮNG TRANG. */}
-        <SplashScreen />
+        {/* Đã bỏ màn splash có logo: vào app là thấy thẳng giao diện chat. */}
         <SettingsProvider>
           <UpdateChecker />
           {/* Chặn thiết bị tự động hóa / bị can thiệp — khóa toàn màn hình */}
