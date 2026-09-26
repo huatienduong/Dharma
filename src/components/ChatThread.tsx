@@ -1,5 +1,5 @@
 /**
- * KHU HỘI THOẠI — danh sách tin nhắn, màn chào, tiến trình và thẻ lỗi.
+ * KHU HỘI THOẠI — danh sách tin nhắn, tiến trình và thẻ lỗi.
  *
  * Tách riêng khỏi trang chat. Trang chỉ lo chuyện gửi/nhận dữ liệu; phần
  * hiển thị nằm ở đây để sửa giao diện không phải đụng tới logic.
@@ -30,8 +30,6 @@ export type FailedReply = {
 export type ChatThreadProps = {
   messages: Msg[];
   isEmpty: boolean;
-  suggestions: { text: string }[];
-  onSuggestion: (text: string) => void;
   streamingReply: string | null;
   failedReply: FailedReply | null;
   onRetry: () => void;
@@ -46,8 +44,6 @@ export type ChatThreadProps = {
 export function ChatThread({
   messages,
   isEmpty,
-  suggestions,
-  onSuggestion,
   streamingReply,
   failedReply,
   onRetry,
@@ -58,27 +54,9 @@ export function ChatThread({
   onRecallMessage,
   onRecallImage,
 }: ChatThreadProps) {
-  if (isEmpty) {
-    return (
-      <div className="mx-auto flex min-h-full w-full max-w-lg flex-col items-center justify-center text-center">
-        <p className="max-w-md text-lg font-semibold leading-relaxed tracking-tight text-foreground sm:text-xl">
-          Hôm nay tôi có thể giúp gì cho bạn trên con đường Phật pháp?
-        </p>
-        <div className="mt-4 grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
-          {suggestions.map((s) => (
-            <button
-              key={s.text}
-              type="button"
-              onClick={() => onSuggestion(s.text)}
-              className="rounded-2xl border border-border/60 bg-card px-4 py-3 text-left text-sm leading-snug text-foreground/90 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-accent/50 sm:text-base"
-            >
-              {s.text}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  // Chưa có tin nhắn nào: để trống hoàn toàn, vào thẳng khung chat. Lời
+  // chào và danh sách câu hỏi đề xuất đã được gỡ theo yêu cầu.
+  if (isEmpty) return null;
 
   return (
     <div className="mx-auto w-full max-w-3xl px-3 pb-8 pt-3 sm:px-4 [&>*:first-child]:mt-0">

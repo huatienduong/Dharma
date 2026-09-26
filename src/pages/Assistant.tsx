@@ -18,7 +18,6 @@ import {
   isClearHistoryCommand,
   isStartCallCommand,
   loadLocalChatSecure,
-  pickSuggestions,
   saveLocalChatSecure,
   speakableSummary,
   type AskResult,
@@ -51,8 +50,6 @@ export default function Assistant() {
   const [history, setHistory] = useState<Msg[]>([]);
   const historyRef = useRef<Msg[]>([]);
   const pendingRef = useRef<Msg[]>([]);
-  // Đề xuất câu hỏi — chọn ngẫu nhiên MỘT LẦN mỗi lần vào ứng dụng.
-  const [suggestions] = useState(() => pickSuggestions());
 
   // Nạp lịch sử ĐÃ MÃ HÓA từ thiết bị (WebCrypto là bất đồng bộ)
   useEffect(() => {
@@ -960,8 +957,6 @@ export default function Assistant() {
         <ChatThread
           messages={messages}
           isEmpty={isEmpty}
-          suggestions={suggestions}
-          onSuggestion={(t) => void send(t)}
           streamingReply={streamingReply}
           failedReply={failedReply}
           onRetry={retryFailed}

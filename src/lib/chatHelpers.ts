@@ -7,12 +7,6 @@
  */
 
 import {
-  BookOpen,
-  Heart,
-  Scale,
-  Sparkles,
-} from "lucide-react";
-import {
   CHAT_STORAGE_KEY as CHAT_KEY,
   decryptString,
   encryptString,
@@ -413,39 +407,4 @@ export function convexErrMessage(err: unknown): string {
     return raw;
   }
   return String(err);
-}
-
-/* ------------------------------------------------------------------ */
-/* Câu hỏi đề xuất                                                       */
-/* ------------------------------------------------------------------ */
-
-/* Kho câu hỏi đề xuất — ƯU TIÊN Bát Chánh Đạo & Tứ Thánh Đế (icon Sparkles
-   đánh dấu nhóm ưu tiên). Mỗi lần vào ứng dụng lấy ngẫu nhiên 4 câu: nhóm
-   ưu tiên luôn đứng đầu, còn lại bổ sung từ nhóm mở rộng. */
-const SUGGESTION_POOLS: { icon: typeof BookOpen; text: string }[] = [
-  // Nhóm ưu tiên — Bát Chánh Đạo & Tứ Thánh Đế
-  { icon: Sparkles, text: "Bát Chánh Đạo gồm những chi nào?" },
-  { icon: Sparkles, text: "Chánh niệm khác chánh định thế nào?" },
-  { icon: Sparkles, text: "Chánh kiến vì sao đứng đầu Bát Chánh Đạo?" },
-  { icon: Sparkles, text: "Chánh ngữ trong thời đại mạng xã hội" },
-  { icon: Sparkles, text: "Chánh mạng: chọn nghề theo Phật pháp" },
-  { icon: Sparkles, text: "Tứ Thánh Đế nghĩa là gì?" },
-  { icon: Sparkles, text: "Khổ Đế hiện lên trong đời sống thế nào?" },
-  { icon: Sparkles, text: "Tập Đế: gốc rễ của khổ nằm ở đâu?" },
-  { icon: Sparkles, text: "Vì sao Diệt Đế chính là Niết-bàn?" },
-  { icon: Sparkles, text: "Đạo Đế dẫn tới chấm dứt khổ ra sao?" },
-  // Nhóm mở rộng — đa dạng chủ đề khác
-  { icon: Heart, text: "Hướng dẫn thiền niệm hơi thở cho người mới" },
-  { icon: Heart, text: "Làm sao buông bỏ lo âu trước kỳ thi?" },
-  { icon: BookOpen, text: "Thiền tông khác Theravāda chỗ nào?" },
-  { icon: Scale, text: "Mình nên bắt đầu tập tu như thế nào?" },
-];
-const SUGGESTION_COUNT = 4;
-
-/** Chọn ngẫu nhiên câu hỏi đề xuất — ưu tiên nhóm Bát Chánh Đạo/Tứ Thánh Đế. */
-export function pickSuggestions(): typeof SUGGESTION_POOLS {
-  const shuffled = [...SUGGESTION_POOLS].sort(() => Math.random() - 0.5);
-  const priority = shuffled.filter((s) => s.icon === Sparkles);
-  const rest = shuffled.filter((s) => s.icon !== Sparkles);
-  return [...priority, ...rest].slice(0, SUGGESTION_COUNT);
 }
