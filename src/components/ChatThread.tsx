@@ -15,7 +15,6 @@ import {
   Check,
   Copy,
   Loader2,
-  PhoneCall,
   Share2,
   Square,
   Undo2,
@@ -77,11 +76,6 @@ export function ChatThread({
       {messages.map((m, i) => {
         // Nhóm tin nhắn liên tiếp cùng người gửi — kiểu Messenger
         const grouped = i > 0 && messages[i - 1].role === m.role;
-        if (m.role === "system") {
-          return m.callSummary ? (
-            <CallSummaryLine key={i} summary={m.callSummary} />
-          ) : null;
-        }
         return m.role === "user" ? (
           <UserMessage
             key={i}
@@ -180,51 +174,6 @@ export function ChatThread({
       {busy && streamingReply === null && imageProgress === null && (
         <AssistantThinking />
       )}
-    </div>
-  );
-}
-
-/** "26/09/2026" — ngày kết thúc cuộc gọi. */
-function callEndDate(at: number) {
-  const d = new Date(at);
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-}
-
-/** "14:32" — giờ kết thúc cuộc gọi. */
-function callEndTime(at: number) {
-  const d = new Date(at);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-/** "01:23" — thời lượng cuộc gọi (phút:giây). */
-function callDuration(durationMs: number) {
-  const total = Math.max(0, Math.round(durationMs / 1000));
-  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
-}
-
-/**
- * DÒNG GHI CHÚ CUỘC GỌI — tin hệ thống trong lịch sử hội thoại, hiện sau
- * khi kết thúc đàm thoại. Kiểu dòng ghi nhỏ giữa khung chat giống Messenger:
- * chữ nhỏ mờ, không viền, không nền — không tranh chỗ với tin nhắn thật.
- * Không gửi lên AI và không đọc to.
- */
-function CallSummaryLine({
-  summary,
-}: {
-  summary: { at: number; durationMs: number };
-}) {
-  return (
-    <div className="flex justify-center py-1.5">
-      <div className="flex max-w-full flex-wrap items-center justify-center gap-x-1.5 text-[11px] leading-4 text-muted-foreground/70">
-        <PhoneCall className="h-3 w-3 shrink-0" />
-        <span>Kết thúc lúc</span>
-        <span className="tabular-nums">{callEndTime(summary.at)}</span>
-        <span>·</span>
-        <span className="tabular-nums">{callEndDate(summary.at)}</span>
-        <span>·</span>
-        <span>Thời lượng</span>
-        <span className="tabular-nums">{callDuration(summary.durationMs)}</span>
-      </div>
     </div>
   );
 }

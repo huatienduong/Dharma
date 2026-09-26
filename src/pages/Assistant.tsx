@@ -15,7 +15,6 @@ import { loadVoicePref, VOICE_PREF_EVENT } from "@/lib/aiVoices";
 import { MAX_IMAGES_PER_MESSAGE } from "@/lib/appFeatures";
 import { readFileAttachments, readImageAttachment } from "@/lib/attachments";
 import {
-  callSummaryText,
   clearLocalChat,
   convexErrMessage,
   isClearHistoryCommand,
@@ -227,20 +226,6 @@ export default function Assistant() {
     busyRef,
     setBusy,
     getVoiceId: () => voiceIdRef.current,
-    onCallEnded: (info) => {
-      // Lưu dòng "kết thúc cuộc gọi" vào lịch sử hội thoại (mã hoá trên
-      // thiết bị) để mở lại vẫn thấy: giờ kết thúc + thời lượng.
-      const note: Msg = {
-        role: "system",
-        content: callSummaryText(info.at, info.durationMs),
-        ts: Date.now(),
-        callSummary: { at: info.at, durationMs: info.durationMs },
-      };
-      const nextHistory = [...historyRef.current, note];
-      historyRef.current = nextHistory;
-      setHistory(nextHistory);
-      void saveLocalChatSecure(nextHistory);
-    },
   });
   const {
     callOpen,
@@ -508,12 +493,7 @@ export default function Assistant() {
 
       // Gửi kèm lượt gần nhất đúng với ngữ cảnh backend sử dụng. Cắt bớt ký
       // tự phòng khi lịch sử cũ chứa câu trả lời rất dài.
-      // Bỏ dòng ghi chú hệ thống (kết thúc cuộc gọi) — nó chỉ để người dùng
-      // đọc lại, không phải ngữ cảnh cho AI.
       const payloadMessages = [...base, { role: "user" as const, content: question }]
-        .filter(
-          (m): m is Msg & { role: "user" | "assistant" } => m.role !== "system",
-        )
         .slice(-CONTEXT_MESSAGES)
         .map((m) => ({
           role: m.role,

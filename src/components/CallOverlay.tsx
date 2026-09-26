@@ -1,5 +1,7 @@
 /**
- * MÀN ĐÀM THOẠI — lớp giao diện phủ kín màn hình.
+ * MÀN ĐÀM THOẠI — lớp giao diện phủ kín màn hình, theo kiểu cuộc gọi của
+ * Zalo: nền tối một mảng, tên + thời lượng ở giữa màn hình, cụm nút tròn
+ * mảnh phía dưới và nút kết thúc màu đỏ.
  *
  * Tách riêng khỏi trang chat để file trang gọn và dễ sửa. Ở đây hiện đúng
  * ba thứ người dùng cần: trạng thái, CÂU ĐANG NGHE (để biết Trợ lý nghe
@@ -9,8 +11,15 @@
 import type { CallStatus } from "@/hooks/useCallSession";
 import { cn } from "@/lib/utils";
 import { BotAvatar } from "@/components/BotAvatar";
-import { Mic, MicOff, PhoneOff, Square, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  ChevronDown,
+  Mic,
+  MicOff,
+  PhoneOff,
+  Square,
+  Volume2,
+} from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 
 export type CallOverlayProps = {
   callStatus: CallStatus;
@@ -21,6 +30,38 @@ export type CallOverlayProps = {
   /** Ngừng đọc và mở lại mic ngay lập tức. */
   onInterrupt: () => void;
 };
+
+/** Nút tròn kiểu Zalo: nền trắng mờ, đổi nền khi bấm. */
+function RoundButton({
+  label,
+  title,
+  onClick,
+  tone = "default",
+  children,
+}: {
+  label: string;
+  title: string;
+  onClick: () => void;
+  tone?: "default" | "active";
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={title}
+      className={cn(
+        "flex h-14 w-14 items-center justify-center rounded-full transition active:scale-95",
+        tone === "active"
+          ? "bg-white text-zinc-900"
+          : "bg-white/12 text-white hover:bg-white/20",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
 export function CallOverlay({
   callStatus,
@@ -38,8 +79,11 @@ export function CallOverlay({
           ? "Đang trả lời"
           : "Micro đã tắt";
 
+  /** Đang nói/suy niệm thì chấm trạng thái chạy, để thấy Trợ lý còn "sống". */
+  const live = callStatus === "listening" || callStatus === "speaking";
+
   /**
-   * THỜI LƯỢNG ĐÀM THOẠI — đồng hồ đếm từ lúc mở cuộc gọi, hiển thị dạ
+   * THỜI LƯỢNG ĐÀM THOẠI — đồng hồ đếm từ lúc mở cuộc gọi, hiển thị dạng
    * phút:giây. Màn đàm thoại chỉ hiện khi `callOpen` nên chỉ cần nhớ mốc bắt
    * đầu là đủ; component bị gỡ thì đồng hồ dừng theo.
    */
@@ -57,61 +101,72 @@ export function CallOverlay({
   const ss = String(Math.floor((elapsed % 60_000) / 1000)).padStart(2, "0");
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#09090b] text-white">
+    <div className="fixed inset-0 z-[100] overflow-hidden bg-[#1b1712] text-white">
+      {/* Quầng sáng màu nâu rất nhạt phía sau — giữ chất nâu của ứng dụng
+          mà vẫn đậm kiểu màn cuộc gọi. */}
       <div
+        aria-hidden
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(55rem 38rem at 50% 42%, rgba(245,158,11,0.15), transparent 62%), linear-gradient(180deg, rgba(17,17,17,0.96), rgba(9,9,11,1))",
+            "radial-gradient(38rem 30rem at 50% 26%, rgba(224,133,42,0.20), transparent 68%), linear-gradient(180deg, #221b14 0%, #17120d 62%, #120e0a 100%)",
         }}
       />
 
-      <div className="relative z-10 flex h-full w-full max-w-[1800px] flex-col">
-        <div className="flex w-full items-center justify-between px-5 pt-5 sm:px-8">
-          {/* Chỉ còn nút đóng: đã bỏ icon nhỏ + chữ “Trợ lý Phật học” theo yêu
-              cầu, phần nhận diện do logo robot ở giữa màn đảm nhiệm. */}
-          <span aria-hidden />
-
+      <div className="relative z-10 flex h-full w-full flex-col">
+        {/* Thanh trên: nút hạ màn hình (Zalo dùng mũi tên xuống) + trạng thái */}
+        <div className="flex items-start justify-between px-5 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-8">
           <button
             type="button"
             onClick={onEnd}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 transition hover:bg-white/10"
-            aria-label="Đóng"
+            aria-label="Kết thúc đàm thoại"
+            title="Kết thúc"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 transition active:scale-95 hover:bg-white/20"
           >
-            <X className="h-5 w-5" />
+            <ChevronDown className="h-5 w-5" />
           </button>
-        </div>
 
-        <div className="flex flex-1 flex-col items-center justify-center px-6 pb-10 pt-6">
-          {/* Logo robot thay cho quả cầu sóng âm cũ */}
-          <div
-            className={cn(
-              "relative flex h-52 w-52 items-center justify-center sm:h-64 sm:w-64 lg:h-80 lg:w-80",
-              callStatus === "muted" && "opacity-50",
-            )}
-          >
+          <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white/90">
             <span
               aria-hidden
               className={cn(
-                "absolute inset-4 rounded-full bg-primary/20 blur-3xl",
-                callStatus === "listening" && "animate-pulse",
-                callStatus === "speaking" && "animate-pulse",
+                "h-1.5 w-1.5 rounded-full",
+                live ? "animate-pulse bg-emerald-400" : "bg-white/50",
               )}
             />
-            <BotAvatar
-              size="lg"
-              glow
-              className="relative h-[70%] w-[70%] shrink-0"
-            />
+            {statusText}
           </div>
 
-          <p className="mt-8 text-center text-xl font-medium tracking-wide text-white/90 sm:text-2xl">
-            {statusText}
-          </p>
+          <span aria-hidden className="h-10 w-10" />
+        </div>
 
-          {/* Thời lượng cuộc gọi hiện dưới trạng thái */}
+        {/* Giữa màn hình: tên + thời lượng, bên dưới là câu đang nghe */}
+        <div className="flex flex-1 flex-col items-center justify-center px-6">
+          {/* Avatar tròn kiểu Zalo: vòng sáng nhẹ quanh robot, chập nháy nhẹ
+              khi Trợ lý đang nghe hoặc đang trả lời. */}
+          <div className="relative flex h-36 w-36 items-center justify-center sm:h-44 sm:w-44">
+            <span
+              aria-hidden
+              className={cn(
+                "absolute inset-2 rounded-full bg-primary/25 blur-2xl",
+                live && "animate-pulse",
+              )}
+            />
+            <div
+              className={cn(
+                "relative flex h-full w-full items-center justify-center rounded-full border border-white/10 bg-white/5",
+                callStatus === "muted" && "opacity-50",
+              )}
+            >
+              <BotAvatar size="lg" className="h-[62%] w-[62%]" />
+            </div>
+          </div>
+
+          <p className="mt-6 text-center text-[22px] font-semibold tracking-tight">
+            Trợ lý Phật học
+          </p>
           <p
-            className="mt-1.5 text-sm font-medium tabular-nums tracking-widest text-white/60"
+            className="mt-1 text-sm font-medium tabular-nums tracking-wider text-white/60"
             aria-label="Thời lượng đàm thoại"
           >
             {mm}:{ss}
@@ -119,11 +174,11 @@ export function CallOverlay({
 
           {/* CÂU ĐANG NGHE: trước đây không hiện, người dùng không biết
               Trợ lý nghe đúng chưa nên nhiều khi phải nói lại. */}
-          <div className="mt-4 flex min-h-[3.5rem] w-full max-w-xl items-start justify-center px-2">
+          <div className="mt-6 flex min-h-[3.5rem] w-full max-w-xl items-start justify-center px-2">
             {interim ? (
               <p
                 key={interim}
-                className="animate-in fade-in slide-in-from-bottom-1 text-center text-[17px] leading-relaxed text-white/80"
+                className="animate-in fade-in slide-in-from-bottom-1 text-center text-[17px] leading-relaxed text-white/85"
               >
                 {interim}
               </p>
@@ -131,52 +186,48 @@ export function CallOverlay({
           </div>
         </div>
 
-        <div className="relative z-10 flex items-center justify-center gap-6 pb-[max(1.6rem,env(safe-area-inset-bottom))] pt-2">
-          {callStatus !== "muted" ? (
-            <button
-              type="button"
-              onClick={onToggleMute}
-              className="flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-white/5 backdrop-blur transition hover:bg-white/10"
-              aria-label="Tắt micro"
-              title="Tắt micro"
-            >
-              <Mic className="h-7 w-7" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={onToggleMute}
-              className="flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-amber-500/20 backdrop-blur transition hover:bg-amber-500/30"
-              aria-label="Bật micro"
-              title="Bật micro"
-            >
-              <MicOff className="h-7 w-7" />
-            </button>
-          )}
+        {/* Cụm nút: hai nút tròn nhỏ, nút kết thúc đỏ lớn ở giữa — bố cục
+            giống màn cuộc gọi Zalo. */}
+        <div className="flex items-center justify-center gap-7 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4">
+          <RoundButton
+            label={callStatus === "muted" ? "Bật micro" : "Tắt micro"}
+            title={callStatus === "muted" ? "Bật micro" : "Tắt micro"}
+            onClick={onToggleMute}
+            tone={callStatus === "muted" ? "active" : "default"}
+          >
+            {callStatus === "muted" ? (
+              <MicOff className="h-6 w-6" />
+            ) : (
+              <Mic className="h-6 w-6" />
+            )}
+          </RoundButton>
 
           <button
             type="button"
             onClick={onEnd}
-            className="flex h-20 w-20 items-center justify-center rounded-full bg-red-500 shadow-[0_0_30px_rgba(239,68,68,0.5)] transition hover:bg-red-400 active:scale-95"
-            aria-label="Kết thúc đàm thoại"
-            title="Kết thúc"
+            aria-label="Kết thúc cuộc gọi"
+            title="Kết thúc cuộc gọi"
+            className="flex h-20 w-20 items-center justify-center rounded-full bg-red-500 text-white shadow-[0_10px_30px_rgba(239,68,68,0.35)] transition active:scale-95 hover:bg-red-600"
           >
-            <PhoneOff className="h-8 w-8" />
+            <PhoneOff className="h-8 w-8 rotate-[135deg]" />
           </button>
 
-          <div className="flex h-16 w-16 items-center justify-center">
-            {callStatus === "speaking" && (
-              <button
-                type="button"
-                onClick={onInterrupt}
-                className="flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-white/5 backdrop-blur transition hover:bg-white/10"
-                aria-label="Ngừng đọc"
-                title="Ngừng đọc"
-              >
-                <Square className="h-6 w-6" />
-              </button>
-            )}
-          </div>
+          {callStatus === "speaking" ? (
+            <RoundButton
+              label="Ngừng đọc"
+              title="Ngừng đọc"
+              onClick={onInterrupt}
+            >
+              <Square className="h-5 w-5" />
+            </RoundButton>
+          ) : (
+            <span
+              aria-hidden
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-white/5 text-white/25"
+            >
+              <Volume2 className="h-6 w-6" />
+            </span>
+          )}
         </div>
       </div>
     </div>
