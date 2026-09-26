@@ -369,7 +369,7 @@ export function callSummaryText(at: number, durationMs: number): string {
   const total = Math.max(0, Math.round(durationMs / 1000));
   const mm = String(Math.floor(total / 60)).padStart(2, "0");
   const ss = String(total % 60).padStart(2, "0");
-  return `Cuộc gọi đã kết thúc lúc ${hh}:${mi} • Thời lượng ${mm}:${ss}`;
+  return `Cuộc gọi đã kết thúc lúc ${hh}:${mi} ngày ${d.getDate()}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()} • Thời lượng ${mm}:${ss}`;
 }
 
 /**

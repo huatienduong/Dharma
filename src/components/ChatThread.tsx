@@ -79,7 +79,7 @@ export function ChatThread({
         const grouped = i > 0 && messages[i - 1].role === m.role;
         if (m.role === "system") {
           return m.callSummary ? (
-            <CallSummaryLine key={i} text={m.content} />
+            <CallSummaryLine key={i} summary={m.callSummary} />
           ) : null;
         }
         return m.role === "user" ? (
@@ -184,17 +184,49 @@ export function ChatThread({
   );
 }
 
+/** "26/09/2026" — ngày kết thúc cuộc gọi. */
+function callEndDate(at: number) {
+  const d = new Date(at);
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+}
+
+/** "14:32" — giờ kết thúc cuộc gọi. */
+function callEndTime(at: number) {
+  const d = new Date(at);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+/** "01:23" — thời lượng cuộc gọi (phút:giây). */
+function callDuration(durationMs: number) {
+  const total = Math.max(0, Math.round(durationMs / 1000));
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
 /**
  * DÒNG GHI CHÚ CUỘC GỌI — tin hệ thống trong lịch sử hội thoại, hiện sau
- * khi kết thúc đàm thoại: giờ kết thúc + thời lượng. Không gửi lên AI và
- * không đọc to; chỉ để người dùng nhìn lại vừa nói chuyện bao lâu.
+ * khi kết thúc đàm thoại: NGÀY, GIỜ và THỜI LƯỢNG, tách thành từng mảnh
+ * thông tin rõ ràng. Không gửi lên AI và không đọc to.
  */
-function CallSummaryLine({ text }: { text: string }) {
+function CallSummaryLine({
+  summary,
+}: {
+  summary: { at: number; durationMs: number };
+}) {
   return (
     <div className="mt-4 flex justify-center">
-      <div className="flex max-w-full items-center gap-2 rounded-full border border-border/60 bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
+      <div className="flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full border border-border/60 bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground">
         <PhoneCall className="h-3.5 w-3.5 shrink-0 text-primary" />
-        <span className="truncate">{text}</span>
+        <span>Kết thúc lúc</span>
+        <span className="font-medium tabular-nums text-foreground">
+          {callEndTime(summary.at)}
+        </span>
+        <span aria-hidden>·</span>
+        <span className="tabular-nums">{callEndDate(summary.at)}</span>
+        <span aria-hidden>·</span>
+        <span>Thời lượng</span>
+        <span className="font-medium tabular-nums text-foreground">
+          {callDuration(summary.durationMs)}
+        </span>
       </div>
     </div>
   );
