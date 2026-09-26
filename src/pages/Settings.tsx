@@ -11,6 +11,13 @@ import {
   type ThemeMode,
 } from "@/lib/settings";
 import { Button } from "@/components/ui/button";
+import {
+  VOICE_LIST,
+  loadVoicePref,
+  saveVoicePref,
+  type AiVoice,
+} from "@/lib/aiVoices";
+import { useVietnameseTTS } from "@/hooks/use-vietnamese-tts";
 import { cn } from "@/lib/utils";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { useMemo } from "react";
@@ -27,11 +34,16 @@ import {
   RefreshCw,
   Send,
   Sun,
+  Volume2,
   X,
 } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { useNavigate, useSearchParams } from "react-router";
+
+/** Câu thử giọng — ngắn để tiết kiệm hạn mức TTS nhưng đủ để nghe chất giọng. */
+const VOICE_PREVIEW_TEXT =
+  "Kính chào. Xin hãy bình tĩnh thở vào, thở ra, nhớ về hơi thở đang diễn ra.";
 
 const FEEDBACK_BUG_MESSAGE =
   "Chúng tôi đã ghi nhận yêu cầu hỗ trợ khắc phục sự cố và sẽ tiến hành kiểm tra khắc phục. Xin trân thành cảm ơn!";
@@ -57,16 +69,47 @@ export default function Settings() {
   const sectionParam = searchParams.get("section");
   const validSection =
     sectionParam === "appearance" ||
+    sectionParam === "voice" ||
     sectionParam === "about" ||
     sectionParam === "feedback" ||
     sectionParam === "legal"
       ? sectionParam
       : null;
   const [openCard, setOpenCard] = useState<
-    null | "appearance" | "about" | "feedback" | "legal"
+    null | "appearance" | "voice" | "about" | "feedback" | "legal"
   >(validSection);
   const toggle = (key: typeof openCard) =>
     setOpenCard((cur) => (cur === key ? null : key));
+
+  // Giọng đọc: lưu localStorage, Trợ lý đọc lại mỗi khi mở nên chọn ở đây
+  // có hiệu lực ngay (không cần tải lại ứng dụng).
+  const [voiceId, setVoiceId] = useState<string>(loadVoicePref);
+  const [previewing, setPreviewing] = useState<string | null>(null);
+  const { speak, stop } = useVietnameseTTS();
+
+  const pickVoice = (v: AiVoice) => {
+    setVoiceId(v.id);
+    saveVoicePref(v.id);
+    toast.success(`Đã chọn giọng ${v.name.replace(/^(Nữ|Nam) — /, "")}`);
+  };
+
+  const previewVoice = async (v: AiVoice) => {
+    if (previewing) {
+      stop();
+      setPreviewing(null);
+      return;
+    }
+    setPreviewing(v.id);
+    try {
+      await speak(VOICE_PREVIEW_TEXT, {
+        voice: v.id,
+        male: v.male,
+        onDone: () => setPreviewing(null),
+      });
+    } catch {
+      setPreviewing(null);
+    }
+  };
 
   const [fbType, setFbType] = useState<"idea" | "bug">("idea");
   const [fbMessage, setFbMessage] = useState("");
@@ -276,6 +319,73 @@ export default function Settings() {
             label="Thông báo"
           />
         </div>
+
+        {/* ---------- Giọng nói ---------- */}
+        <RowCard
+          label="Giọng nói"
+          open={openCard === "voice"}
+          onClick={() => toggle("voice")}
+        >
+          <div className="space-y-3 pt-1">
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Chọn giọng để Trợ lý đọc to khi trả lời. Bấm biểu tượng loa để
+              thử giọng trước khi chọn.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {VOICE_LIST.map((v) => {
+                const active = voiceId === v.id;
+                const playing = previewing === v.id;
+                return (
+                  <div
+                    key={v.id}
+                    className={cn(
+                      "flex items-center gap-2 rounded-2xl border px-3 py-2.5 transition",
+                      active
+                        ? "border-primary/60 bg-primary/10"
+                        : "border-border/60 bg-muted/50",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => pickVoice(v)}
+                      aria-pressed={active}
+                      className="min-w-0 flex-1 text-left"
+                    >
+                      <span
+                        className={cn(
+                          "block truncate text-sm font-semibold",
+                          active ? "text-primary" : "text-foreground/85",
+                        )}
+                      >
+                        {v.name}
+                      </span>
+                      <span className="block truncate text-[11px] text-muted-foreground">
+                        {v.desc}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void previewVoice(v)}
+                      aria-label={`Thử giọng ${v.name}`}
+                      className={cn(
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition",
+                        active
+                          ? "text-primary"
+                          : "text-muted-foreground hover:text-primary",
+                      )}
+                    >
+                      {playing ? (
+                        <X className="h-4 w-4" />
+                      ) : (
+                        <Volume2 className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </RowCard>
 
         {/* ---------- Giới thiệu / Phiên bản ---------- */}
         <RowCard

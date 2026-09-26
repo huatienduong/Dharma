@@ -370,24 +370,20 @@ const ELEVENLABS_FALLBACK_VOICES = {
 } as const;
 
 /**
- * MÔ TẢ GIỌNG ĐỌC — một nguồn duy nhất cho cả hai nhánh TTS.
- * Gemini nhận lệnh dạng chữ (được hiểu là chỉ dẫn, KHÔNG đọc to); ElevenLabs
- * không nhận lệnh chữ (sẽ bị đọc thành tiếng) nên mô tả được quyết ra tham số
- * kỹ thuật tương đương. Nhờ vậy giọng nam/nữ nghe "cùng một người" dù đổi nhà
- * cung cấp, và sửa mô tả chỉ phải sửa một chỗ.
+ * MÔ TẢ GIỌNG ĐỌC — một nguồn duy nhất cho các nhánh TTS.
+ *
+ * LƯU Ý QUAN TRỌNG: cả Gemini TTS lẫn ElevenLabs đều ĐỌC TO mọi ký tự gửi
+ * vào, nên không thể gửi kèm lệnh dạng chữ như "Đọc bằng giọng nam trầm ấm…"
+ * — trước đây câu đó bị đọc ra loa ở đầu mỗi câu trả lời. Vì vậy chất giọng
+ * chỉ điều khiển được bằng voice (Gemini prebuiltVoice) và tham số kỹ thuật
+ * bên dưới; mô tả ở đây giữ để log chẩn đoán và làm tài liệu.
  */
 type VoiceTone = "male" | "female";
 
-/** Câu mô tả dùng cho cả nhánh Gemini (lệnh) và hiển thị/log phía server. */
+/** Câu mô tả giọng — dùng cho log chẩn đoán phía server. */
 const VOICE_TONE_DESC: Record<VoiceTone, string> = {
   male: "giọng nam trầm ấm, chậm rãi trang nghiêm",
   female: "giọng nữ nhẹ nhàng, chậm rãi trang nghiêm",
-};
-
-/** Lệnh chỉ dẫn cho Gemini TTS — tiền tố này KHÔNG bị đọc thành tiếng. */
-const GEMINI_TONE_PREFIX: Record<VoiceTone, string> = {
-  male: "Đọc bằng tiếng Việt, giọng NAM trầm ấm, chậm rãi trang nghiêm:",
-  female: "Đọc bằng tiếng Việt, giọng NỮ nhẹ nhàng, chậm rãi trang nghiêm:",
 };
 
 /**
@@ -1212,18 +1208,16 @@ export const speak = action({
     // Hướng dẫn giọng đọc theo lựa chọn của người dùng (tiếng Việt)
     const wantMale =
       male ?? (voice ? SERVER_VOICES[voice]?.male ?? false : false);
-    // Mô tả giọng đọc dùng chung cho cả hai nhánh: ElevenLabs nhận qua
-    // voice_settings, Gemini nhận qua lệnh chỉ dẫn — cùng một chuẩn nghe.
+    // Nhóm giọng dùng chung cho cả hai nhánh: ElevenLabs nhận qua
+    // voice_settings, Gemini nhận qua voice prebuilt — cùng một chuẩn nghe.
     const tone: VoiceTone = wantMale ? "male" : "female";
-    const toneHint = GEMINI_TONE_PREFIX[tone];
     const v = SERVER_VOICES[voice ?? ""];
     const elevenVoice =
       v?.eleven ??
       (tone === "male" ? "yoZ06aMxZJJ28mfd3POQ" : "EXAVITQu4vr4xnSDxMaL");
 
     // ƯU TIÊN 1: ElevenLabs — giọng đa ngôn ngữ đọc tiếng Việt tự nhiên
-    // và trả MP3 nên client khỏi bọc WAV. Gửi NỘI DUNG THÔ (không thêm lệnh
-    // đọc như Gemini, vì ElevenLabs sẽ đọc luôn cả lệnh thành tiếng).
+    // và trả MP3 nên client khỏi bọc WAV. Chỉ gửi đúng nội dung cần đọc.
     const elevenKey = process.env.ELEVENLABS_API_KEY;
     if (elevenKey) {
       const eleven = await synthesizeElevenLabs(
@@ -1264,7 +1258,10 @@ export const speak = action({
                   {
                     parts: [
                       {
-                        text: `${toneHint} ${clean}`,
+                        // Chỉ gửi NỘI DUNG cần đọc. Trước đây có tiền tố
+                        // chỉ dẫn giọng đọc, nhưng Gemini TTS đọc to cả lệnh
+                        // nên câu đó lọt ra loa ở đầu mỗi câu trả lời.
+                        text: clean,
                       },
                     ],
                   },
