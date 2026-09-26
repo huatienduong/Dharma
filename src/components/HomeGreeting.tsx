@@ -23,9 +23,9 @@ export function HomeGreeting({
       style={keyboardInset ? { paddingBottom: keyboardInset } : undefined}
       className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center gap-6 overflow-hidden text-center"
     >
-      {/* ---------- Logo robot ---------- */}
+      {/* ---------- Logo robot (không vỏ ngoài) ---------- */}
       <div className="flex shrink-0 items-center justify-center">
-        <BotAvatar size="lg" glow shell className="size-28 sm:size-40" />
+        <BotAvatar size="lg" glow className="size-28 sm:size-40" />
       </div>
 
       {/* ---------- Lời chào + câu hỏi ---------- */}

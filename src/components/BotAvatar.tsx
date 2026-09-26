@@ -6,12 +6,11 @@
  * tai + ăng-ten y cà sa (`--primary`). Mọi màu đều lấy từ token nên tự
  * đổi theo giao diện.
  *
- * `shell` bật VỎ NGOÀI màu nâu đồng màu nền ứng dụng — CHỈ dùng ở màn
- * chào lúc vào ứng dụng (đúng như icon khi cài đặt). Mọi chỗ khác, kể cả
- * màn đàm thoại và bong bóng chat, để robot nền trong suốt cho gọn.
+ * Robot luôn để trên nền trong suốt, không vỏ ngoài, để thống nhất với bong
+ * bóng chat và cho màn chào nhìn gọn.
  *
  * Dùng ở: bong bóng trả lời, thẻ tiến trình, ô "đang suy nghĩ", màn đàm
- * thoại và màn chào. Kích thước co giãn theo className của vỏ ngoài.
+ * thoại và màn chào. Kích thước co giãn theo className.
  */
 
 import { cn } from "@/lib/utils";
@@ -29,36 +28,24 @@ export function BotAvatar({
   className,
   /** Bật/tắt quầng sáng y cà sa quanh mắt (màn đàm thoại dùng bật) */
   glow = false,
-  /** Bật vỏ ngoài màu nâu đồng màu nền ứng dụng (giống icon khi cài) */
-  shell = false,
 }: {
   size?: BotAvatarSize;
   className?: string;
   glow?: boolean;
-  shell?: boolean;
 }) {
   return (
     <span
       className={cn(
         "relative flex shrink-0 items-center justify-center",
-        shell &&
-          "overflow-hidden rounded-[30%] bg-card ring-1 ring-border/70 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.8)]",
         SIZES[size],
         className,
       )}
     >
-      {/* Quầng sáng y cà sa trong vỏ — cùng hồng y cà sa như icon cài đặt */}
-      {shell ? (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_45%_at_50%_18%,rgba(224,133,42,0.28),transparent_70%)]"
-        />
-      ) : null}
       <svg
         viewBox="0 0 48 48"
         role="img"
         aria-label="Avatar Trợ lý Phật học"
-        className={cn("relative", shell ? "h-[76%] w-[76%]" : "h-[88%] w-[88%]")}
+        className="relative h-[88%] w-[88%]"
       >
         {/* Ăng-ten: que y cà sa + hạt kem sáng */}
         <g>
