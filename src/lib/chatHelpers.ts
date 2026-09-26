@@ -468,32 +468,95 @@ function deaccentOne(ch: string): string {
  * nhận “lỗi” ở bất kỳ đâu thì câu hỏi Phật học thường gặp sẽ bị nuốt
  * nhầm (ví dụ “làm sao khắc phục đau khổ vô minh?”), nên phải bám đầu câu.
  */
+/**
+ * BẬC 1 — cụm mở đầu CHẮC CHẮN là góp ý / báo lỗi.
+ *
+ * Chỉ cần đứng đầu câu là nhận, không cần thêm điều kiện. Toàn bộ đều là
+ * cách nói dứt khoát của người dùng khi muốn báo lỗi.
+ */
 const FEEDBACK_LEAD_PATTERNS = [
   /^gop\s*y\s*(va\s*bao\s*loi)?/i,
   /^bao\s*loi\s*(va\s*gop\s*y)?/i,
+  /^bao\s*loi\s*ky\s*thuat/i,
   /^phan\s*hoi/i,
   /^khieu\s*nai/i,
+  /^nhan\s*xet/i,
+  /^y\s*kien(\s*cua\s*toi)?/i,
+  /^y\s*tuong(\s*cua\s*toi)?/i,
+  /^bao\s*van\s*de/i,
+  /^bao\s*su\s*co/i,
+  /^ghi\s*nhan\s*loi/i,
+  /^phat\s*hien\s*loi/i,
+  /^loi\s*ky\s*thuat/i,
+  /^loi\s*ung\s*dung/i,
+  /^ung\s*dung\s*bi\s*loi/i,
+  /^app\s*bi\s*loi/i,
+  /^toi\s*gap\s*loi/i,
+  /^gap\s*loi/i,
+  /^bi\s*loi/i,
+  /^loi\s*xay\s*ra/i,
+  /^day\s*la\s*loi/i,
+  /^ho\s*tro\s*ky\s*thuat/i,
+  /^gui\s*ho\s*tro/i,
+  /^van\s*de\s*ky\s*thuat/i,
+  /^su\s*co\s*ky\s*thuat/i,
+  /^error/i,
+  /^feedback/i,
+  /^report/i,
+  /^bug/i,
 ];
+
+/**
+ * BẬC 2 — từ mở đầu hay gặp nhưng CHƯA chắc chắn (“vấn đề”, “sự cố”, “lỗi”…).
+ *
+ * Chỉ nhận khi phần còn lại của câu có từ khoá kỹ thuật. Nhờ vậy câu hỏi
+ * Phật học kiểu “Vấn đề duyên khởi là gì?” hay “Sự cố trong tâm là sao?”
+ * vẫn ra trợ lý bình thường.
+ */
+const FEEDBACK_WEAK_LEAD_PATTERN =
+  /^(de\s*xuat|ho\s*tro|van\s*de|su\s*co|loi|treo|mat\s*tieng|khong\s*(hoat\s*dong|phan\s*hoi|nghe|ra\s*tieng|chay))/i;
 
 /**
  * Bỏ cụm mở đầu và dấu câu ở đầu, giữ lại phần thân.
  *
- * KHÔNG `.trim()` ở cuối: hàm này chạy trên bản đã bỏ dấu, và độ dài phần
- * thân được dùng để suy ra vị trí cắt trong chuỗi gốc. Cắt bớt khoảng trắng
- * cuối sẽ làm vị trí cắt lệch.
+ * Phải bỏ được CẢ từ mở đầu bật 2 (lỗi, vấn đề, sự cố, đề xuất…). Nếu không,
+ * từ “lỗi” còn nằm lại trong phần thân và tự khớp với từ khoá lỗi, khiến
+ * “Lợi ích…” và “Lỗi lầm trong nhân quả…” bị nuốt nhầm.
+ *
+ * KHÔNG `.trim()` ở cuối: độ dài phần thân dùng để suy ra vị trí cắt trong
+ * chuỗi gốc; cắt bớt khoảng trắng cuối sẽ làm vị trí cắt lệch.
  */
 function stripFeedbackLead(text: string): string {
   return text
     .replace(
-      /^\s*(gop\s*y|bao\s*loi|phan\s*hoi|khieu\s*nai)\s*(va\s*(gop\s*y|bao\s*loi)\s*)?/i,
+      /^\s*(gop\s*y|bao\s*loi|phan\s*hoi|khieu\s*nai|nhan\s*xet|y\s*kien|y\s*tuong|bao\s*van\s*de|bao\s*su\s*co|ghi\s*nhan\s*loi|phat\s*hien\s*loi|loi\s*xay\s*ra|day\s*la\s*loi|gap\s*loi|bi\s*loi|toi\s*gap\s*loi|loi\s*ky\s*thuat|loi\s*ung\s*dung|ung\s*dung\s*bi\s*loi|app\s*bi\s*loi|ho\s*tro\s*ky\s*thuat|gui\s*ho\s*tro|van\s*de\s*ky\s*thuat|su\s*co\s*ky\s*thuat|feedback|report|bug|error|de\s*xuat|ho\s*tro|van\s*de|su\s*co|loi|treo|mat\s*tieng|khong\s*(hoat\s*dong|phan\s*hoi|nghe|ra\s*tieng|chay))\s*(va\s*(gop\s*y|bao\s*loi)\s*)?/i,
       "",
     )
     .replace(/^[\s:.,\-–—]+/, "");
 }
 
 /** Từ khoá cho thấy đây là báo lỗi kỹ thuật chứ không phải góp ý chung. */
-const BUG_KEYWORDS =
-  /loi|hong|sap|treo|khong hoat dong|bug|crash|dong bang|khong phan hoi|khong nghe|mat tieng|khong ra tieng|doc qua nho|mic/;
+/**
+ * Từ khoá CHẮC CHẮN LÀ LỖI — dùng để dán nhãn “Báo lỗi” thay vì “Góp ý”.
+ * Chỉ gồm từ mô tả sự cố thật.
+ */
+const ERROR_KEYWORDS =
+  /\bloi\b|hong|sap|treo|crash|\bbug\b|khong hoat dong|khong chay|khong phan hoi|khong nghe|khong ra tieng|khong phat (am|tieng)|mat tieng|mat ket noi|that bai|bi ngat|ngat giua|dong bang|chay cham|nhanh qua|lo hang|buffer|\blag\b|nhay qua|nhay|hay nhay|ket loi|loi ky thuat|khong duoc gui|khong bam duoc|khong len|trang trang/;
+
+/**
+ * Từ thuộc về phần mềm — dùng để CHẶT CỬA bật 2 (từ mở đầu mơ hồ như
+ * “vấn đề”, “đề xuất”). Rộng hơn nhóm trên, không dùng để dán nhãn.
+ */
+const TECH_TERMS =
+  /loi|hong|sap|treo|crash|bug|khong hoat dong|khong chay|khong phan hoi|khong nghe|khong ra tieng|khong phat (am|tieng)|mat tieng|mat ket noi|that bai|bi ngat|ngat giua|dong bang|chay cham|nhanh qua|lo hang|buffer|lag|ket loi|loi ky thuat|khong duoc gui|khong bam duoc|khong len|trang trang|ung dung|\bapp\b|nut|hanh dong|thong bao|man hinh|tai ve|dang tai|ket noi|giao dien|chet app|dong app|tai tep|tai anh|nap tien|quay lai|len loi|thong tin sai|tra loi sai|khong dung y|sai khac|chay lai|mo lai|reset|thi thuong|lam treo|doc qua nho|\bmic\b|hang dong|nhay qua|nhay|hay nhay|qua nhanh/;
+
+/**
+ * Từ mở đầu bậc 2 NHƯNG TỰ NÓ ĐÃ LÀ LỖI — không cần thêm từ khoá kỹ thuật
+ * nào ở phần thân. “Không hoạt động”, “mất tiếng”… là lời kêu cứu rõ ràng,
+ * không thể là câu hỏi Phật học.
+ */
+const SELF_TECHNICAL_LEAD =
+  /^(treo|mat tieng|khong hoat dong|khong chay|khong nghe|khong phan hoi|khong ra tieng|khong phat (am|tieng))\b/;
 
 export type ChatFeedback = {
   /** "bug" = báo lỗi, "idea" = góp ý. */
@@ -520,16 +583,33 @@ export function parseChatFeedback(text: string): ChatFeedback | null {
   // Việc bỏ dấu (NFD rồi xoá dấu) giữ nguyên ĐỘ DÀI chuỗi với tiếng Việt,
   // nên độ dài phần đã bỏ cụm mở đầu dùng để cắt trên chính `raw`.
   const { flat, map } = deaccentWithMap(raw);
-  if (!FEEDBACK_LEAD_PATTERNS.some((re) => re.test(flat))) return null;
+  const strongLead = FEEDBACK_LEAD_PATTERNS.some((re) => re.test(flat));
+  const weakLead = FEEDBACK_WEAK_LEAD_PATTERN.test(flat);
+  if (!strongLead && !weakLead) return null;
   const bodyFlat = stripFeedbackLead(flat);
   // Cụm mở đầu trần (chỉ gõ “góp ý”) thì chưa có gì để gửi — để nơi gọi
   // hỏi lại, tuyệt đối không gửi thư rỗng.
   if (bodyFlat.trim().length < 3) return null;
+  // Bật 2 phải kiểm từ khoá kỹ thuật trên PHẦN THÂN, không phải cả câu.
+  //
+  // LÝ DO: bỏ dấu làm “Lợi ích…” và “Lỗi lầm…” cùng thành chuỗi bắt đầu
+  // bằng “loi”, trùng với “lỗi”. Nếu quét cả câu thì hai câu hỏi Phật học
+  // này bị nuốt. Chỉ quét phần sau cụm mở đầu thì chúng thoát.
+  if (
+    !strongLead &&
+    !SELF_TECHNICAL_LEAD.test(flat) &&
+    !TECH_TERMS.test(bodyFlat)
+  ) {
+    return null;
+  }
   // Vị trí bắt đầu phần thân = vị trí của ký tự ngay SAU phần đã bỏ.
   // Phần đã bỏ dài bằng (độ dài chuỗi đã bỏ dấu) − (độ dài phần thân).
   const removed = flat.length - bodyFlat.length;
   const start = removed < map.length ? map[removed] : raw.length;
   const message = raw.slice(start).replace(/^[\s:.,\-–—]+/, "").trim();
   if (message.length < 3) return null;
-  return { type: BUG_KEYWORDS.test(bodyFlat) ? "bug" : "idea", message };
+  // Phân loại quét CẢ CÂU, vì tới đây đã qua cổng nhận rồi: nếu ai đó viết
+  // “báo lỗi” hay “ứng dụng bị lỗi” thì chắc chắn đây là báo lỗi, dù phần
+  // thân không lặp lại từ “lỗi”.
+  return { type: ERROR_KEYWORDS.test(flat) ? "bug" : "idea", message };
 }
